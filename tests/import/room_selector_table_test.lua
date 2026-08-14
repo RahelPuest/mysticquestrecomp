@@ -160,3 +160,39 @@ Harness.testIfAvailable(
       "willyRoom family and fourthRoom family should NOT be the same real roomSelector family")
   end
 )
+
+Harness.testIfAvailable(
+  "RoomSelectorTable.resolveMapRoomPointersFileOffset: roomSelector 0/1's own real 'mapRoomPointers' field IS bank5/bank6's own map-table start (2026-08-14, new structural find)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- Direct follow-up to a real user push to keep investigating
+    -- ("versuche andere methoden... es muss ja auf die eine oder
+    -- andere art exsistieren"): cross-referencing the external
+    -- FFA-Disassembly project's own documented US-ROM MAP_HEADER
+    -- format ("tilesetGfx, metatiles, mapRoomPointers, ...") against
+    -- this EU ROM's own previously-undocumented `offsetParam` field
+    -- found the real, byte-exact match this test locks in.
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local records = RoomSelectorTable.decodeAll(romData, profile.roomSelectorTable)
+
+    local sel0 = records[0 + 1]
+    local sel1 = records[1 + 1]
+    local sel0File = RoomSelectorTable.resolveMapRoomPointersFileOffset(sel0)
+    local sel1File = RoomSelectorTable.resolveMapRoomPointersFileOffset(sel1)
+
+    Harness.assertEqual(sel0File, profile.mapTable.bankFileStart,
+      "roomSelector 0's own real mapRoomPointers should resolve to bank5 mapTable's own real start")
+    Harness.assertEqual(sel1File, profile.mapTableBank6.bankFileStart,
+      "roomSelector 1's own real mapRoomPointers should resolve to bank6 mapTableBank6's own real start")
+
+    -- Not just the address -- the real BYTES there must be mapTable's/
+    -- mapTableBank6's own already-VERIFIED header, byte for byte (the
+    -- decisive, not-a-coincidence proof).
+    local bytesAtSel0 = romData:sub(sel0File + 1, sel0File + 4)
+    local bytesAtSel1 = romData:sub(sel1File + 1, sel1File + 4)
+    Harness.assertEqual(bytesAtSel0, "\0\3\16\16", "roomSelector 0's mapRoomPointers target should be mapTable's own real [00 03 10 10] header")
+    Harness.assertEqual(bytesAtSel1, "\0\4\8\8", "roomSelector 1's mapRoomPointers target should be mapTableBank6's own real [00 04 08 08] header")
+  end
+)

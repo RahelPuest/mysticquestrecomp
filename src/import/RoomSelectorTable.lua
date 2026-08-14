@@ -68,6 +68,41 @@ function RoomSelectorTable.decodeRecord(romData, roomSelectorTable, index)
   }
 end
 
+--- Real, VERIFIED (2026-08-14, direct instruction "versuche andere
+-- methoden" -- cross-referenced against the external FFA-Disassembly
+-- project's own documented US-ROM `MAP_HEADER` format: "tilesetGfx,
+-- metatiles, mapRoomPointers, ..."): `offsetParam` was previously
+-- undocumented beyond "meaning unknown, not consumed by traced
+-- routines except being staged to WRAM." It is this record's own real
+-- `mapRoomPointers` field, the same field the external US disassembly
+-- names -- resolved the SAME WAY as `tileSourcePointer` (a bank-
+-- relative CPU address -> file offset), but relative to THIS record's
+-- own `dynamicBank` (byte 6), not a fixed bank.
+--
+-- Confirmed via an EXACT byte match, not inference: roomSelector 0's
+-- own `mapRoomPointers` resolves to file `0x14000` -- BYTE-IDENTICAL
+-- to `profile.mapTable`'s own already-VERIFIED header+pointer-table
+-- start (`00 03 10 10` followed by real pointer entries); roomSelector
+-- 1's own resolves to file `0x18000` -- BYTE-IDENTICAL to `profile.
+-- mapTableBank6`'s own header (`00 04 08 08` + real pointer entries).
+-- This is the real mechanism connecting `roomSelectorTable`'s 16
+-- "maps" to the 320-room bank-5/bank-6 catalog: roomSelector 0 "owns"
+-- all of bank 5's 256 records as its own room list; roomSelector 1
+-- owns all of bank 6's 64. See rom-map.md's own dated writeup for the
+-- full trace -- INCLUDING the honest caveat this does NOT resolve the
+-- separate, still-open "which metatile table does an individual
+-- catalog record use" question: the one CONFIRMED real room for these
+-- two selectors, `startRoom`, does not even use the metatile-table
+-- pipeline at all (its own real tiles are live-captured direct
+-- offsets, see rom_profiles.lua's own `graphics.startRoom.tileOffsets`),
+-- so it can't cross-validate a metatile-table guess derived the same
+-- way `tileSourcePointer` is.
+function RoomSelectorTable.resolveMapRoomPointersFileOffset(record)
+  assert(type(record) == "table" and record.dynamicBank and record.offsetParam,
+    "RoomSelectorTable.resolveMapRoomPointersFileOffset expects a decoded record (dynamicBank/offsetParam)")
+  return record.dynamicBank * 0x4000 + (record.offsetParam - 0x4000)
+end
+
 --- Decode every record in the table. Returns an array, 1-based like
 -- every other Lua array in this codebase, each entry's own `.index`
 -- field keeping the real 0-based `roomSelector` value.

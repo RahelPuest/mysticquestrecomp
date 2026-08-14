@@ -6589,3 +6589,68 @@ methods 2/3 were pure investigation, not committed as reusable code
 
 No code/data changes this pass (pure investigation, scratchpad Python
 scripts only). Full Lua test suite unchanged: 416/416 passing.
+
+## Real structural find: roomSelectorTable's own `offsetParam` IS "mapRoomPointers" -- but doesn't resolve the metatile question (2026-08-14, direct instruction "was wäre dann der nächste logische schritt")
+
+Following the honest "5 methods, all negative" report, the next
+logical step was to consult the external reference this project
+already trusts and cites for matching format details: [daid/FFA-
+Disassembly](https://github.com/daid/FFA-Disassembly) (a real, public
+US-cartridge disassembly). Its own devlog, part 2 ("The quest for
+maps"), documents a `MAP_HEADER` structure: `tilesetGfx, $00,
+metatiles, $80, mapRoomPointers, $d7, $3c` -- each of 16 real "maps"
+has its own header with a pointer to a per-map ROOM list
+(`mapRoomPointers`), and ALL rooms within one map share that map's own
+metatile table.
+
+**Real, byte-exact confirmation, not inference.** This EU ROM's own
+`roomSelectorTable` record shape already has a field matching this
+role: `offsetParam` (bytes 0-1 + `$4000`, -> WRAM `$D390`/`$D391`),
+previously documented only as "not consumed by traced routines,
+meaning unknown." Resolving it the same way `tileSourcePointer`
+(bytes 3-4) already resolves -- bank-relative CPU address -> file
+offset -- but relative to THIS record's own `dynamicBank` (byte 6,
+not a fixed bank) gives an exact, decisive match:
+- roomSelector 0: `offsetParam`=$4000, `dynamicBank`=5 -> file
+  `0x14000` -- BYTE-IDENTICAL to `mapTable`'s own already-VERIFIED
+  header (`00 03 10 10`) followed by its own real pointer-table
+  entries.
+- roomSelector 1: `offsetParam`=$4000, `dynamicBank`=6 -> file
+  `0x18000` -- BYTE-IDENTICAL to `mapTableBank6`'s own real header
+  (`00 04 08 08`) + entries.
+
+This is not a coincidence -- it's the real mechanism connecting
+`roomSelectorTable`'s 16 "maps" to the 320-room bank-5/bank-6 catalog:
+**roomSelector 0 "owns" all 256 bank-5 records as its own room list;
+roomSelector 1 owns all 64 bank-6 records.** Now `VERIFIED` and
+committed: `RoomSelectorTable.resolveMapRoomPointersFileOffset()`
+(new function) + a decisive test (`room_selector_table_test.lua`)
+locking in the exact byte match so it can never silently regress.
+
+**Honest caveat, checked directly rather than assumed away**: does
+this ALSO hand us the metatile table for individual catalog records
+(roomSelector 0/1's own `tileSourcePointer` = `$40B0` for both)? Tried
+it -- rendered several catalog records against the resulting candidate
+table (`0x200B0`) and ran the same edge-continuity metric from the
+previous investigation round. **It does NOT cross-validate**: the
+metric scores this new candidate as "better" than the OLD placeholder
+(`0x20938`) even for records 8-13, where `0x20938` is DEFINITELY
+correct (independently confirmed ground truth) -- proving the metric
+itself can't discriminate here, not that the new candidate is right.
+Worse, the one room we DO independently, already know is real for
+roomSelector 0/1 -- `startRoom` -- doesn't even use the metatile-table
+pipeline at all (its own real graphics are live-captured direct tile
+offsets in the `0x30000` range, see `rom_profiles.lua`'s own
+`graphics.startRoom.tileOffsets`), so there is no way to cross-check a
+metatile-table guess against it either.
+
+**Net result**: a real, new, VERIFIED structural fact about how this
+ROM's map system is organized (explains WHY certain roomSelectors
+share metatile tables, and why the 320-room catalog exists as a
+concept at all) -- but the specific "which tiles does catalog record N
+really use" question remains open, now for a clearer, better-
+understood reason: `startRoom` (the one room we know is real for these
+generic "map 0/1" selectors) bypasses the whole mechanism this
+question is about.
+
+Full suite: 417 passed, 0 failed (was 416 -- +1 new structural test).

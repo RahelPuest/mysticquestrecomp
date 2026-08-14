@@ -7691,3 +7691,31 @@ GB tiles" (true for all 320) from "tile ASSIGNMENT confirmed correct"
 ⚠ warning instead of silently implying its picture is trustworthy.
 
 Full suite: 416 passed, 0 failed.
+
+## Real structural find: roomSelectorTable's "mapRoomPointers" field decoded (2026-08-14)
+
+User asked for the next logical step after 5 negative methods. Went
+back to the external reference this project already trusts
+(daid/FFA-Disassembly, US ROM) -- its own devlog documents a
+`MAP_HEADER` format with `mapRoomPointers`, a per-map pointer to that
+map's own room list. Found the exact EU equivalent: `roomSelectorTable`'s
+previously-"meaning unknown" `offsetParam` field IS this, confirmed via
+an exact byte match (not inference): roomSelector 0 -> file `0x14000`,
+byte-identical to `mapTable`'s own real header; roomSelector 1 ->
+file `0x18000`, byte-identical to `mapTableBank6`'s own real header.
+This is the real reason the 320-room catalog exists and explains why
+groups of roomSelectors share metatile tables. Committed as
+`RoomSelectorTable.resolveMapRoomPointersFileOffset()` + a decisive
+test.
+
+Honestly checked whether this also answers the metatile-table
+question (tried the natural next guess, roomSelector 0/1's own
+`tileSourcePointer`=`$40B0`) -- it does NOT cross-validate: the edge-
+continuity metric scores it as "better" even for records where we
+KNOW it's wrong, and the one real room we know for these selectors
+(`startRoom`) bypasses the metatile pipeline entirely, so there's no
+way to check. Real forward progress on the ROM's structure either
+way -- the specific tile-assignment mystery remains open for a
+clearer reason now.
+
+Full suite: 417 passed, 0 failed.
