@@ -79,6 +79,20 @@ function Boot:enter()
     if region then viewer.regionIndex = region end
     self.stack:replace(viewer)
     return
+  elseif debugState and debugState:match("^roomexplorer") then
+    -- Added 2026-08-14 for live-verifying RoomExplorer.lua's own
+    -- catalog-tileset change (genericCatalogMetatileTableFileOffset)
+    -- without navigating there through Field's F8 first -- same
+    -- pattern as `tileviewer[:N]` above (optional 1-based room index).
+    local RoomExplorer = require("src.app.states.RoomExplorer")
+    local room = tonumber(debugState:match(":(%d+)$"))
+    local explorer = RoomExplorer.new(data, profile, self.input, self.overlay, self.stack)
+    if room then
+      explorer.roomIndex = room
+      explorer:_loadRoom(room)
+    end
+    self.stack:replace(explorer)
+    return
   elseif debugState == "field" then
     self.stack:replace(Field.new(data, profile, self.input, self.overlay, self.stack))
     return

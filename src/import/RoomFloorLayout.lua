@@ -404,8 +404,10 @@ end
 -- the record's own real header-derived `rleLength` (via
 -- `MapTable.readMapHeader`) and a caller-supplied `metatileTableFileOffset`
 -- (the shared bank-8 metatile pool -- see rom_profiles.lua's own
--- `unknownRoomACandidates.metatileTableFileOffset`, confirmed to work
--- for every real room this project has decoded via this path so far).
+-- `roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset` for
+-- the real, structurally-derived default this project's own callers
+-- use for arbitrary bank-5/bank-6 records, or `unknownRoomACandidates
+-- .metatileTableFileOffset` specifically for `unknownRoomA` itself).
 -- `metatileGridRows`/`metatileGridCols` must be supplied by the
 -- caller (this project has only ever confirmed 8x10 = 80 metatiles
 -- for both bank 5 and bank 6's own real records -- not re-derived

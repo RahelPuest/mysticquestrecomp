@@ -7753,3 +7753,18 @@ gameplay reaches these 320 rooms -- but a real, externally-
 corroborated step up from a guess.
 
 Full suite: 417 passed, 0 failed.
+
+## App-side consolidation: RoomExplorer.lua now matches the website's upgraded tileset (2026-08-14)
+
+Direct instruction: "dokumentiere, konsolodiere und baue in app und
+website ein" -- the website (rom-inspector) already used the upgraded,
+structurally-derived catalog tileset; the real LÖVE app's own F8 room
+browser (RoomExplorer.lua) did not yet -- fixed, so both now agree.
+Live-verified via a real screenshot (new `MYSTICQUEST_DEBUG_STATE=
+roomexplorer[:N]` Boot.lua hook, matching the existing tileviewer/
+field/battleintro/victory pattern), not just headlessly. Also fixed
+two doubly-stale doc/UI strings in Field.lua caught while
+consolidating (predating this session, from before RoomExplorer's own
+2026-08-12 rewrite into a full 320-room browser).
+
+Full suite: 417 passed, 0 failed.

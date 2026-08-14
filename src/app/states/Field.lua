@@ -347,12 +347,17 @@ end
 -- screen's real "Weiterspielen" option (TitleScreen.lua), not a
 -- second dev key here.
 --
--- F8 (2026-08-12): opens RoomExplorer.lua -- a dev-only browser for
--- `unknownRoomA`'s 6 real, VERIFIED rooms (see that module's own doc
--- comment for the full "why dev-only, not a real door" reasoning: no
--- live ROM trigger into that area was ever found, so wiring it in as a
--- real in-fiction exit would fabricate ROM behavior this project
--- doesn't actually have evidence for).
+-- F8 (2026-08-12, REWRITTEN same day to cover all 320 bank-5/bank-6
+-- records, see RoomExplorer.lua's own doc comment): opens
+-- RoomExplorer.lua -- a dev-only browser, originally for just
+-- `unknownRoomA`'s 6 real rooms, now for the WHOLE room catalog (see
+-- that module's own doc comment for the full "why dev-only, not a
+-- real door" reasoning: no live ROM trigger into any of these rooms
+-- was ever found, so wiring one in as a real in-fiction exit would
+-- fabricate ROM behavior this project doesn't actually have evidence
+-- for). Still gated on `profile.graphics.unknownRoomA_8` existing --
+-- a real, still-present field, just no longer itself rendered by this
+-- path (RoomExplorer decodes everything live from the ROM instead).
 function Field:keypressed(key)
   if key == "f2" and self.romData and self.profile and self.stack then
     local TileViewer = require("src.app.states.TileViewer")
@@ -789,7 +794,7 @@ function Field:draw()
     if self.saveStatusMessage then
       self.overlay:addLine("save (F7)", self.saveStatusMessage)
     end
-    self.overlay:addLine("dev keys", "F2 tiles, F3 teleport, F4 invuln, F5 heal, F6 kill enemy, F7 save, F8 unknownRoomA")
+    self.overlay:addLine("dev keys", "F2 tiles, F3 teleport, F4 invuln, F5 heal, F6 kill enemy, F7 save, F8 room catalog")
   end
 end
 

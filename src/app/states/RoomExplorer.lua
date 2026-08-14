@@ -35,6 +35,19 @@
 -- way; just don't read "room N here" as "this is definitely some
 -- specific real dungeon room" for anything past the original 6.
 --
+-- TILESET UPGRADED 2026-08-14 ("gehe dem map header hinweis nach"):
+-- now uses `genericCatalogMetatileTableFileOffset` (`roomSelector`
+-- 0/1's own real `tileSourcePointer`, `0x200B0`) instead of the old,
+-- unknownRoomA-borrowed placeholder -- a real, structurally-derived
+-- default (bank5/bank6 are each ONE literal 16x16/8x8 room-grid
+-- "map," per the external FFA-Disassembly project's own documented
+-- format, and its "one tileset per map, no per-room override" rule),
+-- visually re-checked (a consistent recurring vocabulary -- same
+-- door-arch, same floor pattern -- across widely-spread records,
+-- which the old placeholder never produced). Still honestly NOT
+-- gameplay-ground-truth-verified -- see rom-map.md's own dated write-
+-- up for the full evidence chain and its honest limits.
+--
 -- HONEST SCOPE (quick win #2, 2026-08-12, "1 dann 2 dann 3 dann 4"):
 -- movement now uses REAL per-metatile-instance collision data via
 -- `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
@@ -121,7 +134,7 @@ function RoomExplorer:_loadRoom(index)
   self.recordIndex = recordIndex
 
   local opts = {
-    metatileTableFileOffset = self.profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileTableFileOffset,
+    metatileTableFileOffset = self.profile.roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset,
     tilesetFileOffset = mapTable.tilesetFileOffset,
     metatileGridRows = METATILE_GRID_ROWS,
     metatileGridCols = METATILE_GRID_COLS,
@@ -228,6 +241,8 @@ function RoomExplorer:draw()
   if self.overlay then
     self.overlay:addLine("room (dev-only, no ROM connectivity)",
       string.format("%s record %d", self.sourceLabel, self.recordIndex))
+    self.overlay:addLine("tileset",
+      "structurally derived (roomSelector 0/1's real tileSourcePointer) -- not gameplay-confirmed")
     self.overlay:addLine("collision",
       "extrapolated (COLLISION_WALL_MASK) -- not live-verified for this room")
   end

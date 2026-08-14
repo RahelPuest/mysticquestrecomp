@@ -6736,3 +6736,37 @@ Full suite: 417 passed, 0 failed (unchanged -- doc-comment + data-value
 changes, no new assertions needed beyond the already-added structural
 test). Re-verified the live site with the same real headless-browser
 smoke tests used throughout this session.
+
+## App-side consolidation: RoomExplorer.lua wired to the same upgraded tileset (2026-08-14, "dokumentiere, konsolodiere und baue in app und website ein")
+
+The previous pass upgraded the room-catalog's tileset only in the
+rom-inspector website export (`export_data.lua`) -- the real LÖVE
+app's own dev-only F8 room browser (`src/app/states/RoomExplorer.lua`)
+was still calling `unknownRoomACandidates.metatileTableFileOffset`
+directly, meaning the app and the website would have silently shown
+DIFFERENT tiles for the same catalog room. Fixed: `RoomExplorer.lua`
+now reads `genericCatalogMetatileTableFileOffset` too, with its own
+doc comment and on-screen overlay line ("tileset: structurally
+derived... not gameplay-confirmed") updated to match the website's
+honest framing.
+
+**Live-verified, not just headlessly**: added a
+`MYSTICQUEST_DEBUG_STATE=roomexplorer[:N]` hook to `Boot.lua` (same
+established pattern as the existing `tileviewer[:N]`/`field`/
+`battleintro`/`victory` hooks) and captured a real screenshot
+(`MYSTICQUEST_DEBUG_STATE=roomexplorer:9 MYSTICQUEST_SCREENSHOT=...
+love .`) of bank-5 record 8 rendering correctly with the new tileset,
+inside the actual running LÖVE app -- footer reads "room 9/320
+(bank5...)" as expected. Kept the debug hook permanently; it fits the
+project's own established diagnostics convention and is directly
+reusable for any future catalog-tileset verification.
+
+Also fixed two doubly-stale doc/UI strings in `Field.lua` (predating
+even the 2026-08-12 RoomExplorer rewrite, not something this session
+broke but caught while consolidating): the F8 doc comment still said
+"browser for unknownRoomA's 6 real rooms" (it's been the full 320-room
+catalog since 2026-08-12), and the dev-keys overlay hint still said
+"F8 unknownRoomA" instead of "F8 room catalog".
+
+Full suite: 417 passed, 0 failed (app-side change is `love.*`-
+dependent, verified live via screenshot rather than headlessly).
