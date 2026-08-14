@@ -7605,3 +7605,78 @@ didn't survive contact with the real, live ROM.
 
 No code changes this pass (pure investigation + a doc-comment
 correction). Full Lua test suite: 421/421 passing (unchanged).
+
+## Task #86, re-opened and RETRACTED: the boss-defeat block isn't the $C5A0 actor-command queue after all -- it's task #85's own $31AD dispatcher (2026-08-14, "dann mach jetzt die 86")
+
+Direct continuation, applying this SAME session's own new bank-3 tools
+($404A/`$4B19`'s now-fully-known internals, plus real, corrected
+`tools/rom/disasm.py`-driven addressing) to task #86's own "honest,
+bounded remaining scope" item: the PER-ACTION completion check inside
+`$404A`. Chased it fully via static disassembly first (`$4247`,
+`$425B`, and a real self-caught correction along the way -- the first
+read of `$4C55` as straight-line code was wrong; `$2B70`/`$2B63`
+resolve it as a real 16-bit-pointer JUMP TABLE indexed by the group
+byte, not code, the SAME class of mistake as this session's earlier
+`$4C55` slip, self-caught before being written down as fact this time
+too).
+
+**Then went live to ground-truth it against the real
+`courtyard_boss_defeated` block** -- and the static reading did NOT
+survive contact with the ROM:
+
+- **First attempt, wrong addresses**: watched `$C4E0`'s first 8
+  SEQUENTIAL 24-byte slots (`+4`, `+28`, `+52`, ...) -- zero hits the
+  entire run. Self-caught: `$4B70`'s own doc says the record index is
+  the RAW action-code byte (`0x04`/`0x05`/`0x0E`/`0x0F`/`0x1C`/`0x1D`/
+  `0x1E`/`0x1F`), not a compact 0-7 slot -- the real 8 records sit at
+  sparse offsets up to `+744`, not the first 192 bytes. Corrected and
+  re-ran with the real addresses -- **still zero hits**, across the
+  entire pre-block, block, and post-block window.
+- **Confirmed `$404A`'s own group-branch (the `CALL $2B70` this pass's
+  own static disassembly centers on) is NEVER REACHED** during the
+  whole real block (verified via the real return-address on the stack
+  at every live `$2B73` hit -- 427 total hits on that shared, heavily-
+  reused trampoline during the window, ZERO of them came from `$404A`'s
+  own call site).
+- **Watched `$C5A0` (the actual known-list selector `0x0E`'s own loop
+  tests) directly**: all 8 bytes are ZERO at the checkpoint, stay ZERO
+  through the entire ~200,000-step block, and are STILL zero after it
+  releases. Selector `0x0E`'s entry (`$4B4F`) IS reached repeatedly
+  (103 times) -- but its own per-nonzero-entry helper (`$4B19`) is
+  NEVER reached, because the scan never finds anything to act on.
+
+**Conclusion: today's own new `$404A`/action-code-array chain plays NO
+role in this block. Neither, it turns out, does the EARLIER session's
+own "halt #1, `$D874` bit 0" explanation** -- watched `$D874` directly
+this time (the earlier pass inferred bit 0 indirectly, from `$D85A`
+never being rewritten): bit 0 never changes across the whole window;
+only bits 1 and 7 do, and only AFTER the block already starts
+releasing. Retracted in `ScriptOpcodeTable.lua`'s own dated correction
+(not silently dropped).
+
+**What actually happens at the real release moment** (step 221345 of
+400,000 -- the ~200,000-step block DURATION itself is real and exactly
+reproduces the original trace, only the CAUSE was wrong): a real write
+to `$D874` bit 7, traced to `$31AD` -- **this project's own already-
+fully-understood task #85 cross-actor dispatch mechanism**, not a new
+routine. Watched `$31AD`'s own gate (`BIT 1,(HL)` on `$C0A1`) too: a
+real, unrelated periodic flicker pulses that bit on/off constantly
+throughout (bank-0 `$080C`/`$0818`, roughly every ~2500-3500 steps,
+with one unexplained longer gap around steps 82K-110K) -- but doesn't
+by itself explain why `$31AD` only succeeds once, ~200,000 steps in,
+rather than on any of its many earlier attempts.
+
+**Net result**: task #86 is NOT closed -- but it's now concretely
+RECONNECTED to task #85 (previously marked "fully understood") instead
+of this session's own new bank-3 work, which turns out to be a red
+herring for this specific question. The real remaining mystery is
+`$31AD`'s own trigger condition -- likely a genuine timer/counter this
+pass didn't trace to its root, consistent with (not contradicting) the
+project's own standing "depends on passage of real game time"
+conclusion, just now pointing at a different, more specific real
+mechanism to chase.
+
+Real mGBA tooling used throughout (`tools/rom/watcher.py`,
+`checkpoints.py`, `courtyard_boss_defeated`), same methodology as
+every other live trace this session. No Lua behavior changed (doc-
+comment correction only). Full Lua test suite: 421/421 passing.

@@ -1138,6 +1138,41 @@ ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A = 0x33B0
 -- pushes B=3 -- i.e. every real use just makes a LATER opcode-0x00
 -- dispatch halt once, consuming the entry, for a real reason this
 -- pass didn't chase further).
+--
+-- RETRACTED (2026-08-14, "dann mach jetzt die 86" -- a direct live
+-- RE-trace of the exact same courtyard_boss_defeated block this doc
+-- comment's own "halt #1" claim above was based on): re-ran the live
+-- trace with a DIRECT watchpoint on `$D874` itself (the earlier pass
+-- inferred the bit-0 gate indirectly, from `$D85A` never being
+-- rewritten during the block -- never actually watched `$D874`'s own
+-- bit 0 changing). Real result: **bit 0 of `$D874` never changes at
+-- all across the entire ~200,000-step block** (only bits 1 and 7 do,
+-- both AFTER the block already starts releasing) -- so "halt #1"
+-- above is NOT what gates this specific real occurrence. Also
+-- DIRECTLY watched the real `$C5A0` 8-slot known-list this whole
+-- explanation depends on: **it stays all-zero for the ENTIRE window**
+-- (before, during, and after) -- selector `0x0E`'s own entry (`$4B4F`)
+-- IS reached (103 times), but its own per-entry helper (`$4B19`) is
+-- NEVER reached (0 times), because the scan never finds a nonzero
+-- byte to act on. The whole `$C5A0`/actor-command-queue explanation
+-- for "halt #1" does not hold up under direct live re-verification.
+--
+-- What DOES real-time-correlate with the block's actual end (step
+-- 221345 of 400,000, matching the original trace's own ~200,000-step
+-- figure -- the block DURATION itself is real and reproduced, just
+-- not this specific cause): a real write of `$D874` bit 7, from
+-- `$31AD` -- this project's OWN already-fully-understood (task #85)
+-- cross-actor dispatch mechanism, not a new routine. `$31AD`'s own
+-- gate (`BIT 1,(HL)` on `$C0A1` / `RET NZ`) was also live-watched: an
+-- unrelated periodic flicker/tick pulses `$C0A1` bit 1 on and off
+-- constantly throughout (bank-0 `$080C`/`$0818`, plausibly a cosmetic
+-- animation timer, not investigated further), but the pulse timing
+-- itself doesn't explain why `$31AD` only succeeds once ~200,000 steps
+-- in -- an honest, sharpened but still-OPEN question (this project's
+-- own already-published "genuinely depends on passage of real game
+-- time" conclusion still stands, just now pointing at `$31AD`'s own
+-- real trigger condition instead of the `$C5A0` queue). See events.md's
+-- own dated entry for the complete trace data.
 ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS = 0x3297
 
 -- `0x08` ($3370) -- structurally traced in task #83 (2026-08-13), its
