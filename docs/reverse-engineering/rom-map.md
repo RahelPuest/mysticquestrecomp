@@ -6072,3 +6072,67 @@ this project is systematic LIVE EXPLORATION of the edges of already-
 known rooms (how `fifthRoom`/`sixthRoom` themselves were found) -- not
 a shortcut this pass unlocked, but a real, honest confirmation that
 the existing, proven methodology remains the right one to keep using.
+
+## sixthRoom's own documented hold-to-trigger mechanism does NOT reproduce under a longer, more careful re-test (2026-08-14, honest correction)
+
+Direct continuation of "die gesammte gamemap entschlüsseln... absolute
+prio" -> systematic edge exploration of the least-explored real rooms
+(`fifthRoom`/`sixthRoom` currently have ZERO recorded `exits` of their
+own -- neither was ever probed past its own landing spot). Started
+with `sixthRoom` since it had literally no exploration recorded at all
+beyond the initial discovery.
+
+**Real, concrete finding: the corridor is bigger than documented.**
+Replaying the exact known path into `fourthRoom`'s own west corridor
+(UP into the wall, then LEFT) and holding LEFT for MUCH longer than
+the previously-recorded test (3000+ real frames, vs. the original
+100-220 frame tests): real WRAM `$C245` (X) does NOT stay at 80
+forever. It pauses there for ~260 real frames (which is exactly why
+the original 100/220-frame tests both landed on "80" and concluded a
+stable wall -- a real, understandable methodology gap, not an error in
+that pass's own math), then resumes moving further left, settling at a
+SECOND real wall, `X=24`. From there, holding UP moves 40px further
+(to Y=56, a third wall) and holding DOWN moves 16px further (to Y=112,
+a fourth wall) -- all real, previously-uncaptured floor space.
+
+**Real, honest correction: the documented `sixthRoom` cut trigger
+(`holdFrames=220`, holding LEFT once settled at X=80) does NOT fire in
+this re-test.** Held LEFT continuously and unbroken for over 3000 real
+frames (far past the original 220-frame threshold) from the exact same
+starting state (`third_room_free.state`) -- the real WRAM room pointer
+(`$D392`/`$D393`) never once changes from `fourthRoom`'s own value
+throughout the entire test, including well past the second wall at
+X=24. The captured VRAM tile IDs at the settled X=24 position DO
+overlap heavily with `sixthRoom.tileOffsets`'s own real tile-ID set
+(same shared bank-8/12 tileset, expected), but the actual tile
+ARRANGEMENT does not match `sixthRoom.grid` row-for-row when correctly
+adjusted for the real SCX offset -- i.e. this is genuinely NOT
+confirmed to be `sixthRoom`'s own content, despite using overlapping
+tiles from the same shared set.
+
+**Honest, unresolved status**: this is a real, unreconciled
+discrepancy with the existing "RESOLVED (task #75)" claim for
+`sixthRoom`'s own exit, not silently ignored. Two most likely
+explanations, neither confirmed: (1) the original 2026-08-13 discovery
+used a genuinely different input sequence (e.g. released/re-pressed
+LEFT rather than one continuous unbroken hold) that this project's own
+current `checkpoints.py`/exit-zone doc comments don't fully capture,
+or (2) the real trigger condition depends on something this pass
+didn't control for (a specific Y sub-band, a specific frame-parity, or
+state left over from a DIFFERENT earlier point in the original
+session's own play-through that this fresh replay from
+`third_room_free.state` doesn't reproduce). NOT chased down further
+this pass -- flagged as a real, concrete, bounded follow-up rather than
+either quietly re-asserting the old "RESOLVED" claim or spending
+unbounded further time on it in this same pass.
+
+**Practical takeaway for `rom_profiles.lua`**: the `sixthRoom` exit
+definition itself is left UNCHANGED this pass (not proven wrong, just
+not re-confirmed) -- but its own doc comment should no longer be read
+as "fully resolved, case closed" without this caveat attached. The
+real further corridor space found (X=24 west wall, Y=56 north wall,
+Y=112 south wall from there) is real, previously-uncaptured room
+content -- worth a dedicated follow-up pass (capture its own real
+tile grid, determine whether it's genuinely `sixthRoom` or a distinct,
+still-unnamed further room) rather than folding into this same
+investigation.
