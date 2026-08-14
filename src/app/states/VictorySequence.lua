@@ -700,6 +700,40 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     end
   end
 
+  -- Dev/CI-only: MYSTICQUEST_VICTORY_START_ROOM=<roomKey> (2026-08-14,
+  -- added directly to investigate a batch of user-reported bugs in
+  -- fourthRoom without replaying the whole willyRoom->secondRoom->
+  -- thirdRoom cutscene/movement chain first every single launch).
+  -- Jumps straight to `<roomKey>` in the real "interactive" phase,
+  -- reusing the SAME real commit path every ordinary transition uses
+  -- (`switchToTargetRoom`, so `landingX`/`landingY` and room-loading
+  -- stay byte-for-byte identical to a real playthrough reaching that
+  -- room) -- found by looking up the first real `exits` entry, from
+  -- ANY room in `profile.graphics`, whose own `targetRoom` matches.
+  -- Fails loudly (not a silent no-op) if no such exit exists, so a
+  -- typo'd room name doesn't just quietly leave the player in
+  -- willyRoom -- this project's own "no silent fallbacks" rule.
+  -- Never armed unless the env var is set.
+  local debugStartRoom = os.getenv("MYSTICQUEST_VICTORY_START_ROOM")
+  if debugStartRoom and self.data then
+    local foundExit
+    for _, roomData3 in pairs(profile.graphics) do
+      if type(roomData3) == "table" and roomData3.exits then
+        for _, exit in ipairs(roomData3.exits) do
+          if exit.targetRoom == debugStartRoom then
+            foundExit = exit
+            break
+          end
+        end
+      end
+      if foundExit then break end
+    end
+    assert(foundExit, "MYSTICQUEST_VICTORY_START_ROOM: no real exit targets room '" ..
+      debugStartRoom .. "' -- check the room key against rom_profiles.lua's own graphics table")
+    self:switchToTargetRoom(foundExit)
+    self.phase = "interactive"
+  end
+
   return self
 end
 

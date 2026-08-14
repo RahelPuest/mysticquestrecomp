@@ -1713,13 +1713,33 @@ RomProfiles.PROFILES = {
         -- landing-spot bug). 129/130 promoted from "not floor" to
         -- VERIFIED real floor/decoration.
         --
-        -- Still HYPOTHESIS, unchanged: 128 (the solid `0xFF` sky/void
-        -- fill -- distinguishing itself from a genuine floor tile by its
-        -- own literal all-set-bits pixel pattern, a real, different kind
-        -- of evidence, not just "wasn't tested") and 135 (a single small
-        -- distinct feature tile, never independently tested either way).
+        -- CLOSED (2026-08-14, direct user report: "der spawn ist immer
+        -- noch off / der übergang geht nicht" for this exact room):
+        -- 135 promoted from HYPOTHESIS to VERIFIED real floor. Root
+        -- cause, found via a new `MYSTICQUEST_VICTORY_START_ROOM` debug
+        -- hook (VictorySequence.lua) that jumps straight to a room at
+        -- its own real landing spot: `TileWalkability.build`'s footprint
+        -- check at the real landing spot (120,112) touches tile 135
+        -- (the 2x2 feature block at native rows 12-13, cols 14-15 --
+        -- pixel range x=112-127, y=96-111) the INSTANT the player moves
+        -- even 1px in EITHER vertical direction (up OR down), because
+        -- the 16px-tall footprint's own row window shifts the moment Y
+        -- leaves its exact spawn-time multiple-of-8 alignment. With 135
+        -- excluded from `floorTileIds`, this made the player's own
+        -- vertical movement completely frozen from the instant of
+        -- landing -- confirmed live (`MYSTICQUEST_SCRIPT=up@3-60`, 60
+        -- real frames, Y never changed) -- explaining BOTH halves of the
+        -- user's report at once (spawn "feels" wrong because the player
+        -- can never leave it, and the fifthRoom exit "doesn't work"
+        -- because it's unreachable if you can't move vertically at
+        -- all). Directly contradicted by THIS SAME room's own already-
+        -- recorded live evidence just above ("real screen Y walked 112
+        -- -> 102 -> 95 -> 88 over 30 real frames with ZERO hesitation")
+        -- -- that trace already proved this exact path is real, open
+        -- floor in the actual ROM; 135 was simply never added to
+        -- `floorTileIds` to match it, an oversight now corrected.
         floorTileIds = { [129] = true, [130] = true, [131] = true, [132] = true,
-          [133] = true, [134] = true },
+          [133] = true, [134] = true, [135] = true },
         grid = {
           {128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128},
           {128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128},
@@ -1830,7 +1850,54 @@ RomProfiles.PROFILES = {
         -- unverified-against-the-real-ROM default.
         exits = {
           {
-            zone = { xMin = 112, xMax = 128, yMin = 100, yMax = 108 },
+            -- CORRECTED (2026-08-14, direct user report: "der übergang
+            -- zum nächsten raum geht nicht" for this exact room, two
+            -- real bugs found together): the zone's own `yMin`/`yMax`
+            -- (100-108) never actually overlapped a real wall --
+            -- `TileWalkability` reports open floor continuously from
+            -- y=32 down to y=112 (the landing spot), so a player
+            -- holding UP from the landing spot walks straight through
+            -- 100-108 without stopping, and this project's own
+            -- `ZoneMatch` only checks CURRENT position (not collision)
+            -- -- holding DOWN once past the zone fails the check again
+            -- before `HoldTrigger`'s 64-frame counter can ever
+            -- accumulate. The exit could never fire.
+            --
+            -- Live-verified where the player ACTUALLY stops walking up
+            -- (`MYSTICQUEST_VICTORY_START_ROOM=fourthRoom
+            -- MYSTICQUEST_SCRIPT=up@3-120`): settles at EXACTLY y=32 --
+            -- the real wall sits between y=30 (blocked) and y=32
+            -- (open), and 32 is ALSO this exit's own already-correct
+            -- `landingY` for fifthRoom, a real, decisive cross-check
+            -- this is the right spot to be standing at.
+            --
+            -- BUT (the second real bug, found live-testing the first
+            -- fix): a naive small zone right at y=32 still never
+            -- fires, because holding the required `down` direction
+            -- there is NOT blocked (`canMoveTo(120,33)` etc. are all
+            -- real open floor too, confirmed by the exact same sweep)
+            -- -- the player just walks back down and out of a small
+            -- zone within ~8 frames, nowhere near the 64 needed. This
+            -- project's own `HoldTrigger`/`ZoneMatch` pair has no
+            -- concept of "blocked while held" (see their own doc
+            -- comments) -- only "currently inside the zone, this
+            -- frame, while the button is down." Rather than inventing
+            -- unverified additional wall tiles this room's own real,
+            -- captured static data doesn't contain (this room's own
+            -- doc history already flags the REAL ROM's own exact wall
+            -- position "beyond Y=88" as honestly uncharacterized, see
+            -- the older text below), the zone is sized tall enough
+            -- (64px, `yMax = yMin + holdFrames`, one real game pixel
+            -- per real held frame at this project's own verified 1px/
+            -- frame vertical speed) that a continuous 64-frame down-
+            -- hold starting at the real y=32 stopping point stays
+            -- inside it for the entire hold, by construction -- a
+            -- deliberate, documented engineering choice (not a claimed
+            -- ROM fact) to make the ALREADY-real, ALREADY-verified
+            -- `holdFrames=64`/`holdDirection="down"` finding actually
+            -- reachable in this project's own current model, honestly
+            -- flagged as such rather than silently left broken.
+            zone = { xMin = 112, xMax = 128, yMin = 32, yMax = 96 },
             transition = { type = "cut" },
             targetRoom = "fifthRoom",
             landingX = 136, landingY = 32,
