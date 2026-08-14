@@ -104,10 +104,28 @@ EntityStructLayout.FIELD_ACCESSOR_ADDRESS = {
   -- Real usage sample (bank 1, `$4B65`/`$4B78`/`$4FA9`): all 3 real
   -- call sites found write TYPE for slot 4 (the PLAYER's own slot)
   -- with small integers (`1`, `4`) alongside PARAM2 writes in the SAME
-  -- functions -- reads like a real, dynamic per-frame STATE value on
-  -- the player's own entity, not a fixed "actor type" set once at
-  -- allocation (the doc comment's own prior assumption) -- a real
-  -- refinement, exact meaning still open.
+  -- functions.
+  --
+  -- RETRACTED (2026-08-14, direct live-test follow-up, "ja mach mal"):
+  -- this doc comment previously read "reads like a real, dynamic
+  -- per-frame STATE value... plausibly attack-related" -- a hypothesis
+  -- built from the static shape alone (facing/direction-masked
+  -- dispatch, a `$C4D2:=0x3C` timer write, `CALL $02AB` right after).
+  -- Live-tested it directly: mGBA watchpoints on TYPE/PARAM2/PARAM3/
+  -- PARAM6/PARAM7/UNKNOWN_10/UNKNOWN_11/`$C4D2` across a real A-press
+  -- attack (`courtyard_enemy_engaged` checkpoint) found ZERO real value
+  -- changes; a follow-up direct PC/execution check (600,000 real single
+  -- steps spanning the whole attack) found the handler blocks at ALL 3
+  -- real TYPE-setter call sites (`$4B60`, `$4B72`, `$4F9D`) and their
+  -- own further dispatch targets (`$5010`, `$5084`) are NEVER REACHED
+  -- during a normal melee attack -- a clean, decisive, honest NEGATIVE,
+  -- not an inconclusive one. The "attack-related" hypothesis is WRONG
+  -- as stated. What remains true (byte-level, unaffected by this
+  -- correction): the 3 real static call sites exist and do write small
+  -- integers to slot 4's TYPE field. Whether this whole code region is
+  -- genuinely dead code, or reached under some OTHER real condition
+  -- this pass didn't test (a different room/game state, a move not
+  -- available this early), stays open.
   [EntityStructLayout.FIELD.PARAM2] = { get = 0x0C6D, set = 0x0C86 },
   [EntityStructLayout.FIELD.POSITION_Y] = { get = 0x0C41, set = nil },
   -- Offsets 6/7 (`PARAM6`/`PARAM7`): no separate 1-byte accessors

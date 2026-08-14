@@ -7553,3 +7553,55 @@ added to `EntityStructLayout.lua` (a real, centralized reference for
 all of the above, matching this project's own "ROM data lives in one
 place" convention). No Lua behavior changed. Full Lua test suite:
 421/421 passing (unchanged).
+
+## Live-testing the "TYPE is attack-related" hypothesis: a clean, decisive negative (2026-08-14, "ok weiter")
+
+Direct follow-up, going after the field the previous entry left as a
+"real, well-supported observation, not a proven fact": that `TYPE`'s 3
+real static call sites (all writing slot 4, small integers `1`/`4`,
+alongside a `PARAM2` write and a `$C4D2:=0x3C` timer in the SAME
+functions) looked plausibly attack-related. This project's own
+discipline requires live evidence before trusting a static-only read,
+so it got one, using the real `tools/rom/watcher.py`/`checkpoints.py`
+mGBA harness (`courtyard_enemy_engaged`, a real, clean pre-attack
+moment).
+
+**Test 1 (data watchpoints)**: watched `TYPE`/`PARAM2`/`PARAM3`/
+`PARAM6`/`PARAM7`/`UNKNOWN_10`/`UNKNOWN_11`/`$C4D2` for the player's
+own slot across a real `A`-press attack (immediate + a 90-frame tail
+to cover the full swing). Result: 247 real watchpoint hits total, but
+**every single one was a no-op write (old value == new value)** --
+none of these fields actually CHANGED during the attack.
+
+**Test 2 (direct execution check, to rule out "already at steady-
+state" as an alternative explanation)**: single-stepped 600,000 real
+SM83 instructions (comfortably longer than one attack's real duration)
+starting right after the `A`-press, checking the live PC (resolved
+through the real current MBC bank, via `watcher.rom_offset`) against
+all 3 real `TYPE`-setter call sites (`$4B60`, `$4B72`, `$4F9D`) and
+their own further dispatch targets (`$5010`, `$5084`). **Zero hits on
+any of them.** This whole code region is not reached AT ALL during a
+normal melee attack -- not "reached but idempotent," genuinely never
+executed.
+
+**Conclusion: the "TYPE is a dynamic, attack-related per-frame state"
+hypothesis from the previous entry is WRONG, and retracted with this
+entry** (not silently dropped -- see the dated correction now in
+`EntityStructLayout.lua`'s own `TYPE` accessor comment). What survives,
+unaffected: the 3 real call sites genuinely exist and genuinely write
+small integers to slot 4's `TYPE` field (a static, byte-level fact,
+independent of when/whether they run). What's now open instead: is
+this whole code block genuinely dead/unreachable in this ROM release,
+or gated behind some OTHER real condition this pass didn't test (a
+different game state, room, or move not available this early)? Not
+determined this pass -- an honest, bounded stopping point rather than
+a forced guess.
+
+A real, concrete example of this project's own "verify before
+presenting" discipline catching a hypothesis that LOOKED solid from
+static disassembly alone (facing-direction dispatch, a plausible timer
+write, a `CALL $02AB` right where an attack check would sit) but
+didn't survive contact with the real, live ROM.
+
+No code changes this pass (pure investigation + a doc-comment
+correction). Full Lua test suite: 421/421 passing (unchanged).
