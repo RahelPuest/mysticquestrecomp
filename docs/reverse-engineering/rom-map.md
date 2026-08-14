@@ -6251,3 +6251,90 @@ and a concrete follow-up (extend `fourthRoom.grid` itself westward with
 the real captured content instead of treating it as a separate room,
 IF the hypothesis holds up under the 2 checks above) for whoever picks
 this up next, not acted on unilaterally here.
+
+## Hypothesis UPGRADED to confirmed: fourthRoom's west corridor uses the EXACT SAME real mechanism already proven for secondRoom's own extension
+
+Direct continuation, using a precisely-targeted live capture (bulk
+`s.run()` for coarse navigation, switching to real per-instruction
+stepping ONLY within the single real frame a `$CEE8` write was
+detected in, to pin down the exact PC/registers without the earlier
+session's `w.step()`-loop timing bug).
+
+**Real, decisive result**: `$CEE8` writes during the west-corridor walk
+land at `PC=$1EB6` -- the EXACT SAME real address already documented
+(see this doc's own "secondRoom cracked" section) as the second half
+of the real `$1E9F`/`$1EB6` scroll-time incremental VRAM-write-queue
+mechanism that PROVED `secondRoom` is further rows of `willyRoom`'s own
+continuous room space, not a separately-loaded room. Captured real
+register state at 2 of these events: `DE=0x981E`/`A=0x1E` and
+`DE=0x98DE`/`A=0xDE` -- real VRAM tilemap destinations at BG column 30
+(both `0x1E`/`0xDE` mod 32 = 30), the wraparound edge column a
+leftward horizontal scroll would naturally reveal next -- structurally
+identical in shape to `secondRoom`'s own real capture (which landed on
+wraparound ROWS instead, for willyRoom's own vertical door scroll).
+
+**This decisively upgrades the earlier hypothesis**: `fourthRoom`'s
+west corridor (previously captured, in part, as a separate room named
+`sixthRoom`) is revealed via the exact same real, general "one
+continuous room, scroll-time incremental reveal via `$1E9F`/`$1EB6`"
+mechanism this project already proved for `willyRoom`->`secondRoom` --
+not the bulk `$242B` decompression pipeline (already confirmed NOT
+engaged for this room), and not a genuinely separate cut-triggered
+room. Combined with the earlier findings this pass (the documented
+`sixthRoom` cut trigger never fires; the non-discriminating
+`dynamicBank` evidence), this is now real, mechanism-level confirmation,
+not just a plausible alternative explanation.
+
+**Practical next step, not yet done this pass**: capture the REAL full
+set of `$1E9F`/`$1EB6` tile-ID pairs across the whole corridor walk
+(the same method that gave `secondRoom` its own exact real rows
+14-15), then extend `fourthRoom.grid` itself westward with that real
+content, and retire the separate `sixthRoom` entry (folding it into
+`fourthRoom`, the same way `secondRoom` was never modeled as split
+from `willyRoom`) -- a real, bounded, now well-evidenced follow-up
+rather than a fresh mystery.
+
+## Real corridor content captured: 20 real tile-pairs, matching fourthRoom's own established style exactly -- CLOSES the sixthRoom question
+
+Direct continuation, capturing the actual real `$1E9F` call parameters
+(`DE`=packed tile-ID pair, `HL`=VRAM dest) across the corridor walk --
+a single continuous `core.step()` pass (fast: 486512 real instructions
+in 0.5s), not a per-frame reload, watching for `pc==0x1E9F` directly.
+
+**20 real captures, decoded**: the first 16 land at consecutive VRAM
+addresses `$981E`-`$99FE` -- decoding each as `(row, col)` within the
+32x32 BG map (`(addr-0x9800) -> row=off//32, col=off%32`) gives EVERY
+row 0-15 at column 30, in order -- a full real vertical strip, exactly
+matching the room's own 16-row height. A further 4 captures (before
+hitting this pass's own 20-capture budget) land at column 28, rows
+0-3, confirming this repeats column by column as the scroll continues.
+
+**The real tile values themselves are the decisive part.** The column-
+30 strip's own 16 real tile pairs: `(0x82,0x81)` x2 alternating with
+`(0x83,0x83)` x2, for rows 0-9, then `(0x84,0x84)`, `(0x92,0x91)`,
+`(0x91,0x92)` at rows 9-11, then back to the `(0x82,0x81)`/`(0x83,0x83)`
+alternation for rows 12-15. In decimal: tiles 129/130/131/132 (already
+`fourthRoom`'s own known checkerboard/border set) plus 145/146
+(`0x91`/`0x92` -- the SAME "new corridor decoration" tiles this
+project already found and decoded earlier this same session, task
+#75's own "10 new tile IDs," `rom_profiles.lua`'s `fourthRoom
+.tileOffsets`). **This is not a coincidental resemblance -- it's the
+literal same tile vocabulary fourthRoom already uses**, revealed one
+column at a time as the real hardware scroll advances, via the exact
+same mechanism (and even the exact same real ROM address, `$1EB6`)
+already proven for `secondRoom`'s own continuation of `willyRoom`.
+
+**Conclusion, now decisively closed, not just hypothesized**:
+"`sixthRoom`" is real further columns of `fourthRoom`'s own single
+continuous room space, not a separately-loaded room -- the documented
+cut-transition mechanism never fires because there genuinely is no cut
+here, the same way there's no cut between `willyRoom` and `secondRoom`.
+
+**Not done this pass** (a real, bounded, well-scoped follow-up, not a
+fresh mystery): capturing the FULL real column range (this pass
+stopped at 20 captures/2 columns by its own budget; the real corridor
+likely spans up to the remaining ~10-12 columns of the 32-wide BG map
+based on how far X travels), assembling it into a real extended
+`fourthRoom.grid`, and retiring the separate `sixthRoom` room
+definition in `rom_profiles.lua` (folding its own already-decoded tile
+offsets into `fourthRoom.tileOffsets`, which mostly already overlaps).
