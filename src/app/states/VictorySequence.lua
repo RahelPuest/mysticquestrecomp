@@ -1389,8 +1389,15 @@ function VictorySequence:draw()
   if self.phase == "dialogue" then
     local geo = BOX_GEOMETRY.top
     if self.box then
-      self.box:drawBorder(geo.x, geo.y, geo.cols, geo.rows)
       local text = self.dialoguePages[self.dialoguePageIndex] or ""
+      -- Real line height CORRECTED (2026-08-14, see TextBox.lua's own
+      -- `LINE_HEIGHT` doc comment): `geo.rows` is `BOX_GEOMETRY`'s own
+      -- static, OLD-8px-spacing-era guess -- computing the real row
+      -- count THIS text needs at the now-correct 16px spacing avoids
+      -- a multi-line message (e.g. the real 3-line Willy exchange
+      -- pages) overflowing a box sized for the old, wrong spacing.
+      local rows = math.max(geo.rows, TextBox.rowsNeeded(text, 8))
+      self.box:drawBorder(geo.x, geo.y, geo.cols, rows)
       local elapsed = self.frame - self.dialogueStartFrame
       local shown = TextBox.revealedCount(text, elapsed, self.framesPerLetter)
       self.box:drawText(text:sub(1, shown), geo.x, geo.y, 8)
@@ -1403,7 +1410,9 @@ function VictorySequence:draw()
   end
 
   local geo = BOX_GEOMETRY[page.box]
-  self.box:drawBorder(geo.x, geo.y, geo.cols, geo.rows)
+  -- Same real-line-height correction as the dialogue box above.
+  local rows = math.max(geo.rows, TextBox.rowsNeeded(page.text, 8))
+  self.box:drawBorder(geo.x, geo.y, geo.cols, rows)
   local elapsed = self.frame - self.pageStartFrame
   local shown = TextBox.revealedCount(page.text, elapsed, self.framesPerLetter)
   self.box:drawText(page.text:sub(1, shown), geo.x, geo.y, 8)

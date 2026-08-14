@@ -19,7 +19,16 @@ DialogueBox.__index = DialogueBox
 
 local BOX_X, BOX_Y = 4, 4
 local BOX_W, BOX_H = 152, 40
-local LINE_H = 8
+-- CORRECTED (2026-08-14, direct user report: "der Zeilenabstand in den
+-- Textboxen ist falsch"): was 8 (one native GB tile row) -- live-
+-- captured the real BG tilemap for a real, multi-line ROM textbox
+-- (mgba, courtyard_boss_defeated -> post_black_wipe) and found real
+-- text glyph rows sit TWO tile-rows apart, confirmed a second,
+-- independent time on the next real box in the same sequence. Same
+-- real "double spacing" bug already found and fixed for `Intro.lua`'s
+-- own scrolling story text (docs/progress.md, 2026-08-10) -- this
+-- component had the identical bug, never cross-checked against it.
+local LINE_H = 16
 
 --- `lines`: array of strings (each already short enough to fit BOX_W --
 -- no wrapping is implemented). `onComplete`: called once, after the
@@ -47,12 +56,25 @@ function DialogueBox:update(dt)
 end
 
 function DialogueBox:draw()
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.rectangle("fill", BOX_X, BOX_Y, BOX_W, BOX_H)
-  love.graphics.setColor(0, 0, 0, 1)
-  love.graphics.rectangle("line", BOX_X, BOX_Y, BOX_W, BOX_H)
-
   local text = self.lines[self.index]
+  -- Real line-height fix, continued: BOX_H (40px) was sized for the
+  -- OLD, wrong 8px spacing (exactly 4 lines with 4px top/bottom
+  -- padding) -- at the corrected 16px spacing that only fits 2 lines,
+  -- which would clip a longer real message. Grow the box to fit the
+  -- CURRENT text's own real line count instead of guessing a fixed
+  -- worst case; never shrinks below the original BOX_H for a short one.
+  local lineCount = 1
+  if text then
+    for _ in (text .. "\n"):gmatch("(.-)\n") do lineCount = lineCount + 1 end
+    lineCount = lineCount - 1
+  end
+  local boxH = math.max(BOX_H, 4 * 2 + lineCount * LINE_H)
+
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.rectangle("fill", BOX_X, BOX_Y, BOX_W, boxH)
+  love.graphics.setColor(0, 0, 0, 1)
+  love.graphics.rectangle("line", BOX_X, BOX_Y, BOX_W, boxH)
+
   if text then
     -- '\n' splits a logical line into displayed rows within the box --
     -- a plain formatting convenience, not a decoded ROM control code

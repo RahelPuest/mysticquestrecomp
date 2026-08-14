@@ -79,6 +79,21 @@ function TextBox:drawBorder(x, y, cols, rows)
   love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- Real, VERIFIED line height (2026-08-14, direct user report: "der
+-- Zeilenabstand in den Textboxen ist falsch"): live-captured the real
+-- BG tilemap for the real, live, fully-typed post-boss story textbox
+-- (`courtyard_boss_defeated -> post_black_wipe`, mgba) and found the
+-- real text glyph rows sit TWO tile-rows apart (row 12, then row 14 --
+-- row 13 in between is entirely the box's own blank fill tile), not
+-- one -- confirmed a second, independent time on the very next real
+-- box in the same sequence. Matches the SAME real "double spacing"
+-- convention this project's own `Intro.lua` already found and fixed
+-- for its scrolling story text (see docs/progress.md's 2026-08-10
+-- "line spacing was double what real hardware uses" entry) -- this
+-- was the exact same class of bug in a second, separate component
+-- that was never cross-checked against that earlier finding.
+TextBox.LINE_HEIGHT = GBTile.TILE_H * 2
+
 --- Draw `text` inside the border at `(x, y)` with a `padding`-px inset.
 -- `\n` starts a new line (a plain formatting convenience -- pre-wrapped
 -- by the caller, same convention as DialogueBox.lua; no automatic word-
@@ -87,9 +102,21 @@ function TextBox:drawText(text, x, y, padding)
   padding = padding or 8
   local row = 0
   for line in (text .. "\n"):gmatch("(.-)\n") do
-    self.font:print(line, x + padding, y + padding + row * GBTile.TILE_H, { 0, 0, 0, 1 })
+    self.font:print(line, x + padding, y + padding + row * TextBox.LINE_HEIGHT, { 0, 0, 0, 1 })
     row = row + 1
   end
+end
+
+--- How many TILE ROWS (`drawBorder`'s own `rows` parameter) a box needs
+-- to fit `text` without clipping, at the real `padding`-px inset used
+-- above on both the top and bottom. Lets callers size a box to its own
+-- real content instead of guessing a fixed row count that might be too
+-- short for a longer real message (or wastefully tall for a short one).
+function TextBox.rowsNeeded(text, padding)
+  padding = padding or 8
+  local lines = 0
+  for _ in (text .. "\n"):gmatch("(.-)\n") do lines = lines + 1 end
+  return math.ceil((padding * 2 + math.max(lines, 1) * TextBox.LINE_HEIGHT) / GBTile.TILE_H)
 end
 
 --- A real, VERIFIED per-letter typewriter reveal helper (see this
