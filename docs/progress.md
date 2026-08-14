@@ -7810,3 +7810,19 @@ actor command a room's script enqueues, not what it means in gameplay
 terms, and not the separate tileset question.
 
 Full suite: 421 passed, 0 failed.
+
+## Weltkarte bug fix: "nur nach Gruppe färben" didn't work (2026-08-14)
+
+Direct user report: "das nach gruppen färben funktioniert noch
+nicht". Real cause: the group-only toggle was a SEPARATE checkbox
+that only had any visible effect if the "Actor-Action-Overlay"
+checkbox was ALSO manually checked first -- an implicit, invisible
+dependency between two independent controls. If a user checked only
+"nur nach Gruppe färben", nothing changed (looked broken). Fixed by
+replacing both checkboxes with ONE `<select>` (aus / an
+Gruppe+Aktion / an nur Gruppe) -- no combination can silently do
+nothing. Verified with a real headless-browser regression test that
+selecting "group" alone (the exact reported scenario) now visibly
+changes the canvas.
+
+Full suite: 421 passed, 0 failed (JS-only fix).

@@ -139,11 +139,12 @@ function render_worldmap(main) {
       <label style="font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="worldmapGrid" checked> Raum-Grenzen einzeichnen
       </label>
-      <label style="font-size:12px; color:var(--text-dim);">
-        <input type="checkbox" id="worldmapActorAction"> Actor-Action-Overlay (Event-Skript-Flag)
-      </label>
-      <label style="font-size:12px; color:var(--text-dim);">
-        <input type="checkbox" id="worldmapGroupOnly"> nur nach Gruppe färben (sauberere Zonen)
+      <label style="font-size:12px; color:var(--text-dim);">Actor-Action-Overlay
+        <select id="worldmapOverlayMode">
+          <option value="off">aus</option>
+          <option value="pair">an (Gruppe+Aktion)</option>
+          <option value="group">an (nur Gruppe -- sauberere Zonen)</option>
+        </select>
       </label>
     </div>
 
@@ -159,8 +160,7 @@ function render_worldmap(main) {
   sourceSelect.addEventListener("change", drawWorld);
   document.getElementById("worldmapZoom").addEventListener("input", drawWorld);
   document.getElementById("worldmapGrid").addEventListener("change", drawWorld);
-  document.getElementById("worldmapActorAction").addEventListener("change", drawWorld);
-  document.getElementById("worldmapGroupOnly").addEventListener("change", drawWorld);
+  document.getElementById("worldmapOverlayMode").addEventListener("change", drawWorld);
   onSectionUnload(RomBytes.onChange(() => { updateRomBanner(document.getElementById("worldmapRomBanner")); drawWorld(); }));
 
   function roomsForSource(key) {
@@ -185,8 +185,9 @@ function render_worldmap(main) {
 
     const zoom = parseInt(document.getElementById("worldmapZoom").value, 10) || 1;
     const showGrid = document.getElementById("worldmapGrid").checked;
-    const showActorAction = document.getElementById("worldmapActorAction").checked;
-    const groupOnly = document.getElementById("worldmapGroupOnly").checked;
+    const overlayMode = document.getElementById("worldmapOverlayMode").value; // "off" | "pair" | "group"
+    const showActorAction = overlayMode !== "off";
+    const groupOnly = overlayMode === "group";
     if (showActorAction) {
       const withFlag = rooms.filter(r => r.actorAction).length;
       note.innerHTML += ` <strong>Actor-Action-Overlay an${groupOnly ? " (nur Gruppe)" : ""}:</strong> ${withFlag}/${rooms.length} Räume ` +
