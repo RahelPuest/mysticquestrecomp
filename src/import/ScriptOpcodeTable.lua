@@ -255,6 +255,50 @@ ScriptOpcodeTable.TYPEWRITER_COMMAND_HANDLER_ADDRESS = 0x332F
 -- `$4C38` specifically) no longer holds and needs a fresh re-trace.
 -- See events.md's "The $1F35 dispatcher, fully mapped" section for
 -- the complete, corrected 22-entry table and this honest retraction.
+--
+-- READ-SIDE CONSUMER FOUND (2026-08-14, "Bank-3-Funktionstabelle weiter
+-- verfolgen"): selector `0x0E` (`$4B4F`) is the real periodic scanner
+-- that CONSUMES what selector `0x0A`/`$4B70` writes. It walks all 8
+-- bytes of the `$C5A0` known-list and, for each nonzero entry, calls a
+-- real per-entry helper `$4B19`, which resolves the entry's own value
+-- back to its `$C4E0` record (via `$429B`, a linear 8-slot search by ID
+-- byte) and, if that record's own state field (`+4`, the SAME field
+-- `$4B70` writes the group value into) is still nonzero, calls a real
+-- per-record "tick" handler, `$404A`. `$404A` decrements a countdown
+-- field (`+1`); once it reaches 0, it reloads it from a fixed reload
+-- value (`+2`), conditionally calls a further helper (`$4107`, gated by
+-- field `+8`), then branches on whether the group field (`+4`) is zero
+-- (a `LD A,(DE) / CALL $29BA` path -- untraced further this pass) or
+-- nonzero (calls `$4247`, then `CALL $2B70` on a FIXED address `$4C55`
+-- -- confirmed via `$2B70`'s own disassembly, `CALL $2B63 / JP HL`, to
+-- be a generic cross-bank "call through HL" trampoline, NOT a
+-- group-indexed table lookup -- an initial hypothesis here that was
+-- checked against the raw bytes at `$4C55` and corrected before being
+-- reported, since they turned out to be real opcodes, not table data).
+-- If `$404A`'s tick re-zeroes the state field, `$4B19` clears the
+-- `$C5A0` slot (the flag is "consumed"); otherwise it stays pending for
+-- the next scan.
+--
+-- Cross-check: selector `0x15`'s own code confirms (independently) that
+-- `$C4E0` records embed a further pointer at `+0x12`, and refines the
+-- existing doc note about it -- that pointer is itself dereferenced a
+-- SECOND time at a `+0x14` offset from ITS OWN target, i.e. a real
+-- two-level indirection (record -> sub-structure -> sub-sub-structure),
+-- structurally consistent with a per-actor animation/effect state chain
+-- rather than a flat "story flag" registry.
+--
+-- Net effect: this refines (does not overturn) the existing "actor
+-- command queue" framing -- it's a real, periodic, per-record TICK
+-- system (countdown/reload timers, an embedded nested-pointer field)
+-- layered on top of the queue, which reads more like a scripted visual/
+-- behavior-effect ticker than a discrete quest-flag store. The exact
+-- real-world MEANING of the 8 action-code values is STILL open (the
+-- `$4107`/`$29BA`/`$4247` leaves and the `0x0C`/`0x0D`/`0x0B`/`0x0F`
+-- selectors' own further helpers were not traced this pass) -- a
+-- concrete, bounded next step would be finding who WRITES the record's
+-- own `+0x12` pointer field (this pass only confirmed readers), or
+-- live-watching that field plus `+8` during a known real visual effect.
+-- See events.md's dated entry for the full writeup.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_10 = 0x125C -- group 0x04
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_20 = 0x12D0 -- group 0x04
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_25 = 0x130C -- group 0x1F

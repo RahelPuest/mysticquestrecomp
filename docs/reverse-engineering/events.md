@@ -7313,3 +7313,99 @@ way rather than silently fixed.
 
 No code changes this pass (pure investigation, scratchpad scripts
 only). Full Lua test suite unchanged: 421/421 passing.
+
+## Bank-3 function table, continued: the real READ-side consumer of the actor-flag write found (2026-08-14, "ok was wäre ein guter Weg um weiter zu machen" -> "Bank-3-Funktionstabelle weiter verfolgen")
+
+Direct continuation of the "Bank 3, followed" section's own honest open
+item: selector `0x0A`/`$4B70` (the WRITE side, already fully mapped)
+was known, but nothing that actually READS the flag it sets had been
+found -- exactly the missing piece needed to get any closer to the
+8 action-code values' real-world meaning. Disassembled the still-open
+selectors directly via `tools/rom/disasm.py` against the real ROM
+bytes (table dumped fresh from file offset `0xC000`, the real
+`$1F35`-table base, to get all 22 selectors' exact addresses first --
+this project's own established practice of never hand-counting hex).
+
+**The real chain, VERIFIED byte-for-byte**:
+- **Selector `0x0E`** (`$4B4F`, file `0xCB4F`): walks all 8 bytes of
+  the `$C5A0` known-list; for each NONZERO entry, calls a real
+  per-entry helper.
+- **`$4B19`** (file `0xCB19`, newly disassembled in full): resolves
+  the entry's own byte value back to its `$C4E0` record via `$429B`
+  (a real, confirmed 8-slot linear search by the record's own ID byte,
+  `HL = C4E0 + i*24`, `RET Z` on match) and checks that record's own
+  STATE FIELD (`+4`) -- the exact same field selector `0x0A`/`$4B70`
+  writes the group value into. If it's still nonzero, calls a real
+  per-record tick handler; if either the record's ID byte or its state
+  field reads back as the sentinel/zero, the `$C5A0` slot is cleared
+  (a real "0xFF sentinel" sub-case additionally calls `$02C3`, a small
+  bank-0 helper of its own, before clearing).
+- **`$404A`** (file `0xC04A`, newly disassembled in full): a real
+  per-record TICK handler -- decrements a countdown field (`+1`);
+  `RET NZ` while it hasn't hit 0 yet (i.e. this only fires once per N
+  scans, not every scan); on hitting 0, reloads the countdown from a
+  fixed reload value stored at `+2`, then conditionally calls a
+  further helper `$4107` (gated by field `+8`), then branches on the
+  group field (`+4`): zero takes a `LD A,(DE) / CALL $29BA` path
+  (record's own ID byte as parameter, untraced further); nonzero calls
+  `$4247` then `CALL $2B70` on the fixed address `$4C55`.
+- **A real, self-caught correction along the way**: `$4C55` was
+  initially hypothesized to be a group-indexed lookup TABLE (`LD
+  HL,0x4C55 / CALL $2B70` looked exactly like an indexed-table-call
+  idiom already seen elsewhere this project). Dumped the raw bytes at
+  that file offset before writing this up -- they're real, valid SM83
+  *instructions* (`PUSH BC / LD B,3 / CP (HL) / ...`), not table data,
+  and `$2B70` itself disassembles to `CALL $2B63 / JP HL` -- a real,
+  generic "bank-switch then jump to HL" cross-bank-call trampoline
+  (already-known shape, just not previously named here). So `$4C55`
+  is a fixed, always-the-same routine, not data indexed by group --
+  corrected before reporting, matching this project's "verify before
+  presenting" discipline.
+- **Cross-check, independent of the write side**: selector `0x15`'s
+  own code (disassembled in full as a side effect) confirms the
+  already-documented "`$C4E0` records embed a pointer at `+0x12`"
+  finding, AND refines it -- that pointer is itself dereferenced a
+  SECOND time, at a `+0x14` offset from its own target. A real
+  two-level indirection (record -> sub-structure -> sub-sub-structure),
+  found completely independently of the `0x0E`/`$4B19`/`$404A` chain
+  above, landing on the same base structure -- decent cross-validation
+  that `$C4E0`'s records are a real, deliberately-designed structure,
+  not incidentally-reused scratch memory.
+
+**Selector `0x07`** (`$4641`, file `0xC641`), the one selector that had
+never been structurally examined at all before this pass: disassembled
+its first ~80 bytes -- it's a real, SEPARATE small dispatcher of its
+own (branches on the incoming value: `==0xC9` takes one path that
+ALSO reaches into `$C4E0` under a specific gate condition; masked
+against `0x40`/`0x30`/`0x50` dispatches to 3 further real jump targets
+`$46F0`/`$479D`/`$474A`; anything else returns 0). Real and structurally
+classified, but its own 3 sub-targets were not traced further this
+pass -- a well-scoped, bounded follow-up if anyone continues this.
+
+**Net reframing (a refinement, not a reversal, of the existing "actor
+command queue" conclusion)**: this is a real, PERIODIC, per-record TICK
+system layered on top of the write-side queue -- countdown/reload
+timer fields, a gated secondary helper call, and (via selector 0x15's
+independent confirmation) nested embedded pointers. Structurally this
+reads more like a scripted VISUAL/BEHAVIOR-EFFECT ticker (the kind of
+thing that would drive a recurring animation or periodic in-world
+effect once "armed") than a flat quest-flag store -- offered as a
+well-supported HYPOTHESIS, consistent with but not proven beyond the
+already-real, disassembly-confirmed structural facts above.
+
+**Honest scope, what's still open**: the exact real-world MEANING of
+the 8 action-code values is STILL open -- `$4107`, `$29BA`, `$4247`,
+and selector `0x07`'s own 3 sub-targets were reached but not
+disassembled further this pass, and selectors `0x0B`/`0x0C`/`0x0D`/
+`0x0F`'s own deeper helpers (`$0611`/`$0695`/`$08D4`/`$05EF`/`$3DCB`/
+`$24A7`) remain at the same structural-classification level as the
+"System connectivity round 1" pass, not re-visited here. The most
+concrete, bounded next step identified: find who WRITES the record's
+own `+0x12` embedded pointer field (this pass only confirmed READERS
+of it, both here and in the pre-existing selector-0x15 note), or
+live-watch fields `+8`/`+0x12` during a known, real, on-screen visual
+effect.
+
+Doc comment added to `ScriptOpcodeTable.lua` (no Lua behavior changed
+-- pure disassembly/documentation). Full Lua test suite: 421/421
+passing (unchanged).
