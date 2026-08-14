@@ -1,0 +1,107 @@
+local Harness = require("tests.harness")
+local Inventory = require("src.entities.Inventory")
+local RomIdentity = require("src.import.RomIdentity")
+local RomProfiles = require("src.import.rom_profiles")
+local DevRomLocator = require("tests.dev_rom_locator")
+
+Harness.test("Inventory.new: with no ROM/profile, starts real-empty and has no equipped weapon", function()
+  local inv = Inventory.new(nil, nil)
+  Harness.assertEqual(#inv.items, 0)
+  Harness.assertEqual(#inv.spells, 0)
+  Harness.assertEqual(#inv.itemCatalog, 0)
+  Harness.assertEqual(#inv.weaponCatalog, 0)
+  Harness.assertEqual(inv:equippedWeapon(), nil)
+end)
+
+Harness.test("Inventory:equip/addItem/has: fail loudly (return false) against an empty catalog, never fake success", function()
+  local inv = Inventory.new(nil, nil)
+  Harness.assertTrue(not inv:equip("Breit"))
+  Harness.assertTrue(not inv:addItem("Portion"))
+  Harness.assertTrue(not inv:has("Portion"))
+end)
+
+-- --- ROM-dependent tests -------------------------------------------------
+local romData = DevRomLocator.find()
+local profile
+if romData then
+  local report = RomIdentity.identify(romData)
+  profile = RomProfiles.match(report)
+end
+
+Harness.testIfAvailable(
+  "Inventory.new: fresh character is real-empty (items/spells) with the real 'Breit' weapon equipped",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local inv = Inventory.new(romData, profile)
+
+    -- VERIFIED fresh-character state (rom-map.md "The in-game menu
+    -- system") -- Dinge/Magie are empty, Waffe shows exactly one
+    -- already-equipped weapon.
+    Harness.assertEqual(#inv.items, 0)
+    Harness.assertEqual(#inv.spells, 0)
+
+    local weapon = inv:equippedWeapon()
+    Harness.assertTrue(weapon ~= nil, "a fresh character should have a real equipped weapon")
+    Harness.assertEqual(weapon.name, "Breit")
+  end
+)
+
+Harness.testIfAvailable(
+  "Inventory.new: real ItemTable catalog splits into items/spells at the VERIFIED categoryBoundaryRecord",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local inv = Inventory.new(romData, profile)
+    local boundary = profile.itemTable.categoryBoundaryRecord
+
+    Harness.assertEqual(#inv.itemCatalog, boundary)
+    Harness.assertEqual(#inv.spellCatalog, profile.itemTable.recordCount - boundary)
+
+    -- Every catalog entry's own index should land on the correct side
+    -- of the boundary -- catches an off-by-one in the split, not just
+    -- the totals.
+    for _, record in ipairs(inv.itemCatalog) do
+      Harness.assertTrue(record.index < boundary, "itemCatalog entry should be before the boundary")
+    end
+    for _, record in ipairs(inv.spellCatalog) do
+      Harness.assertTrue(record.index >= boundary, "spellCatalog entry should be at/after the boundary")
+    end
+  end
+)
+
+Harness.testIfAvailable(
+  "Inventory:equip/addItem/has: real catalog lookups round-trip by name",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local inv = Inventory.new(romData, profile)
+
+    -- Equip a different real weapon than the starting one.
+    Harness.assertTrue(inv:equip("Axt"))
+    Harness.assertEqual(inv:equippedWeapon().name, "Axt")
+
+    -- Unknown name: no silent fallback, no partial state change.
+    Harness.assertTrue(not inv:equip("Not A Real Weapon"))
+    Harness.assertEqual(inv:equippedWeapon().name, "Axt")
+
+    -- Grant a real item from the catalog.
+    local firstItemName = inv.itemCatalog[1].name
+    Harness.assertTrue(not inv:has(firstItemName))
+    Harness.assertTrue(inv:addItem(firstItemName))
+    Harness.assertTrue(inv:has(firstItemName))
+    Harness.assertEqual(#inv.items, 1)
+    Harness.assertEqual(#inv.spells, 0)
+
+    -- Grant a real spell from the catalog -- files under spells, not items.
+    local firstSpellName = inv.spellCatalog[1].name
+    Harness.assertTrue(inv:addItem(firstSpellName))
+    Harness.assertTrue(inv:has(firstSpellName))
+    Harness.assertEqual(#inv.items, 1)
+    Harness.assertEqual(#inv.spells, 1)
+  end
+)
+
+if romData then
+  print("(Inventory ROM-dependent tests ran against a real dev ROM)")
+end

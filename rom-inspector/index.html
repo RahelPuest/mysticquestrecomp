@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mystic Quest ROM Inspector</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand"><span class="dot"></span> ROM Inspector</div>
+  <div class="subtitle">Mystic Quest (Game Boy, EU) &mdash; interaktive Reverse-Engineering-Dokumentation</div>
+  <div class="spacer"></div>
+  <div id="romLoadControl">
+    <label class="btn small" for="romFileInput" id="romLoadLabel">ROM laden&hellip;</label>
+    <input id="romFileInput" type="file" accept=".gb" style="display:none;">
+    <span id="romLoadStatus" class="romload-status"></span>
+  </div>
+  <input id="globalSearch" type="search" placeholder="Suche (Opcode, Adresse, Begriff)&hellip;">
+</div>
+
+<div id="shell">
+  <nav id="sidebar"></nav>
+  <main id="main"></main>
+</div>
+
+<!-- Real, generated + curated data (see rom-inspector/tools/export_data.lua) -->
+<script src="js/data/rom-basics.js"></script>
+<script src="js/data/rom-tables.js"></script>
+<script src="js/data/entity-struct.js"></script>
+<script src="js/data/opcodes.js"></script>
+<script src="js/data/scan-results.js"></script>
+<script src="js/data/rooms.js"></script>
+<script src="js/data/room-maps.js"></script>
+<script src="js/data/font-tileset.js"></script>
+<script src="js/data/text-decoder.js"></script>
+<script src="js/data/wram-map.js"></script>
+<script src="js/data/open-questions.js"></script>
+<script src="js/data/opcode-descriptions.js"></script>
+
+<!-- Local-only ROM loading + GB tile decode (never uploaded anywhere) -->
+<script src="js/rombytes.js"></script>
+
+<!-- Visualization modules -->
+<script src="js/viz/overview.js"></script>
+<script src="js/viz/memory.js"></script>
+<script src="js/viz/entity.js"></script>
+<script src="js/viz/opcodes.js"></script>
+<script src="js/viz/scan.js"></script>
+<script src="js/viz/rooms.js"></script>
+<script src="js/viz/text.js"></script>
+<script src="js/viz/tables.js"></script>
+<script src="js/viz/questions.js"></script>
+<script src="js/viz/tiles.js"></script>
+<script src="js/viz/mapviewer.js"></script>
+
+<!-- Routing / shell -->
+<script src="js/app.js"></script>
+</body>
+</html>

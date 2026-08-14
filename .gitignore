@@ -1,0 +1,37 @@
+# --- ROMs and ROM-derived content: never committed -------------------------
+*.gb
+*.gbc
+*.gba
+*.sav
+baseroms/
+imports/
+roms/
+data/generated/
+assets/generated/
+*.rom-cache/
+
+# Scratch renders used only for manual reverse-engineering inspection
+tools/**/scratch/
+**/scratch_graphics/
+
+# --- Editor / OS cruft -------------------------------------------------------
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# --- LÖVE / build output -----------------------------------------------------
+*.love
+build/
+dist/
+
+# --- Python tooling -----------------------------------------------------------
+__pycache__/
+*.pyc
+.venv/
+
+# --- Local dev config (e.g. a saved ROM path) --------------------------------
+dev.local.lua
+options.lua
+save.lua
+save.lua.bak
