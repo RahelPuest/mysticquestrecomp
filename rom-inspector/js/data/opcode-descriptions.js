@@ -14,7 +14,7 @@ const OPCODE_DESCRIPTIONS = {
   },
   QUEUE_GATE_HANDLER_ADDRESS: {
     title: "Queue-Gate (0x00)",
-    text: "Hält an, solange die reale Skript-Fortsetzungs-Queue (ein WRAM-FIFO) leer ist. Ein Eintrag aus CHAIN (0x02) oder dem Typewriter-Kommando (0x03) gibt frei -- entweder mit Sprung zur gemerkten Position oder als reiner Weiterlauf.",
+    text: "Hält an, solange die reale Skript-Fortsetzungs-Queue (ein WRAM-FIFO) leer ist, ODER solange ein reales Flag-Bit ($D874 Bit 0) gesetzt ist. Ein Eintrag aus CHAIN (0x02) oder dem Typewriter-Kommando (0x03) gibt frei -- entweder mit Sprung zur gemerkten Position oder als reiner Weiterlauf. UPDATE 2026-08-14 (Task #86, live mGBA-Trace): der reale ~1,7-Sekunden-Boss-Defeat-Block, der früher diesem Bit-0-Gate zugeschrieben wurde, ist tatsächlich ein KOMPLETT ANDERER Mechanismus -- ein periodischer Flanken-Detektor ($1F35 Selector 0x13 -> $4BE0, gecacht bei $C5AF), der erst feuert, sobald der Actor-Slot des besiegten Gegners wirklich fertig despawnt ist, und dann direkt den persistenten Skript-Cursor überschreibt ($24A7 -> $31AD, Task #85) -- nicht über dieses Gate. Bit 0 selbst ist real, gattert aber vermutlich etwas anderes.",
   },
   SKIP_HANDLER_ADDRESS: {
     title: "Relativer Sprung (0x01)",

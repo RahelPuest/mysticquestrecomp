@@ -421,6 +421,20 @@ end
 -- then vanish). `Field.lua` starts this the instant `Enemy:hit()`
 -- reports the kill and keeps drawing/advancing it (instead of the
 -- normal enemy sprite) until `deathComplete()`.
+--
+-- CROSS-REFERENCE (2026-08-14, task #86, unrelated investigation that
+-- independently arrived at the same real neighborhood): a separate,
+-- WRAM-side live trace of the real boss-defeat SCRIPT (not this visual
+-- scatter, a different ROM mechanism entirely) found the story script
+-- itself waits for its own edge-triggered "has the defeated entity's
+-- own actor slot finished despawning" signal before proceeding --
+-- confirmed to take ~100 real GB frames in that trace, close to (not
+-- identical to, and not claimed to be the exact same underlying timer
+-- as) this `totalFrames = 86` scatter duration. Both are real,
+-- independently live-verified delays in the same real "boss just
+-- died" window -- corroborating, not requiring any code change here.
+-- See `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s own doc comment
+-- and events.md's dated task-#86 entries for the full WRAM-side trace.
 function Enemy:startDeath(profile)
   local d = profile.graphics.enemyDeath
   self.death = { profile = d, elapsedFrames = 0, doneFrames = d.totalFrames }

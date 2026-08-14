@@ -408,21 +408,33 @@ ScriptRuntime.__index = ScriptRuntime
 --                             `:step()` call when that's needed.
 --   ctx.onTypewriterCommand(v) -- opcode 0x03.
 --   ctx.isQueueBlocked()    -- opcode 0x00's own real WRAM `$D874`
---                             bit-0 gate. LIVE-CONFIRMED 2026-08-14
---                             (task #86, real trace of the boss-defeat
---                             script): this is a real SYNCHRONIZATION
---                             BARRIER, not an arbitrary timer -- bit 0
---                             gets set whenever real queued actor
---                             commands (the `$C5A0` 8-slot table
---                             `ScriptOpcodeTable`'s `actorAction`
---                             family enqueues into, see task #85's
---                             `$4B70` finding) are still genuinely
---                             pending, and clears once they finish.
---                             No live actor-command-completion
---                             simulation exists in this project, so
---                             this defaults to "never blocked" --
---                             a known, honest gap (same shape as
---                             `ctx.isActorReady`), not a guess.
+--                             bit-0 gate. RETRACTED 2026-08-14, same
+--                             day (task #86, re-verified with a DIRECT
+--                             `$D874` watchpoint): the "actor-command
+--                             queue" story above does NOT hold -- bit 0
+--                             never changes across a real, reproduced
+--                             ~200,000-step boss-defeat block, and the
+--                             `$C5A0` table it depended on stays all-
+--                             zero throughout. **CLOSED FOR REAL, same
+--                             day**: that specific block turned out to
+--                             be a COMPLETELY SEPARATE mechanism (not
+--                             this gate at all) -- a periodic edge
+--                             detector (`$1F35` selector `0x13` ->
+--                             `$4BE0`, cached at `$C5AF`) that fires
+--                             only once a real entity's own actor slot
+--                             finishes despawning, which then directly
+--                             overwrites the persistent script cursor
+--                             (via `$24A7` -> `$31AD`, task #85) rather
+--                             than going through this queue at all. Bit
+--                             0 itself is still real and presumably
+--                             gates something else -- just not this.
+--                             `isQueueBlocked` still defaults to "never
+--                             blocked" -- an honest gap, now for a
+--                             DIFFERENT, still-unmodeled reason than
+--                             originally documented. See
+--                             `StandardScriptHandlers.queueGate`'s own
+--                             doc comment and events.md's dated entries
+--                             for the complete live trace.
 --   ctx.onQueueIdle()       -- opcode 0x00's own real "queue empty" side
 --                             effect.
 --   ctx.onFlagTest(byte) -- opcode 0x08's own real per-item leaf (see
@@ -687,8 +699,12 @@ function ScriptRuntime:registerStandardHandlers()
   interp:registerHandler(ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_89,
     StandardScriptHandlers.playerEntityTypeWrite(1, ctx.onPlayerEntityTypeWrite))
   -- `0x8F` (added 2026-08-14, whole-corpus scan rank-3 blocker): real
-  -- conditional halt on the SAME `$C5A0` actor-command table opcode
-  -- `0x00`'s own gate reads (tasks #85/#86) -- unconditional
+  -- conditional halt on the SAME `$C5A0` actor-command table task #85's
+  -- own `$4B70` finding documents (own real read, independent of
+  -- opcode `0x00` -- task #86's later, same-day re-trace found opcode
+  -- `0x00`'s own bit-0 gate does NOT actually read `$C5A0` the way this
+  -- comment used to imply; `0x8F`'s own real `$C5A0` read stands on its
+  -- own and is unaffected by that retraction) -- unconditional
   -- registration since `ctx.isActorCommandQueueEmpty` is optional
   -- (defaults to "always empty," same honest gap as
   -- `ctx.isActorReady`/`ctx.isQueueBlocked` -- no live WRAM

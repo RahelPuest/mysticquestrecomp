@@ -908,14 +908,35 @@ end
 -- fully understood, traced down to a real, shared WRAM FIFO with two
 -- confirmed producers, see `ScriptContinuationQueue.lua`):
 --   1. `isBlocked()`: real WRAM flag byte (`$D874`), bit 0 -- halts
---      while true. RESOLVED 2026-08-14 (task #86, a real live trace of
---      the boss-defeat script): a genuine SYNCHRONIZATION BARRIER, not
---      an arbitrary timer -- set whenever real actor commands queued
---      via the `actorAction`/`QUEUED_ACTION` opcode families (the
---      already-known `$C5A0` 8-slot table, see task #85's `$4B70`
---      finding) are still genuinely pending, cleared once they finish.
---      Which SPECIFIC per-action condition counts as "finished" was
---      not chased further (a real, open-ended per-action-type task).
+--      while true. RETRACTED 2026-08-14, same day (task #86, re-
+--      verified with a DIRECT `$D874` watchpoint instead of the
+--      earlier indirect inference): the "actor-command queue"
+--      explanation above does NOT hold -- bit 0 never changes at all
+--      across a real, reproduced ~200,000-step boss-defeat block, and
+--      the `$C5A0` table it was said to depend on stays all-zero the
+--      entire time. **CLOSED FOR REAL, same day**: the boss-defeat
+--      block isn't `isBlocked()`/halt-#1 at all -- it's a completely
+--      SEPARATE mechanism overwriting the persistent script cursor
+--      out from under this handler. A periodic `$1F35` selector `0x13`
+--      tick (`$4BE0`) reports "ready" only on the specific tick a real
+--      classified-actor count (cached at `$C5AF`) edge-transitions
+--      from nonzero to exactly 0 (i.e. the boss's own entity slot has
+--      genuinely finished despawning) -- live-confirmed directly
+--      (`$C5AF` sits at `0x01` for the whole block, flips to `0x00`
+--      right before release). That gates a facing-driven dispatch
+--      (`$24A7`, reading the player's own current facing nibble) into
+--      `$31AD` (this project's own already-understood cross-actor
+--      dispatch, task #85), which redirects the persistent cursor
+--      directly. **Practical implication for THIS handler**:
+--      `isBlocked` still models a real ROM mechanism (bit 0 of `$D874`
+--      is real and genuinely gates SOMETHING, just not this specific
+--      delay) -- but the boss-defeat-style "wait for an entity to
+--      finish despawning" pattern is a DIFFERENT real mechanism this
+--      handler does not model at all (it would need to live outside
+--      the queue entirely, as a cursor-redirect trigger). See
+--      `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s own doc
+--      comment and events.md's dated entries for the complete,
+--      live-verified trace.
 --   2. else if `queue:isEmpty()`: halts, optionally calling `onIdle`
 --      (the real ROM ALSO does a `$D86E`->`$C0A0` WRAM copy and clears
 --      a few bits of `$C0A1`/`$C0A2` here -- HYPOTHESIS, not modeled,

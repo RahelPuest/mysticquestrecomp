@@ -7894,3 +7894,37 @@ pages render the new content -- not just a syntax check.
 
 Full Lua suite: 421 passed, 0 failed (pure documentation/data-export
 change, no Lua behavior touched).
+
+## Task #86 CLOSED, consolidated into app + website (2026-08-14, "ok konsolidieren, dokumentieren, in die app einbauen und auf der website")
+
+Direct follow-up to task #86's own live-verified resolution (the
+boss-defeat block is a real, edge-triggered actor-cleanup detector --
+see `events.md`'s two dated entries for the full trace). No new
+gameplay BEHAVIOR to implement -- the app's own existing enemy-death
+delay (`Enemy.lua`, `totalFrames = 86`) was ALREADY independently
+live-traced and correctly wired in an earlier session; nothing to
+change there. What this pass fixed instead: two STALE doc comments in
+the real interpreter code that still described the RETRACTED "actor-
+command queue" explanation for opcode `0x00`'s own gate --
+`StandardScriptHandlers.queueGate` and `ScriptRuntime`'s own
+`ctx.isQueueBlocked` doc comment, both corrected (not silently
+overwritten -- the retraction is dated and kept, same discipline as
+`events.md`). `Enemy.lua`'s own death-delay code got a new cross-
+reference comment linking it to the independently-confirmed real ROM
+mechanism (corroborating context: the visible ~86-frame scatter and
+the WRAM-side ~100-frame actor-cleanup signal are both real, both
+live-verified, in the same "boss just died" window -- not claimed to
+be the exact same timer).
+
+**Website**: `rom-inspector`'s `opcode-descriptions.js` entry for
+`QUEUE_GATE_HANDLER_ADDRESS` (opcode `0x00`) updated with the real,
+closed finding. Along the way, verifying this via a real headless-
+browser test caught a real testing mistake of my own (not a website
+bug): the description text only renders in the opcode-detail panel
+(click a cell, or `#opcodes?focus=N`), not the default grid view -- my
+first test navigated to the page without focusing an opcode and got a
+false failure; fixed the test, re-ran, confirmed the real page
+content is correct.
+
+Full Lua test suite: 421 passed, 0 failed (doc-comment corrections
+only, no behavior change).
