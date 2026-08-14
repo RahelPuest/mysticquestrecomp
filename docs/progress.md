@@ -7661,3 +7661,33 @@ canvas draws real pixel content at the right size. Added a new Lua
 regression test decoding all 320 records (previously only 2 were
 spot-checked) to guard the export against a latent out-of-range
 record. Full suite: 415 passed, 0 failed.
+
+## Room-catalog tile assignment: corrected after direct user report (2026-08-14)
+
+User: "die sind bei allen ausser den bekannten total off" (the tiles
+look totally wrong for all catalog rooms except the known ones).
+
+Investigated for real (not just re-labeled): confirmed the room-
+catalog's single shared metatile table (0x20938) is independently
+ROM-confirmed correct ONLY for the 6 `unknownRoomA` records (via the
+already-verified `roomSelectorTable`'s own `$D392`/`$D393` DE field);
+reusing it for the other 314 bank-5/bank-6 records was always an
+unverified placeholder. Tried a genuinely new lead -- a previously-
+uninterpreted per-record header field `MapTable.decode` already parses
+-- as a possible per-record metatile-table pointer; rigorously
+falsified against known-good ground truth (record 9, part of the
+confirmed family, has a header that does NOT point at the correct
+table; zero of 256 bank-5 records' headers resolve to it). No working
+alternative mechanism found -- this is the same open mystery round 3/4
+already concluded, now with one more ruled-out lead, kept as a
+permanent regression test so it isn't silently re-attempted.
+
+Fix: honest labeling, not a fabricated guess. `rom_profiles.lua`'s
+`mapTable`/`mapTableBank6`/`unknownRoomACandidates` status fields and
+the room-catalog website (Map-Viewer note text, Übersicht stat block)
+now explicitly distinguish "structurally decodes to real, non-noise
+GB tiles" (true for all 320) from "tile ASSIGNMENT confirmed correct"
+(true for only 6) -- every other catalog entry now shows a prominent
+⚠ warning instead of silently implying its picture is trustworthy.
+
+Full suite: 416 passed, 0 failed.

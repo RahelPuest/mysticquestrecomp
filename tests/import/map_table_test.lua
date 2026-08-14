@@ -178,6 +178,69 @@ Harness.testIfAvailable(
   end
 )
 
+Harness.testIfAvailable(
+  "MapTable.decode: the per-record header field is NOT a per-record metatile-table pointer (2026-08-14, falsified hypothesis, kept as a regression guard)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- Direct follow-up to a real user report ("die sind bei allen
+    -- ausser den bekannten total off") that the room-catalog export's
+    -- tile assignment looks wrong for every bank-5/bank-6 record
+    -- except the 6 already-confirmed unknownRoomA ones (roomSelector
+    -- 8-13, all real-confirmed to share metatile table file 0x20938
+    -- via the ALREADY-VERIFIED roomSelectorTable's own $D392/$D393 DE
+    -- field -- a live-traced hardware fact, not a guess).
+    --
+    -- A genuinely new lead was tried: `MapTable.decode`'s own per-
+    -- record `header` field (a short, 0xFF-terminated blob before each
+    -- data blob) had never been interpreted before. Record 9 is part
+    -- of the CONFIRMED unknownRoomA family (known-good metatile table
+    -- 0x20938) and happens to have a 6-byte header -- if its own
+    -- trailing 16-bit field were a per-record metatile-table pointer,
+    -- it MUST resolve to 0x20938. It does NOT (resolves to 0x20381
+    -- instead) -- and a full scan of all 256 bank-5 records' own
+    -- headers found ZERO whose trailing u16 resolves to 0x20938 at
+    -- all. This decisively RULES OUT that hypothesis.
+    --
+    -- Kept as a permanent regression test, not just a doc note: if
+    -- someone re-derives this exact same (wrong) idea in the future,
+    -- this test fails loudly and points straight at this record's own
+    -- already-confirmed ground truth, instead of silently re-shipping
+    -- the same already-falsified guess as a "fix".
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local KNOWN_GOOD_METATILE_TABLE = profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileTableFileOffset
+    Harness.assertEqual(KNOWN_GOOD_METATILE_TABLE, 0x20938)
+
+    local records = MapTable.decode(romData, profile.mapTable)
+    local record9 = records[9 + 1] -- roomSelector 9, part of the confirmed unknownRoomA family
+    Harness.assertEqual(#record9.header, 6,
+      "record 9's own real header shape changed -- re-check this test's own assumptions before trusting its conclusion")
+    local trailingU16 = record9.header:byte(4) + record9.header:byte(5) * 256
+    local candidateTable = 0x20000 + trailingU16
+    Harness.assertTrue(candidateTable ~= KNOWN_GOOD_METATILE_TABLE,
+      "record 9's header-derived candidate now MATCHES the known-good metatile table -- " ..
+      "the 'header = per-record metatile pointer' hypothesis may no longer be falsified, " ..
+      "re-investigate rather than trusting this test's own stale conclusion")
+
+    -- The broader claim from the same investigation: scan every bank-5
+    -- record with a long-enough header and confirm NONE resolve to the
+    -- known-good table (a full negative result, not just record 9).
+    local hits = 0
+    for i = 0, profile.mapTable.recordCount - 1 do
+      local r = records[i + 1]
+      if #r.header >= 6 then
+        local u16 = r.header:byte(#r.header - 2) + r.header:byte(#r.header - 1) * 256
+        if 0x20000 + u16 == KNOWN_GOOD_METATILE_TABLE then
+          hits = hits + 1
+        end
+      end
+    end
+    Harness.assertEqual(hits, 0,
+      "expected zero bank-5 records whose header resolves to the known-good metatile table " ..
+      "(if this changes, the header-as-metatile-pointer hypothesis may be worth re-examining)")
+  end
+)
+
 if romData then
   print("(MapTable ROM-dependent tests ran against a real dev ROM)")
 end

@@ -6419,3 +6419,70 @@ in the middle of 320 would not have been caught by the earlier 2-
 record spot check.
 
 Full suite: 415 passed, 0 failed (was 414 -- +1 new test).
+
+## Room-catalog tile assignment: correction after direct user report, real investigation, honest negative result (2026-08-14)
+
+Direct user report after the room-catalog export (previous section):
+"ok jetzt versuche mal allen gefundenen räumen auch die richtigen
+tiles zuzuordnen. die sind bei allen ausser den bekannten total off"
+(try to assign the correct tiles to all the found rooms too -- they're
+totally off for all except the known ones).
+
+**Root cause found.** The room-catalog export (and `RoomExplorer.lua`'s
+own dev-only F8 browser it's built on) decodes all 320 bank-5/bank-6
+records' own real RLE layout streams correctly (structurally verified,
+see the new "ALL 320 records decode without error" test), but resolves
+every record's metatile-index bytes against a SINGLE, FIXED metatile
+table (`unknownRoomACandidates.metatileTableFileOffset = 0x20938`).
+That address is independently, ROM-confirmed correct -- via the
+already-VERIFIED `roomSelectorTable`'s own real `$D392`/`$D393` DE
+field, a live-traced hardware fact, not a guess -- but ONLY for
+roomSelector 8-13 (bank-5 records 8-13, `unknownRoomA`). Reusing it for
+every OTHER bank-5/bank-6 record was always an unverified placeholder,
+not a second confirmation -- the earlier "VISUALLY + QUANTITATIVELY
+CONFIRMED, all 64 records" language on `mapTableBank6` (and the
+equivalent bank-5 framing) only ever meant "decodes to real, non-noise
+GB tile art" (`tile_entropy()` + eyeballing), which is exactly the weak
+discriminator round 3 already warned about ("this signal alone does
+not usefully separate a real, distinct, walkable room from any other
+bank-5 record") -- that risk has now materialized in a way a casual
+render didn't catch but a direct side-by-side user comparison did.
+
+**A genuinely new lead was tried and rigorously falsified, not just
+theorized.** `MapTable.decode`'s own per-record `header` field (a
+short, 0xFF-terminated blob immediately before each record's data
+blob) had never been interpreted -- only used to find where it ends.
+Dumping it for a sample of records showed a variable shape (3, 6, or 9
+bytes + terminator); the 6-byte shape's own trailing 16-bit field
+resolves into bank 8's `0x20000`-ish region for many records, making
+"per-record metatile-table pointer" a plausible-looking hypothesis.
+Directly tested against known-good ground truth: bank-5 record 9 is
+part of the CONFIRMED `unknownRoomA` family (its own real metatile
+table is 0x20938, per the `$D392`/`$D393` DE field above) and has a
+6-byte header whose own trailing u16 resolves to 0x20381 -- NOT
+0x20938. A full scan of all 256 bank-5 records' own headers found ZERO
+whose trailing u16 resolves to 0x20938 at all. **Hypothesis
+decisively ruled out** -- kept as a permanent regression test
+(`tests/import/map_table_test.lua`, "the per-record header field is
+NOT a per-record metatile-table pointer") so this exact already-tried
+idea can't be silently re-attempted and presented as a fix without
+re-deriving (and re-failing) the same check.
+
+**Honest conclusion: no working alternative mechanism is currently
+known.** This is the SAME open mystery round 3/4 already concluded --
+"the real blocker is how the ROM selects ANY room beyond the 16
+`roomSelectorTable` entries, not which metatile table" -- now
+sharpened with one more ruled-out lead. Per this project's own "no
+silent fallbacks" rule, the fix is not a better guess but honest
+labeling: `rom_profiles.lua`'s `mapTable`/`mapTableBank6`/
+`unknownRoomACandidates` status fields and the room-catalog website
+now explicitly say the TILE ASSIGNMENT (not just "room identity") is
+confirmed correct ONLY for the 6 `unknownRoomA` records --
+`rom-inspector`'s Map-Viewer shows a prominent ⚠ warning on every
+other catalog entry ("Kachel-Zuordnung wahrscheinlich falsch") instead
+of silently presenting a best-effort guess as settled fact. The
+underlying real, decoded RLE/metatile-INDEX data for all 320 records
+remains genuine ROM content either way -- only the VISUAL tileset
+resolution of that data is in question for 314/320.
+
+Full suite: 416 passed, 0 failed (was 415 -- +1 new regression test).

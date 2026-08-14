@@ -58,7 +58,7 @@ const ROM_TABLES = [
     "bank": 5,
     "name": "mapTable",
     "recordCount": 256,
-    "status": "VERIFIED (encoding + room-composition)"
+    "status": "VERIFIED (encoding + room-composition); tile ASSIGNMENT confirmed correct only for records 8-13 (unknownRoomACandidates), unverified placeholder elsewhere -- see that table's CORRECTED note (2026-08-14)"
   },
   {
     "bank": 8,

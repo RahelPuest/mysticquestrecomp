@@ -29,7 +29,7 @@ function render_map(main) {
         <optgroup label="Echte, verbundene Räume (${ROOM_MAPS.length})">
           ${ROOM_MAPS.map((r, i) => `<option value="${i}">${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>
-        <optgroup label="Raum-Katalog -- alle ${ROOM_CATALOG.length} Bank-5/6-Einträge (nur ${ROOM_CATALOG.filter(r => r.confirmed).length} als konkreter Raum bestätigt)">
+        <optgroup label="Raum-Katalog -- alle ${ROOM_CATALOG.length} Bank-5/6-Einträge (nur ${ROOM_CATALOG.filter(r => r.confirmed).length} mit bestätigter Kachel-Zuordnung)">
           ${ROOM_CATALOG.map((r, i) => `<option value="${ROOM_MAPS.length + i}">${r.confirmed ? "✓ " : ""}${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>
       </select>
@@ -58,9 +58,20 @@ function render_map(main) {
     const room = selectedEntry.room;
     const note = document.getElementById("mapCatalogNote");
     if (selectedEntry.group === "catalog") {
-      note.textContent = room.confirmed
-        ? "Bestätigt: dieser Katalog-Eintrag ist unknownRoomA's eigener, konkreter Dungeon-Raum (roomSelector " + room.recordIndex + ")."
-        : "Katalog-Eintrag, nicht als konkreter erreichbarer Raum bestätigt -- echte ROM-Kunst (tile_entropy-geprüft), aber ohne bekannten Live-Gameplay-Trigger.";
+      // CORRECTED 2026-08-14 (direct user report: "die sind bei allen
+      // ausser den bekannten total off"): the earlier note here only
+      // warned that unconfirmed entries' ROOM IDENTITY was unproven --
+      // investigation this pass found the TILES themselves are the
+      // real problem. Only the 6 `confirmed` rooms have an
+      // independently-confirmed metatile table (the real ROM source
+      // that decides which graphic goes in which cell); every other
+      // entry reuses that same table as an unverified placeholder with
+      // no known correct alternative (a per-record header field was
+      // tested as a possible fix and ruled out against known-good
+      // ground truth -- see rom_profiles.lua's own dated doc comment).
+      note.innerHTML = room.confirmed
+        ? "✓ Bestätigt: dieser Katalog-Eintrag ist unknownRoomA's eigener, konkreter Dungeon-Raum (roomSelector " + room.recordIndex + ") -- auch die gezeigten Kacheln sind bestätigt korrekt."
+        : "⚠ <strong>Kachel-Zuordnung wahrscheinlich falsch:</strong> nur die 6 bestätigten unknownRoomA-Räume haben eine unabhängig bestätigte Metatile-Tabelle. Dieser Eintrag nutzt dieselbe Tabelle als unverifizierten Platzhalter (echte, nicht verrauschte GB-Kacheln, aber sehr wahrscheinlich die falsche Kombination) -- die zugrundeliegenden Raum-INDEX-Daten sind trotzdem real.";
     } else {
       note.textContent = "";
     }

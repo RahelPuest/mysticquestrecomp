@@ -2866,7 +2866,17 @@ RomProfiles.PROFILES = {
       -- record already decodes to one full, real, coherent room by
       -- itself (real tile_entropy 1.0-1.8 bits, confirmed for every
       -- record this project has actually rendered).
-      status = "VERIFIED (encoding + room-composition)",
+      --
+      -- SCOPE CORRECTED (2026-08-14): "room-composition" above means
+      -- the STRUCTURAL decode (RLE stream -> 80 metatile indices -> a
+      -- full grid) is real and verified. It does NOT mean the
+      -- resulting picture uses the correct metatile table for records
+      -- other than 8-13 (`unknownRoomACandidates.rooms`) -- see that
+      -- table's own 2026-08-14 "CORRECTED" doc comment for the full,
+      -- dated evidence (a real per-record header field was tested as a
+      -- possible fix and ruled out against known-good ground truth).
+      status = "VERIFIED (encoding + room-composition); tile ASSIGNMENT confirmed correct only for records 8-13 " ..
+        "(unknownRoomACandidates), unverified placeholder elsewhere -- see that table's CORRECTED note (2026-08-14)",
       -- Bank 5 base -- pointer values are CPU addresses ($4000-$7FFF)
       -- relative to this bank being switched in; file offset = bankFileStart
       -- + (cpuAddress - 0x4000).
@@ -2916,8 +2926,22 @@ RomProfiles.PROFILES = {
     -- structured dungeon/shrine art -- repeating floor patterns,
     -- symmetric decorative elements, distinct architectural features
     -- -- not remotely what a wrong/misaligned decode produces.
+    --
+    -- SCOPE CORRECTED (2026-08-14): "VISUALLY + QUANTITATIVELY
+    -- CONFIRMED" above means exactly what it says -- real, non-noise
+    -- GB tile art -- and nothing more. It does NOT mean these 64
+    -- records use the semantically CORRECT metatile table (only
+    -- `unknownRoomACandidates`'s own 6 bank-5 records have that
+    -- independently confirmed, via the real `roomSelectorTable`'s own
+    -- `$D392`/`$D393` DE field -- see that table's own doc comment for
+    -- the full, dated correction). Applying the same table to these 64
+    -- bank-6 records was always the same unverified placeholder, not a
+    -- separate confirmation -- direct visual review (user report,
+    -- 2026-08-14, "total off") found it does NOT look right once
+    -- compared side-by-side against the 6 actually-confirmed rooms.
     mapTableBank6 = {
-      status = "VERIFIED (table location + encoding + all 64 records real-rendered)",
+      status = "VERIFIED (table location + encoding + all 64 records real-render as non-noise GB art); " ..
+        "tile ASSIGNMENT is an unverified placeholder for all 64, see the SCOPE CORRECTED note above (2026-08-14)",
       bankFileStart = 0x18000,
       bank = 6,
       pointerTableFileOffset = 0x18004,
@@ -3240,8 +3264,46 @@ RomProfiles.PROFILES = {
       -- (rendered here with the same default DMG grey ramp used
       -- elsewhere); not yet wired into the actual LÖVE app as
       -- walkable content.
+      --
+      -- CORRECTED / SCOPE SHARPENED (2026-08-14, direct user report
+      -- after the room-catalog export: "die sind bei allen ausser den
+      -- bekannten total off" -- the tiles look totally wrong for every
+      -- catalog room except the known ones). `metatileTableFileOffset`
+      -- below (0x20938) is independently, ROM-confirmed correct ONLY
+      -- for these 6 records (roomSelector 8-13's own real `$D392`/
+      -- `$D393` DE field from the already-VERIFIED `$026DC` dispatch
+      -- table -- not a guess, a live-traced hardware fact). It was
+      -- ALSO reused, as a best-effort placeholder with no independent
+      -- confirmation, for every other bank-5/bank-6 record in the
+      -- 320-room catalog (`rom-inspector`'s `ROOM_CATALOG` /
+      -- `RoomExplorer.lua`) -- the "VISUALLY + QUANTITATIVELY
+      -- CONFIRMED" language on `mapTable`/`mapTableBank6` below only
+      -- ever meant "decodes to real, non-noise GB tile art," NOT
+      -- "uses the semantically correct tiles for that room" (round 3's
+      -- own already-recorded warning: "this signal alone does not
+      -- usefully separate a real, distinct, walkable room from any
+      -- other bank-5 record" -- this is that exact risk materializing).
+      -- A genuinely new lead was tried this pass and RULED OUT: the
+      -- small per-record header `MapTable.decode` already parses (a
+      -- 0xFF-terminated blob before each data blob, never previously
+      -- interpreted) was tested as a possible per-record metatile-
+      -- table pointer -- record 9 (part of this CONFIRMED family, real
+      -- table 0x20938) has a 6-byte header whose own trailing u16
+      -- decodes to 0x20381, NOT 0x20938 -- directly falsified against
+      -- known-good ground truth, and a full 256-record scan found ZERO
+      -- bank-5 records whose header resolves to 0x20938 at all. No
+      -- working alternative mechanism is currently known; this remains
+      -- the same open mystery round 3/4 already concluded ("the real
+      -- blocker is how the ROM selects ANY room beyond the 16
+      -- `roomSelectorTable` entries, not which metatile table"). The
+      -- room-catalog website now labels this explicitly (see
+      -- `rom-inspector/js/viz/mapviewer.js`'s catalog note text) --
+      -- only these 6 rooms' TILES, not just their room identity, are
+      -- confirmed correct.
       unknownRoomACandidates = {
-        status = "VERIFIED (all 6 rooms render as real, coherent dungeon art -- see tools/graphics/render_unknown_room_a.py)",
+        status = "VERIFIED (all 6 rooms render as real, coherent dungeon art -- see tools/graphics/render_unknown_room_a.py). " ..
+          "Its own metatileTableFileOffset is confirmed correct ONLY for these 6 records -- reused elsewhere in the 320-room " ..
+          "catalog as an unverified placeholder, see the CORRECTED doc comment above (2026-08-14).",
         metatileTableFileOffset = 0x20938, -- bank 8, CPU $4938 (already-found real unknownRoomA metatile table)
         bank5PointerTableFileOffset = 0x14004, -- already-VERIFIED mapTable.pointerTableFileOffset
         bank5BankFileStart = 0x14000,          -- already-VERIFIED mapTable.bankFileStart

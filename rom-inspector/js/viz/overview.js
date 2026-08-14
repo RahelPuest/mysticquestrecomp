@@ -48,14 +48,16 @@ function render_overview(main) {
 
     <h2 class="section-title">Raum-Katalog <a href="#map" style="font-size:11px;">&rarr; Map-Viewer</a></h2>
     <p style="color:var(--text-dim); font-size:13px; max-width:700px;">
-      Alle ${ROOM_CATALOG.length} echten Bank-5/Bank-6-Einträge (256 + 64) dekodieren als reale,
-      kohärente ROM-Kunst -- über den <strong>Map-Viewer</strong> einzeln durchblätterbar. Nur
-      ${ROOM_CATALOG.filter(r => r.confirmed).length} davon sind zusätzlich als konkreter,
-      bekannter Raum bestätigt (unknownRoomA); der Rest hat keinen bekannten Live-Gameplay-Trigger.
+      Alle ${ROOM_CATALOG.length} echten Bank-5/Bank-6-Einträge (256 + 64) dekodieren strukturell
+      sauber (echte, nicht-verrauschte GB-Kacheln) -- über den <strong>Map-Viewer</strong> einzeln
+      durchblätterbar. Nur ${ROOM_CATALOG.filter(r => r.confirmed).length} davon (unknownRoomA) haben
+      eine unabhängig bestätigte Metatile-Tabelle -- <strong>bei allen anderen ist die gezeigte
+      Kachel-Zuordnung ein unverifizierter Platzhalter und sehr wahrscheinlich falsch</strong>
+      (direkter Nutzerbefund 2026-08-14, siehe rom-map.md).
     </p>
     <div class="stat-grid">
-      <div class="stat-card"><div class="value">${ROOM_CATALOG.length}</div><div class="label">real dekodierte Katalog-Einträge</div></div>
-      <div class="stat-card ok"><div class="value">${ROOM_CATALOG.filter(r => r.confirmed).length}</div><div class="label">als konkreter Raum bestätigt</div></div>
+      <div class="stat-card"><div class="value">${ROOM_CATALOG.length}</div><div class="label">strukturell dekodierte Katalog-Einträge</div></div>
+      <div class="stat-card ok"><div class="value">${ROOM_CATALOG.filter(r => r.confirmed).length}</div><div class="label">mit bestätigter Kachel-Zuordnung</div></div>
       <div class="stat-card"><div class="value">${ROOMS.length}</div><div class="label">real verbundene Räume (Gameplay)</div></div>
     </div>
 
@@ -78,7 +80,7 @@ function sectionBlurb(id) {
     opcodes: "Alle 256 Skript-Opcodes als durchsuchbares Raster.",
     scan: "Live-Lauf aller 1357 echten Skripte gegen die aktuelle Abdeckung.",
     rooms: "Der bekannte Raum-Graph mit echten Übergangsmechanismen.",
-    map: "Echte Raum-Tilemaps live zusammengesetzt -- die 8 verbundenen Räume plus alle 320 Katalog-Einträge.",
+    map: "Echte Raum-Tilemaps live zusammengesetzt -- die 8 verbundenen Räume plus alle 320 Katalog-Einträge (Kachel-Zuordnung nur für 6 davon bestätigt).",
     tiles: "Einzelne 8×8-Kacheln aus jeder bekannten Tileset-Adresse ansehen.",
     text: "Die Text-Encoding-Tabellen &mdash; live an echten ROM-Bytes ausprobieren.",
     questions: "Was diese Untersuchung (noch) nicht beantworten kann.",
