@@ -6197,3 +6197,57 @@ always add an explicit assertion on the expected post-transition state
 right after a hold that's supposed to fire one -- a silently-wrong
 "expected X, got Y" printed as prose is not a substitute for a real
 check that stops the script.
+
+## Working hypothesis, strong but not proven: "sixthRoom" may not be a real, separate cut-triggered room at all
+
+Direct continuation of the corrected `sixthRoom` re-test. Re-examined
+the ORIGINAL "confirmation" evidence the 2026-08-13 discovery cited
+(`dynamicBank` `$C3F0` = 6, "confirmed LIVE... to be the SAME
+willyRoom/secondRoom/thirdRoom/fifthRoom family") and found it is
+NON-DISCRIMINATING: `$C3F0` already reads `6` from the moment
+`fourthRoom` itself is entered via the staircase (roomSelector 1's own
+real `dynamicBank` column value, per `roomSelectorTable.knownRooms`'
+own already-recorded data -- confirmed live this pass too, checked
+`$C3F0` immediately after the staircase cut, BEFORE any LEFT input at
+all: already `6`). So observing "`$C3F0`=6" anywhere in this corridor
+is equally consistent with STILL being in `fourthRoom` the whole time
+-- it does not, by itself, prove a new room was reached.
+
+Combined with this pass's own two further real findings (the
+documented `holdFrames=220` trigger does not fire even after 3000+
+frames of continuous OR intermittent-tapped LEFT input; the captured
+tile content, while sharing tile IDs with the recorded `sixthRoom.grid`,
+does not match its own specific arrangement when correctly
+SCX-adjusted), a real, coherent alternative explanation emerges:
+**`sixthRoom` may not be a genuine, separate, cut-triggered room at
+all -- it may simply be MORE of `fourthRoom`'s own single continuous
+room space**, revealed by the real, ordinary hardware scroll already
+established for this exact corridor (the same real "one underlying
+room, several named screens" pattern already confirmed for `willyRoom`
+/`secondRoom`/`thirdRoom`), not a distinct room needing its own
+`targetRoom`/cut definition at all.
+
+**Status: a strong, well-reasoned HYPOTHESIS, not proven.** What would
+settle it either way: (1) a direct live check of whether `fourthRoom`'s
+own real ROM room-selector value changes at ANY point during this
+walk (checked `$C3F0` specifically; `$D392`/`$D393` already confirmed
+unchanged all session) -- done, negative, supports the hypothesis; (2)
+whether the REAL, full extended tile content (X=24's own screen, and
+the further UP/DOWN space from there) is genuinely a coherent,
+self-consistent CONTINUATION of `fourthRoom`'s own grid the way
+`secondRoom`'s rows 14-15 provably continue `willyRoom`'s own metatile
+table -- NOT checked this pass (would need the same kind of metatile-
+table-extension proof `secondRoom` got, which requires knowing
+whether `fourthRoom` even HAS a metatile+layout-stream source of its
+own, itself unconfirmed -- see `maps.md`'s "Collision" section, which
+already flags `fourthRoom` as having no known metatile source).
+
+**Deliberately NOT changed this pass**: `rom_profiles.lua`'s existing
+`sixthRoom` entry and `fourthRoom`'s own exit definition pointing to
+it. Reclassifying/removing a real, already-shipped room definition
+based on a strong hypothesis rather than a proven fact would be
+overreach -- this is recorded as the real, current best understanding
+and a concrete follow-up (extend `fourthRoom.grid` itself westward with
+the real captured content instead of treating it as a separate room,
+IF the hypothesis holds up under the 2 checks above) for whoever picks
+this up next, not acted on unilaterally here.
