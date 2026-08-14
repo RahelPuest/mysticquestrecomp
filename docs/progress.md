@@ -7535,3 +7535,27 @@ themselves were found), confirmed still the right approach, not a
 shortcut this pass unlocked.
 
 Full Lua test suite: 411 -> 414.
+
+## SELF-CAUGHT CORRECTION: the $D49D/$D49E live-watchpoint negative was re-earned with valid evidence
+
+Continuing the `sixthRoom` corridor investigation (user: "1", i.e.
+keep going on the connectivity edge-exploration thread) surfaced a
+real bug in this session's OWN tooling usage: the earlier "0 hits on
+$D49D/$D49E across 3 real transitions" claim (documented, committed)
+was produced by a script that conflated `Watcher.step()` (one real CPU
+instruction) with real game frames, off by ~17000x -- meaning it never
+actually ran the real transitions it claimed to test. Caught via a
+direct diagnostic (1000 `w.step()` calls only advance `LY` by 23/154)
+after noticing the earlier script's own printed self-check ("expected
+0xb0,0x40, got 0xb0,0x46") had quietly shown a mismatch that should
+have been a stop-the-presses red flag.
+
+Re-ran the same investigation with correctly-paced bulk `s.run()`
+stepping (plus an explicit assertion so a broken transition can't pass
+silently again), extended to also cover the corridor's own newly-found
+extension (to the real X=24 wall). **The real conclusion is unchanged
+-- zero hits on $D49D/$D49E anywhere in the whole corrected trace --
+but is now honestly earned, not a false negative that happened to
+match.** Full detail and the recorded lesson (prefer bulk `s.run()` +
+`.hit` checks over manual `w.step()` loops for real-time-sensitive
+watchpoint work) in rom-map.md's own dated entry.

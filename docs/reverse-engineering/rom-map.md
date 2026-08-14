@@ -6136,3 +6136,64 @@ content -- worth a dedicated follow-up pass (capture its own real
 tile grid, determine whether it's genuinely `sixthRoom` or a distinct,
 still-unnamed further room) rather than folding into this same
 investigation.
+
+## SELF-CAUGHT METHODOLOGY BUG, corrected: the earlier $D49D/$D49E watchpoint result was invalid (conclusion happens to still hold, evidence didn't)
+
+Direct follow-up while continuing the `sixthRoom` corridor
+investigation. Found a real bug in this session's OWN tooling usage,
+not the ROM: the earlier "$D49D/$D49E live watchpoint, 0 hits across 3
+real transitions" result (see the dated entry above, "Live watchpoint
+on $D49D/$D49E") was produced by a script that looped `Watcher.step()`
+(ONE real SM83 CPU instruction per call, per `watcher.py`'s own
+docstring) the same number of times as the real ROM's own FRAME counts
+used by this project's other, `s.run()`-based navigation scripts --
+off by a real factor of roughly 15,000-17,000x (one real GB frame is
+~17556 cycles, on the order of thousands of instructions, not one).
+Caught by a direct, simple diagnostic: 1000 real `w.step()` calls only
+advanced the real `LY` scanline register by 23 (out of 154 per frame)
+-- nowhere near the hundreds of real frames the earlier script's own
+`hold(key, frames)` calls assumed they were producing. A concrete tell
+that was missed in the moment: that script's own printed self-check,
+"room after staircase: 0xb0,0x46 (expect 0xb0,0x40)", literally showed
+the ACTUAL value did NOT match the expected one -- i.e. the staircase
+cut never really fired in that test at all -- but the surrounding
+narrative text moved on without flagging that mismatch as the red flag
+it was.
+
+**Re-ran the exact same investigation with the bug fixed**: real,
+correctly-paced bulk `s.run()` stepping (already independently
+verified earlier this session to still report watchpoint hits
+correctly -- the platform-level `entered` callback forces early notice
+even inside a frame-run loop, not just manual single-stepping),
+checking `Watcher.hit` after each small bulk chunk instead of
+conflating instruction count with frame count. Added an explicit
+`assert room == (0xb0, 0x40)` self-check right after the staircase
+hold specifically so a broken navigation can never again pass silently.
+
+**Result: the real conclusion is UNCHANGED, but now honestly earned.**
+Across the properly-paced staircase transition, the fifthRoom cut, AND
+(new this pass) the FULL extended west corridor walk all the way to
+the real second wall at X=24 found earlier this session (plus UP/DOWN
+from there) -- watching `$D49D`/`$D49E` AND `$D392`/`$D393`/`$C3F0`
+together -- exactly ONE real hit occurred (a `$D392` write during the
+staircase transition itself, `old=176,new=176`, a real "commit room"
+event that happens not to change that specific byte since thirdRoom
+and fourthRoom's pointers share the same low byte `0xB0` -- expected,
+not a new finding). Zero hits on `$D49D`/`$D49E` specifically,
+anywhere in the whole corrected trace. So: automatic connectivity
+discovery via the dynamic `$026DC` path is still genuinely not
+exercised by any currently-reachable transition -- but this is now
+based on a real, valid live trace, not a script that never actually
+ran the transitions it claimed to test.
+
+**Lesson recorded for future live investigation scripts** (this
+project's own tooling docs, not just this one finding): `Watcher.step()`
+is instruction-granular -- never assume an `N` passed to a `hold()`-
+style helper means real frames unless the helper actually calls
+`Session.run()` (bulk, frame-granular) internally. When precise
+watchpoint timing is needed, prefer bulk `s.run()` + checking `.hit`
+after each chunk (proven reliable) over manual `w.step()` loops, and
+always add an explicit assertion on the expected post-transition state
+right after a hold that's supposed to fire one -- a silently-wrong
+"expected X, got Y" printed as prose is not a substitute for a real
+check that stops the script.
