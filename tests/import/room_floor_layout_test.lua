@@ -654,6 +654,68 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
+  "RoomFloorLayout.buildCollisionGridFromMapTableRecord: dispatches to bank-7 Templated collision too (2026-08-14, \"ok weiter mit tür und kollision\")",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- Same honest "extrapolated, not verified" caveat as the bank-6
+    -- collision test above -- this only proves the plumbing (record ->
+    -- base-template + diff -> per-metatile collision byte -> a real
+    -- 16x20 boolean grid) works end to end for Templated mode too,
+    -- through the EXACT SAME entry point as bank5/6
+    -- (`buildCollisionGridFromMapTableRecord` dispatches on encodingMode
+    -- internally, see RoomFloorLayout.lua's own "UPDATED 2026-08-14"
+    -- doc comment) -- not that the underlying bitmask rule is ROM-
+    -- confirmed for bank 7's own metatile table.
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local metatileOpts = profile.roomFloorLayoutPipeline.unknownRoomACandidates
+    local opts = {
+      metatileTableFileOffset = metatileOpts.metatileTableFileOffset,
+      metatileGridRows = metatileOpts.metatileGridRows,
+      metatileGridCols = metatileOpts.metatileGridCols,
+    }
+
+    local sawTrue, sawFalse = false, false
+    for recordIndex = 0, profile.mapTableBank7.recordCount - 1 do
+      local collisionGrid = RoomFloorLayout.buildCollisionGridFromMapTableRecord(
+        romData, profile.mapTableBank7, recordIndex, opts)
+      Harness.assertEqual(#collisionGrid, 16, "bank7 record " .. recordIndex .. ": expected 16 real grid rows")
+      for row = 1, 16 do
+        Harness.assertEqual(#collisionGrid[row], 20,
+          "bank7 record " .. recordIndex .. " row " .. row .. ": expected 20 real grid cols")
+        for col = 1, 20 do
+          local v = collisionGrid[row][col]
+          Harness.assertTrue(v == true or v == false,
+            string.format("bank7 record %d: collisionGrid[%d][%d]=%s is not a real boolean",
+              recordIndex, row, col, tostring(v)))
+          if v then sawTrue = true else sawFalse = true end
+        end
+      end
+    end
+    Harness.assertTrue(sawTrue and sawFalse,
+      "expected both walkable and non-walkable cells across the 64 real bank-7 records, got all one value")
+  end
+)
+
+Harness.testIfAvailable(
+  "RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord: fails loudly on a non-Templated mapTable",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local metatileOpts = profile.roomFloorLayoutPipeline.unknownRoomACandidates
+    local opts = {
+      metatileTableFileOffset = metatileOpts.metatileTableFileOffset,
+      metatileGridRows = metatileOpts.metatileGridRows,
+      metatileGridCols = metatileOpts.metatileGridCols,
+    }
+    local ok = pcall(RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord,
+      romData, profile.mapTableBank6, 0, opts)
+    Harness.assertTrue(not ok, "expected an assertion when called against an RLE-mode (bank6) mapTable")
+  end
+)
+
+Harness.testIfAvailable(
   "RoomFloorLayout.buildRoomFromMapTableRecord: ALL 384 real bank-5/6/7 records decode without error (2026-08-14, \"andere räume, so viele wie möglich\" / \"weiter bohren bis es fertig ist\")",
   romData ~= nil,
   "no development ROM found",

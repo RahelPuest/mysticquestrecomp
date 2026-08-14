@@ -1,30 +1,30 @@
--- DEV-ONLY content browser for ALL 320 real, individually-confirmed
+-- DEV-ONLY content browser for ALL 384 real, individually-confirmed
 -- rooms this project can decode (256 bank-5 records + 64 bank-6
--- records, see docs/reverse-engineering/rom-map.md "World scope,
--- round 5" and `RoomFloorLayout.buildRoomFromMapTableRecord`) --
--- REWRITTEN 2026-08-12 ("1 dann 2 dann 3 dann 4", quick win #1) from
--- an earlier version that only knew the original 6 `unknownRoomA`
--- rooms as hand-baked `rom_profiles.lua` data. Every room here is now
--- decoded LIVE, straight from the ROM, via the same general, tested,
--- ROM-static function this project's own test suite already exercises
+-- records + 64 bank-7 records, see docs/reverse-engineering/rom-map.md
+-- "World scope, round 5" and "bank 7 Templated revisited, CRACKED" and
+-- `RoomFloorLayout.buildRoomFromMapTableRecord`) -- REWRITTEN 2026-08-12
+-- ("1 dann 2 dann 3 dann 4", quick win #1) from an earlier version that
+-- only knew the original 6 `unknownRoomA` rooms as hand-baked
+-- `rom_profiles.lua` data. Every room here is now decoded LIVE,
+-- straight from the ROM, via the same general, tested, ROM-static
+-- function this project's own test suite already exercises
 -- (`tests/import/room_floor_layout_test.lua`) -- no per-room profile
 -- entries to maintain, no risk of the browser and the decoder drifting
 -- apart.
 --
 -- WHY a separate dev-only state instead of wiring these into the real
 -- room chain: this project's own engineering rule is "don't fabricate
--- ROM behavior" -- no live gameplay trigger into any of these 320
--- rooms (beyond the original 8 already in the real chain) was ever
--- found (a real, bounded search, see rom-map.md's "World scope, round
--- 4"). The room CONTENT is real, ROM-verified data; reaching it here
--- is an explicit, clearly-labeled developer shortcut (F8 from
--- Field.lua), the same spirit as the existing F2 TileViewer / F3-F7
--- shortcuts.
+-- ROM behavior" -- no live gameplay trigger into any of these rooms
+-- (beyond the original 8 already in the real chain) was ever found (a
+-- real, bounded search, see rom-map.md's "World scope, round 4"). The
+-- room CONTENT is real, ROM-verified data; reaching it here is an
+-- explicit, clearly-labeled developer shortcut (F8 from Field.lua),
+-- the same spirit as the existing F2 TileViewer / F3-F7 shortcuts.
 --
 -- HONEST SCOPE, sharpened 2026-08-12 (round 6, a parity check against
--- willyRoom's own real captured data): "320 real, individually-
--- confirmed rooms" means all 320 decode as real, coherent ROM ART
--- (`tile_entropy()` + visual spot-checks) -- it does NOT mean all 320
+-- willyRoom's own real captured data): "384 real, individually-
+-- confirmed rooms" means all 384 decode as real, coherent ROM ART
+-- (`tile_entropy()` + visual spot-checks) -- it does NOT mean all 384
 -- are confirmed to be a SPECIFIC real in-game room. That stronger
 -- claim only holds for the original 6 (`unknownRoomA`, roomSelectors
 -- 8-13) -- willyRoom's own real roomSelector (live-traced: index 4)
@@ -48,6 +48,16 @@
 -- gameplay-ground-truth-verified -- see rom-map.md's own dated write-
 -- up for the full evidence chain and its honest limits.
 --
+-- BANK 7 ADDED 2026-08-14 (same day, "ok weiter mit tür und
+-- kollision"): the "Templated" (mode 1) encoding is now cracked for
+-- both tile content AND collision (`MapTable.applyTemplatedDiff`,
+-- `RoomFloorLayout.buildRoomFromTemplatedMapTableRecord`/
+-- `buildCollisionGridFromTemplatedMapTableRecord`) -- `resolveSource`
+-- below simply routes into it as a third range, no other change
+-- needed here since `buildRoomFromMapTableRecord`/`buildCollisionGrid
+-- FromMapTableRecord` both already dispatch on `encodingMode`
+-- internally.
+--
 -- HONEST SCOPE (quick win #2, 2026-08-12, "1 dann 2 dann 3 dann 4"):
 -- movement now uses REAL per-metatile-instance collision data via
 -- `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
@@ -59,14 +69,14 @@
 -- fourthRoom's own real metatile table (a live movement test) but
 -- DEMONSTRABLY FALSE for willyRoom's (the same rule misreads willyRoom's
 -- own live-verified checkerboard floor as wall in some cells). No
--- gameplay has ever reached ANY of these 320 rooms (that's the whole
+-- gameplay has ever reached ANY of these rooms (that's the whole
 -- reason this ROM-static decode pipeline exists), so there is no live
--- movement test possible here -- applying the rule to bank 5/6 is a
+-- movement test possible here -- applying the rule to bank 5/6/7 is a
 -- real, honestly-labeled EXTRAPOLATION, not confirmed ROM behavior.
 -- The on-screen footer says so explicitly.
 --
 -- Controls: arrows move (real per-room collision, caveat above), A =
--- next room, B = previous room, START = jump forward 10 rooms (320
+-- next room, B = previous room, START = jump forward 10 rooms (384
 -- rooms is a lot to page through one at a time), SELECT or F8 = back
 -- to Field.
 
@@ -94,19 +104,28 @@ local FOOTER_H = 16 -- dev-info bar below the room, same idea as Field's own HUD
 local METATILE_GRID_ROWS = 8
 local METATILE_GRID_COLS = 10
 
---- Flat room index (1..320) -> which real map table + which record.
--- Bank 5 (256 records) first, then bank 6 (64 records) -- matches the
--- order both tables were found in, nothing deeper than that.
+--- Flat room index (1..384) -> which real map table + which record.
+-- Bank 5 (256 records) first, then bank 6 (64 records), then bank 7
+-- (64 Templated records, added 2026-08-14 once `buildRoomFromMapTable
+-- Record`/`buildCollisionGridFromMapTableRecord` both dispatch
+-- transparently on encodingMode -- this function needed no special
+-- bank-7 tile/collision logic, only one more range check) -- matches
+-- the order all three tables were found in, nothing deeper than that.
 local function resolveSource(profile, flatIndex)
   if flatIndex <= profile.mapTable.recordCount then
     return profile.mapTable, flatIndex - 1, "bank5"
   end
-  local bank6Index = flatIndex - profile.mapTable.recordCount - 1
-  return profile.mapTableBank6, bank6Index, "bank6"
+  flatIndex = flatIndex - profile.mapTable.recordCount
+  if flatIndex <= profile.mapTableBank6.recordCount then
+    return profile.mapTableBank6, flatIndex - 1, "bank6"
+  end
+  local bank7Index = flatIndex - profile.mapTableBank6.recordCount - 1
+  return profile.mapTableBank7, bank7Index, "bank7"
 end
 
 function RoomExplorer.new(romData, profile, input, overlay, stack)
-  local totalRooms = profile.mapTable.recordCount + profile.mapTableBank6.recordCount
+  local totalRooms = profile.mapTable.recordCount + profile.mapTableBank6.recordCount +
+    profile.mapTableBank7.recordCount
   local self = setmetatable({
     romData = romData,
     profile = profile,
@@ -167,8 +186,8 @@ function RoomExplorer:_loadRoom(index)
   -- noisy heuristic here, not verified ROM truth -- see this module's
   -- own doc comment). Scanning for the first walkable spot is a
   -- dev-tool UX choice ONLY -- it does not claim to be this room's real
-  -- ROM spawn point (no such thing is known or reachable for these 320
-  -- rooms); it just keeps the browser usable under an imperfect
+  -- ROM spawn point (no such thing is known or reachable for these
+  -- catalog rooms); it just keeps the browser usable under an imperfect
   -- heuristic instead of silently leaving the player stuck.
   self.player.x, self.player.y = 0, 0
   for row = 0, (METATILE_GRID_ROWS * 2) - 1 do

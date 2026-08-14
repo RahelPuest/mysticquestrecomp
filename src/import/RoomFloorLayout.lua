@@ -290,21 +290,35 @@ function RoomFloorLayout.buildCollisionGrid(romData, layout, isWalkable)
     layout.metatileGridRows and layout.metatileGridCols,
     "RoomFloorLayout.buildCollisionGrid expects a layout table with " ..
     "metatileTableFileOffset/layoutStreamFileOffset/rleLength/metatileGridRows/metatileGridCols")
-  isWalkable = isWalkable or RoomFloorLayout.isWalkableCollision
 
   local metatileCount = layout.metatileGridRows * layout.metatileGridCols
   local indices = RoomFloorLayout.decodeLayoutStream(
     romData, layout.layoutStreamFileOffset, layout.rleLength, metatileCount)
+  return RoomFloorLayout.buildCollisionGridFromIndices(romData, indices, layout, isWalkable)
+end
+
+--- Finishing step shared by `buildCollisionGrid` (RLE mode) and
+-- `buildCollisionGridFromTemplatedMapTableRecord` (Templated mode,
+-- 2026-08-14) -- factored out the exact same way `buildPixelGridFromIndices`
+-- was factored out of `buildPixelGridFromTileset`, same reasoning: both
+-- real decode paths turn a flat metatile-INDEX array into the same
+-- final collision grid, however that index array itself was produced.
+function RoomFloorLayout.buildCollisionGridFromIndices(romData, indices, opts, isWalkable)
+  assert(type(opts) == "table" and opts.metatileTableFileOffset and
+    opts.metatileGridRows and opts.metatileGridCols,
+    "RoomFloorLayout.buildCollisionGridFromIndices expects opts.metatileTableFileOffset/" ..
+    "metatileGridRows/metatileGridCols")
+  isWalkable = isWalkable or RoomFloorLayout.isWalkableCollision
 
   local grid = {}
-  for r = 1, layout.metatileGridRows * 2 do
+  for r = 1, opts.metatileGridRows * 2 do
     grid[r] = {}
   end
 
-  for mr = 0, layout.metatileGridRows - 1 do
-    for mc = 0, layout.metatileGridCols - 1 do
-      local index = indices[mr * layout.metatileGridCols + mc + 1]
-      local mt = RoomFloorLayout.readMetatile(romData, layout.metatileTableFileOffset, index)
+  for mr = 0, opts.metatileGridRows - 1 do
+    for mc = 0, opts.metatileGridCols - 1 do
+      local index = indices[mr * opts.metatileGridCols + mc + 1]
+      local mt = RoomFloorLayout.readMetatile(romData, opts.metatileTableFileOffset, index)
       local walkable = isWalkable(mt.collision)
       local row1, row2 = mr * 2 + 1, mr * 2 + 2
       local col1, col2 = mc * 2 + 1, mc * 2 + 2
@@ -481,12 +495,9 @@ end
 -- stream address is computed. RLE/mode-0 ONLY, by design -- Templated/
 -- mode-1's own base+diff scheme has no single contiguous
 -- "layoutStreamFileOffset" to hand back this way, so `buildRoom
--- FromMapTableRecord` dispatches to the SEPARATE `buildRoomFrom
--- TemplatedMapTableRecord` path before ever reaching this helper (see
--- that function). `buildCollisionGridFromMapTableRecord` has not been
--- extended the same way yet -- real per-room COLLISION for Templated
--- rooms remains a genuinely open, separate task, honestly still
--- rejected here.
+-- FromMapTableRecord` AND `buildCollisionGridFromMapTableRecord` (as
+-- of 2026-08-14) both dispatch to their own SEPARATE `...Templated...`
+-- path before ever reaching this helper -- see those two functions.
 local function resolveMapTableRecordStream(romData, mapTable, recordIndex, callerName)
   assert(type(romData) == "string", callerName .. " expects a byte string")
   assert(type(mapTable) == "table" and mapTable.pointerTableFileOffset and mapTable.bankFileStart,
@@ -540,10 +551,52 @@ function RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIn
   })
 end
 
---- Same real record resolution as `buildRoomFromMapTableRecord`, but
+--- Templated-mode (encodingMode 1) sibling, same real record
+-- resolution as `buildRoomFromTemplatedMapTableRecord` (base template
+-- + per-record diff, see that function and `MapTable.applyTemplatedDiff`)
+-- but returns `buildCollisionGridFromIndices`'s own POSITION-AWARE
+-- walkable/wall grid instead of a pixel-tile grid. Added 2026-08-14,
+-- direct follow-up ("ok weiter mit tür und kollision") to the tile
+-- decode -- same HONEST CAVEAT as `buildCollisionGridFromMapTableRecord`
+-- below: no live gameplay reaches any bank-7 room either, so this is a
+-- genuine, UNVERIFIED extrapolation of the bank-5/6 collision rule, not
+-- a confirmed fact for bank 7's own metatile table.
+function RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord(romData, mapTable, recordIndex, opts)
+  assert(type(opts) == "table" and opts.metatileTableFileOffset and
+    opts.metatileGridRows and opts.metatileGridCols,
+    "RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord expects opts.metatileTableFileOffset/" ..
+    "metatileGridRows/metatileGridCols")
+
+  local MapTable = require("src.import.MapTable")
+  local header = MapTable.readMapHeader(romData, mapTable)
+  assert(header.encodingMode == 1,
+    "RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord: header names encodingMode " ..
+    tostring(header.encodingMode) .. ", not 1 (Templated)")
+
+  local templated = MapTable.readTemplatedHeader(romData, mapTable)
+  local gridCount = opts.metatileGridRows * opts.metatileGridCols
+  local baseIndices = RoomFloorLayout.decodeLayoutStream(
+    romData, templated.templateFileOffset, header.rleLength, gridCount)
+
+  assert(recordIndex >= 0 and recordIndex < mapTable.recordCount,
+    "RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord: record " .. tostring(recordIndex) ..
+    " out of range (recordCount=" .. tostring(mapTable.recordCount) .. ")")
+  local dataFileOffset = MapTable.recordDataFileOffset(romData, mapTable, recordIndex)
+
+  local indices = MapTable.applyTemplatedDiff(
+    romData, dataFileOffset, baseIndices, opts.metatileGridRows, opts.metatileGridCols)
+  return RoomFloorLayout.buildCollisionGridFromIndices(romData, indices, opts, opts.isWalkable)
+end
+
+-- UPDATED 2026-08-14 ("ok weiter mit tür und kollision"): now dispatches
+-- on the map's own real header `encodingMode`, same as
+-- `buildRoomFromMapTableRecord` -- mode 1 (Templated) via
+-- `buildCollisionGridFromTemplatedMapTableRecord` above.
+--
+-- Same real record resolution as `buildRoomFromMapTableRecord`, but
 -- returns `buildCollisionGrid`'s own POSITION-AWARE walkable/wall grid
 -- instead of a pixel-tile grid -- 2026-08-12, quick win #2 ("1 dann 2
--- dann 3 dann 4"): real per-room collision for the 320-room browser,
+-- dann 3 dann 4"): real per-room collision for the room browser,
 -- replacing its original permissive-floor placeholder.
 --
 -- HONEST CAVEAT, carried over from `COLLISION_WALL_MASK`'s own doc
@@ -551,17 +604,24 @@ end
 -- is CONFIRMED for fourthRoom's own real metatile table (a live
 -- movement test) but DEMONSTRABLY WRONG for willyRoom's (the same rule
 -- misreads its own live-verified checkerboard floor as wall in some
--- cells there). Bank 5/bank 6's own metatile-table region has never
--- had ANY live movement test -- no gameplay reaches these rooms at all,
--- which is the whole reason this ROM-static pipeline exists -- so
--- applying this rule here is a genuine, UNVERIFIED extrapolation, not
--- a confirmed fact. Callers (see RoomExplorer.lua) must present this
--- as "best-effort, not verified ROM collision," not as decoded truth.
+-- cells there). Bank 5/bank 6/bank 7's own metatile-table region has
+-- never had ANY live movement test -- no gameplay reaches these rooms
+-- at all, which is the whole reason this ROM-static pipeline exists --
+-- so applying this rule here is a genuine, UNVERIFIED extrapolation,
+-- not a confirmed fact. Callers (see RoomExplorer.lua) must present
+-- this as "best-effort, not verified ROM collision," not as decoded
+-- truth.
 function RoomFloorLayout.buildCollisionGridFromMapTableRecord(romData, mapTable, recordIndex, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
     "RoomFloorLayout.buildCollisionGridFromMapTableRecord expects opts.metatileTableFileOffset/" ..
     "metatileGridRows/metatileGridCols")
+
+  local MapTable = require("src.import.MapTable")
+  local header = MapTable.readMapHeader(romData, mapTable)
+  if header.encodingMode == 1 then
+    return RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord(romData, mapTable, recordIndex, opts)
+  end
 
   local layoutStreamFileOffset, rleLength = resolveMapTableRecordStream(
     romData, mapTable, recordIndex, "RoomFloorLayout.buildCollisionGridFromMapTableRecord")

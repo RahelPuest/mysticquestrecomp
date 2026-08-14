@@ -137,6 +137,40 @@ function love.load()
       ") -- falling back to the normal Boot flow")
   end
 
+  -- Dev/CI-only: MYSTICQUEST_ROOM_EXPLORER_DEMO=1 (2026-08-14, same
+  -- reasoning/pattern as MYSTICQUEST_VICTORY_DEMO above -- added to
+  -- screenshot-verify RoomExplorer.lua changes, e.g. the bank-7
+  -- Templated-mode dispatch, "ok weiter mit tür und kollision") skips
+  -- the real Boot->TitleScreen->Field->F8 flow and pushes a real
+  -- RoomExplorer directly. Optional MYSTICQUEST_ROOM_EXPLORER_INDEX=N
+  -- jumps straight to flat room index N (1-based, see RoomExplorer
+  -- .lua's own `resolveSource`) instead of starting at room 1 --
+  -- e.g. 321 for the first bank-7 record, without needing to script
+  -- 32 real "start" (+10) button presses through the normal browser.
+  if os.getenv("MYSTICQUEST_ROOM_EXPLORER_DEMO") == "1" then
+    local RomLocator = require("src.import.RomLocator")
+    local RomIdentity = require("src.import.RomIdentity")
+    local RomProfiles = require("src.import.rom_profiles")
+    local RoomExplorer = require("src.app.states.RoomExplorer")
+    local data, pathOrReason = RomLocator.find()
+    if data then
+      local identity = RomIdentity.identify(data)
+      local profile = RomProfiles.match(identity)
+      if profile then
+        local explorer = RoomExplorer.new(data, profile, input, overlay, stack)
+        local startIndex = tonumber(os.getenv("MYSTICQUEST_ROOM_EXPLORER_INDEX"))
+        if startIndex then
+          explorer.roomIndex = startIndex
+          explorer:_loadRoom(startIndex)
+        end
+        stack:push(explorer)
+        return
+      end
+    end
+    print("MYSTICQUEST_ROOM_EXPLORER_DEMO: could not load a real ROM (" .. tostring(pathOrReason) ..
+      ") -- falling back to the normal Boot flow")
+  end
+
   stack:push(Boot.new(stack, input, overlay))
 end
 
