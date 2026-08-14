@@ -60,9 +60,9 @@ const OPEN_QUESTIONS = [
     description: "These 3 small index values redirect to fixed WRAM addresses instead of the normal ROM table lookup (some scripts are WRAM-resident, not ROM data) -- the mechanism is confirmed but their real-world meaning is not."
   },
   {
-    title: "Bank 7's 'Templated' room-compression format",
+    title: "Bank 7's 'Templated' room format: door-data bytes and collision still undecoded",
     area: "Room system",
-    description: "A genuinely different room-data compression scheme from every other bank's format -- not yet reverse-engineered."
+    description: "RESOLVED for tile CONTENT 2026-08-14 (\"weiter bohren bis es fertig ist\"): the base-room RLE template + per-record (value,position) diff-overlay scheme is cracked and shipped (MapTable.applyTemplatedDiff, VERIFIED against all 64 real records -- 566/566 valid diff positions, tile_entropy 1.30-1.40 bits for all 64, zero outliers). Still genuinely open: the map-level 24-byte door-data block and each record's own 4-byte per-record prefix (both plausibly door/exit-flag data per the external FFA-Disassembly doc, neither tested against this ROM's real data) remain undecoded, and real per-room collision is not yet implemented for bank 7 (unlike bank 5/6, which have a best-effort collision path)."
   },
   {
     title: "The $413C cut-sequence table: only 2 of 30 steps decoded",

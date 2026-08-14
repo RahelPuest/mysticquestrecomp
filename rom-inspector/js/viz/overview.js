@@ -48,17 +48,19 @@ function render_overview(main) {
 
     <h2 class="section-title">Raum-Katalog <a href="#map" style="font-size:11px;">&rarr; Map-Viewer</a> <a href="#worldmap" style="font-size:11px;">&rarr; Weltkarte</a></h2>
     <p style="color:var(--text-dim); font-size:13px; max-width:700px;">
-      Alle ${ROOM_CATALOG.length} echten Bank-5/Bank-6-Einträge (256 + 64 = zwei komplette
-      Raum-Gitter, 16&times;16 bzw. 8&times;8, laut Header-Feldern) dekodieren strukturell sauber --
-      über den <strong>Map-Viewer</strong> einzeln durchblätterbar. Seit 2026-08-14 nutzen alle 320
+      Alle ${ROOM_CATALOG.length} echten Bank-5/6/7-Einträge (256 + 64 RLE-Räume + 64 seit
+      2026-08-14 aus Bank 7s "Templated"-Format gecrackte Räume) dekodieren strukturell sauber --
+      über den <strong>Map-Viewer</strong> einzeln durchblätterbar. Bank 5/6 nutzen seit 2026-08-14
       eine real hergeleitete Standard-Metatile-Tabelle (<code>roomSelectorTable</code>'s eigene
       "mapRoomPointers", extern gegen die FFA-Disassembly-Doku geprüft) statt eines unverifizierten
-      Platzhalters -- <strong>aber weiterhin nicht per Live-Gameplay bestätigt</strong> (kein
-      bekannter Trigger erreicht diese Räume), siehe rom-map.md.
+      Platzhalters; Bank 7 dekodiert seit demselben Tag über ein Basis-Template + pro-Raum-Diff
+      (566/566 echte Diff-Positionen gültig, siehe rom-map.md) -- <strong>alle drei Quellen
+      weiterhin nicht per Live-Gameplay bestätigt</strong> (kein bekannter Trigger erreicht diese
+      Räume).
     </p>
     <div class="stat-grid">
       <div class="stat-card"><div class="value">${ROOM_CATALOG.length}</div><div class="label">strukturell dekodierte Katalog-Einträge</div></div>
-      <div class="stat-card"><div class="value">16&times;16 / 8&times;8</div><div class="label">Raum-Gitter (Bank 5 / Bank 6)</div></div>
+      <div class="stat-card"><div class="value">16&times;16 / 8&times;8</div><div class="label">statistisch belegtes Raum-Gitter (Bank 5 / 6) -- Bank 7 hat keine geprüfte räumliche Anordnung</div></div>
       <div class="stat-card"><div class="value">${ROOMS.length}</div><div class="label">real verbundene Räume (Gameplay)</div></div>
     </div>
 
@@ -81,7 +83,7 @@ function sectionBlurb(id) {
     opcodes: "Alle 256 Skript-Opcodes als durchsuchbares Raster.",
     scan: "Live-Lauf aller 1357 echten Skripte gegen die aktuelle Abdeckung.",
     rooms: "Der bekannte Raum-Graph mit echten Übergangsmechanismen.",
-    map: "Echte Raum-Tilemaps live zusammengesetzt -- die 8 verbundenen Räume plus alle 320 Katalog-Einträge (Kachel-Zuordnung strukturell hergeleitet, nicht per Gameplay bestätigt).",
+    map: `Echte Raum-Tilemaps live zusammengesetzt -- die 8 verbundenen Räume plus alle ${ROOM_CATALOG.length} Katalog-Einträge (Bank 5/6/7, Kachel-Zuordnung strukturell hergeleitet, nicht per Gameplay bestätigt).`,
     worldmap: "Der komplette Raum-Katalog als ein Bild -- Bank 5 (16×16) und Bank 6 (8×8) im echten Gitter zusammengesetzt, statistisch belegt.",
     tiles: "Einzelne 8×8-Kacheln aus jeder bekannten Tileset-Adresse ansehen.",
     text: "Die Text-Encoding-Tabellen &mdash; live an echten ROM-Bytes ausprobieren.",

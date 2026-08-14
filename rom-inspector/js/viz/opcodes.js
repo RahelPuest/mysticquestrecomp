@@ -61,7 +61,7 @@ function render_script_tracer(container) {
         auf „Schritt &rarr;“ entspricht genau EINEM echten Interpreter-Schritt
         (<code>ScriptInterpreter:step()</code>): ein Opcode-Byte wird gelesen, in der echten
         <code>scriptOpcodeTable</code> nachgeschlagen, und je nach Status entweder als No-Op
-        übersprungen oder ausgeführt. Beide Beispiele sind echte Event-Skripte aus dem 320-Raum-
+        übersprungen oder ausgeführt. Beide Beispiele sind echte Event-Skripte aus dem 384-Raum-
         Katalog (Bank 5) -- siehe <a href="#worldmap">Weltkarte</a>.
       </p>
       <div class="toolbar">

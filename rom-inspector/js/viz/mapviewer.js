@@ -1,10 +1,10 @@
 function render_map(main) {
   // Combined room list: the 8 real, gameplay-connected rooms
   // (ROOM_MAPS) plus the room CATALOG (2026-08-14, "andere räume, so
-  // viele wie möglich, raumdaten reicht") -- ALL 320 individually-
-  // decodable bank-5/bank-6 records, exported from the exact same
-  // pipeline RoomExplorer.lua's dev-only F8 browser already drives
-  // live in the LÖVE app. Kept as two <optgroup>s, not silently
+  // viele wie möglich, raumdaten reicht") -- ALL individually-
+  // decodable bank-5/bank-6/bank-7 records, exported from the exact
+  // same pipeline RoomExplorer.lua's dev-only F8 browser already
+  // drives live in the LÖVE app. Kept as two <optgroup>s, not silently
   // merged, so the honest distinction stays visible.
   //
   // UPGRADED 2026-08-14 ("gehe dem map header hinweis nach"): every
@@ -14,10 +14,19 @@ function render_map(main) {
   // documented "one tileset per map" architecture) instead of the
   // unverified unknownRoomA-borrowed placeholder used before. Real
   // progress, but still NOT independently ground-truth-verified -- no
-  // live gameplay reaches any of these 320 rooms -- so the note below
+  // live gameplay reaches any of these rooms -- so the note below
   // stays honest about that, for every catalog entry alike (no more
   // per-entry `confirmed` flag; see room-catalog.js's own header
   // comment for the full scope note).
+  //
+  // UPDATE 2026-08-14 (same day, "weiter bohren bis es fertig ist"):
+  // bank 7's own "Templated" (mode 1) encoding is now CRACKED too
+  // (base-room RLE template + per-record (value,position) diff, see
+  // MapTable.lua's own `applyTemplatedDiff` and rom-map.md's "bank 7
+  // Templated revisited, CRACKED") -- 64 more catalog entries, going
+  // through the exact same `RoomFloorLayout.buildRoomFromMapTableRecord`
+  // call as bank 5/6 (it dispatches on encodingMode internally), so
+  // this page needed no rendering-logic changes, only label text.
   const combined = [
     ...ROOM_MAPS.map(r => ({ room: r, group: "connected" })),
     ...ROOM_CATALOG.map(r => ({ room: r, group: "catalog" })),
@@ -27,7 +36,7 @@ function render_map(main) {
     <h1 class="page-title">Map-Viewer</h1>
     <p class="page-lede">
       Setzt eine echte Raum-Tilemap (Grid aus Tile-IDs + Tile-ID&rarr;ROM-Offset-Lookup, direkt
-      aus <code>rom_profiles.lua</code> bzw. dem Bank-5/Bank-6-Raum-Katalog) zu einem vollständigen
+      aus <code>rom_profiles.lua</code> bzw. dem Bank-5/6/7-Raum-Katalog) zu einem vollständigen
       Bild zusammen &mdash; live aus einer lokal geladenen ROM-Datei dekodiert.
     </p>
     <div id="mapRomBanner"></div>
@@ -37,7 +46,7 @@ function render_map(main) {
         <optgroup label="Echte, verbundene Räume (${ROOM_MAPS.length})">
           ${ROOM_MAPS.map((r, i) => `<option value="${i}">${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>
-        <optgroup label="Raum-Katalog -- alle ${ROOM_CATALOG.length} Bank-5/6-Einträge (Kachel-Zuordnung strukturell hergeleitet, nicht per Gameplay bestätigt)">
+        <optgroup label="Raum-Katalog -- alle ${ROOM_CATALOG.length} Bank-5/6/7-Einträge (Kachel-Zuordnung strukturell hergeleitet, nicht per Gameplay bestätigt)">
           ${ROOM_CATALOG.map((r, i) => `<option value="${ROOM_MAPS.length + i}">${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>
       </select>
@@ -74,7 +83,8 @@ function render_map(main) {
       // architecture) -- a real step up from the earlier unverified
       // unknownRoomA-borrowed placeholder. Still honestly NOT the same
       // as live-gameplay-confirmed: no known trigger reaches any of
-      // these 320 rooms, so this note says so for every entry alike.
+      // these catalog rooms (bank 5/6/7 alike), so this note says so
+      // for every entry alike.
       note.innerHTML = "ℹ Kachel-Zuordnung strukturell hergeleitet (roomSelectorTable's eigene reale \"mapRoomPointers\", " +
         "extern gegengeprüft) -- reale, nicht-verrauschte GB-Kunst mit gutem Grund zur Annahme, aber " +
         "<strong>nicht per Live-Gameplay bestätigt</strong> (kein bekannter Trigger erreicht diesen Raum).";
