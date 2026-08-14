@@ -6486,3 +6486,43 @@ remains genuine ROM content either way -- only the VISUAL tileset
 resolution of that data is in question for 314/320.
 
 Full suite: 416 passed, 0 failed (was 415 -- +1 new regression test).
+
+## Clarification: how the "known" rooms' tileset IS determined (direct user question, 2026-08-14)
+
+Direct follow-up question after the correction above: "aber woher
+wissen wir bei den bekannten räumen welches tileset benutzt wird. es
+muss doch irgendwo was geben was das bestimmt!" (how do we know the
+right tileset for the KNOWN rooms then -- there must be something that
+determines it). Answer: yes, and it's the exact same `roomSelectorTable`
+mechanism this whole investigation already depends on -- worth stating
+plainly in one place since the reasoning was previously scattered
+across several doc comments.
+
+`roomSelectorTable` (bank 8, file `0x20000`, 16 real records x 11
+bytes, live-traced via `CallTracer` against the actual `$026DC`/
+`$01AF3` ROM routines) has, at bytes 3-4 of each record, a 16-bit value
+that becomes WRAM `$D392`/`$D393` -- the real "room tile-source
+pointer" this project's whole room chain already keys off of.
+Interpreted as `bank8Base + (value - 0x4000)`, this IS the room's real
+metatile table address. Concrete, real byte evidence (not inference):
+
+- roomSelector 2-6: DE field = `$46B0` -> `0x206B0` -- EXACTLY matches
+  `willyRoom`'s own metatile table, already independently known from a
+  completely different investigation thread. Not a coincidence; the
+  same real ROM value surfacing twice via two different methods.
+- roomSelector 8-13: DE field = `$4938` -> `0x20938` -- `unknownRoomA`.
+- roomSelector 14-15: DE field = `$43B0` -> `0x203B0` -- `unknownRoomB`.
+
+This is why the "known" rooms' tile assignment is a real, verified ROM
+fact, not a guess: the ROM itself hands us the right table via this
+exact field, for every room that has a `roomSelectorTable` entry.
+
+The catch, restated plainly: this table has only 16 slots. The 320
+bank-5/bank-6 catalog records are a structurally similar but entirely
+SEPARATE, much larger data set -- none of them (beyond the coincidental
+index match for 8-13) has its own `roomSelectorTable` entry, so there
+is no known ROM structure that hands out "record N -> metatile table
+X" for arbitrary N. That absence -- not a wrong formula -- is the real
+reason the catalog's tile assignment can't currently be fixed the same
+way, and is the same "how does the ROM select ANY room beyond the 16
+known slots" mystery round 3/4 already left open.
