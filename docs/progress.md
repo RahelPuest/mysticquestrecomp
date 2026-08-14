@@ -7559,3 +7559,47 @@ but is now honestly earned, not a false negative that happened to
 match.** Full detail and the recorded lesson (prefer bulk `s.run()` +
 `.hit` checks over manual `w.step()` loops for real-time-sensitive
 watchpoint work) in rom-map.md's own dated entry.
+
+## Audit: does the $D49D/$D49E methodology bug affect other findings?
+
+Direct user question after the self-caught correction ("hat dieser bug
+auswirkungen auf andere erkenntinisse? wenn ja prüfen und fixen").
+Systematically checked every live-tracing script in this session's own
+scratchpad (100+ files) for the same class of bug (a `w.step()` loop
+whose count is silently treated as real frames without ever converting
+to real instructions or building on an already `s.run()`-reached
+checkpoint).
+
+**Result: genuinely isolated.** Only 4 scripts had the bug (`watch_d49d
+.py`, `watch_d49d_2.py`, `watch_d392.py`, `watch_d392_2.py`), all from
+this same session's connectivity investigation, all already found,
+fixed, and re-validated (see the dated "SELF-CAUGHT METHODOLOGY BUG"
+entry in rom-map.md). A 5th (`watch_d49d_full.py`) has the same
+pattern but was abandoned mid-setup before any real navigation ran --
+no conclusion was ever drawn from it.
+
+**Everything else checked out clean**, including the two most
+load-bearing pieces this session's own work depends on:
+- The `secondRoom`-cracking scripts (`trace_scroll_reveal.py`
+  through `trace_scroll_reveal4.py`) -- the exact real proof this
+  session's `sixthRoom` conclusion cites as precedent -- start from a
+  real `checkpoints.py` recipe (bulk, `s.run()`-based) and single-step
+  only a correctly-sized bounded window afterward (`MAX_STEPS=3_000_000`
+  for a documented "~40-frame window"). Valid.
+- Spot-checked 3 more historically load-bearing scripts spanning
+  different investigations (`trace_boss_defeat.py`, `trace_boss_move_
+  writer.py`, `get_bank_at_write.py`) -- all correctly built on a real
+  `checkpoints.py` recipe or explicit `core.run_frame()` loop before
+  switching to bounded `w.step()` precision tracing.
+- `definitive_reverify.py` (an earlier, explicit re-verification pass
+  this same session) already documents the correct convention in its
+  own docstring and uses a correctly-computed step budget (180M steps
+  for ~9000 real frames) -- the established pattern was already known
+  and correctly applied elsewhere; this session's bug was a one-off
+  lapse in 4 new scripts, not a repeat of an existing mistake.
+
+**Conclusion**: no further fix needed beyond the already-committed
+correction. The bug's blast radius was exactly the one finding already
+corrected -- it did not touch `sixthRoom`'s own conclusion, the
+`$242B`/metatile-table pipeline findings, or any earlier project
+history.
