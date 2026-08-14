@@ -29,11 +29,17 @@ function render_entity(main) {
 
     <h2 class="section-title">Felder</h2>
     <table class="data-table">
-      <thead><tr><th style="width:80px;">Offset</th><th>Feld</th><th>Bedeutung</th></tr></thead>
+      <thead><tr><th style="width:80px;">Offset</th><th>Feld</th><th style="width:150px;">Getter/Setter</th><th>Bedeutung</th></tr></thead>
       <tbody>
-        ${ENTITY_STRUCT.fields.map(f => `<tr><td class="num">+${f.offset}</td><td class="mono">${escapeHtml(f.name)}</td><td class="desc" style="color:var(--text-dim); font-size:13px;">${fieldMeaning(f.name)}</td></tr>`).join("")}
+        ${ENTITY_STRUCT.fields.map(f => `<tr><td class="num">+${f.offset}</td><td class="mono">${escapeHtml(f.name)}</td><td class="mono" style="font-size:12px; color:var(--text-dim);">${accessorCell(f)}</td><td class="desc" style="color:var(--text-dim); font-size:13px;">${escapeHtml(f.note) || fieldMeaning(f.name)}</td></tr>`).join("")}
       </tbody>
     </table>
+    ${ENTITY_STRUCT.pairedSetterAddress !== undefined ? `
+    <p class="page-lede" style="margin-top:14px; font-size:13px;">
+      Zusätzlich: <span class="mono">${hex(ENTITY_STRUCT.pairedSetterAddress)}</span> ist ein realer,
+      GEGUARDETER Setter, der +6/+7 als EINEN gepaarten 16-Bit-Wert behandelt (nicht als zwei
+      unabhängige Bytes) &mdash; übersprungen, sobald der Slot tot ist (ALIVE == 0xFF).
+    </p>` : ""}
   `;
 
   const slider = document.getElementById("slotSlider");
@@ -61,10 +67,21 @@ function render_entity(main) {
 }
 
 function abbrev(name) {
-  const map = { ALIVE: "ALIVE", TYPE: "TYPE", PARAM2: "P2", PARAM3: "P3", POSITION_Y: "Y", POSITION_X: "X", PARAM6: "P6", PARAM7: "P7", OAM_SHADOW_PTR: "OAM*" };
+  const map = { ALIVE: "ALIVE", TYPE: "TYPE", PARAM2: "P2", PARAM3: "P3", POSITION_Y: "Y", POSITION_X: "X", PARAM6: "P6", PARAM7: "P7", OAM_SHADOW_PTR: "OAM*", UNKNOWN_10: "?10", UNKNOWN_11: "?11" };
   return map[name] || name;
 }
 
+function accessorCell(f) {
+  if (f.accessorGet === undefined && f.accessorSet === undefined) return "&mdash;";
+  const g = f.accessorGet !== undefined ? `get ${hex(f.accessorGet)}` : "";
+  const s = f.accessorSet !== undefined ? `set ${hex(f.accessorSet)}` : "";
+  return [g, s].filter(Boolean).join("<br>");
+}
+
+// Fallback only -- ENTITY_STRUCT.fields[].note (from export_data.lua's
+// own curated FIELD_NOTES, 2026-08-14) is preferred when present; this
+// map exists so the table still shows something sensible if a field
+// has no server-provided note.
 function fieldMeaning(name) {
   const map = {
     ALIVE: "Alive/State-Byte: 0xFF = tot/leer (Sentinel), 0x08 beim echten Allocate.",
@@ -76,6 +93,8 @@ function fieldMeaning(name) {
     PARAM6: "Vom Aufrufer übergebener Parameter.",
     PARAM7: "Vom Aufrufer übergebener Parameter.",
     OAM_SHADOW_PTR: "Echter 16-Bit-LE-Zeiger auf den 8-Byte-OAM-Schatten-Block dieses Slots.",
+    UNKNOWN_10: "Feld jenseits des bisher dokumentierten Bereichs 0-8, real aber unbenannt.",
+    UNKNOWN_11: "Feld jenseits des bisher dokumentierten Bereichs 0-8, real aber unbenannt.",
   };
   return map[name] || "";
 }

@@ -7857,3 +7857,40 @@ headless-browser test asserting the exact expected annotations appear
 after stepping through both examples.
 
 Full suite: 421 passed, 0 failed.
+
+## Consolidation: $1F35 read-side chain, $C200 accessor family, TYPE retraction -- wired into the website (2026-08-14, "ok alles konsolidieren, implementieren, dokumentieren und auf der website updaten")
+
+Direct follow-up to a run of pure-investigation passes (see
+`events.md`'s own dated entries for the full disassembly trail):
+selector `0x0E`'s real read-side consumer chain for the actor-flag
+write ($4B4F -> $4B19 -> $404A), the `$C4E0`<->`$C200` bridge via
+`PARAM2`'s shared accessor, the full `$0C41`-`$0D1B` getter/setter
+family for the `$C200` `EntityStructLayout` struct (2 new fields, `+10`
+and `+11`, found), and a live-tested, honestly-retracted hypothesis
+("TYPE is attack-related" -- disproven via real mGBA watchpoints + a
+600,000-step execution check). No new gameplay behavior to wire into
+the LÖVE app this pass -- everything found is real ROM STRUCTURE, with
+its exact real-world/gameplay meaning still honestly open, so there is
+nothing yet safe to hook into `Field.lua`/combat code without
+guessing.
+
+**Website sync** (closing out the standing "keep rom-inspector in sync"
+item for this batch): `rom-inspector/tools/export_data.lua`'s entity-
+struct export now includes each field's real accessor addresses
+(`get`/`set`, from `EntityStructLayout.FIELD_ACCESSOR_ADDRESS`) and a
+short curated note per field (the TYPE retraction, PARAM2's heavy
+usage, the new `+10`/`+11` fields, the paired `+6`/`+7` setter) --
+regenerated `entity-struct.js`, which picks up the 2 new fields
+automatically (the export already iterates `EntityStructLayout.FIELD`
+generically). `entity.js` updated to show a Getter/Setter column and
+prefer the server-provided note over its own hardcoded German text.
+`open-questions.js` (hand-curated) updated: the existing "$1ED7/$1F35
+dispatcher families" entry now reflects the closed read-side chain and
+sharpens what's still open (the 8 action-codes' real meaning, the
+remaining selectors' deeper leaves); a new entry documents the
+`EntityStructLayout` findings including the TYPE retraction. Verified
+with a real headless-browser (jsdom + `canvas`) test asserting both
+pages render the new content -- not just a syntax check.
+
+Full Lua suite: 421 passed, 0 failed (pure documentation/data-export
+change, no Lua behavior touched).

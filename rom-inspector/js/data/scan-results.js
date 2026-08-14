@@ -58,6 +58,14 @@ const SCAN_RESULTS = {
       "count": 5
     },
     {
+      "address": "0x0d83",
+      "count": 4
+    },
+    {
+      "address": "0x01b2",
+      "count": 4
+    },
+    {
       "address": "0x0e77",
       "count": 4
     },
@@ -66,23 +74,15 @@ const SCAN_RESULTS = {
       "count": 4
     },
     {
-      "address": "0x0d83",
-      "count": 4
-    },
-    {
       "address": "0x2f7f",
       "count": 4
     },
     {
-      "address": "0x01b2",
-      "count": 4
-    },
-    {
-      "address": "0x0d1b",
+      "address": "0x3a0d",
       "count": 3
     },
     {
-      "address": "0x3a0d",
+      "address": "0x0d1b",
       "count": 3
     },
     {

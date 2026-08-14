@@ -159,9 +159,29 @@ writeJs("rom-tables.js", "ROM_TABLES", romTables,
 ----------------------------------------------------------------------
 -- 3. Entity struct layout
 ----------------------------------------------------------------------
+-- Curated (not code-derived, same convention this file's own header
+-- comment already flags): one short, honest summary per field, drawn
+-- from EntityStructLayout.lua's own dated doc comments -- so the
+-- website shows the real story (including retractions), not just raw
+-- offsets. Fields with no entry here simply show no note.
+local FIELD_NOTES = {
+  ALIVE = "0xFF = dead/empty sentinel. Setter ($0CA6) is GUARDED: once dead, a write attempt is immediately forced back to 0xFF -- no revival through this path.",
+  TYPE = "RETRACTED (2026-08-14): looked attack-related from static disassembly (3 real callers write slot 4 with small integers alongside PARAM2). Live mGBA-tested across a real attack: zero value changes, and the whole code region is NEVER REACHED. The 3 static call sites are real: what they're actually for is still open.",
+  PARAM2 = "The most heavily-used accessor found: 24 real getter + 17 real setter callers, spread across every ROM bank. The $C4E0 actor-command array's own slot-scan code ($4BE0, $278F) reads this field for each active $C4E0 slot's own ID byte (used as the $C200 index) and classifies its high nibble against 0x90/0xB0/0x10.",
+  PARAM6 = "No standalone accessor found -- $0CBA treats offsets +6/+7 as ONE paired 16-bit value (guarded the same way as ALIVE's setter), not two independent bytes.",
+  UNKNOWN_10 = "Field beyond the previously-documented 0-8 range, found 2026-08-14. Cross-confirmed via $404A (this project's own $C4E0 per-record tick handler), which reads it using the $C4E0 record's own ID byte as the $C200 slot index -- independent confirmation of that indexing convention.",
+  UNKNOWN_11 = "Field beyond the previously-documented 0-8 range, found 2026-08-14. Only 1 real setter call site found (bank 0); no getter callers found in the same block.",
+}
 local fieldList = {}
 for name, offset in pairs(EntityStructLayout.FIELD) do
-  fieldList[#fieldList + 1] = { name = name, offset = offset }
+  local accessor = EntityStructLayout.FIELD_ACCESSOR_ADDRESS[offset]
+  fieldList[#fieldList + 1] = {
+    name = name,
+    offset = offset,
+    accessorGet = accessor and accessor.get,
+    accessorSet = accessor and accessor.set,
+    note = FIELD_NOTES[name],
+  }
 end
 table.sort(fieldList, function(a, b) return a.offset < b.offset end)
 writeJs("entity-struct.js", "ENTITY_STRUCT", {
@@ -171,6 +191,7 @@ writeJs("entity-struct.js", "ENTITY_STRUCT", {
   playerSlotIndex = EntityStructLayout.PLAYER_SLOT_INDEX_HYPOTHESIS,
   despawnRoutine = EntityStructLayout.DESPAWN_ROUTINE_ADDRESS,
   allocateRoutine = EntityStructLayout.ALLOCATE_ROUTINE_ADDRESS,
+  pairedSetterAddress = EntityStructLayout.FIELD_ACCESSOR_ADDRESS.PAIRED_6_7_SET,
   fields = fieldList,
 }, "Real, VERIFIED WRAM entity-slot struct -- see src/import/EntityStructLayout.lua's own doc comment.")
 

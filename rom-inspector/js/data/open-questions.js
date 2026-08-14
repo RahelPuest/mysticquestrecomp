@@ -77,6 +77,11 @@ const OPEN_QUESTIONS = [
   {
     title: "$1ED7 / $1F35 dispatcher families: remaining unmapped selectors",
     area: "Script interpreter",
-    description: "Both are general 'selector -> bank-1/bank-3 handler' dispatch tables this project has partially mapped (enough to close several real opcodes) -- most individual selector slots in each table's own full range remain unexplored."
+    description: "UPDATED 2026-08-14: the $1F35 family's own read side is now traced end to end -- selector 0x0E ($4B4F) periodically scans the $C5A0 known-list and, via a per-entry helper ($4B19) and a real per-record tick handler ($404A), consumes what selector 0x0A/$4B70 writes (countdown/reload timers, a group-based branch, a further gated helper $4107). Selector 0x07 (previously unclassified) is now known to be its own separate small dispatcher. Still open: the exact real-world MEANING of the 8 action-code values themselves (0x04/0x05/0x0E/0x0F/0x1C/0x1D/0x1E/0x1F) -- two independent live-trace attempts at a real boss-defeat quest-flag moment both came back negative -- plus selectors 0x0B/0x0C/0x0D/0x0F's own deeper helper leaves ($0611/$0695/$08D4/$05EF/$3DCB/$24A7) and $1ED7's own selector range, neither re-visited this pass."
+  },
+  {
+    title: "EntityStructLayout ($C200): 2 new fields found, most still unnamed by real-world meaning",
+    area: "Combat / entity system",
+    description: "2026-08-14: the whole $0C41-$0D1B getter/setter accessor block for this struct was found and mapped (see the Entity-Struktur page), revealing 2 fields beyond the previously-known 0-8 range (offsets +10/+11) with real getters/setters and real callers, plus evidence PARAM6/PARAM7 (+6/+7) are used as ONE paired 16-bit value by at least one real caller, not two independent bytes. PARAM2 (+2) is confirmed as the single most heavily-used accessor found anywhere in this struct (24+17 real callers, every ROM bank) and bridges directly to the $C4E0 actor-command array's own slot-scan code. A live-tested hypothesis that TYPE (+1) held a dynamic, attack-related per-frame state was RETRACTED the same day (mGBA watchpoints + a direct 600,000-step execution check both came back negative -- the 3 real static call sites exist, but the code containing them is never reached during a normal attack). Open: the real-world meaning of +10, +11, PARAM2, and TYPE's own real 3 call sites, if not attack-related."
   },
 ];
