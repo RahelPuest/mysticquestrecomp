@@ -7409,3 +7409,77 @@ effect.
 Doc comment added to `ScriptOpcodeTable.lua` (no Lua behavior changed
 -- pure disassembly/documentation). Full Lua test suite: 421/421
 passing (unchanged).
+
+## Chasing the `+0x12` writer: negative on that specific question, but a real, concrete bridge to the already-known `$C200` entity struct found instead (2026-08-14, "weiter")
+
+Direct continuation, going after the bounded next step named above:
+who writes the `$C4E0` record's own `+0x12` embedded-pointer field.
+
+**The direct question: negative.** Scanned the whole ROM for both real
+addressing idioms that could compute a `+0x12` offset (`LD DE,0x0012 /
+ADD HL,DE` and `LD BC,0x0012 / ADD HL,BC`) -- only 4 real sites total,
+and all 4 are READS (selector `0x15`, its own newly-found sibling at
+`$4579`, a further reader at `$4840`, and `$404A`'s own already-mapped
+read). Cross-checked via the OTHER way code reaches a real `$C4E0`
+record -- all 10 real callers of `$429B` (the record resolver) --
+none write at `+0x12` either (two DO write nearby, at `+0x10` inside
+selector `0x02`'s body and `+0x0E` inside selector `0x09`'s body --
+real, but different fields). Reported honestly as a genuine negative,
+not stretched into a guess.
+
+**A real bonus finding along the way**: found the actual bulk
+"reset every slot" initializers -- bank-0 `$278F`'s own variant and a
+second, INLINE one embedded directly in selector `0x03`'s own body
+(`$C3B5`) -- both write the real `0xFF` sentinel into every slot's ID
+byte (`+0`) in a loop with stride `0x18` (24, the already-confirmed
+record size). Selector `0x03`'s own loop count is `0x0D` (13), not the
+`0x08` (8) used everywhere else this project has traced this array --
+a real, honest, UNRESOLVED discrepancy (not forced into one story):
+either the backing array genuinely has more than 8 real slots and most
+consumers only ever touch the first 8, or selector `0x03`'s reset walks
+past the array's own real end into adjacent WRAM by design (both
+plausible, neither confirmed).
+
+**The real payoff**: while checking `$4BE0` (already partially known,
+from the "System connectivity round 1" pass, only as "the `$C5AF`
+actor-count refresh routine" shared by selectors `0x13`/`0x14`) for a
+`+0x12` write, its own full body turned out to walk `$C4E0`'s slots and,
+for each one, use the slot's own ID byte AS AN INDEX into the ALREADY-
+KNOWN, ALREADY-NAMED `$C200` `EntityStructLayout` struct (the general
+player/enemy/NPC 16-byte-stride array this project mapped in an
+EARLIER session) -- via a shared helper, `$0C6D`, confirmed by direct
+disassembly to compute `HL = $C200 + slotIndex*16 + 2` (i.e. FIELD
+`PARAM2`), guarding on `FIELD.ALIVE == 0xFF` (returns 0 for a dead/
+empty slot). `$4BE0` then classifies the returned byte's HIGH NIBBLE
+against `0x90`/`0xB0`/`0x10`, counting matches. **This is a real,
+concrete, previously-missing bridge between this session's whole
+`$C4E0`/`$C5A0` investigation and the pre-existing, separately-mapped
+`EntityStructLayout` struct** -- the two systems, both independently
+real and well-documented on their own, now have a confirmed, direct
+connection point.
+
+**`$0C6D` is a real, GENERAL, heavily-used primitive, not one-off
+code**: a whole-ROM scan for its own real callers found **24** (plus
+**17** for its write-counterpart `$0C86`, `HL = $C200 + slotIndex*16 +
+2`, a swap-in-new-value/return-old-value primitive) -- spread across
+EVERY ROM bank (0, 1, 2, 3 all directly confirmed via sampled call
+sites), the widest caller spread of any `EntityStructLayout` accessor
+found so far. This decisively confirms `PARAM2` (previously just
+"caller-supplied param," meaning totally unknown) is a real, central,
+general-purpose field, not incidental per-caller scratch data -- and
+gives a concrete, well-scoped next step: `$0C6D`/`$0C86`'s ~35 OTHER
+call sites (mostly in bank 1/2, i.e. combat/dialogue/menu-adjacent
+code this project hasn't focused on as much as the map/actor-command
+machinery) are far more likely to reveal `PARAM2`'s real overall
+meaning quickly than more `$C4E0`-side tracing would.
+
+**Honest scope**: bank-0 `$278F`'s own classification only checks
+`0x90`/`0x10` (2 values, not `$4BE0`'s 3) -- a real, small, unexplained
+difference, reported as-is rather than papered over. `$278F` itself
+has only ONE real caller found (`$27BA`, its own adjacent wrapper) --
+narrow, but real. The exact real-world MEANING of `PARAM2` and of the
+`0x90`/`0xB0`/`0x10` category values remains open.
+
+Doc comments added to `EntityStructLayout.lua` (PARAM2's field
+comment). No Lua behavior changed -- pure disassembly/documentation.
+Full Lua test suite: 421/421 passing (unchanged).

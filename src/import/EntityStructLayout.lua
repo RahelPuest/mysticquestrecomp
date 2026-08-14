@@ -36,6 +36,27 @@ EntityStructLayout.SLOT_COUNT = 20
 EntityStructLayout.FIELD = {
   ALIVE = 0,     -- alive/state byte: 0xFF = dead/empty sentinel; 0x08 on real allocate
   TYPE = 1,      -- caller-supplied "type" param (real ROM meaning not decoded further)
+  -- REFINED (2026-08-14, "Bank-3-Funktionstabelle weiter verfolgen"
+  -- follow-up, chasing the $C4E0 actor-command array's own "+0x12
+  -- pointer field" writer): still just a "caller-supplied param" by
+  -- direct meaning, but now known to be a real, GENERAL, heavily-used
+  -- field, not incidental scratch data -- a dedicated getter/setter
+  -- pair (`$0C6D` read, `$0C86` swap; both `HL = $C200 + slotIndex*16
+  -- + 2`, `$0C6D` additionally guards on FIELD.ALIVE==0xFF returning 0)
+  -- has 24 + 17 real callers respectively, spread across EVERY ROM
+  -- bank (0/1/2/3 all confirmed), the widest caller spread of any
+  -- EntityStructLayout accessor found so far. The $C4E0 array's own
+  -- slot-scan code (bank-3 `$4BE0`, already known as the "$C5AF actor
+  -- count refresh" routine, and a bank-0 sibling at `$278F`) reads this
+  -- field via `$0C6D` for each active $C4E0 slot's own ID byte (used
+  -- AS the $C200 slot index) and classifies its HIGH NIBBLE against a
+  -- real, recurring value set (`0x90`/`0xB0`/`0x10` at `$4BE0`; only
+  -- `0x90`/`0x10` at `$278F` -- an honest, unresolved discrepancy, not
+  -- forced into one story). A concrete, well-scoped next step for
+  -- whoever continues: `$0C6D`/`$0C86`'s OTHER ~35 call sites (bank 1/
+  -- 2, i.e. outside the map/actor-command machinery this project has
+  -- mostly focused on) are far more likely to reveal PARAM2's real
+  -- overall meaning quickly than more $C4E0-side tracing.
   PARAM2 = 2,    -- caller-supplied param
   PARAM3 = 3,    -- real 0 at allocate time
   POSITION_Y = 4,   -- real Y position, pixel space
