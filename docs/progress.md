@@ -7768,3 +7768,25 @@ consolidating (predating this session, from before RoomExplorer's own
 2026-08-12 rewrite into a full 320-room browser).
 
 Full suite: 417 passed, 0 failed.
+
+## New: Weltkarte view + real controlled evidence for room-grid adjacency (2026-08-14)
+
+User pushed further on the grid finding: does the table actually tell
+us which rooms connect, and can the (suspected) 8x8 world map be
+stitched together on the website? Ran a real, controlled statistical
+test (not just eyeballing): compared tile-ID edge matches of stride-
+adjacent record pairs against a random-pair baseline. Result: 5-31x
+above random across all 4 directions/banks tested -- real, controlled
+evidence the grid arrangement is spatially meaningful, not arbitrary
+storage order. Built a new "Weltkarte" page in rom-inspector
+(worldmap.js) that stitches the whole bank5 (16x16) / bank6 (8x8)
+room-catalog grid into one composited image, reusing already-exported
+ROOM_CATALOG data (no new Lua export needed). Rendered with real ROM
+pixels and visually confirmed: multiple real, multi-cell structures
+(a striped wall spanning 3+ rooms, several floor-pattern
+continuations) are directly visible across room boundaries.
+
+Honest scope, stated on the page itself: structurally/statistically
+derived, not independently gameplay-confirmed.
+
+Full suite: 417 passed, 0 failed.

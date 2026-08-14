@@ -11,6 +11,7 @@ const SECTIONS = [
   { id: "scan", icon: "≈", label: "Whole-Corpus-Scan", group: "Interpreter" },
   { id: "rooms", icon: "⬢", label: "Raum-System", group: "Welt" },
   { id: "map", icon: "▦", label: "Map-Viewer", group: "Welt" },
+  { id: "worldmap", icon: "🗺", label: "Weltkarte", group: "Welt" },
   { id: "tiles", icon: "◱", label: "Tile-Viewer", group: "Welt" },
   { id: "text", icon: "“”", label: "Text-Encoding", group: "Welt" },
   { id: "questions", icon: "?", label: "Offene Fragen", group: "Status" },
@@ -22,6 +23,7 @@ function countFor(id) {
     if (id === "questions") return String(OPEN_QUESTIONS.length);
     if (id === "rooms") return String(ROOMS.length);
     if (id === "map") return String(ROOM_MAPS.length + ROOM_CATALOG.length);
+    if (id === "worldmap") return "16×16 / 8×8";
   } catch (e) { /* data not loaded yet */ }
   return "";
 }

@@ -46,7 +46,7 @@ function render_overview(main) {
       <div class="stat-card warn"><div class="value">${SCAN_RESULTS.errorOther}</div><div class="label">sonstiger Laufzeitfehler</div></div>
     </div>
 
-    <h2 class="section-title">Raum-Katalog <a href="#map" style="font-size:11px;">&rarr; Map-Viewer</a></h2>
+    <h2 class="section-title">Raum-Katalog <a href="#map" style="font-size:11px;">&rarr; Map-Viewer</a> <a href="#worldmap" style="font-size:11px;">&rarr; Weltkarte</a></h2>
     <p style="color:var(--text-dim); font-size:13px; max-width:700px;">
       Alle ${ROOM_CATALOG.length} echten Bank-5/Bank-6-Einträge (256 + 64 = zwei komplette
       Raum-Gitter, 16&times;16 bzw. 8&times;8, laut Header-Feldern) dekodieren strukturell sauber --
@@ -82,6 +82,7 @@ function sectionBlurb(id) {
     scan: "Live-Lauf aller 1357 echten Skripte gegen die aktuelle Abdeckung.",
     rooms: "Der bekannte Raum-Graph mit echten Übergangsmechanismen.",
     map: "Echte Raum-Tilemaps live zusammengesetzt -- die 8 verbundenen Räume plus alle 320 Katalog-Einträge (Kachel-Zuordnung strukturell hergeleitet, nicht per Gameplay bestätigt).",
+    worldmap: "Der komplette Raum-Katalog als ein Bild -- Bank 5 (16×16) und Bank 6 (8×8) im echten Gitter zusammengesetzt, statistisch belegt.",
     tiles: "Einzelne 8×8-Kacheln aus jeder bekannten Tileset-Adresse ansehen.",
     text: "Die Text-Encoding-Tabellen &mdash; live an echten ROM-Bytes ausprobieren.",
     questions: "Was diese Untersuchung (noch) nicht beantworten kann.",

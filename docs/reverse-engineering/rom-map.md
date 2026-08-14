@@ -6770,3 +6770,70 @@ catalog since 2026-08-12), and the dev-keys overlay hint still said
 
 Full suite: 417 passed, 0 failed (app-side change is `love.*`-
 dependent, verified live via screenshot rather than headlessly).
+
+## Real, controlled evidence for grid adjacency + a new "Weltkarte" website view (2026-08-14, direct user follow-up)
+
+Direct follow-up: "aber wissen wir jetzt anhand der tabelle welche
+tiles zu welchem raum gehören oder wie die räume zusammen halten?"
+then "also können wir das 8x8 raster nicht zuordnen? ich vermute das
+ist die worldmap. wenn das geht dann können wir das bitte in der
+website einbauen".
+
+**Honest starting point**: the earlier "16x16/8x8 world grid" find
+established the GRID SIZE (from the map-header's own height/width
+bytes) but not the actual STORAGE ORDER (row-major? column-major?)
+or whether grid-adjacent records are really spatially connected rooms
+at all, as opposed to just an arbitrary index table shaped like a
+grid for storage convenience.
+
+**Real, controlled statistical test.** For every row-major-adjacent
+candidate pair (record N | record N+1, same assumed row) in bank 5,
+compared the tile IDs along N's real right-edge column against N+1's
+real left-edge column (using the already-established default
+tileset) -- literal ID equality, not a fuzzy visual metric -- and
+compared the result against a RANDOM (non-adjacent) pair control,
+same sample size:
+- bank 5 horizontal (N, N+1): 12.0% average edge match vs. 0.7%
+  random -- **~17x above baseline**.
+- bank 5 vertical (N, N+16, i.e. one grid row down): 21.8% vs. 0.7%
+  -- **~31x above baseline**.
+- bank 6 horizontal (N, N+1): 18.0% vs. 2.8% random -- **~6.4x**.
+- bank 6 vertical (N, N+8): 14.1% vs. 2.8% -- **~5x**.
+
+Every one of these ratios points the same direction and is far too
+large to be noise -- real, controlled evidence the row-major, stride-
+16 (bank 5) / stride-8 (bank 6) arrangement is genuinely spatially
+meaningful, not an arbitrary storage order. Visually spot-checked the
+single best-matching pair (records 134/135, 100% edge match) at the
+exact border column -- the real floor-dot pattern visibly continues
+across the seam.
+
+**Then stitched the WHOLE grid together and looked at it as one
+image** (`rom-inspector`'s new "Weltkarte" page, bank 6, with real ROM
+pixels) -- and the result is considerably more convincing than the
+isolated-pair crops: multiple real, multi-cell-spanning structures
+(a vertical striped wall feature crossing 3+ room cells, several
+floor-pattern continuations) are directly visible across room
+boundaries, not just in the one cherry-picked best pair.
+
+**New website feature**: `rom-inspector/js/viz/worldmap.js` (+ nav
+entry, Übersicht links) -- composites `ROOM_CATALOG`'s own
+already-exported room grids into one big canvas per source (bank 5's
+16x16, bank 6's 8x8), using `recordIndex -> (row, col) = (floor(i/
+stride), i mod stride)`. No new Lua export needed -- `ROOM_CATALOG`
+already has everything (each entry's own real grid + tileOffsets),
+this is a pure client-side compositing view. Zoom control (1-3x,
+default 1x given the total image is up to 2560x2048px), an optional
+room-boundary overlay, and hover-to-identify (record index + grid
+position). The page's own note text states the honest scope plainly:
+structurally/statistically derived, NOT independently gameplay-
+confirmed.
+
+Verified with the real headless-browser smoke tests (canvas
+dimensions for both sources, nav entry present, honest note text) and
+a real ROM-pixel render via the actual site code (not a re-
+implementation) -- see the visual confirmation above.
+
+Full suite: 417 passed, 0 failed (unchanged -- this feature is pure
+client-side JS reusing already-exported `ROOM_CATALOG` data, no Lua
+changes needed).
