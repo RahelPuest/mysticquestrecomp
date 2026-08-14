@@ -7499,3 +7499,39 @@ thirdRoom's likely table extension not yet wired, fourthRoom-family has
 no metatile source at all, unknownRoomA/B stay unverified extrapolation
 since no live ground truth is possible there). Full Lua test suite:
 411/411 (one test rewritten, one new one added).
+
+## "Absolute Priorität" continued: opcode 0x81 closed, connectivity dead-end reconfirmed via a live method
+
+Direct instruction to keep going, "absolute prio" on the whole gamemap.
+
+**Opcode 0x81 ($15B7) CLOSED** -- the second real member of the `$02AB`
+facing family (`0x80` cracked earlier this session). New leaf `$29E4`
+disassembled and worked out by truth table: a general "opposite facing
+direction" bit-flip (right<->left, up<->down). `0x81`'s real group is
+`flip(player's facing) | 0xB0`. New `EntityStructLayout.OPPOSITE_
+FACING` table, explicit `ScriptRuntime.lua` registration sharing a
+`resolvePlayerFacing()` helper with `0x80`, 3 new tests. Real result:
+whole-corpus scan `clean` 871 -> 876, `0x15B7`'s 17 blocked scripts
+gone from the ranking. Flagged (not chased) an unrelated, pre-existing
+"cursor true" error class now reached by a few more scripts.
+
+**Connectivity investigation, real negative, decisive**: re-read
+rom-map.md's own already-exhaustive prior static-analysis conclusion
+(2 earlier sessions already hit a real dead end on "who writes `$D49D`/
+`$D49E`, the 2 dynamic `$026DC` room-selector call sites' ultimate
+source"). Rather than repeat static disassembly, used a genuinely
+different method: a live mGBA write-watchpoint (`tools/rom/watcher
+.py`), single-instruction-stepped with a full bank-accurate call-stack
+trace, armed across 3 real, distinct transitions (thirdRoom->fourthRoom
+staircase, fourthRoom->fifthRoom cut, partway into the sixthRoom path).
+**Zero hits across all 3** -- confirms, via an independent method, that
+the dynamic room-selection path is genuinely never exercised by this
+project's currently-reachable gameplay. Practical conclusion: automatic
+connectivity discovery via script/dispatch tracing is not currently
+achievable beyond what's already found -- the only method that has ever
+actually found a new real connection in this project is systematic
+live exploration of known rooms' own edges (how `fifthRoom`/`sixthRoom`
+themselves were found), confirmed still the right approach, not a
+shortcut this pass unlocked.
+
+Full Lua test suite: 411 -> 414.

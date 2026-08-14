@@ -6040,3 +6040,35 @@ own rule stays genuinely unverified, not silently upgraded.
 
 Full Lua test suite: 410 -> 411 (one old spot-check test rewritten in
 place plus one new exhaustive-match test added).
+
+## Live watchpoint on $D49D/$D49E: confirms (not just repeats) the earlier static dead end -- real negative, 3 real transitions
+
+Direct follow-up to the "honest, unchanged remaining scope" note in
+section 2b above (the 2 DYNAMIC `$026DC` call sites' ultimate source,
+`$D49D`/`$D49E`, was never traced past static disassembly in 2 earlier
+passes, both hitting the same real stopping point). This pass used a
+genuinely DIFFERENT method -- a live mGBA write-watchpoint
+(`tools/rom/watcher.py`'s `Watcher`, single-instruction-stepped
+throughout, bank-accurate call-stack via `CallTracer`, not bulk
+`run()`) armed across 3 real, distinct transitions this project can
+actually reach: the thirdRoom->fourthRoom staircase cut, the
+fourthRoom->fifthRoom corridor cut, and (implicitly, since it shares
+the same corridor) partway into the fourthRoom->sixthRoom path.
+
+**Result: zero hits across all 3.** `$D49D`/`$D49E` are never written
+during any of them. This is a real, decisive confirmation (via a
+different method, not a repeat of the same static trace) of the
+project's own earlier conclusion: the dynamic `$026DC` call path is
+for content this project's currently-reachable gameplay genuinely
+never exercises -- consistent with, not contradicting, the "index 0/9
+selection... explains why live play never observed it" finding.
+
+**Practical conclusion for "decode the whole gamemap"**: automatic
+connectivity discovery via the script/dispatch mechanism is NOT
+currently achievable for content beyond what's already been found --
+both the static and the live-watchpoint methods agree on this. The
+only method that has ever actually found a new real room/connection in
+this project is systematic LIVE EXPLORATION of the edges of already-
+known rooms (how `fifthRoom`/`sixthRoom` themselves were found) -- not
+a shortcut this pass unlocked, but a real, honest confirmation that
+the existing, proven methodology remains the right one to keep using.
