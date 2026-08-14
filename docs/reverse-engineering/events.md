@@ -7159,3 +7159,81 @@ exact gameplay MEANING of any value stays open, same honest boundary
 this file's own earlier sections already established).
 
 Full suite: 421 passed, 0 failed (was 417 -- +4 new MapTable tests).
+
+## Room-catalog exploration: deep-dive into all 320 rooms' real pairings + a Weltkarte performance fix (2026-08-14, "erkunde mal alle räume und die paarungen die sich daraus ergeben und versuche sinn daraus zu machen")
+
+Direct follow-up, systematic exploration of the 104 resolved `(group,
+action)` pairs across all 320 catalog rooms, plus a direct user bug
+report on the same page ("die welt map... öffnet entweder nicht oder
+sehr langsam").
+
+**Performance fix, addressed first (a real bug, not a research
+question)**: the Weltkarte's tile-drawing loop called the shared
+`gbDrawTile` (64 individual `ctx.fillRect` calls per 8x8 tile) for
+every placement -- up to 320 tiles x 256 rooms = ~82,000 placements
+for bank 5, i.e. **over 5 million individual canvas draw calls**,
+visibly hanging the browser's main thread (matches the report:
+"öffnet nicht oder sehr langsam"). Fixed: each tile is now decoded
+into a real, tiny native-resolution (8x8) offscreen `<canvas>` via
+ONE `putImageData` call, cached, then blitted at the target size with
+ONE hardware-accelerated `ctx.drawImage` per placement -- ~80-100x
+fewer draw calls. Measured via a real headless-browser render: full
+bank-5 grid (zoom 1) now renders in ~740ms (was effectively hanging
+before); zoom 3 (7680x6144px) in ~1.1s. Verified pixel-identical
+output to the old (correct but slow) renderer before/after.
+
+**Full grid exploration, both banks, ASCII-rendered for direct
+inspection** (script in this session's own scratchpad, not checked
+in -- the underlying data/logic IS checked in via `MapTable.
+tryDecodeActorAction`). Real, decisive finding: **grouping by `group`
+ALONE (ignoring the finer `action` value) produces a MUCH cleaner
+signal than the full pair**. Connected-component analysis (4-
+directional adjacency) on bank 5's 16x16 grid:
+- **group=5: 44 cells, dominated by ONE single 31-cell connected
+  blob** (70% of all group-5 rooms) -- covering most of the map's
+  upper/upper-left area. The `action` sub-values (0x05/0x0e/0x1d/0x1e)
+  interleave freely WITHIN this same broad region rather than forming
+  their own separate zones -- consistent with `action` being a finer-
+  grained variant WITHIN a `group`-defined area, not a competing
+  zone boundary.
+- **group=4: 19 cells, two solid clusters of 7 and 6** -- a real,
+  separate southern region (the map's own bottom-left/bottom-right
+  areas respectively).
+- **group=3: 18 cells, one 5-cell + one 4-cell cluster** plus
+  scattered singles -- a real but smaller, less unified signal.
+- **group=6: 20 cells, heavily scattered** (largest component only 5,
+  mostly singles/pairs) -- reads as individual scattered POINTS rather
+  than a zone, plausibly a different kind of marker (e.g. per-location
+  triggers/NPCs placed wherever geography dictates) rather than a
+  region-defining group.
+
+**Interpretation offered as a well-supported HYPOTHESIS, not a proven
+fact** (still no live gameplay reaches any of these 320 rooms, so no
+ground-truth check is possible the way `willyRoom`'s own collision
+was verified): `group` plausibly encodes something like a real MAP
+REGION/ZONE identity (one dominant region = 5, two more contained
+regions = 3/4), while `action` is a finer sub-classification within
+that region, and `group=6`'s scattered pattern suggests a
+qualitatively different role (individual points, not zones). The
+exact real-world MEANING of any specific value (what makes "region 5"
+different from "region 4" in actual game terms) remains open -- this
+project's own earlier live-tracing attempt at this exact opcode
+family already found two honest negatives trying to catch it live
+(this file's own "Live-tracing the flag mechanism" section above), so
+resolving that further would need either new live-trace evidence or
+following bank 3's own remaining, still-untraced function-table
+entries.
+
+Secondary check: the 216 unresolved records' own non-ACTOR_ACTION
+first opcodes were tallied by frequency -- dominated by `0x00`
+(handler `$3297`, real but undecoded, 67 rooms) and `0x79` (the
+already-separately-named `ACTOR_SLOT_POSITION_WITH_READINESS_PARAM`
+family, 14 rooms) -- both real, structured signals, but a further
+deep-dive into what THEY reveal is a well-scoped separate task, not
+chased this pass (keeping this session's own scope bounded to what
+was directly asked).
+
+No new decoder logic added this pass (pure exploration/documentation,
+using the already-committed `MapTable.tryDecodeActorAction`) beyond
+the real Weltkarte performance fix. Full Lua test suite: 421/421
+passing (unchanged -- this pass is JS-side + pure investigation).

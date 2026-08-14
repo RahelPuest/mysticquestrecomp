@@ -42,6 +42,24 @@
 // action=15 -> cols 0-3, rows 9-13) -- suggestive of real, distinct
 // game areas/zones, though the exact GAMEPLAY MEANING of each value
 // stays open (events.md's own honest note).
+//
+// "NUR GRUPPE" MODE ADDED (2026-08-14, "erkunde mal alle räume und
+// die paarungen... versuche sinn daraus zu machen"): real connected-
+// component analysis (4-directional adjacency, not just a bounding
+// box) found grouping by `group` ALONE gives a MUCH cleaner signal
+// than the full pair -- bank 5's own `group=5` rooms are 70% ONE
+// single 31-cell connected blob (`action` sub-values interleave
+// freely inside it, reading like a finer variant WITHIN one region,
+// not a competing boundary); `group=4` is two solid 6/7-cell
+// clusters; `group=3` is smaller but still real; `group=6` is
+// heavily scattered (mostly singles) -- plausibly individual points,
+// not a zone. See events.md's own dated section for the full numbers.
+
+// PERFORMANCE FIX (2026-08-14, direct user report: "die welt map
+// öffnet entweder nicht oder sehr langsam") lives right above
+// `drawWorld`'s own tile-drawing loop -- see that comment for the
+// real cause (millions of individual `fillRect` calls) and fix
+// (cached offscreen-canvas tiles + `drawImage` blitting).
 
 const WORLDMAP_SOURCES = {
   bank5: { stride: 16, label: "Bank 5 (16×16 = 256 Räume)" },
@@ -55,12 +73,47 @@ const ACTOR_ACTION_PALETTE = [
   "#e85f5f", "#f0a13a", "#e8d33a", "#7ed13a", "#3ad19a",
   "#3ac6d1", "#3a8ed1", "#7a5fe8", "#c05fe8", "#e85fb0",
 ];
-function actorActionColor(aa) {
+function actorActionColor(aa, groupOnly) {
   if (!aa) return null;
-  // Stable hash over (group,action) -> palette index (order-independent
-  // of insertion, so the same pair always gets the same color).
-  const key = aa.group * 31 + aa.action;
+  // Stable hash -> palette index (order-independent of insertion, so
+  // the same value always gets the same color). `groupOnly=true` --
+  // see this file's own "NUR GRUPPE" doc comment above -- hashes just
+  // `group`, giving the cleaner, more contiguous regional signal the
+  // connected-component analysis found.
+  const key = groupOnly ? aa.group : aa.group * 31 + aa.action;
   return ACTOR_ACTION_PALETTE[key % ACTOR_ACTION_PALETTE.length];
+}
+
+// PERFORMANCE FIX (2026-08-14, direct user report: "die welt map
+// öffnet entweder nicht oder sehr langsam"). The naive per-pixel
+// `gbDrawTile` (64 individual `ctx.fillRect` calls per 8x8 tile,
+// scaled) is fine for a single room (~320 tiles) but the full bank-5
+// grid draws up to 256 rooms x 320 tiles = ~82,000 tile placements --
+// over 5 MILLION `fillRect` calls, which visibly hangs the browser's
+// main thread. Fix: decode each tile ONCE into a real, tiny native-
+// resolution (8x8) offscreen `<canvas>` via a single `putImageData`
+// call (not 64 `fillRect`s), then blit it at the target size with one
+// hardware-accelerated `ctx.drawImage` call per placement -- the same
+// real GB pixel data, ~80-100x fewer, much cheaper draw calls.
+const GB_SHADES_RGB = GB_SHADES.map(hex => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF];
+});
+function tileToOffscreenCanvas(decoded) {
+  const c = document.createElement("canvas");
+  c.width = 8;
+  c.height = 8;
+  const cctx = c.getContext("2d");
+  const img = cctx.createImageData(8, 8);
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      const [r, g, b] = GB_SHADES_RGB[decoded[y][x]];
+      const o = (y * 8 + x) * 4;
+      img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
+    }
+  }
+  cctx.putImageData(img, 0, 0);
+  return c;
 }
 
 function render_worldmap(main) {
@@ -89,6 +142,9 @@ function render_worldmap(main) {
       <label style="font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="worldmapActorAction"> Actor-Action-Overlay (Event-Skript-Flag)
       </label>
+      <label style="font-size:12px; color:var(--text-dim);">
+        <input type="checkbox" id="worldmapGroupOnly"> nur nach Gruppe färben (sauberere Zonen)
+      </label>
     </div>
 
     <div id="worldmapNote" style="font-size:12px; color:var(--text-dim); margin:4px 0; max-width:900px;"></div>
@@ -104,6 +160,7 @@ function render_worldmap(main) {
   document.getElementById("worldmapZoom").addEventListener("input", drawWorld);
   document.getElementById("worldmapGrid").addEventListener("change", drawWorld);
   document.getElementById("worldmapActorAction").addEventListener("change", drawWorld);
+  document.getElementById("worldmapGroupOnly").addEventListener("change", drawWorld);
   onSectionUnload(RomBytes.onChange(() => { updateRomBanner(document.getElementById("worldmapRomBanner")); drawWorld(); }));
 
   function roomsForSource(key) {
@@ -129,11 +186,13 @@ function render_worldmap(main) {
     const zoom = parseInt(document.getElementById("worldmapZoom").value, 10) || 1;
     const showGrid = document.getElementById("worldmapGrid").checked;
     const showActorAction = document.getElementById("worldmapActorAction").checked;
+    const groupOnly = document.getElementById("worldmapGroupOnly").checked;
     if (showActorAction) {
       const withFlag = rooms.filter(r => r.actorAction).length;
-      note.innerHTML += ` <strong>Actor-Action-Overlay an:</strong> ${withFlag}/${rooms.length} Räume ` +
+      note.innerHTML += ` <strong>Actor-Action-Overlay an${groupOnly ? " (nur Gruppe)" : ""}:</strong> ${withFlag}/${rooms.length} Räume ` +
         `haben ein reales, erkanntes (group,action)-Paar (echte ROM-Handler-Bytes, siehe MapTable.lua) -- ` +
-        `Farbe = Paar-Identität. Bedeutet reales Akteur-Kommando (Actor-Command-Queue), <strong>nicht</strong> ` +
+        `Farbe = ${groupOnly ? "Gruppen-Identität (echte Connected-Component-Analyse zeigt hier die saubersten, größtenteils zusammenhängenden Zonen -- z.B. group=5: 70% ein einziger 31-Zellen-Block)" : "Paar-Identität"}. ` +
+        `Bedeutet reales Akteur-Kommando (Actor-Command-Queue), <strong>nicht</strong> ` +
         `Tile-Zuordnung -- gleiche Farbe kann echte, zusammenhängende Spielgebiete markieren.`;
     }
     const roomW = rooms[0].cols, roomH = rooms[0].rows;
@@ -145,6 +204,12 @@ function render_worldmap(main) {
     ctx2d.fillStyle = "#1a1e14";
     ctx2d.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Per-room tile-canvas cache (offscreen 8x8 canvases, see the
+    // performance-fix comment above `tileToOffscreenCanvas`) --
+    // `ctx2d.imageSmoothingEnabled = false` keeps the scaled blit
+    // crisp/pixelated instead of blurry, matching every other GB tile
+    // view on this site.
+    ctx2d.imageSmoothingEnabled = false;
     const tileCache = {};
     for (let i = 0; i < rooms.length; i++) {
       const room = rooms[i];
@@ -156,16 +221,17 @@ function render_worldmap(main) {
       for (let row = 0; row < room.rows; row++) {
         for (let col = 0; col < room.cols; col++) {
           const tileId = room.grid[row][col];
-          let decoded = cache[tileId];
-          if (decoded === undefined) {
+          let tileCanvas = cache[tileId];
+          if (tileCanvas === undefined) {
             const entry = room.tileOffsets[String(tileId)];
             const bytes = entry !== undefined ? resolveTileBytes(entry) : null;
-            decoded = bytes ? gbDecodeTile(bytes) : null;
-            cache[tileId] = decoded;
+            const decoded = bytes ? gbDecodeTile(bytes) : null;
+            tileCanvas = decoded ? tileToOffscreenCanvas(decoded) : null;
+            cache[tileId] = tileCanvas;
           }
           const dx = baseX + col * tilePx, dy = baseY + row * tilePx;
-          if (decoded) {
-            gbDrawTile(ctx2d, decoded, dx, dy, zoom);
+          if (tileCanvas) {
+            ctx2d.drawImage(tileCanvas, dx, dy, tilePx, tilePx);
           } else {
             ctx2d.strokeStyle = "#3a4a2a";
             ctx2d.strokeRect(dx + 0.5, dy + 0.5, tilePx - 1, tilePx - 1);
@@ -173,7 +239,7 @@ function render_worldmap(main) {
         }
       }
       if (showActorAction && room.actorAction) {
-        ctx2d.fillStyle = actorActionColor(room.actorAction);
+        ctx2d.fillStyle = actorActionColor(room.actorAction, groupOnly);
         ctx2d.globalAlpha = 0.45;
         ctx2d.fillRect(baseX, baseY, roomW * tilePx, roomH * tilePx);
         ctx2d.globalAlpha = 1;
