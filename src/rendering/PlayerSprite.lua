@@ -40,11 +40,13 @@ function PlayerSprite.new(romData, profile)
     phaseSeconds = data.framesPerPhase * FixedStep.STEP,
     -- `animGroup`: nil (idle) until the player first moves in a
     -- direction with real captured animation data (down/left/right).
-    -- Sticky thereafter -- see module doc comment: the real sprite
-    -- never reverts to idle once it starts walking, confirmed live, so
-    -- this doesn't invent a revert either. Moving UP has no confirmed
-    -- effect (see rom_profiles.lua's honest limit) -- treated as a
-    -- no-op, leaving whatever animGroup/phase was already showing.
+    -- Sticky thereafter while continuing in the SAME direction -- see
+    -- module doc comment: the real sprite never reverts to idle just
+    -- because movement stops, confirmed live, so this doesn't invent a
+    -- revert there either. Moving UP, specifically, DOES reset this to
+    -- nil/idle (2026-08-14 fix, see `:update`'s own doc comment) --
+    -- `idle` is this game's real up-facing pose, and continuing to
+    -- move up has no further confirmed animation beyond it anyway.
     animGroup = nil,
     phase = "B",
     timer = 0,
@@ -61,7 +63,27 @@ function PlayerSprite:update(dt, moving, facing)
   elseif facing == "left" or facing == "right" then
     group = "leftright"
   end
-  if not group then return end -- facing "up": no confirmed animation, no-op
+  if not group then
+    -- FIXED (2026-08-14, direct user report: "er schaut nicht in alle
+    -- Richtungen"): this used to be a bare no-op for facing=="up" --
+    -- correct for CONTINUING to move up (the real capture found no
+    -- further tile-content change there, see this module's own doc
+    -- comment), but wrong for the TRANSITION into up-movement from a
+    -- different direction: a no-op here leaves `self.animGroup` (and
+    -- therefore the rendered pose) stuck on whatever the PREVIOUS
+    -- direction was showing -- the sprite kept visually "facing left"
+    -- (or down) while the player was genuinely walking up. Since
+    -- `idle` (the pose `self.animGroup == nil` renders, see `:draw`)
+    -- IS this game's own real up-facing pose (`Player.DEFAULT_FACING
+    -- == "up"`, same graphic BattleIntro.lua's own live-OAM-verified
+    -- fix already confirmed), resetting to it here is a safe, real
+    -- improvement either way: at worst (if the real ROM does show
+    -- some not-yet-captured up-walk animation) it's the correct static
+    -- frame of it; at best it's exactly right, matching the same fix
+    -- already live-verified for the BattleIntro walk-in.
+    self.animGroup = nil
+    return
+  end
 
   if self.animGroup ~= group then
     self.animGroup = group
