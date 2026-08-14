@@ -21,6 +21,7 @@ function countFor(id) {
     if (id === "opcodes") return OPCODES.filter(o => o.status === "undecoded").length + " offen";
     if (id === "questions") return String(OPEN_QUESTIONS.length);
     if (id === "rooms") return String(ROOMS.length);
+    if (id === "map") return String(ROOM_MAPS.length + ROOM_CATALOG.length);
   } catch (e) { /* data not loaded yet */ }
   return "";
 }

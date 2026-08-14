@@ -559,6 +559,54 @@ Harness.testIfAvailable(
   end
 )
 
+Harness.testIfAvailable(
+  "RoomFloorLayout.buildRoomFromMapTableRecord: ALL 320 real bank-5/bank-6 records decode without error (2026-08-14, \"andere räume, so viele wie möglich\")",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- The room-catalog website export (rom-inspector/tools/export_data.lua)
+    -- now runs this exact function across every single one of the 320
+    -- real map-table records (256 bank-5 + 64 bank-6), not just the 2
+    -- spot-checked bank-6 records the test above already covers. This
+    -- is the regression guard for that: if some record's own real RLE
+    -- stream or metatile index ever decoded out of range (a genuine
+    -- possibility the 2-record spot check wouldn't catch), this test
+    -- would fail loudly instead of the website silently shipping a
+    -- broken/truncated catalog entry.
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local tilesetStart = profile.graphics.environmentTilesetBank12.fileOffsetStart
+    local tilesetEnd = profile.graphics.environmentTilesetBank12.fileOffsetEnd
+    local metatileOpts = profile.roomFloorLayoutPipeline.unknownRoomACandidates
+
+    local function checkAllRecords(mapTable, label)
+      local opts = {
+        metatileTableFileOffset = metatileOpts.metatileTableFileOffset,
+        tilesetFileOffset = mapTable.tilesetFileOffset,
+        metatileGridRows = metatileOpts.metatileGridRows,
+        metatileGridCols = metatileOpts.metatileGridCols,
+      }
+      for recordIndex = 0, mapTable.recordCount - 1 do
+        local grid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIndex, opts)
+        Harness.assertEqual(#grid, 16,
+          label .. " record " .. recordIndex .. ": expected 16 real grid rows")
+        for row = 1, 16 do
+          Harness.assertEqual(#grid[row], 20,
+            label .. " record " .. recordIndex .. " row " .. row .. ": expected 20 real grid cols")
+          for col = 1, 20 do
+            local off = grid[row][col]
+            Harness.assertTrue(off >= tilesetStart and off < tilesetEnd,
+              string.format("%s record %d: grid[%d][%d]=%#x outside the real environment tileset bounds",
+                label, recordIndex, row, col, off))
+          end
+        end
+      end
+    end
+
+    checkAllRecords(profile.mapTable, "bank5")
+    checkAllRecords(profile.mapTableBank6, "bank6")
+  end
+)
+
 if romData then
   print("(RoomFloorLayout ROM-dependent tests ran against a real dev ROM)")
 end

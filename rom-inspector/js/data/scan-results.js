@@ -45,24 +45,24 @@ const SCAN_RESULTS = {
       "count": 8
     },
     {
+      "address": "0x3a1c",
+      "count": 7
+    },
+    {
       "address": "0x1046",
       "count": 7,
       "note": "Third member of the same palette-fade family as 0xBC/0xFB -- reads two real shared gradient lookup tables ($101A/$1030) and writes the result into the pending-palette-write cell or WRAM $D3A3, then calls a further untraced leaf ($1142)."
-    },
-    {
-      "address": "0x3a1c",
-      "count": 7
     },
     {
       "address": "0x11f8",
       "count": 5
     },
     {
-      "address": "0x0e77",
+      "address": "0x01b2",
       "count": 4
     },
     {
-      "address": "0x0dbc",
+      "address": "0x0e77",
       "count": 4
     },
     {
@@ -70,7 +70,7 @@ const SCAN_RESULTS = {
       "count": 4
     },
     {
-      "address": "0x01b2",
+      "address": "0x0dbc",
       "count": 4
     },
     {

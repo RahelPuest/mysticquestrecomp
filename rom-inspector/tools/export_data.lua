@@ -25,6 +25,7 @@ local EntityStructLayout = require("src.import.EntityStructLayout")
 local TextDecoder = require("src.import.TextDecoder")
 local RomScriptStream = require("src.scripting.RomScriptStream")
 local ScriptRuntime = require("src.scripting.ScriptRuntime")
+local RoomFloorLayout = require("src.import.RoomFloorLayout")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -373,6 +374,69 @@ end
 table.sort(roomMaps, function(a, b) return a.name < b.name end)
 writeJs("room-maps.js", "ROOM_MAPS", roomMaps,
   "Every real, decoded room/screen tilemap (grid of tile IDs + tile ID -> ROM file offset lookup) -- read directly from rom_profiles.lua's own graphics.<name>.grid/tileOffsets. No tile PIXEL data is embedded -- the Tile/Map viewer pages decode it live from a user-supplied ROM file, entirely client-side.")
+
+----------------------------------------------------------------------
+-- 6c. Room CATALOG -- ALL 320 real, individually-decodable bank-5/
+--     bank-6 map-table records (2026-08-14, "andere räume, so viele
+--     wie möglich, raumdaten reicht"), not just the 8 rooms real
+--     gameplay actually reaches. Reuses the EXACT SAME already-tested
+--     pipeline `src/app/states/RoomExplorer.lua`'s dev-only F8 browser
+--     already drives live in the LÖVE app
+--     (`RoomFloorLayout.buildRoomFromMapTableRecord` +
+--     `toTileGridBackgroundData`) -- no new discovery here, just
+--     exporting an already-verified capability as static site data so
+--     it's browsable without a live LÖVE session.
+--
+--     HONEST SCOPE, carried over unchanged from RoomExplorer.lua's own
+--     doc comment: all 320 records decode as real, coherent ROM ART
+--     (this project's own `tile_entropy()` heuristic + visual spot
+--     checks already confirmed this for a representative sample of
+--     both tables -- see rom-map.md's "World scope" sections). Only
+--     bank-5 records 8-13 (`unknownRoomACandidates.rooms`) are
+--     ADDITIONALLY confirmed to be `unknownRoomA`'s own specific real
+--     dungeon rooms (`roomSelector` N's own real layout, all 6
+--     rendered and eyeballed). The other 314 are real ROM data with no
+--     known live gameplay trigger -- tagged `confirmed=false` below so
+--     the site shows this distinction rather than silently upgrading
+--     their status.
+----------------------------------------------------------------------
+local roomCatalog = {}
+local confirmedBank5 = {}
+for _, idx in ipairs(profile.roomFloorLayoutPipeline.unknownRoomACandidates.rooms) do
+  confirmedBank5[idx] = true
+end
+local catalogMetatileTableFileOffset =
+  profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileTableFileOffset
+local function exportCatalogSource(mapTable, sourceLabel, confirmedSet)
+  local opts = {
+    metatileTableFileOffset = catalogMetatileTableFileOffset,
+    tilesetFileOffset = mapTable.tilesetFileOffset,
+    metatileGridRows = 8,
+    metatileGridCols = 10,
+  }
+  for recordIndex = 0, mapTable.recordCount - 1 do
+    local fileOffsetGrid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIndex, opts)
+    local room = RoomFloorLayout.toTileGridBackgroundData(fileOffsetGrid, opts.tilesetFileOffset)
+    local tileOffsets = {}
+    for tileId, off in pairs(room.tileOffsets) do
+      tileOffsets[tostring(tileId)] = off
+    end
+    roomCatalog[#roomCatalog + 1] = {
+      name = string.format("%s-record-%03d", sourceLabel, recordIndex),
+      source = sourceLabel,
+      recordIndex = recordIndex,
+      confirmed = (confirmedSet and confirmedSet[recordIndex]) or false,
+      cols = room.grid[1] and #room.grid[1] or 0,
+      rows = #room.grid,
+      grid = room.grid,
+      tileOffsets = tileOffsets,
+    }
+  end
+end
+exportCatalogSource(profile.mapTable, "bank5", confirmedBank5)
+exportCatalogSource(profile.mapTableBank6, "bank6", nil)
+writeJs("room-catalog.js", "ROOM_CATALOG", roomCatalog,
+  "ALL 320 real, individually-decodable bank-5 (256 records) + bank-6 (64 records) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. `confirmed=true` marks the 6 bank-5 records (8-13) additionally proven to be unknownRoomA's own specific, reachable rooms; every other entry is real, coherent ROM art (tile_entropy-checked) with no known live gameplay trigger -- see rom-map.md's 'World scope' sections for the full honest-scope reasoning.")
 
 writeJs("font-tileset.js", "FONT_TILESET", {
   fileOffset = profile.graphics.font.fileOffset,

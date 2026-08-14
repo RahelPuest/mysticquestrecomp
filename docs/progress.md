@@ -7634,3 +7634,30 @@ since it's real). Hand-fixed the one stale hand-curated line in
 still describing "fourthRoom's two 'cut' exits").
 
 Full suite green: **414 passed, 0 failed, 0 skipped**.
+
+## Room catalog: all 320 bank-5/bank-6 rooms exported as room data (2026-08-14)
+
+User: "jetzt bitte andere räume, so viele wie möglich, mir reichen
+erstmal die raumdaten" -- decode more rooms, room data alone is
+enough, no connectivity/gameplay integration needed this round.
+
+Leveraged the already-verified 320-room decode pipeline
+(`RoomFloorLayout.buildRoomFromMapTableRecord`, previously only
+reachable live via `RoomExplorer.lua`'s dev-only F8 browser) and
+exported it as static data: `rom-inspector/tools/export_data.lua` now
+writes `rom-inspector/js/data/room-catalog.js` with all 256 bank-5 +
+64 bank-6 records (grid + tileOffsets each), wired into the Map-Viewer
+as a second, clearly-labeled `<optgroup>` alongside the 8 real
+connected rooms, plus a new Übersicht stat block. Only the 6 already-
+proven `unknownRoomA` records (bank-5 8-13) are marked `confirmed`;
+the other 314 are honestly labeled as real ROM art with no known
+gameplay trigger, not silently promoted to "real room."
+
+Verified with a real headless-browser render (jsdom + `canvas`
+package) against the actual served site, not just a syntax check:
+combined dropdown renders 334 options across 2 optgroups, selecting
+confirmed/unconfirmed catalog entries produces the right note text,
+canvas draws real pixel content at the right size. Added a new Lua
+regression test decoding all 320 records (previously only 2 were
+spot-checked) to guard the export against a latent out-of-range
+record. Full suite: 415 passed, 0 failed.

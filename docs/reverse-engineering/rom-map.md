@@ -6360,3 +6360,62 @@ direct, expected fallout (one fewer real recorded landing position).
 Full suite green afterward: 414 passed, 0 failed. `rom-inspector/js
 /data/open-questions.js`'s "No real camera-scroll rendering" entry
 corrected to match (was still describing "two 'cut' exits").
+
+## Room catalog: all 320 bank-5/bank-6 rooms exported as real room DATA (2026-08-14)
+
+Direct follow-up on user request ("jetzt bitte andere räume, so viele
+wie möglich, mir reichen erstmal die raumdaten" -- decode as many
+other rooms as possible, room DATA alone is enough for now, no
+connectivity/gameplay wiring needed this round).
+
+No new discovery was needed: `src/app/states/RoomExplorer.lua`'s
+dev-only F8 browser has already been able to decode all 256 bank-5 +
+64 bank-6 map-table records LIVE, straight from the ROM, since
+2026-08-12 (`RoomFloorLayout.buildRoomFromMapTableRecord` +
+`toTileGridBackgroundData`, the exact same general pipeline used
+everywhere else). What was missing was making that already-verified
+capability available as **static room data** outside a live LÖVE
+session -- exactly what "raumdaten reicht" asks for.
+
+**What was done**: `rom-inspector/tools/export_data.lua` gained a new
+export section that runs this pipeline across ALL 320 records (not
+just the 2 bank-6 spot checks the test suite already covered) and
+writes the result to a new `rom-inspector/js/data/room-catalog.js`
+(`ROOM_CATALOG`, ~1.6 MB, 320 entries of `{name, source, recordIndex,
+confirmed, cols, rows, grid, tileOffsets}`). Runs in well under a
+second (pure ROM-static decode, no live emulation).
+
+**Honest scope, unchanged from RoomExplorer.lua's own doc comment**:
+every one of the 320 entries decodes as real, coherent ROM art
+(`tile_entropy()` + visual spot checks already established this for a
+representative sample of both tables). Only the 6 bank-5 records 8-13
+(`unknownRoomACandidates.rooms`) are ADDITIONALLY proven to be
+`unknownRoomA`'s own specific, real dungeon rooms -- tagged
+`confirmed=true`. The other 314 have no known live gameplay trigger;
+`confirmed=false` keeps that distinction visible rather than silently
+upgrading their status.
+
+**Website wiring**: the Map-Viewer (`rom-inspector/js/viz/mapviewer.js`)
+now shows a combined dropdown with two `<optgroup>`s -- "Echte,
+verbundene Räume" (the original `ROOM_MAPS`, unchanged) and "Raum-
+Katalog" (the new 320 entries, confirmed ones marked with a "✓"),
+plus a note line under the toolbar spelling out the confirmed/
+unconfirmed distinction for whichever entry is selected. The Übersicht
+page gained a "Raum-Katalog" stat block (320 total / 6 confirmed / 4
+real connected rooms). Verified end-to-end with a real headless-
+browser render (jsdom + the `canvas` package, not just a syntax
+check): both optgroups render with the right counts (14 + 320 = 334
+options), selecting a confirmed vs. unconfirmed catalog entry produces
+the right note text, and the canvas actually draws real pixel content
+at the expected size.
+
+**New regression test**: `tests/import/room_floor_layout_test.lua`
+gained a test that runs `buildRoomFromMapTableRecord` across ALL 320
+records (not just the 2 the existing spot-check test already covered)
+and asserts every single one produces a real 16x20 grid with every
+cell inside the real environment-tileset bounds -- the direct
+regression guard for the new website export, since a bad record deep
+in the middle of 320 would not have been caught by the earlier 2-
+record spot check.
+
+Full suite: 415 passed, 0 failed (was 414 -- +1 new test).
