@@ -376,25 +376,80 @@ function RoomFloorLayout.buildPixelGridFromTileset(romData, layout)
   local metatileCount = layout.metatileGridRows * layout.metatileGridCols
   local indices = RoomFloorLayout.decodeLayoutStream(
     romData, layout.layoutStreamFileOffset, layout.rleLength, metatileCount)
+  return RoomFloorLayout.buildPixelGridFromIndices(romData, indices, layout)
+end
+
+--- Finishing step shared by `buildPixelGridFromTileset` (RLE mode) and
+-- `buildRoomFromTemplatedMapTableRecord` (Templated mode, 2026-08-14) --
+-- factored out (same real per-metatile logic, unchanged) so both real
+-- decode paths turn a flat metatile-INDEX array into the same final
+-- pixel-tile-file-offset grid shape, however that index array itself
+-- was produced. `indices` must already be a flat, row-major array of
+-- `metatileGridRows*metatileGridCols` metatile-table indices.
+function RoomFloorLayout.buildPixelGridFromIndices(romData, indices, opts)
+  assert(type(opts) == "table" and opts.metatileTableFileOffset and opts.tilesetFileOffset and
+    opts.metatileGridRows and opts.metatileGridCols,
+    "RoomFloorLayout.buildPixelGridFromIndices expects opts.metatileTableFileOffset/" ..
+    "tilesetFileOffset/metatileGridRows/metatileGridCols")
 
   local grid = {}
-  for r = 1, layout.metatileGridRows * 2 do
+  for r = 1, opts.metatileGridRows * 2 do
     grid[r] = {}
   end
 
-  for mr = 0, layout.metatileGridRows - 1 do
-    for mc = 0, layout.metatileGridCols - 1 do
-      local index = indices[mr * layout.metatileGridCols + mc + 1]
-      local mt = RoomFloorLayout.readMetatile(romData, layout.metatileTableFileOffset, index)
+  for mr = 0, opts.metatileGridRows - 1 do
+    for mc = 0, opts.metatileGridCols - 1 do
+      local index = indices[mr * opts.metatileGridCols + mc + 1]
+      local mt = RoomFloorLayout.readMetatile(romData, opts.metatileTableFileOffset, index)
       local row1, row2 = mr * 2 + 1, mr * 2 + 2
       local col1, col2 = mc * 2 + 1, mc * 2 + 2
-      grid[row1][col1] = RoomFloorLayout.resolveGfxTileFileOffset(layout.tilesetFileOffset, mt.gfxTL)
-      grid[row1][col2] = RoomFloorLayout.resolveGfxTileFileOffset(layout.tilesetFileOffset, mt.gfxTR)
-      grid[row2][col1] = RoomFloorLayout.resolveGfxTileFileOffset(layout.tilesetFileOffset, mt.gfxBL)
-      grid[row2][col2] = RoomFloorLayout.resolveGfxTileFileOffset(layout.tilesetFileOffset, mt.gfxBR)
+      grid[row1][col1] = RoomFloorLayout.resolveGfxTileFileOffset(opts.tilesetFileOffset, mt.gfxTL)
+      grid[row1][col2] = RoomFloorLayout.resolveGfxTileFileOffset(opts.tilesetFileOffset, mt.gfxTR)
+      grid[row2][col1] = RoomFloorLayout.resolveGfxTileFileOffset(opts.tilesetFileOffset, mt.gfxBL)
+      grid[row2][col2] = RoomFloorLayout.resolveGfxTileFileOffset(opts.tilesetFileOffset, mt.gfxBR)
     end
   end
   return grid
+end
+
+--- Templated-mode (encodingMode 1) sibling of `buildRoomFromMapTableRecord`
+-- -- decodes record `recordIndex` from a Templated `mapTable` profile
+-- (e.g. `rom_profiles.lua`'s `mapTableBank7`) by RLE-decoding the map's
+-- own shared base-room template (`MapTable.readTemplatedHeader`) and
+-- applying that record's own real diff list on top
+-- (`MapTable.applyTemplatedDiff`) -- see that function's own doc
+-- comment for the CRACKED format and its evidence. Same `opts`/return
+-- shape as `buildRoomFromMapTableRecord`; normally called THROUGH that
+-- function (it dispatches here automatically based on the map's own
+-- real header `encodingMode`), not directly, but exposed separately so
+-- callers who already know they have a Templated map can skip the
+-- header re-read.
+function RoomFloorLayout.buildRoomFromTemplatedMapTableRecord(romData, mapTable, recordIndex, opts)
+  assert(type(opts) == "table" and opts.metatileTableFileOffset and opts.tilesetFileOffset and
+    opts.metatileGridRows and opts.metatileGridCols,
+    "RoomFloorLayout.buildRoomFromTemplatedMapTableRecord expects opts.metatileTableFileOffset/" ..
+    "tilesetFileOffset/metatileGridRows/metatileGridCols")
+
+  local MapTable = require("src.import.MapTable")
+  local header = MapTable.readMapHeader(romData, mapTable)
+  assert(header.encodingMode == 1,
+    "RoomFloorLayout.buildRoomFromTemplatedMapTableRecord: header names encodingMode " ..
+    tostring(header.encodingMode) .. ", not 1 (Templated) -- use buildRoomFromMapTableRecord " ..
+    "(it dispatches correctly) or MapTable.decodeRoomTiles for RLE/mode 0")
+
+  local templated = MapTable.readTemplatedHeader(romData, mapTable)
+  local gridCount = opts.metatileGridRows * opts.metatileGridCols
+  local baseIndices = RoomFloorLayout.decodeLayoutStream(
+    romData, templated.templateFileOffset, header.rleLength, gridCount)
+
+  assert(recordIndex >= 0 and recordIndex < mapTable.recordCount,
+    "RoomFloorLayout.buildRoomFromTemplatedMapTableRecord: record " .. tostring(recordIndex) ..
+    " out of range (recordCount=" .. tostring(mapTable.recordCount) .. ")")
+  local dataFileOffset = MapTable.recordDataFileOffset(romData, mapTable, recordIndex)
+
+  local indices = MapTable.applyTemplatedDiff(
+    romData, dataFileOffset, baseIndices, opts.metatileGridRows, opts.metatileGridCols)
+  return RoomFloorLayout.buildPixelGridFromIndices(romData, indices, opts)
 end
 
 --- The real, general entry point: decode ANY record from ANY real
@@ -423,7 +478,15 @@ end
 -- same real `[encodingMode, rleLength]` header plus the record's own
 -- real `layoutStreamFileOffset`; factored out here (2026-08-12, quick
 -- win #2) so the two callers can't drift apart on how a record's
--- stream address is computed.
+-- stream address is computed. RLE/mode-0 ONLY, by design -- Templated/
+-- mode-1's own base+diff scheme has no single contiguous
+-- "layoutStreamFileOffset" to hand back this way, so `buildRoom
+-- FromMapTableRecord` dispatches to the SEPARATE `buildRoomFrom
+-- TemplatedMapTableRecord` path before ever reaching this helper (see
+-- that function). `buildCollisionGridFromMapTableRecord` has not been
+-- extended the same way yet -- real per-room COLLISION for Templated
+-- rooms remains a genuinely open, separate task, honestly still
+-- rejected here.
 local function resolveMapTableRecordStream(romData, mapTable, recordIndex, callerName)
   assert(type(romData) == "string", callerName .. " expects a byte string")
   assert(type(mapTable) == "table" and mapTable.pointerTableFileOffset and mapTable.bankFileStart,
@@ -433,9 +496,9 @@ local function resolveMapTableRecordStream(romData, mapTable, recordIndex, calle
   local header = MapTable.readMapHeader(romData, mapTable)
   assert(header.encodingMode == 0,
     callerName .. ": unimplemented encodingMode " .. tostring(header.encodingMode) ..
-    " (only RLE/mode 0 is implemented -- e.g. bank 7's own real 'Templated' mode 1 " ..
-    "is a genuinely different, still-undecoded format, see rom-map.md's own honest " ..
-    "note -- not silently guessed at here)")
+    " (only RLE/mode 0 is implemented in THIS helper -- Templated/mode 1's own tile " ..
+    "decode is implemented separately, see RoomFloorLayout.buildRoomFromTemplatedMapTableRecord, " ..
+    "but its COLLISION grid is not -- not silently guessed at here)")
 
   local records = MapTable.decode(romData, mapTable)
   local record = records[recordIndex + 1]
@@ -445,11 +508,24 @@ local function resolveMapTableRecordStream(romData, mapTable, recordIndex, calle
   return layoutStreamFileOffset, header.rleLength
 end
 
+-- UPDATED 2026-08-14 ("weiter bohren bis es fertig ist"): now dispatches
+-- on the map's own real header `encodingMode` -- mode 0 (RLE) via the
+-- original path below, mode 1 (Templated) via `buildRoomFromTemplated
+-- MapTableRecord` (see that function's own doc comment for the CRACKED
+-- format). Callers no longer need to know or care which encoding a
+-- given `mapTable` profile uses -- this is genuinely now "ANY record
+-- from ANY real MapTable-shaped source," matching the promise above.
 function RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIndex, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and opts.tilesetFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
     "RoomFloorLayout.buildRoomFromMapTableRecord expects opts.metatileTableFileOffset/" ..
     "tilesetFileOffset/metatileGridRows/metatileGridCols")
+
+  local MapTable = require("src.import.MapTable")
+  local header = MapTable.readMapHeader(romData, mapTable)
+  if header.encodingMode == 1 then
+    return RoomFloorLayout.buildRoomFromTemplatedMapTableRecord(romData, mapTable, recordIndex, opts)
+  end
 
   local layoutStreamFileOffset, rleLength = resolveMapTableRecordStream(
     romData, mapTable, recordIndex, "RoomFloorLayout.buildRoomFromMapTableRecord")

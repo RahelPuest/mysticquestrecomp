@@ -3072,6 +3072,67 @@ RomProfiles.PROFILES = {
       tilesetFileOffset = 0x32000,
     },
 
+    -- A THIRD real map/room-block table -- bank 7, the OTHER real
+    -- encoding this ROM's own per-map header names (`encodingMode=1`,
+    -- "Templated" -- see `MapTable.readMapHeader`'s own doc comment).
+    -- Found the same way as `mapTableBank6` (scan every bank's first 4
+    -- bytes for the documented `[encodingMode, rleLength, h, w]` shape):
+    -- `01 04 08 08` at file `0x1C000`.
+    --
+    -- CRACKED end to end (2026-08-14, direct user instruction "weiter
+    -- bohren bis es fertig ist" -- see rom-map.md's own "bank 7
+    -- Templated revisited, CRACKED" section for the full evidence
+    -- trail). Structural shape (all boundaries land exactly, zero slack
+    -- bytes): 4-byte header, then a 2-byte base-room TEMPLATE pointer
+    -- (`0x411e`, CPU addr -> file `0x1C11E`), then a 24-byte per-map
+    -- door-data block (raw bytes captured, semantic bit layout NOT
+    -- decoded), then the usual 64-record `(headerPtr,dataPtr)` pointer
+    -- list starting at file `0x1C01E` (same shape/count as bank 6's own
+    -- table) -- ending EXACTLY at the template pointer's own file
+    -- offset, `0x1C11E`, with zero gap. RLE-decoding the template
+    -- (`MapTable.rleDecode`, this map's own `rleLength=4`) produces
+    -- exactly 80 tiles, consuming exactly enough bytes to land
+    -- precisely on record 0's own header pointer (`0x1C14A`) -- a
+    -- second independently-derived boundary match.
+    --
+    -- Each of the 64 records' own data blob is a real DIFF against that
+    -- shared base template (`MapTable.applyTemplatedDiff`): a 4-byte
+    -- per-record prefix (small values, not yet decoded -- plausibly
+    -- door/exit-flag data) followed by `(value, position)` byte pairs,
+    -- `position = (row<<4)|col`, terminated by position byte `0xFF`.
+    -- VERIFIED against all 64 real records: 566/566 real diff positions
+    -- decode to valid `(row,col)` pairs (zero exceptions), and every one
+    -- of the 64 reconstructed rooms renders as real, structurally
+    -- coherent, VISUALLY DISTINCT dungeon art (`tile_entropy()`
+    -- 1.30-1.40 bits, zero outliers -- plus direct PNG eyeballing of 6
+    -- spot-checked records, each genuinely different room content).
+    --
+    -- Tile ASSIGNMENT uses the same `genericCatalogMetatileTableFileOffset`
+    -- default as `mapTable`/`mapTableBank6` (not independently
+    -- ground-truth-verified against live gameplay -- no playthrough
+    -- reaches these rooms). Real per-room COLLISION is NOT implemented
+    -- for this table (see `RoomFloorLayout.lua`'s own honest note on
+    -- `resolveMapTableRecordStream`) -- a genuinely separate, still-open
+    -- task. The 24-byte map-level door data and each record's own
+    -- 4-byte prefix remain undecoded -- this milestone was "can we
+    -- reconstruct the real room ART," not "do we understand every byte."
+    mapTableBank7 = {
+      status = "VERIFIED end to end (Templated/mode-1 structure + base-template/diff tile decode, 2026-08-14); " ..
+        "tile ASSIGNMENT uses genericCatalogMetatileTableFileOffset like mapTable/mapTableBank6, not " ..
+        "independently ground-truth-verified against live gameplay; door-data bytes (map-level 24 + " ..
+        "per-record 4) and real collision remain undecoded/unimplemented",
+      bankFileStart = 0x1C000,
+      bank = 7,
+      -- The record-pointer list itself starts at +30 (4-byte header + 2-byte
+      -- template pointer + 24-byte door data), NOT +4 like mapTable/mapTableBank6 --
+      -- a real, Templated-mode-specific structural difference (see doc
+      -- comment above), not a typo.
+      pointerTableFileOffset = 0x1C01E,
+      recordCount = 64,
+      -- Shares the SAME real tileset as bank 5/6's own tables.
+      tilesetFileOffset = 0x32000,
+    },
+
     -- The REAL room-connectivity table -- see docs/reverse-engineering/
     -- rom-map.md "BREAKTHROUGH: the real room table, found" and "The
     -- bank-8 room table, fully documented" (2026-08-10). VERIFIED via

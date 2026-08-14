@@ -146,7 +146,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 | Prio | Milestone | Status | Why this priority |
 |---|---|---|---|
 | P0 | **3 — Map/room extraction** | 🟢 pipeline GENERALIZED (2026-08-12); **8 real, walkable rooms now wired (2026-08-13)**, up from 6 | willyRoom/secondRoom/thirdRoom/fourthRoom/fifthRoom/sixthRoom, plus the 2 unrelated dev-only `unknownRoomA` clusters. Remaining work is "extract/wire more real rooms with this proven pipeline," not "prove the pipeline works." |
-| P0 | **NEW — World scope / content pipeline** | 🟢 320 real, decodable rooms (2026-08-12); 2 more real ones found live and wired this session (`fifthRoom`, `sixthRoom`, 2026-08-13) | A real, general "decode any room" capability exists; actually WIRING a new room as walkable content is now a well-practiced, real, repeatable process (tile-offset search + floor classification + `HoldTrigger`-based exit), demonstrated twice more this session. Bank 7's own "Templated" encoding remains unimplemented; connectivity/spawn position are now KNOWN to be script-driven, not table-driven (see the new "general room/map system" investigation). |
+| P0 | **NEW — World scope / content pipeline** | 🟢 384 real, decodable rooms (2026-08-14, up from 320); 2 more real ones found live and wired this session (`fifthRoom`, `sixthRoom`, 2026-08-13) | A real, general "decode any room" capability exists; actually WIRING a new room as walkable content is now a well-practiced, real, repeatable process (tile-offset search + floor classification + `HoldTrigger`-based exit), demonstrated twice more this session. Bank 7's own "Templated" encoding is now CRACKED for tile content (2026-08-14, base-template + per-record diff, see rom-map.md) -- 64 more decodable rooms; its door-data bytes and per-room collision remain undecoded. Connectivity/spawn position are still KNOWN to be script-driven, not table-driven (see the "general room/map system" investigation). |
 | P1 | **7 — Script/event system** | 🟢 **186/256 real opcode values covered (2026-08-14, true count)**, whole-corpus scan `clean` at 871/1357, the longest-standing known-hard opcode (`0x80`) finally closed | 6+ census rounds plus a new whole-corpus scan tool (shadow-runs all 1357 real scripts, not just one) found and wired most of the actor-flag/queued-action/trigger-event/actorSlotPosition/actorAction-family opcodes; a `ScriptRuntime`/`RomScriptStream` pair actually RUNS real, decoded scripts against live ROM bytes (behind `MYSTICQUEST_SCRIPT_INTERPRETER=1`, reported via the debug overlay), and (2026-08-13/14, task #84) has driven its first real, VISIBLE output. Still parallel to, not replacing, `Field.lua`'s hand-authored `FIELD_EVENTS`/`VictorySequence` room-graph — 186/256 is closing in on 3/4 but the remaining ~50 addresses are mostly non-trivial control flow (the cross-actor `$C3F0` dispatch mechanism, task #85's own subject), not a quick follow-up. |
 | P1 | **9 — Combat (remainder)** | 🟡 partial, real progress 2026-08-12 | Close to done, high player-facing impact — real per-species ATK now fully extracted (11 species), DEF still genuinely open (one more lead chased and ruled out, see combat.md) — real, honest, bounded remaining scope. |
 | P1 | **NEW — Bestiary (multiple enemy types)** | 🟡 real stat DATA now available (2026-08-12), still exactly 1 SPAWNABLE enemy | `EnemySpeciesTable.lua` has real ATK for all 11 real species — ready for wiring once P0's room work surfaces a real spawn trigger for any of the other 10 (this project does not fabricate a species-to-room mapping without ROM evidence). |
@@ -675,6 +675,27 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       decoded via the exact same live exact-16-byte-VRAM-pattern ROM
       search this whole pipeline has used throughout. The room chain is
       now 8 rooms deep (up from 4 at the start of this stretch).
+      **UPDATE 2026-08-14 ("weiter bohren bis es fertig ist"): bank 7's
+      own "Templated" (mode 1) encoding, called out as still-undecoded
+      just above, is now CRACKED end to end.** Real base-room RLE
+      template + per-record `(value,position)` diff overlay, found via
+      an exhaustive automated search over the plausible byte-layout
+      combinations (the winning combination scored 100% valid diff
+      positions vs. 97.1% for the next-best alternative). VERIFIED:
+      566/566 real diff positions across all 64 records valid, all 64
+      reconstructed rooms land in the real `tile_entropy()` art band
+      (zero outliers), 6 spot-checked records visually confirmed as
+      genuinely distinct room content. Shipped as real, tested code
+      (`MapTable.readTemplatedHeader`/`applyTemplatedDiff`/
+      `recordDataFileOffset`, `RoomFloorLayout.buildRoomFromTemplated
+      MapTableRecord`) — `buildRoomFromMapTableRecord` now dispatches
+      transparently on the map's own header `encodingMode`, so callers
+      never need to know which encoding a room table uses. Decodable
+      room count: **320 → 384**. See rom-map.md's "bank 7 Templated
+      revisited, CRACKED" for the full evidence. Still open: the
+      map-level 24-byte door-data block and each record's own 4-byte
+      prefix remain undecoded (plausibly door/exit-flag data), and
+      real per-room collision is not yet implemented for bank 7.
 
 - [ ] **NEW — Bestiary (multiple real enemy types).** Exactly one
       enemy is actually SPAWNABLE in the implementation today.

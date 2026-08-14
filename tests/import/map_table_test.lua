@@ -101,6 +101,83 @@ Harness.test("MapTable.readMapHeader: parses the 4-byte per-map header", functio
   Harness.assertEqual(header.gridWidth, 16)
 end)
 
+-- Templated-mode (encodingMode 1) format, CRACKED 2026-08-14 -- see
+-- MapTable.lua's own `readTemplatedHeader`/`applyTemplatedDiff` doc
+-- comments for the full evidence trail (rom-map.md "bank 7 Templated
+-- revisited, CRACKED"). Synthetic-data tests here, same rule as the
+-- rest of this file: verify the PARSING LOGIC in isolation, independent
+-- of any real ROM.
+Harness.test("MapTable.readTemplatedHeader: reads the template pointer + 24-byte door data", function()
+  local function u16le(v) return string.char(v % 256, math.floor(v / 256)) end
+  -- bankFileStart=0 -- header(4) + templatePtr(2, CPU $4020 -> file 0x20)
+  -- + 24 door bytes (0x01..0x18) -- matches the real Templated shape.
+  local doorBytes = {}
+  for i = 1, 24 do doorBytes[i] = string.char(i) end
+  local rom = "\1\4\8\8" .. u16le(0x4020) .. table.concat(doorBytes)
+  local header = MapTable.readTemplatedHeader(rom, { bankFileStart = 0 })
+  Harness.assertEqual(header.templateFileOffset, 0x20)
+  Harness.assertEqual(#header.doorData, 24)
+  Harness.assertEqual(header.doorData:byte(1), 1)
+  Harness.assertEqual(header.doorData:byte(24), 24)
+end)
+
+Harness.test("MapTable.applyTemplatedDiff: applies (value,position) overrides on top of the base grid", function()
+  -- A tiny synthetic 2x2 grid (gridRows=2, gridCols=2), base indices
+  -- [10,11,12,13] (row-major: row0=[10,11], row1=[12,13]).
+  -- Diff data at file offset 0: 4-byte per-record prefix (skipped),
+  -- then (value=99, pos=0x01 -> row0,col1) override, terminated by the
+  -- real 2-byte "ff ff" pair (position byte 0xFF is what's actually
+  -- checked -- see the module doc comment; a real terminator is still a
+  -- full (value,position) PAIR, not a single trailing byte).
+  local base = { 10, 11, 12, 13 }
+  local blob = "\0\0\0\0" .. string.char(99, 0x01) .. "\255\255"
+  local result = MapTable.applyTemplatedDiff(blob, 0, base, 2, 2)
+  Harness.assertEqual(result[1], 10, "row0,col0 unchanged")
+  Harness.assertEqual(result[2], 99, "row0,col1 overridden")
+  Harness.assertEqual(result[3], 12, "row1,col0 unchanged")
+  Harness.assertEqual(result[4], 13, "row1,col1 unchanged")
+  -- Original array not mutated.
+  Harness.assertEqual(base[2], 11)
+end)
+
+Harness.test("MapTable.applyTemplatedDiff: multiple overrides apply in sequence", function()
+  local base = { 0, 0, 0, 0 }
+  -- override (row0,col0)=5, then (row1,col1)=7, then terminator.
+  local blob = "\0\0\0\0" .. string.char(5, 0x00) .. string.char(7, 0x11) .. "\255\255"
+  local result = MapTable.applyTemplatedDiff(blob, 0, base, 2, 2)
+  Harness.assertEqual(result[1], 5)
+  Harness.assertEqual(result[4], 7)
+end)
+
+Harness.test("MapTable.applyTemplatedDiff: no overrides (immediate terminator) returns the base unchanged", function()
+  local base = { 1, 2, 3, 4 }
+  local blob = "\0\0\0\0\255\255"
+  local result = MapTable.applyTemplatedDiff(blob, 0, base, 2, 2)
+  Harness.assertEqual(result[1], 1)
+  Harness.assertEqual(result[2], 2)
+  Harness.assertEqual(result[3], 3)
+  Harness.assertEqual(result[4], 4)
+end)
+
+Harness.test("MapTable.applyTemplatedDiff: fails loudly on an out-of-range diff position", function()
+  local base = { 0, 0, 0, 0 }
+  -- pos=0x22 -> row2,col2, out of bounds for a 2x2 grid.
+  local blob = "\0\0\0\0" .. string.char(9, 0x22) .. "\255\255"
+  local ok = pcall(MapTable.applyTemplatedDiff, blob, 0, base, 2, 2)
+  Harness.assertTrue(not ok, "expected an assertion on an out-of-range (row,col)")
+end)
+
+Harness.test("MapTable.recordDataFileOffset: reads a record's dataAddr directly, works for the LAST record too", function()
+  local function u16le(v) return string.char(v % 256, math.floor(v / 256)) end
+  -- 2 records: (headerPtr,dataPtr) pairs at file offset 0, bankFileStart=0
+  -- (so file offset = cpuAddr - 0x4000).
+  local ptrTable = u16le(0x4010) .. u16le(0x4013) .. u16le(0x4017) .. u16le(0x401A)
+  local mapTable = { pointerTableFileOffset = 0, bankFileStart = 0 }
+  Harness.assertEqual(MapTable.recordDataFileOffset(ptrTable, mapTable, 0), 0x13)
+  Harness.assertEqual(MapTable.recordDataFileOffset(ptrTable, mapTable, 1), 0x1A,
+    "must work for the last record, unlike MapTable.decode(...).blob (deliberately nil there)")
+end)
+
 -- --- ROM-dependent tests -------------------------------------------------
 local romData = DevRomLocator.find()
 

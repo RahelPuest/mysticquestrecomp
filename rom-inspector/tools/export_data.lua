@@ -522,8 +522,17 @@ local function exportCatalogSource(mapTable, sourceLabel)
 end
 exportCatalogSource(profile.mapTable, "bank5")
 exportCatalogSource(profile.mapTableBank6, "bank6")
+-- bank7 ADDED 2026-08-14 ("weiter bohren bis es fertig ist"): the
+-- Templated (mode 1) encoding is now CRACKED end to end (base-room RLE
+-- template + per-record (value,position) diff, see MapTable.lua's own
+-- `readTemplatedHeader`/`applyTemplatedDiff` and rom-map.md's "bank 7
+-- Templated revisited, CRACKED"). Exercised through the EXACT SAME
+-- `exportCatalogSource` helper as bank5/6 -- `RoomFloorLayout.build
+-- RoomFromMapTableRecord` dispatches on the map's own real header
+-- `encodingMode` internally, so this call site needed no changes.
+exportCatalogSource(profile.mapTableBank7, "bank7")
 writeJs("room-catalog.js", "ROOM_CATALOG", roomCatalog,
-  "ALL 320 real, individually-decodable bank-5 (256 records) + bank-6 (64 records) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. UPGRADED 2026-08-14: every entry now renders through genericCatalogMetatileTableFileOffset, a real, structurally-derived default (roomSelectorTable's own record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still NOT independently ground-truth-verified (no live gameplay reaches these 320 rooms). `actorAction` (added same day): the real (group,action) pair a record's own per-room event script enqueues, when it matches the already-documented ACTOR_ACTION opcode family -- a real actor-command-queue mechanism, NOT tile/graphics data. See rom_profiles.lua's own dated doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
+  "ALL 384 real, individually-decodable bank-5 (256 RLE records) + bank-6 (64 RLE records) + bank-7 (64 Templated records, CRACKED 2026-08-14) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. UPGRADED 2026-08-14: every entry now renders through genericCatalogMetatileTableFileOffset, a real, structurally-derived default (roomSelectorTable's own record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still NOT independently ground-truth-verified (no live gameplay reaches these 384 rooms). bank7's own real per-record diff format (base template + (value,position) overrides) is separately VERIFIED against all 64 records (566/566 valid diff positions, tile_entropy 1.30-1.40 bits for all 64, zero outliers) -- see rom_profiles.lua's own `mapTableBank7` doc comment. `actorAction` (added 2026-08-14): the real (group,action) pair a record's own per-room event script enqueues, when it matches the already-documented ACTOR_ACTION opcode family -- a real actor-command-queue mechanism, NOT tile/graphics data. See rom_profiles.lua's own dated doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
 
 writeJs("font-tileset.js", "FONT_TILESET", {
   fileOffset = profile.graphics.font.fileOffset,

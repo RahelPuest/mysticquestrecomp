@@ -560,19 +560,116 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "RoomFloorLayout.buildRoomFromMapTableRecord: ALL 320 real bank-5/bank-6 records decode without error (2026-08-14, \"andere räume, so viele wie möglich\")",
+  "RoomFloorLayout.buildRoomFromMapTableRecord: decodes bank-7 Templated-mode records too, transparently (2026-08-14, \"weiter bohren bis es fertig ist\")",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- Direct proof that CALLERS don't need to know or care which real
+    -- encoding a mapTable profile uses -- the same entry point used for
+    -- bank 5/6 (RLE) above now also handles bank 7 (Templated, mode 1)
+    -- by dispatching internally (see RoomFloorLayout.lua's own
+    -- "UPDATED 2026-08-14" doc comment).
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local opts = {
+      metatileTableFileOffset = profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileTableFileOffset,
+      tilesetFileOffset = profile.mapTableBank7.tilesetFileOffset,
+      metatileGridRows = profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileGridRows,
+      metatileGridCols = profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileGridCols,
+    }
+
+    local grid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, profile.mapTableBank7, 0, opts)
+    Harness.assertEqual(#grid, 16)
+    Harness.assertEqual(#grid[1], 20)
+
+    local tilesetStart = profile.graphics.environmentTilesetBank12.fileOffsetStart
+    local tilesetEnd = profile.graphics.environmentTilesetBank12.fileOffsetEnd
+    for row = 1, 16 do
+      for col = 1, 20 do
+        local off = grid[row][col]
+        Harness.assertTrue(off >= tilesetStart and off < tilesetEnd,
+          string.format("bank7 record 0: grid[%d][%d]=%#x outside the real environment tileset bounds", row, col, off))
+      end
+    end
+
+    -- Cross-check against a second real record -- a DIFFERENT real
+    -- diff-applied result, not the shared base template repeated
+    -- (would indicate the diff application is silently a no-op).
+    local grid1 = RoomFloorLayout.buildRoomFromMapTableRecord(romData, profile.mapTableBank7, 1, opts)
+    Harness.assertTrue(grid[1][1] ~= grid1[1][1] or grid[8][10] ~= grid1[8][10] or grid[5][5] ~= grid1[5][5],
+      "bank7 record 0 and record 1 produced an identical grid -- diff application likely a no-op")
+  end
+)
+
+Harness.testIfAvailable(
+  "RoomFloorLayout.buildRoomFromTemplatedMapTableRecord: ALL 64 real bank-7 records decode without error, including the LAST record (2026-08-14)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- Regression guard for the whole real bank-7 table, same spirit as
+    -- the "ALL 320" test below -- and specifically exercises the LAST
+    -- record (index 63), which `MapTable.decode(...)`.blob would leave
+    -- `nil` for (see `MapTable.recordDataFileOffset`'s own doc comment
+    -- on why this path deliberately doesn't rely on that).
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local tilesetStart = profile.graphics.environmentTilesetBank12.fileOffsetStart
+    local tilesetEnd = profile.graphics.environmentTilesetBank12.fileOffsetEnd
+    local metatileOpts = profile.roomFloorLayoutPipeline.unknownRoomACandidates
+    local opts = {
+      metatileTableFileOffset = metatileOpts.metatileTableFileOffset,
+      tilesetFileOffset = profile.mapTableBank7.tilesetFileOffset,
+      metatileGridRows = metatileOpts.metatileGridRows,
+      metatileGridCols = metatileOpts.metatileGridCols,
+    }
+
+    local distinctGrids = {}
+    for recordIndex = 0, profile.mapTableBank7.recordCount - 1 do
+      local grid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, profile.mapTableBank7, recordIndex, opts)
+      Harness.assertEqual(#grid, 16, "bank7 record " .. recordIndex .. ": expected 16 real grid rows")
+      local parts = {}
+      for row = 1, 16 do
+        Harness.assertEqual(#grid[row], 20, "bank7 record " .. recordIndex .. " row " .. row .. ": expected 20 real grid cols")
+        for col = 1, 20 do
+          local off = grid[row][col]
+          Harness.assertTrue(off >= tilesetStart and off < tilesetEnd,
+            string.format("bank7 record %d: grid[%d][%d]=%#x outside the real environment tileset bounds",
+              recordIndex, row, col, off))
+          parts[#parts + 1] = off
+        end
+      end
+      distinctGrids[table.concat(parts, ",")] = true
+    end
+
+    -- Real, quantified distinctness check (not just "didn't crash"):
+    -- the 64 real records must produce more than a handful of distinct
+    -- full grids, or the diff-application step would be suspect (e.g.
+    -- silently ignoring the blob and always returning the base
+    -- template). This project's own investigation found 61/64 distinct
+    -- full grids -- a generous, non-brittle threshold below that.
+    local distinctCount = 0
+    for _ in pairs(distinctGrids) do distinctCount = distinctCount + 1 end
+    Harness.assertTrue(distinctCount >= 40,
+      "expected most of the 64 real bank-7 records to produce distinct grids, got only " ..
+      distinctCount .. " distinct -- diff application may be broken")
+  end
+)
+
+Harness.testIfAvailable(
+  "RoomFloorLayout.buildRoomFromMapTableRecord: ALL 384 real bank-5/6/7 records decode without error (2026-08-14, \"andere räume, so viele wie möglich\" / \"weiter bohren bis es fertig ist\")",
   romData ~= nil,
   "no development ROM found",
   function()
     -- The room-catalog website export (rom-inspector/tools/export_data.lua)
-    -- now runs this exact function across every single one of the 320
-    -- real map-table records (256 bank-5 + 64 bank-6), not just the 2
-    -- spot-checked bank-6 records the test above already covers. This
-    -- is the regression guard for that: if some record's own real RLE
-    -- stream or metatile index ever decoded out of range (a genuine
-    -- possibility the 2-record spot check wouldn't catch), this test
-    -- would fail loudly instead of the website silently shipping a
-    -- broken/truncated catalog entry.
+    -- now runs this exact function across every single one of the 384
+    -- real map-table records (256 bank-5 RLE + 64 bank-6 RLE + 64 bank-7
+    -- Templated), not just the spot-checked records the tests above
+    -- already cover. This is the regression guard for that: if some
+    -- record's own real RLE stream, Templated diff, or metatile index
+    -- ever decoded out of range (a genuine possibility a spot check
+    -- wouldn't catch), this test would fail loudly instead of the
+    -- website silently shipping a broken/truncated catalog entry. Bank
+    -- 7 exercised THROUGH the exact same general entry point as bank
+    -- 5/6 -- no special-casing needed by this test, proving the
+    -- dispatch really is transparent to callers.
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local tilesetStart = profile.graphics.environmentTilesetBank12.fileOffsetStart
     local tilesetEnd = profile.graphics.environmentTilesetBank12.fileOffsetEnd
@@ -604,6 +701,7 @@ Harness.testIfAvailable(
 
     checkAllRecords(profile.mapTable, "bank5")
     checkAllRecords(profile.mapTableBank6, "bank6")
+    checkAllRecords(profile.mapTableBank7, "bank7")
   end
 )
 

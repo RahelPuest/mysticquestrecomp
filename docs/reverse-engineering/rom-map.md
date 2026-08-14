@@ -5754,6 +5754,86 @@ indices.
 
 Full Lua test suite: 234/234 passing (1 new test).
 
+**UPDATE 2026-08-14 (bank 7 "Templated" revisited AGAIN, direct user
+instruction "weiter bohren bis es fertig ist" -- CRACKED end to end,
+same day as the structural pass above).**
+
+**The base template itself decodes cleanly with the SAME RLE rule as
+bank 5/6.** The template pointer (`0x411e` -> file `0x1C11E`, see
+above) RLE-decodes (this map's own `rleLength=4`) to exactly 80 tiles,
+consuming EXACTLY 44 bytes -- landing precisely on record 0's own
+header pointer (file `0x1C14A`), a second independently-derived
+boundary match on top of the first (the pointer-list's own end already
+landing exactly on the template pointer). Two boundaries, both exact,
+both derived from unrelated starting points -- not a coincidence.
+
+**The per-record diff format, found via an exhaustive automated
+search, not guesswork.** Every record's real data blob (found directly
+via its own `dataAddr` pointer, no blob-bounding needed since the
+format turns out to be self-terminating) starts with a real 4-byte
+per-record field (small values, `0x00-0x0d` observed -- plausibly
+per-room door/exit-flag data, structurally distinct from the map-level
+24-byte door block -- NOT decoded) followed by `(value, position)`
+byte pairs. Tested all 4 combinations of {3-byte or 4-byte prefix} x
+{(pos,val) or (val,pos) order} x {linear 0-79 position vs. `(row<<4)|
+col` nibble position} against every real record in the table,
+counting what fraction of resulting "positions" landed in-bounds:
+**prefixLen=4, order=(value,position), nibble encoding scored 557/557
+(100%)** -- the next-best alternative (linear positions) only reached
+97.1%. Not a close call.
+
+**VERIFIED end to end, real ROM, real code (not a Python scratch
+finding this time):**
+- 566/566 real diff positions across all 64 real records decode to
+  valid `(row,col)` pairs -- zero exceptions, zero silently-dropped
+  values.
+- All 64 reconstructed rooms (base template + that record's own diff)
+  land in the same real `tile_entropy()` art band already established
+  for bank 5/6 (1.30-1.40 bits, zero outliers) -- tighter clustering
+  than bank 5/6's own 0.95-1.78 range, which makes sense: every bank-7
+  room shares the same base template and tileset, so their entropy
+  should cluster more than 320 independent bank-5/6 rooms do.
+- Direct PNG eyeballing of 6 spot-checked records: genuinely different
+  room content per record (a central statue/creature shape vs. a row
+  of urn/skull decorations vs. a triangular banner formation), not the
+  base template repeated.
+- **Shipped as real, tested Lua code**, not left as a one-off script:
+  `MapTable.readTemplatedHeader`, `MapTable.applyTemplatedDiff`,
+  `MapTable.recordDataFileOffset` (new primitive -- unlike
+  `MapTable.decode(...)`.blob, works for the LAST record too, since
+  Templated diffs are self-terminating and don't need an externally
+  supplied bound), and `RoomFloorLayout.buildRoomFromTemplatedMapTable
+  Record`. `RoomFloorLayout.buildRoomFromMapTableRecord` itself now
+  DISPATCHES on the map's own real header `encodingMode` -- callers no
+  longer need to know or care whether a `mapTable` profile is RLE or
+  Templated, matching that function's own long-standing "ANY record
+  from ANY real MapTable-shaped source" promise for the first time.
+  8 new tests (5 synthetic-data unit tests for the pure parsing logic,
+  3 real-ROM tests including a dedicated "all 64 records, including
+  the last one" regression guard) -- full suite green.
+- `rom-inspector/tools/export_data.lua`'s room-catalog export now
+  includes bank 7 through the exact same code path as bank 5/6 (no
+  special-casing needed at that call site -- direct proof the dispatch
+  really is transparent) -- the website's room catalog grew from 320
+  to **384** real, individually-decodable rooms.
+
+**Honestly still NOT decoded**: the map-level 24-byte door-data block
+and each record's own 4-byte prefix (both plausibly door/exit-flag
+data per the external doc, but unconfirmed) -- this pass cracked "can
+we reconstruct the real room ART," not "do we understand every byte in
+the table." Real per-room COLLISION is also not implemented for bank 7
+yet (a separate, still-open task, same honest gap bank 5/6 already had
+before their own collision work).
+
+**Honest, precise final scope (SUPERSEDES the "320" figure above)**:
+this project can now decode **384 real, individually-confirmed-coherent
+rooms** (256 bank-5 RLE + 64 bank-6 RLE + 64 bank-7 Templated) via
+general, tested, ROM-static code -- no live emulator state needed for
+any of them, and BOTH of this ROM's real map-table encodings
+(`encodingMode` 0 and 1) are now fully cracked for tile content.
+
+Full Lua test suite: 429/429 passing (8 new tests).
+
 ## World scope, round 6: parity check against real Live-VRAM data -- an honest negative result (2026-08-12, "alle 3 in der vorgeschlagenen reinfolge", quick win #3 of this batch)
 
 Direct follow-up to round 5's own "320 decodable rooms" claim: that

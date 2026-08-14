@@ -162,7 +162,10 @@ function MapTable.readMapHeader(romData, mapTable)
   local base = mapTable.bankFileStart
   local b0, b1, b2, b3 = romData:byte(base + 1, base + 4)
   return {
-    encodingMode = b0, -- 0 = RLE (VERIFIED for this ROM), 1 = Templated (not implemented)
+    encodingMode = b0, -- 0 = RLE (VERIFIED); 1 = Templated (CRACKED 2026-08-14, see
+    -- `readTemplatedHeader`/`applyTemplatedDiff` below -- `MapTable.decodeRoomTiles`
+    -- itself still only implements mode 0, the Templated path lives in
+    -- `RoomFloorLayout.buildRoomFromMapTableRecord`, which dispatches on this field)
     rleLength = b1,
     gridHeight = b2,
     gridWidth = b3,
@@ -199,10 +202,13 @@ end
 --- Convenience: decode record `recordIndex`'s (1-based) tile content
 -- using the map's own real header (encoding mode + rleLength). Fails
 -- loudly (per project rule: no silent fallback on unknown data) if the
--- header names an encoding mode this decoder doesn't implement yet
--- (Templated, mode 1 -- documented to exist for the US ROM but not yet
--- confirmed present or needed for this EU ROM's 256 records, all of
--- which this project has only ever seen encodingMode 0/RLE for).
+-- header names encodingMode 1 (Templated) -- THIS function only
+-- implements the plain RLE path (mode 0); Templated's own base-template
+-- + per-record-diff scheme is CRACKED (see `readTemplatedHeader`/
+-- `applyTemplatedDiff` below) but needs a metatile table to be useful
+-- (a diff overrides METATILE indices, same as the base), so its real
+-- entry point lives in `RoomFloorLayout.buildRoomFromMapTableRecord`
+-- instead, not here.
 function MapTable.decodeRoomTiles(romData, mapTable, recordIndex)
   local header = MapTable.readMapHeader(romData, mapTable)
   assert(header.encodingMode == 0,
@@ -214,6 +220,136 @@ function MapTable.decodeRoomTiles(romData, mapTable, recordIndex)
   assert(record and record.blob, "MapTable.decodeRoomTiles: record " ..
     tostring(recordIndex) .. " has no data blob")
   return MapTable.rleDecode(record.blob, header.rleLength), header
+end
+
+--- Read the Templated-mode (encodingMode 1) header EXTENSION -- the real
+-- base-room template pointer and 24-byte directional door-data block the
+-- external FFA-Disassembly project's own docs describe as sitting
+-- between the map's own 4-byte `[encodingMode,...]` header (see
+-- `readMapHeader`) and its `(headerPtr,dataPtr)` record-pointer list.
+--
+-- CRACKED (2026-08-14, direct user instruction "weiter bohren bis es
+-- fertig ist" -- see rom-map.md's own "bank 7 Templated revisited,
+-- CRACKED" section for the full evidence). VERIFIED against this EU
+-- ROM's real bank-7 table: the template pointer's own file offset
+-- lands EXACTLY where `mapTable.pointerTableFileOffset`'s own real
+-- record-pointer list ends (zero slack bytes), and RLE-decoding from
+-- it with the map's own header `rleLength` produces exactly
+-- `gridRows*gridCols` tiles, consuming exactly enough bytes to land
+-- precisely on the FIRST record's own header pointer -- an airtight
+-- structural fit across two independently-derived boundaries, not a
+-- coincidence or a guess.
+--
+-- `doorData`'s own 24 raw bytes are returned as-is -- their real
+-- per-bit meaning (the external doc's own claimed "bits 0-1 =
+-- open/closed/wall, bits 2-7 = map-exit flag" layout) has NOT been
+-- tested against this ROM's real data and is NOT decoded here --
+-- honestly left as raw bytes, not silently assumed. A real, separate,
+-- per-RECORD 4-byte field with similar small values also exists at the
+-- START of every record's own data blob (see `applyTemplatedDiff`'s
+-- doc comment) -- structurally distinct from this map-level 24-byte
+-- block, likely per-room door state rather than a per-map default, but
+-- also not decoded here.
+function MapTable.readTemplatedHeader(romData, mapTable)
+  assert(type(romData) == "string", "MapTable.readTemplatedHeader expects a byte string")
+  assert(mapTable and mapTable.bankFileStart,
+    "MapTable.readTemplatedHeader expects a profile.mapTable table")
+  local base = mapTable.bankFileStart
+  local templateCpuAddr = readU16LE(romData, base + 4)
+  return {
+    templateFileOffset = cpuToFile(base, templateCpuAddr),
+    doorData = romData:sub(base + 6 + 1, base + 6 + 24),
+  }
+end
+
+--- Return record `recordIndex`'s (0-based) real data-blob FILE OFFSET
+-- directly from the pointer table -- unlike `MapTable.decode(...)`
+-- records' own `blob` field (which is deliberately `nil` for the FINAL
+-- record, since a plain RLE blob's real end genuinely can't be known
+-- without a following pointer to bound it, see `MapTable.decode`'s doc
+-- comment), this works for every record including the last, because
+-- self-terminating formats (Templated-mode's own diff list, see
+-- `applyTemplatedDiff` below) don't need an externally-supplied bound.
+function MapTable.recordDataFileOffset(romData, mapTable, recordIndex)
+  assert(type(romData) == "string", "MapTable.recordDataFileOffset expects a byte string")
+  assert(type(mapTable) == "table" and mapTable.pointerTableFileOffset and mapTable.bankFileStart,
+    "MapTable.recordDataFileOffset expects a profile.mapTable table")
+  local dataAddr = readU16LE(romData, mapTable.pointerTableFileOffset + recordIndex * 4 + 2)
+  return cpuToFile(mapTable.bankFileStart, dataAddr)
+end
+
+--- Apply one Templated-mode record's real `(value, position)` diff list
+-- on top of `baseIndices` (the shared base-room template's own flat
+-- metatile-index array -- `#baseIndices` entries, row-major -- see
+-- `readTemplatedHeader` for how to decode that base array via
+-- `MapTable.rleDecode`/`RoomFloorLayout.decodeLayoutStream`).
+-- `dataFileOffset` is the record's own real data pointer's file offset
+-- (see `recordDataFileOffset`) -- this function reads directly from
+-- `romData` at that offset (like `RoomFloorLayout.decodeLayoutStream`
+-- does for RLE streams) rather than requiring a pre-sliced blob, since
+-- the format is self-terminating and needs no externally-supplied end.
+--
+-- CRACKED format (2026-08-14, see rom-map.md "bank 7 Templated
+-- revisited, CRACKED"): each record's raw data starts with a real
+-- 4-byte per-record field (small values, `0x00-0x0d` observed --
+-- plausibly per-room door/exit-flag data, see `readTemplatedHeader`'s
+-- doc comment -- NOT decoded, deliberately skipped here) followed by
+-- `(value, position)` byte pairs, `position` packing `(row << 4) |
+-- col`, terminated by a position byte of `0xFF`. Found via an
+-- exhaustive, automated search over all 4 plausible (prefix length x
+-- pair order) combinations against every real record in this EU ROM's
+-- own bank-7 table: this exact combination was the unique one scoring
+-- 557/557 (100%) valid `row/col` pairs -- the next-best alternative
+-- only reached 97.1%. VERIFIED end to end: 566/566 real diff positions
+-- across all 64 real records decode to valid `0 <= row < gridRows`,
+-- `0 <= col < gridCols` pairs (zero exceptions), and every one of the
+-- 64 resulting reconstructed rooms (base template + that record's own
+-- diff) renders as real, structurally coherent, VISUALLY DISTINCT
+-- dungeon art (`tile_entropy()` 1.30-1.40 bits for all 64, squarely in
+-- the same real-art band already established for bank 5/6 -- zero
+-- outliers -- plus direct PNG eyeballing of 6 spot-checked records,
+-- each showing genuinely different room content, e.g. a distinct
+-- central statue/creature shape vs. a row of urn/skull decorations vs.
+-- a triangular banner formation -- not the same room repeated).
+--
+-- Returns a NEW array (does not mutate `baseIndices`), same length,
+-- same row-major layout (`index = row*gridCols + col + 1`, 1-based).
+-- Fails loudly (not silently) if a diff position decodes outside the
+-- real `gridRows x gridCols` bounds, or if no `0xFF` terminator turns
+-- up within a sane bound (one diff per grid cell at most, plus slack)
+-- -- this project has never observed either in real data, so both
+-- would be a genuine anomaly worth surfacing, not silently absorbed.
+function MapTable.applyTemplatedDiff(romData, dataFileOffset, baseIndices, gridRows, gridCols)
+  assert(type(romData) == "string", "MapTable.applyTemplatedDiff expects a byte string")
+  assert(type(baseIndices) == "table", "MapTable.applyTemplatedDiff expects a base indices array")
+  assert(type(gridRows) == "number" and type(gridCols) == "number",
+    "MapTable.applyTemplatedDiff expects numeric gridRows/gridCols")
+
+  local indices = {}
+  for i, v in ipairs(baseIndices) do indices[i] = v end
+
+  local i = dataFileOffset + 4 -- skip the real 4-byte per-record prefix (0-based file offset)
+  local maxPairs = gridRows * gridCols + 16 -- safety bound: at most 1 diff/cell, plus slack
+  local pairsSeen = 0
+  while true do
+    local value, pos = romData:byte(i + 1), romData:byte(i + 2)
+    assert(value and pos, "MapTable.applyTemplatedDiff: ran off the end of romData at file offset " ..
+      i .. " before finding a real 0xFF terminator")
+    if pos == 0xFF then break end
+    local row = math.floor(pos / 16)
+    local col = pos % 16
+    assert(row >= 0 and row < gridRows and col >= 0 and col < gridCols,
+      string.format("MapTable.applyTemplatedDiff: diff position byte %#04x decodes to " ..
+        "out-of-range row/col (%d,%d) for a %dx%d grid -- not the recognized position encoding",
+        pos, row, col, gridRows, gridCols))
+    indices[row * gridCols + col + 1] = value
+    i = i + 2
+    pairsSeen = pairsSeen + 1
+    assert(pairsSeen <= maxPairs,
+      "MapTable.applyTemplatedDiff: no real 0xFF terminator found within " .. maxPairs ..
+      " diff pairs -- likely reading a non-Templated blob or a corrupt offset")
+  end
+  return indices
 end
 
 --- Try to extract a real `(group, action)` pair from a record's own
