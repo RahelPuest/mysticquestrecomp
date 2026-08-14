@@ -387,27 +387,27 @@ writeJs("room-maps.js", "ROOM_MAPS", roomMaps,
 --     exporting an already-verified capability as static site data so
 --     it's browsable without a live LÖVE session.
 --
---     HONEST SCOPE, carried over unchanged from RoomExplorer.lua's own
---     doc comment: all 320 records decode as real, coherent ROM ART
---     (this project's own `tile_entropy()` heuristic + visual spot
---     checks already confirmed this for a representative sample of
---     both tables -- see rom-map.md's "World scope" sections). Only
---     bank-5 records 8-13 (`unknownRoomACandidates.rooms`) are
---     ADDITIONALLY confirmed to be `unknownRoomA`'s own specific real
---     dungeon rooms (`roomSelector` N's own real layout, all 6
---     rendered and eyeballed). The other 314 are real ROM data with no
---     known live gameplay trigger -- tagged `confirmed=false` below so
---     the site shows this distinction rather than silently upgrading
---     their status.
+--     HONEST SCOPE, UPGRADED 2026-08-14 ("gehe dem map header hinweis
+--     nach"): all 320 records now render through `genericCatalogMeta
+--     tileTableFileOffset` -- a real, structurally-justified DEFAULT
+--     table, not the `unknownRoomACandidates`-borrowed placeholder
+--     this export used before. Derivation: `roomSelectorTable`'s own
+--     record 0/1 (bank5's and bank6's own "map", VERIFIED via
+--     `RoomSelectorTable.resolveMapRoomPointersFileOffset`'s exact
+--     byte match to each table's real header) share one real
+--     `tileSourcePointer`, cross-checked against the external
+--     FFA-Disassembly project's own documented "one tileset per map,
+--     no per-room override" US-ROM architecture. Real, but NOT
+--     independently ground-truth-verified -- no live gameplay reaches
+--     any of these 320 rooms. See rom_profiles.lua's own dated
+--     "UPGRADED" doc comments and rom-map.md's "World scope" sections
+--     for the full evidence chain, including 2 negative methods tried
+--     and ruled out before this one was found.
 ----------------------------------------------------------------------
 local roomCatalog = {}
-local confirmedBank5 = {}
-for _, idx in ipairs(profile.roomFloorLayoutPipeline.unknownRoomACandidates.rooms) do
-  confirmedBank5[idx] = true
-end
 local catalogMetatileTableFileOffset =
-  profile.roomFloorLayoutPipeline.unknownRoomACandidates.metatileTableFileOffset
-local function exportCatalogSource(mapTable, sourceLabel, confirmedSet)
+  profile.roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset
+local function exportCatalogSource(mapTable, sourceLabel)
   local opts = {
     metatileTableFileOffset = catalogMetatileTableFileOffset,
     tilesetFileOffset = mapTable.tilesetFileOffset,
@@ -425,7 +425,6 @@ local function exportCatalogSource(mapTable, sourceLabel, confirmedSet)
       name = string.format("%s-record-%03d", sourceLabel, recordIndex),
       source = sourceLabel,
       recordIndex = recordIndex,
-      confirmed = (confirmedSet and confirmedSet[recordIndex]) or false,
       cols = room.grid[1] and #room.grid[1] or 0,
       rows = #room.grid,
       grid = room.grid,
@@ -433,10 +432,10 @@ local function exportCatalogSource(mapTable, sourceLabel, confirmedSet)
     }
   end
 end
-exportCatalogSource(profile.mapTable, "bank5", confirmedBank5)
-exportCatalogSource(profile.mapTableBank6, "bank6", nil)
+exportCatalogSource(profile.mapTable, "bank5")
+exportCatalogSource(profile.mapTableBank6, "bank6")
 writeJs("room-catalog.js", "ROOM_CATALOG", roomCatalog,
-  "ALL 320 real, individually-decodable bank-5 (256 records) + bank-6 (64 records) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. `confirmed=true` marks the 6 bank-5 records (8-13) additionally proven to be unknownRoomA's own specific, reachable rooms -- AND the only ones whose TILE ASSIGNMENT (which real metatile table is used) is independently confirmed correct, not just structurally decoded. CORRECTED 2026-08-14 (direct user report the other entries' tiles look wrong): every other entry reuses that same metatile table as an unverified placeholder with no known correct alternative -- real, non-noise GB tile art (tile_entropy-checked), but the specific tile ARRANGEMENT shown is very likely wrong. See rom_profiles.lua's own dated 'CORRECTED'/'SCOPE CORRECTED' doc comments and rom-map.md's 'World scope' sections for the full honest-scope reasoning, including a per-record header field that was tested as a possible fix and ruled out.")
+  "ALL 320 real, individually-decodable bank-5 (256 records) + bank-6 (64 records) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. UPGRADED 2026-08-14: every entry now renders through genericCatalogMetatileTableFileOffset, a real, structurally-derived default (roomSelectorTable's own record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still NOT independently ground-truth-verified (no live gameplay reaches these 320 rooms). See rom_profiles.lua's own dated doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
 
 writeJs("font-tileset.js", "FONT_TILESET", {
   fileOffset = profile.graphics.font.fileOffset,

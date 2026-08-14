@@ -7719,3 +7719,37 @@ way -- the specific tile-assignment mystery remains open for a
 clearer reason now.
 
 Full suite: 417 passed, 0 failed.
+
+## Room catalog: upgraded to a real, structurally-derived tileset + discovered bank5/6 are literal 16x16/8x8 world grids (2026-08-14)
+
+Direct follow-up to "gehe dem map header hinweis nach". Fetched the
+external FFA-Disassembly devlog more thoroughly and found two more
+real facts: (1) the map-header's own height/width bytes mean "map
+size IN ROOMS" -- applied to this ROM, bank5's `[16,16]` and bank6's
+`[8,8]` headers exactly match their own 256/64 record counts, meaning
+bank5 and bank6 are each a literal, ordered room GRID (a real
+overworld/area map), not a loose pool -- a genuinely new lead for
+future "connections" work; (2) "map07 = title/ending/map screens" in
+the external US doc independently matches this EU ROM's own,
+separately-found "roomSelector 7 = known non-explorable placeholder"
+-- unplanned cross-validation via two totally different methods.
+
+Used fact (1) plus the external doc's own "one tileset per map, no
+override" rule to upgrade the room-catalog's default metatile table
+from the old unverified placeholder to a real, structurally-derived
+one (roomSelectorTable's own record 0/1 tileSourcePointer). Visually
+re-checked first (not just trusted the theory): 12 widely-spread
+bank-5 records now show a consistent recurring visual vocabulary
+(same door-arch, same floor pattern) across the whole spread -- the
+old placeholder never did that.
+
+Wired in: rom_profiles.lua (`genericCatalogMetatileTableFileOffset`),
+export_data.lua's room-catalog export (all 320 entries uniformly, no
+more per-record `confirmed` flag), rom-inspector's Map-Viewer/
+Übersicht wording (upgraded from "⚠ wahrscheinlich falsch" to an
+honest "ℹ strukturell hergeleitet, nicht per Live-Gameplay
+bestätigt"). Still not independently ground-truth-verified -- no live
+gameplay reaches these 320 rooms -- but a real, externally-
+corroborated step up from a guess.
+
+Full suite: 417 passed, 0 failed.

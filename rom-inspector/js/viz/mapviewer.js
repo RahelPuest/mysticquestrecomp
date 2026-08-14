@@ -5,10 +5,18 @@ function render_map(main) {
   // decodable bank-5/bank-6 records, exported from the exact same
   // pipeline RoomExplorer.lua's dev-only F8 browser already drives
   // live in the LÖVE app. Kept as two <optgroup>s, not silently
-  // merged, so the honest distinction stays visible: only the 6
-  // `confirmed=true` catalog entries are proven to be a SPECIFIC real
-  // dungeon room (unknownRoomA); the rest are real ROM art with no
-  // known live gameplay trigger (see room-catalog.js's own header
+  // merged, so the honest distinction stays visible.
+  //
+  // UPGRADED 2026-08-14 ("gehe dem map header hinweis nach"): every
+  // catalog entry now renders through a real, structurally-derived
+  // default metatile table (roomSelectorTable's own record 0/1,
+  // cross-checked against the external FFA-Disassembly project's
+  // documented "one tileset per map" architecture) instead of the
+  // unverified unknownRoomA-borrowed placeholder used before. Real
+  // progress, but still NOT independently ground-truth-verified -- no
+  // live gameplay reaches any of these 320 rooms -- so the note below
+  // stays honest about that, for every catalog entry alike (no more
+  // per-entry `confirmed` flag; see room-catalog.js's own header
   // comment for the full scope note).
   const combined = [
     ...ROOM_MAPS.map(r => ({ room: r, group: "connected" })),
@@ -29,8 +37,8 @@ function render_map(main) {
         <optgroup label="Echte, verbundene Räume (${ROOM_MAPS.length})">
           ${ROOM_MAPS.map((r, i) => `<option value="${i}">${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>
-        <optgroup label="Raum-Katalog -- alle ${ROOM_CATALOG.length} Bank-5/6-Einträge (nur ${ROOM_CATALOG.filter(r => r.confirmed).length} mit bestätigter Kachel-Zuordnung)">
-          ${ROOM_CATALOG.map((r, i) => `<option value="${ROOM_MAPS.length + i}">${r.confirmed ? "✓ " : ""}${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
+        <optgroup label="Raum-Katalog -- alle ${ROOM_CATALOG.length} Bank-5/6-Einträge (Kachel-Zuordnung strukturell hergeleitet, nicht per Gameplay bestätigt)">
+          ${ROOM_CATALOG.map((r, i) => `<option value="${ROOM_MAPS.length + i}">${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>
       </select>
       <label style="font-size:12px; color:var(--text-dim);">Zoom
@@ -58,20 +66,18 @@ function render_map(main) {
     const room = selectedEntry.room;
     const note = document.getElementById("mapCatalogNote");
     if (selectedEntry.group === "catalog") {
-      // CORRECTED 2026-08-14 (direct user report: "die sind bei allen
-      // ausser den bekannten total off"): the earlier note here only
-      // warned that unconfirmed entries' ROOM IDENTITY was unproven --
-      // investigation this pass found the TILES themselves are the
-      // real problem. Only the 6 `confirmed` rooms have an
-      // independently-confirmed metatile table (the real ROM source
-      // that decides which graphic goes in which cell); every other
-      // entry reuses that same table as an unverified placeholder with
-      // no known correct alternative (a per-record header field was
-      // tested as a possible fix and ruled out against known-good
-      // ground truth -- see rom_profiles.lua's own dated doc comment).
-      note.innerHTML = room.confirmed
-        ? "✓ Bestätigt: dieser Katalog-Eintrag ist unknownRoomA's eigener, konkreter Dungeon-Raum (roomSelector " + room.recordIndex + ") -- auch die gezeigten Kacheln sind bestätigt korrekt."
-        : "⚠ <strong>Kachel-Zuordnung wahrscheinlich falsch:</strong> nur die 6 bestätigten unknownRoomA-Räume haben eine unabhängig bestätigte Metatile-Tabelle. Dieser Eintrag nutzt dieselbe Tabelle als unverifizierten Platzhalter (echte, nicht verrauschte GB-Kacheln, aber sehr wahrscheinlich die falsche Kombination) -- die zugrundeliegenden Raum-INDEX-Daten sind trotzdem real.";
+      // UPGRADED 2026-08-14 ("gehe dem map header hinweis nach"): every
+      // catalog entry now uses a real, structurally-derived default
+      // metatile table (roomSelectorTable's own record 0/1, byte-exact
+      // confirmed link, cross-checked against the external
+      // FFA-Disassembly project's documented "one tileset per map"
+      // architecture) -- a real step up from the earlier unverified
+      // unknownRoomA-borrowed placeholder. Still honestly NOT the same
+      // as live-gameplay-confirmed: no known trigger reaches any of
+      // these 320 rooms, so this note says so for every entry alike.
+      note.innerHTML = "ℹ Kachel-Zuordnung strukturell hergeleitet (roomSelectorTable's eigene reale \"mapRoomPointers\", " +
+        "extern gegengeprüft) -- reale, nicht-verrauschte GB-Kunst mit gutem Grund zur Annahme, aber " +
+        "<strong>nicht per Live-Gameplay bestätigt</strong> (kein bekannter Trigger erreicht diesen Raum).";
     } else {
       note.textContent = "";
     }

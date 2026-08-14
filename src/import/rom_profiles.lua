@@ -2875,8 +2875,17 @@ RomProfiles.PROFILES = {
       -- table's own 2026-08-14 "CORRECTED" doc comment for the full,
       -- dated evidence (a real per-record header field was tested as a
       -- possible fix and ruled out against known-good ground truth).
-      status = "VERIFIED (encoding + room-composition); tile ASSIGNMENT confirmed correct only for records 8-13 " ..
-        "(unknownRoomACandidates), unverified placeholder elsewhere -- see that table's CORRECTED note (2026-08-14)",
+      --
+      -- UPGRADED (2026-08-14, same day, "gehe dem map header hinweis
+      -- nach"): all 256 records now use `genericCatalogMetatileTable
+      -- FileOffset` (see `unknownRoomACandidates`'s own doc comment),
+      -- a real, structurally-justified derivation from this ROM's own
+      -- `roomSelectorTable` record 0 -- externally corroborated
+      -- against the FFA-Disassembly project's documented "one tileset
+      -- per map" architecture, not a guess. Not independently ground-
+      -- truth-verified (no live gameplay reaches these rooms).
+      status = "VERIFIED (encoding + room-composition); tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset " ..
+        "(real, structurally-derived default, see the UPGRADED note above, 2026-08-14) -- not independently ground-truth-verified",
       -- Bank 5 base -- pointer values are CPU addresses ($4000-$7FFF)
       -- relative to this bank being switched in; file offset = bankFileStart
       -- + (cpuAddress - 0x4000).
@@ -2939,9 +2948,18 @@ RomProfiles.PROFILES = {
     -- separate confirmation -- direct visual review (user report,
     -- 2026-08-14, "total off") found it does NOT look right once
     -- compared side-by-side against the 6 actually-confirmed rooms.
+    --
+    -- UPGRADED (2026-08-14, same day, "gehe dem map header hinweis
+    -- nach"): all 64 records now use `genericCatalogMetatileTableFile
+    -- Offset` (see `unknownRoomACandidates`'s own doc comment) -- a
+    -- real, structurally-justified derivation from `roomSelectorTable`
+    -- record 1 (bank6's own "map"), cross-checked against the external
+    -- FFA-Disassembly project's documented "one tileset per map"
+    -- architecture. Not independently ground-truth-verified.
     mapTableBank6 = {
       status = "VERIFIED (table location + encoding + all 64 records real-render as non-noise GB art); " ..
-        "tile ASSIGNMENT is an unverified placeholder for all 64, see the SCOPE CORRECTED note above (2026-08-14)",
+        "tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset (real, structurally-derived default, see the " ..
+        "UPGRADED note above, 2026-08-14) -- not independently ground-truth-verified",
       bankFileStart = 0x18000,
       bank = 6,
       pointerTableFileOffset = 0x18004,
@@ -3300,10 +3318,29 @@ RomProfiles.PROFILES = {
       -- `rom-inspector/js/viz/mapviewer.js`'s catalog note text) --
       -- only these 6 rooms' TILES, not just their room identity, are
       -- confirmed correct.
+      --
+      -- UPGRADED (2026-08-14, "gehe dem map header hinweis nach"):
+      -- following the external FFA-Disassembly project's own US-ROM
+      -- `MAP_HEADER` model (`tilesetGfx, metatiles, mapRoomPointers`,
+      -- one tileset shared by every room in a map, no per-room
+      -- override documented) plus this EU ROM's own newly-decoded
+      -- `roomSelectorTable.offsetParam` field (see `RoomSelectorTable
+      -- .resolveMapRoomPointersFileOffset`, VERIFIED via an exact byte
+      -- match), found a real, structurally-justified candidate for the
+      -- 320-room catalog's own DEFAULT metatile table (see
+      -- `genericCatalogMetatileTableFileOffset` below) -- NOT this
+      -- table (`0x20938`), which stays correct ONLY for `unknownRoomA`
+      -- itself (roomSelector 8-13, a SEPARATE, independently-reachable
+      -- 6-room map that happens to reuse the same underlying bank-5
+      -- RLE data bytes as map 0's own grid positions 8-13 -- real ROM
+      -- space reuse, not evidence the two are the same room in every
+      -- context). The room-catalog export now uses the new default
+      -- table for ALL 320 entries (including positions 8-13, which
+      -- represent map 0's OWN room there, not `unknownRoomA`).
       unknownRoomACandidates = {
         status = "VERIFIED (all 6 rooms render as real, coherent dungeon art -- see tools/graphics/render_unknown_room_a.py). " ..
-          "Its own metatileTableFileOffset is confirmed correct ONLY for these 6 records -- reused elsewhere in the 320-room " ..
-          "catalog as an unverified placeholder, see the CORRECTED doc comment above (2026-08-14).",
+          "Its own metatileTableFileOffset is confirmed correct for unknownRoomA specifically (roomSelector 8-13) -- the " ..
+          "320-room catalog now uses genericCatalogMetatileTableFileOffset instead, see the UPGRADED doc comment above (2026-08-14).",
         metatileTableFileOffset = 0x20938, -- bank 8, CPU $4938 (already-found real unknownRoomA metatile table)
         bank5PointerTableFileOffset = 0x14004, -- already-VERIFIED mapTable.pointerTableFileOffset
         bank5BankFileStart = 0x14000,          -- already-VERIFIED mapTable.bankFileStart
@@ -3316,6 +3353,41 @@ RomProfiles.PROFILES = {
         -- real selectors, each a distinct, real dungeon room.
         rooms = { 8, 9, 10, 11, 12, 13 },
       },
+      -- The 320-room catalog's own DEFAULT metatile table (2026-08-14,
+      -- "gehe dem map header hinweis nach") -- see the UPGRADED doc
+      -- comment above `unknownRoomACandidates` for the full chain of
+      -- evidence. Derivation, every link independently real:
+      --   1. roomSelectorTable's own record 0 (bank5's "map") and
+      --      record 1 (bank6's "map") both have real `tileSourcePointer`
+      --      = $40B0 (the SAME already-known real value `startRoom`'s
+      --      own doc comment cites).
+      --   2. Resolved via the ALREADY-VERIFIED bank8-relative formula
+      --      (bank8Base + (tileSourcePointer - 0x4000), the same
+      --      formula independently confirmed for willyRoom/unknownRoomA/
+      --      unknownRoomB): 0x20000 + (0x40B0-0x4000) = 0x200B0.
+      --   3. Cross-checked against the external FFA-Disassembly
+      --      project's own documented US-ROM architecture: one
+      --      metatile table per MAP, shared by every room in it, no
+      --      per-room override documented -- roomSelector 0/1 are each
+      --      their own "map" (VERIFIED via `resolveMapRoomPointersFile
+      --      Offset`'s own exact byte match to mapTable's/mapTable
+      --      Bank6's real headers), so this is the correct default for
+      --      literally every one of their 320 real rooms.
+      --   4. Directly visually re-checked (2026-08-14): 12 widely-
+      --      spread bank-5 records (0, 15-17, 31-32, 63-64, 128, 200,
+      --      240, 255) all show the SAME recurring door-arch symbol and
+      --      dotted-floor pattern with this table -- a real, internally
+      --      consistent visual vocabulary across the WHOLE 16x16 grid,
+      --      not present with the old `unknownRoomACandidates`-borrowed
+      --      placeholder.
+      -- HONEST STATUS: a real, structurally-justified, externally-
+      -- corroborated derivation -- NOT independently ground-truth-
+      -- verified the way `unknownRoomACandidates`'s own table is (no
+      -- live gameplay reaches ANY of these 320 rooms, so there is no
+      -- way to confirm this the way willyRoom's collision/floor data
+      -- was confirmed). Upgraded from "unverified placeholder, likely
+      -- wrong" to "best current derivation," not to "proven."
+      genericCatalogMetatileTableFileOffset = 0x200B0, -- bank 8, CPU $40B0 (roomSelector 0/1's own real tileSourcePointer)
     },
 
     -- The real combat PRNG's noise table -- see docs/reverse-engineering/

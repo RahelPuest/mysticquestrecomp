@@ -6654,3 +6654,85 @@ generic "map 0/1" selectors) bypasses the whole mechanism this
 question is about.
 
 Full suite: 417 passed, 0 failed (was 416 -- +1 new structural test).
+
+## Room catalog: new default metatile table wired in + a second real find (16x16/8x8 world grids) (2026-08-14, same day, implementation follow-up)
+
+Direct follow-up to "gehe dem map header hinweis nach": fetched the
+external FFA-Disassembly devlog's part 2 a second time with a more
+detailed extraction prompt, which surfaced TWO more real, independently
+useful facts beyond the `mapRoomPointers` field decode already
+committed:
+
+**1. The `mapRoomPointers` header's own 3rd/4th bytes are "map height
+in rooms" / "map width in rooms", not a per-room metatile-grid
+shape.** Applied to this EU ROM's own already-known header bytes:
+bank 5's `[00 03 10 10]` -> 16x16 = **256** rooms (exactly `mapTable
+.recordCount`); bank 6's `[00 04 08 08]` -> 8x8 = **64** rooms
+(exactly `mapTableBank6.recordCount`). Not a coincidence -- bank 5 and
+bank 6 are each a literal, ordered ROOM GRID (a real overworld/area
+map), not a loose pool of 256/64 unrelated rooms. Directly relevant to
+this project's own standing "decode the whole game map with
+connections" goal -- a genuinely new, large lead for a future pass
+(adjacent grid indices are plausible candidates for adjacent in-world
+rooms), not chased further this pass.
+
+**2. Independent cross-confirmation of an ALREADY-known real fact**:
+the external doc states "map07 isn't an actual playable map, but
+contains the title screen, ending screen and ingame map" -- this EU
+ROM's own `roomSelectorTable` entry 7 was ALREADY independently
+classified (an earlier session, live-traced) as "a known non-
+explorable placeholder." Same real fact, found via two completely
+different methods (live emulator tracing vs. an unrelated disassembly
+project). Strong, unplanned validation that roomSelector indices in
+this EU ROM correspond 1:1 to the US ROM's own "map" indices.
+
+**Decision: upgrade the room-catalog's default metatile table.** The
+external doc states plainly "each map has ONE tileset for ALL its
+rooms, no per-room override documented." Combined with fact #1 above
+(map 0 = ALL of bank 5, map 1 = ALL of bank 6, each literally ONE
+map), the natural, well-justified reading is: `genericCatalogMetatile
+TableFileOffset` (roomSelector 0/1's own real `tileSourcePointer`,
+`0x200B0`) is the correct DEFAULT for every one of the 320 catalog
+records -- not `unknownRoomACandidates`'s own table (`0x20938`), which
+stays correct only for `unknownRoomA` ITSELF (roomSelector 8-13, a
+separate, independently-reachable 6-room map that happens to reuse
+the same underlying bank-5 RLE bytes as map 0's own grid positions
+8-13 -- real ROM space reuse, not evidence the two contexts render
+identically).
+
+**Direct visual re-check before committing to this** (not just trusting
+the theory): rendered 12 widely-spread bank-5 records (0, 15-17,
+31-32, 63-64, 128, 200, 240, 255) and 7 bank-6 records through the new
+table. Result: a striking, consistent visual vocabulary recurring
+across the ENTIRE spread -- the same door-arch symbol and dotted-floor
+pattern appear in records as far apart as 0 and 255 -- something the
+OLD placeholder never produced (visually inconsistent style jumps
+between unrelated records). A real, if informal, confirmation the new
+table is self-consistent across the whole grid, on top of the
+structural/external-doc justification.
+
+**Implemented**: `rom_profiles.lua`'s `roomFloorLayoutPipeline` gained
+`genericCatalogMetatileTableFileOffset = 0x200B0` with the full dated
+evidence chain in its doc comment; `mapTable`/`mapTableBank6`'s own
+status fields upgraded to reference it; `export_data.lua`'s room-
+catalog export now uses it uniformly for all 320 entries (the old
+per-record `confirmed` flag is gone -- there is no longer a
+meaningfully DIFFERENT tile-assignment confidence between record 8 and
+record 50, since neither is independently gameplay-confirmed);
+`mapviewer.js`/`overview.js` wording upgraded from "⚠ wahrscheinlich
+falsch" to an honest "ℹ strukturell hergeleitet, nicht per Live-
+Gameplay bestätigt" for every catalog entry alike.
+
+**Honest final status, unchanged in kind though much stronger in
+degree**: this is a real, externally-corroborated, internally
+self-consistent DERIVATION -- not independently ground-truth-verified
+the way `unknownRoomACandidates`'s own table is (no live gameplay
+reaches any of these 320 rooms, so no `willyRoom`-style movement test
+is possible). Upgraded from "unverified placeholder, likely wrong" to
+"best current derivation, real evidence behind it" -- not claimed as
+proven.
+
+Full suite: 417 passed, 0 failed (unchanged -- doc-comment + data-value
+changes, no new assertions needed beyond the already-added structural
+test). Re-verified the live site with the same real headless-browser
+smoke tests used throughout this session.
