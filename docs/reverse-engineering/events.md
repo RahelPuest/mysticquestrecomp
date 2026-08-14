@@ -7483,3 +7483,73 @@ narrow, but real. The exact real-world MEANING of `PARAM2` and of the
 Doc comments added to `EntityStructLayout.lua` (PARAM2's field
 comment). No Lua behavior changed -- pure disassembly/documentation.
 Full Lua test suite: 421/421 passing (unchanged).
+
+## Tracing $0C6D/$0C86's other real callers: the WHOLE accessor family found, 2 new EntityStructLayout fields discovered (2026-08-14, "ja mach mal")
+
+Direct continuation of the concrete next step named above. Before
+diving into individual bank-1/2 call sites, disassembled the ROM
+region immediately around `$0C6D`/`$0C86`/`$0C99` (all 3 already known,
+piecemeal) to see if they're really scattered one-offs or part of one
+block -- **they're one real, deliberately-built block**, `$0C41`-
+`$0D1B` (bank 0), a clean run of per-field getter/setter pairs, every
+one sharing the exact same `HL = $C200 + slotIndex*16 [+ offset]`
+addressing shape. VERIFIED by direct disassembly, not inferred from
+naming:
+
+| Field | Getter | Setter | Real callers (get/set) |
+|---|---|---|---|
+| `ALIVE` (+0) | `$0C99` (already known) | `$0CA6` (new) | -- / 13, all banks 0/1/2/3/9 |
+| `TYPE` (+1) | `$0C4F` (new) | `$0C5D` (new) | 2 (bank 0) / 14 (banks 0/1/2) |
+| `PARAM2` (+2) | `$0C6D` (already known) | `$0C86` (already known) | 24 / 17 (all banks) |
+| `POSITION_Y` (+4) | `$0C41` (new) | -- | 0 found / -- |
+| `+6/+7 paired` | -- | `$0CBA` (new, GUARDED) | -- / 3 (banks 1/3) |
+| **`+10` (NEW field)** | `$0CD3` | `$0CE4` | 6 (banks 0/1/3) / 3 (banks 0/1) |
+| **`+11` (NEW field)** | `$0CF7` | `$0D08` | 0 / 1 (bank 0) |
+
+**Two real findings beyond the accessor family itself**:
+- **`$0CA6` (the `ALIVE` setter) is GUARDED**: if the slot's OLD value
+  was already the dead sentinel (`0xFF`), it writes the requested new
+  value then immediately forces it back to `0xFF` regardless -- a real
+  "this specific setter can't revive a dead slot" rule, distinct from
+  the real allocate routine (`$0A74`), which must bypass it somehow
+  (not re-traced this pass).
+- **`$0CBA` treats offsets `+6`/`+7` (currently separate `PARAM6`/
+  `PARAM7` fields) as ONE PAIRED 16-bit value** (`LD (HL),E / INC HL /
+  LD (HL),D`), guarded the same way as the `ALIVE` setter (skipped
+  entirely on a dead slot). Real evidence at least this caller uses
+  them together, not as two independent bytes -- a refinement of the
+  current field split, not yet strong enough to rename them outright.
+
+**A real cross-confirmation, found by chance while reading `$0CD3`'s
+own callers**: one of its 6 real call sites is inside `$404A` -- this
+session's OWN already-fully-disassembled `$C4E0` per-record tick
+handler (see the first entry above) -- called with `C` = the `$C4E0`
+record's own ID byte, exactly the same "ID byte used AS a `$C200`
+slot index" pattern already found independently via `$4BE0`/`$278F`.
+Two, fully independent code paths now confirm the same real indexing
+convention -- decent, unforced cross-validation.
+
+**`TYPE`'s real usage sample**: all 3 real bank-1 call sites of the
+`TYPE` setter found so far write to slot `4` (the PLAYER's own slot)
+with small integers (`1`, `4`), in the SAME functions that also write
+`PARAM2` (`0xC9`, `0xC1`, `0x40`, `0x4A` -- larger, more varied values).
+Reads like `TYPE` is a real, dynamic PER-FRAME STATE value on the
+player's own entity, not a fixed "actor type" set once at allocation
+(this doc's own prior assumption) -- a genuine refinement, offered as
+a well-supported observation, not a proven fact (only 3 real samples,
+all on one slot).
+
+**Honest scope**: the 2 new fields' (`+10`/`+11`) exact real-world
+meaning is still open -- `+10`'s value feeds back into `$404A`'s own
+internal branch (already known, not a new mystery) but what SETS it
+meaningfully, and what `+11` is for at all (only 1 real setter call
+found, no getter callers found in this block), were not traced
+further. `POSITION_Y`'s own getter (`$0C41`) has ZERO real callers
+found via the direct 3-byte `CALL` pattern -- either dead code, or
+reached some other way (e.g. through a table) not checked this pass.
+
+Doc comments + a new `EntityStructLayout.FIELD_ACCESSOR_ADDRESS` table
+added to `EntityStructLayout.lua` (a real, centralized reference for
+all of the above, matching this project's own "ROM data lives in one
+place" convention). No Lua behavior changed. Full Lua test suite:
+421/421 passing (unchanged).

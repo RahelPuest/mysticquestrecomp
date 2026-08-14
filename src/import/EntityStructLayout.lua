@@ -64,6 +64,16 @@ EntityStructLayout.FIELD = {
   PARAM6 = 6,    -- caller-supplied param
   PARAM7 = 7,    -- caller-supplied param
   OAM_SHADOW_PTR = 8, -- real 16-bit LE pointer to this slot's own 8-byte OAM shadow-copy block
+  -- NEW (2026-08-14, direct follow-up, "ja mach mal" -- tracing
+  -- $0C6D/$0C86's ~35 other real callers per the PARAM2 note above):
+  -- found the WHOLE accessor family these two belong to, one real
+  -- getter/setter pair per field, all sharing the exact same `HL =
+  -- $C200 + slotIndex*16 [+ offset]` shape -- see
+  -- `EntityStructLayout.FIELD_ACCESSOR_ADDRESS` below for the full,
+  -- real address table. Two fields beyond the previously-documented
+  -- 0-8 range have real, dedicated accessors too:
+  UNKNOWN_10 = 10, -- real getter $0CD3/setter $0CE4; 6+3 real callers (bank 0/1/3)
+  UNKNOWN_11 = 11, -- real getter $0CF7/setter $0D08; 0+1 real callers (setter only reached once, bank 0)
 }
 
 -- Real ROM addresses of the two known routines that operate on this
@@ -73,6 +83,50 @@ EntityStructLayout.FIELD = {
 -- place" convention.
 EntityStructLayout.DESPAWN_ROUTINE_ADDRESS = 0x0AE3
 EntityStructLayout.ALLOCATE_ROUTINE_ADDRESS = 0x0A74
+
+-- FOUND (2026-08-14, "ja mach mal"): a real, cohesive block of small
+-- per-field getter/setter routines living together at `$0C41`-`$0D1B`
+-- (bank 0), each one the exact same shape `HL = $C200 + C*16 [+
+-- offset]` this project already knew piecemeal (`$02AB`'s own `$0C99`,
+-- `PARAM2`'s `$0C6D`/`$0C86`). Disassembled the whole block directly
+-- against the real ROM bytes -- every entry below is VERIFIED, not
+-- inferred from naming alone. `nil` means no accessor for that
+-- direction was found in this contiguous block (may still exist
+-- elsewhere, not searched for further).
+EntityStructLayout.FIELD_ACCESSOR_ADDRESS = {
+  [EntityStructLayout.FIELD.ALIVE] = { get = 0x0C99, set = 0x0CA6 },
+  -- $0CA6's own setter is GUARDED: if the slot's OLD value was already
+  -- the dead sentinel (0xFF), it writes the NEW value then immediately
+  -- forces it back to 0xFF -- a real "can't revive a dead slot through
+  -- this specific setter" rule, distinct from the real allocate
+  -- routine (`$0A74`) which presumably bypasses it.
+  [EntityStructLayout.FIELD.TYPE] = { get = 0x0C4F, set = 0x0C5D },
+  -- Real usage sample (bank 1, `$4B65`/`$4B78`/`$4FA9`): all 3 real
+  -- call sites found write TYPE for slot 4 (the PLAYER's own slot)
+  -- with small integers (`1`, `4`) alongside PARAM2 writes in the SAME
+  -- functions -- reads like a real, dynamic per-frame STATE value on
+  -- the player's own entity, not a fixed "actor type" set once at
+  -- allocation (the doc comment's own prior assumption) -- a real
+  -- refinement, exact meaning still open.
+  [EntityStructLayout.FIELD.PARAM2] = { get = 0x0C6D, set = 0x0C86 },
+  [EntityStructLayout.FIELD.POSITION_Y] = { get = 0x0C41, set = nil },
+  -- Offsets 6/7 (`PARAM6`/`PARAM7`): no separate 1-byte accessors
+  -- found in this block -- instead, `$0CBA` is a real, GUARDED 16-bit
+  -- setter treating them as ONE PAIRED field (`LD (HL),E / INC HL /
+  -- LD (HL),D` at offset+6/+7 together, skipped entirely if the slot
+  -- is dead). Real evidence these two nominally-separate byte fields
+  -- are, in practice, used as a single 16-bit value by at least this
+  -- caller -- a refinement of the current FIELD table's split naming,
+  -- not yet strong enough to rename them outright.
+  PAIRED_6_7_SET = 0x0CBA,
+  [EntityStructLayout.FIELD.UNKNOWN_10] = { get = 0x0CD3, set = 0x0CE4 },
+  -- Cross-confirms the $4BE0/$278F "$C4E0 record's own ID byte is used
+  -- AS a $C200 slot index" finding via a SECOND, independent code
+  -- path: `$404A` (this session's own real per-record tick handler,
+  -- see ScriptOpcodeTable.lua) calls `$0CD3` with `C` = the record's
+  -- own ID byte, feeding the result into its own internal branch.
+  [EntityStructLayout.FIELD.UNKNOWN_11] = { get = 0x0CF7, set = 0x0D08 },
+}
 
 -- CONFIRMED (2026-08-14, no longer just a hypothesis): live-traced a
 -- real "cut" room transition (thirdRoom -> fourthRoom) end to end --
