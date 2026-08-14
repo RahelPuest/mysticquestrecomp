@@ -6526,3 +6526,66 @@ X" for arbitrary N. That absence -- not a wrong formula -- is the real
 reason the catalog's tile assignment can't currently be fixed the same
 way, and is the same "how does the ROM select ANY room beyond the 16
 known slots" mystery round 3/4 already left open.
+
+## Three more methods tried for the room-catalog tile assignment, all negative (2026-08-14, direct instruction "versuche andere methoden... es muss ja auf die eine oder andere art exsistieren")
+
+Direct continuation after the header-field hypothesis was falsified.
+Three further, methodologically DIFFERENT approaches tried in
+sequence (not variations on the same idea), each calibrated against
+known-good ground truth before being trusted, each reported honestly.
+
+**Method 2 -- pixel edge-continuity scoring.** Hypothesis: real,
+hand-drawn dungeon tiles are drawn to connect at their edges (brick
+walls, floor checkerboards); a WRONG metatile table would place real
+but unrelated tiles next to each other, measurably less continuous
+than the correct table. Implemented a real, quantifiable metric
+(summed absolute pixel-value difference across every adjacent tile
+edge, both directions) and swept 897 candidate 6-byte-aligned bases
+across the whole real, confirmed-valid metatile-pool region
+(`0x20000`-`0x214FA`, per round 3's own "one continuous dictionary"
+finding) against the KNOWN-GOOD records 8-13 (real table `0x20938`).
+**Calibration failed**: the known-good table's own rank among 897
+candidates varied wildly per record (3rd, 53rd, 335th, 352nd, 141st,
+15th) -- nowhere near a reliable "always wins" signal. Likely cause:
+much of this ROM's environment tileset is simple, highly-repetitive
+wall/floor patterns that connect reasonably well to almost ANY
+neighboring choice, making edge-continuity a weak discriminator here
+-- the same class of problem `tile_entropy()` already had, just a
+different specific metric hitting the same wall.
+
+**Method 3 -- static whole-ROM search for real code referencing the
+bank-5/bank-6 pointer-table base address.** Both tables' own pointer
+arrays start at CPU `$4004` (`mapTable.pointerTableFileOffset`/
+`mapTableBank6.pointerTableFileOffset`, bank-relative). Scanned the
+entire 256 KiB ROM for any of the 4 real SM83 16-bit-immediate-load
+opcodes (`LD BC/DE/HL/SP,$4004`) as a direct, concrete check for a
+real caller round 3/4's own live-tracing pass might have missed
+statically. Found exactly 4 byte-matches, ALL inside bank 12 (`environ
+mentTilesetBank12`, pure raw 2bpp tile graphics, never executable
+code), spaced an suspiciously exact `0x1000` bytes apart -- a clear
+artifact of a repeating tile pattern in the graphics data coincidentally
+matching the 3-byte opcode sequence, not real code. Zero real hits.
+
+**Honest, direct conclusion after 2 investigation rounds and 5 total
+distinct methods** (this round's 3 plus round 3/4's own "second
+roomSelectorTable-shaped scan" and "373-entry function table" leads):
+no known ROM mechanism determines the correct metatile table for a
+bank-5/bank-6 record outside the 16 `roomSelectorTable` slots. Every
+method tried was either directly falsified against known-good ground
+truth (methods 1, 2) or found no real evidence at all (method 3, round
+3/4's strategies). This is not a "hasn't been tried hard enough" gap
+-- it is the exact same, now repeatedly-confirmed open mystery: how
+does the ROM's own code select or configure ANY room beyond the 16
+already-known slots. Solving it would most likely require either (a)
+forcing the ROM's own room-load routines directly via register/stack
+manipulation for an out-of-range roomSelector value and observing what
+happens (round 4's own already-flagged "fundamentally different, much
+larger engineering task," never attempted), or (b) a lucky find while
+disassembling unrelated code that happens to reference this table.
+Recorded here plainly so a future pass doesn't re-try methods 1-3
+blind -- `tests/import/map_table_test.lua` already guards method 1;
+methods 2/3 were pure investigation, not committed as reusable code
+(no stable finding to guard).
+
+No code/data changes this pass (pure investigation, scratchpad Python
+scripts only). Full Lua test suite unchanged: 416/416 passing.
