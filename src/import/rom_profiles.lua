@@ -3110,17 +3110,37 @@ RomProfiles.PROFILES = {
     -- Tile ASSIGNMENT uses the same `genericCatalogMetatileTableFileOffset`
     -- default as `mapTable`/`mapTableBank6` (not independently
     -- ground-truth-verified against live gameplay -- no playthrough
-    -- reaches these rooms). Real per-room COLLISION is NOT implemented
-    -- for this table (see `RoomFloorLayout.lua`'s own honest note on
-    -- `resolveMapTableRecordStream`) -- a genuinely separate, still-open
-    -- task. The 24-byte map-level door data and each record's own
-    -- 4-byte prefix remain undecoded -- this milestone was "can we
-    -- reconstruct the real room ART," not "do we understand every byte."
+    -- reaches these rooms).
+    --
+    -- COLLISION CRACKED 2026-08-14 ("ok weiter mit tür und kollision"):
+    -- `RoomFloorLayout.buildCollisionGridFromMapTableRecord` dispatches
+    -- to `buildCollisionGridFromTemplatedMapTableRecord` for this table
+    -- now, same real per-metatile collision-byte lookup as bank 5/6 --
+    -- LIVE-VERIFIED via real `love .` screenshots (see rom-map.md's
+    -- "ok weiter mit tür und kollision" section), same honest
+    -- "extrapolated bank-5/6 rule, not ROM-confirmed" caveat as those
+    -- two tables (no gameplay reaches ANY of these rooms either).
+    --
+    -- DOOR BYTES: real structural progress, honestly still not decoded.
+    -- Each record's own 4-byte prefix is a remarkably clean 8-value
+    -- alphabet across all 256 real bytes (`{0,1,2,5,8,9,12,13}`, zero
+    -- outliers): `bits0-1` is ALWAYS 0/1/2 (never the 4th 2-bit
+    -- combination), matching the external FFA-Disassembly doc's own
+    -- claimed "open/closed/wall" 3-state layout; `bits2-7` is ALWAYS
+    -- 0-3 (240/256 bytes are 0). The map-level 24-byte block does NOT
+    -- share this pattern (wider ranges on both fields) -- genuinely
+    -- different data, not the same format repeated. See rom-map.md's
+    -- own dated section for the full statistical breakdown. NOT
+    -- implemented as door/exit behavior: no live bank-7 gameplay exists
+    -- to confirm which byte is which direction or what each state value
+    -- means, and this project does not fabricate ROM behavior past what
+    -- can be checked.
     mapTableBank7 = {
-      status = "VERIFIED end to end (Templated/mode-1 structure + base-template/diff tile decode, 2026-08-14); " ..
-        "tile ASSIGNMENT uses genericCatalogMetatileTableFileOffset like mapTable/mapTableBank6, not " ..
-        "independently ground-truth-verified against live gameplay; door-data bytes (map-level 24 + " ..
-        "per-record 4) and real collision remain undecoded/unimplemented",
+      status = "VERIFIED end to end (Templated/mode-1 structure + base-template/diff tile decode AND " ..
+        "collision, 2026-08-14); tile ASSIGNMENT uses genericCatalogMetatileTableFileOffset like " ..
+        "mapTable/mapTableBank6, not independently ground-truth-verified against live gameplay; " ..
+        "door-data bytes (map-level 24 + per-record 4) show a real, clean statistical structure " ..
+        "(see doc comment) but remain semantically undecoded -- no live gameplay to confirm against",
       bankFileStart = 0x1C000,
       bank = 7,
       -- The record-pointer list itself starts at +30 (4-byte header + 2-byte

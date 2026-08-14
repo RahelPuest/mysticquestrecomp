@@ -5834,6 +5834,71 @@ any of them, and BOTH of this ROM's real map-table encodings
 
 Full Lua test suite: 429/429 passing (8 new tests).
 
+**UPDATE 2026-08-14 (same day, "ok weiter mit tür und kollision" --
+collision CRACKED, door bytes analyzed and honestly left open).**
+
+**Collision**: `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
+now dispatches on `encodingMode` the same way the tile-decode path
+already does, via a new `buildCollisionGridFromTemplatedMapTableRecord`
+(base-template indices + `MapTable.applyTemplatedDiff`, then the same
+per-metatile collision-byte lookup RLE mode already uses). Same honest
+"extrapolated bank-5/6 rule, not ROM-confirmed" caveat now covers bank
+7 too -- no gameplay reaches any of these rooms, so there's no live
+movement test possible here either. LIVE-VERIFIED (not just headless):
+real `love .` screenshots via a new `MYSTICQUEST_ROOM_EXPLORER_DEMO`
+dev hook at flat room index 321 (bank7 record 0, footer correctly
+reads "room 321/384 (bank7...)", player spawns on real walkable floor)
+and 384 (the last real record, footer "room 384/384 (bank7...)",
+genuinely distinct room art -- a diamond-scatter decoration pattern).
+
+**Door bytes -- real structural progress, honestly still not a
+confirmed decode.** Gathered and statistically analyzed both real byte
+regions:
+
+- **Per-record 4-byte prefix (all 64 records, 256 bytes total): a
+  remarkably clean 8-value alphabet, zero outliers.** Every single byte
+  is one of exactly `{0, 1, 2, 5, 8, 9, 12, 13}` -- nothing else, out of
+  256 real bytes. Split by bit position: `bits0-1` (the external doc's
+  claimed "open/closed/wall" state) is ALWAYS `0`, `1`, or `2` -- the
+  4th possible 2-bit combination (`3`) never once appears alone across
+  all 256 bytes, consistent with a real 3-state enum, not 4. `bits2-7`
+  (the doc's claimed "map exit" area) is ALWAYS `0`, `1`, `2`, or `3` --
+  value `0` dominates (240/256 bytes), the other three are rare. This
+  is a strong, quantified structural match to the external FFA-
+  Disassembly doc's own claimed bit layout for door bytes -- clean
+  enough that it's very unlikely to be coincidental noise.
+- **Map-level 24-byte block: does NOT show the same clean pattern.**
+  `bits0-1` DOES use all 4 values (`0,1,2,3`, not just 3 of them), and
+  `bits2-7` ranges 0-21 (needs up to 5 bits, not the per-record data's
+  0-3). Splitting into 4 groups of 6 bytes (a natural N/E/S/W guess,
+  since "directional door tile data" is 24 bytes = 4 x 6) produced no
+  further obvious sub-pattern under inspection. This is a real,
+  different KIND of data from the per-record prefix, not simply "the
+  same format repeated" -- consistent with (but not proof of) the
+  external doc's own description of it as a separate per-MAP default,
+  not a per-room value.
+
+**Why this stops here, not further**: unlike the tile-diff format
+(which had 320 real records worth of live-render + entropy + visual
+cross-checks available to VALIDATE a hypothesis against), there is
+**no live gameplay ground truth for any bank-7 room at all** -- the
+same fact that makes bank 5/6/7's collision an honest extrapolation
+also means there is no way to confirm which of the 4 prefix bytes
+corresponds to which real direction, or what "state 0" vs "state 1"
+vs "state 2" concretely means (which is open, which is a wall?)
+without a live trigger into one of these rooms, which this project has
+never found (see rom-map.md's own "World scope, round 4"). Implementing
+door-rendering or exit logic on top of an unconfirmed byte-to-direction
+mapping would be exactly the kind of fabricated ROM behavior this
+project's own engineering rule forbids. Recorded here as a real,
+well-evidenced STRUCTURAL LEAD for whoever picks this up next (or if a
+future finding somehow reaches live bank-7 gameplay), not as a decoded
+fact -- `MapTable.applyTemplatedDiff`'s own doc comment still correctly
+skips these 4 bytes rather than acting on them.
+
+Full Lua test suite: 431/431 passing (2 more tests, the collision
+dispatch + its loud-failure-on-wrong-mode check).
+
 ## World scope, round 6: parity check against real Live-VRAM data -- an honest negative result (2026-08-12, "alle 3 in der vorgeschlagenen reinfolge", quick win #3 of this batch)
 
 Direct follow-up to round 5's own "320 decodable rooms" claim: that
