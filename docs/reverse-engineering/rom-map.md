@@ -5689,6 +5689,57 @@ scratch-script finding):
   through this new general Lua path -- run directly against the
   shipped code, not a separate one-off script.
 
+**UPDATE 2026-08-14 (bank 7 "Templated" revisited, direct user request
+"mach mal #2" -- structural progress, decode still genuinely open).**
+The earlier "breaks after exactly 1 entry" finding above is corroborated,
+not contradicted, by this pass: that single valid-looking pointer IS
+real. Re-read the external FFA-Disassembly project's OWN documented
+Templated-mode shape precisely (`header(4) + templatePointer + 24 bytes
+directional door data + the usual (headerPtr,dataPtr) pointer list`) and
+tested it byte-for-byte against this EU ROM's own bank 7 (`01 04 08 08`
+header at file `0x1C000`):
+
+- `+4/+5` (`1e 41` = `0x411e`): a single valid CPU pointer -- exactly the
+  "1 entry then break" the earlier monotonic-pointer scan already found,
+  now identified as the real template pointer, not a scan artifact.
+- `+6..+29` (24 bytes, `25 35 20 30 14 03 52 53 24 34 21 31 12 13 42 43
+  15 45 10 40 28 04 51 54`): matches the documented 24-byte door-data
+  block's LENGTH exactly. Byte-level meaning (the doc's own "bits 0-1 =
+  open/closed/wall, bits 2-7 = map-exit flag") not yet tested against
+  this data -- structural position confirmed, semantic decode still open.
+- `+30` onward (file `0x1C01E`): a clean monotonic, strictly-increasing,
+  valid-CPU-address (`$4000-$7FFF`) pointer run of **128 entries = 64
+  (headerPtr,dataPtr) pairs**, ending exactly at file `0x1C11E` with no
+  early break or overrun -- the identical shape and even the identical
+  64-record count as bank 6's own already-VERIFIED RLE table. This is a
+  real, strong structural match: header, template pointer, and door-data
+  block sizes all land on clean boundaries with zero slack bytes.
+
+**Where it stops being confirmed**: applying `MapTable`'s own proven
+blob-boundary convention (a record's data blob runs from its own
+`dataAddr` to the NEXT record's `headerAddr`) plus the header's own
+`rleLength=4` to all 64 records does **NOT** reproduce bank 5/6's clean,
+uniform 80-tile-per-record result. Decoded lengths are irregular and
+span a wide range (12 to 56 tiles, mode at 28, no dominant clean value).
+This is an honest, real negative result for "the blob format is
+identical RLE, just with extra header fields in front" -- it is NOT.
+Read positively, it is actually consistent with what "Templated" ought
+to mean: each record's own blob most likely encodes a partial DIFF
+against the shared base-room template (`0x411e`'s own data), rather than
+a full independent 80-tile grid -- which would naturally explain both
+the smaller sizes and the non-uniformity (rooms differing from the
+template by different amounts). **Not yet tested or confirmed** -- doing
+so needs the template's own base grid decoded first (its data blob
+location is not yet known; a bare CPU pointer, no associated
+`dataAddr` pair the way regular records have one) and a real diff-
+application rule found (position-tagged overrides? run-length "same as
+template" markers? unknown). Genuinely left open here, same honest
+"real, separate task" framing as the previous stop -- not a claimed
+crack, just a materially better-understood shape of the format's
+metadata layer (header/template-pointer/door-data/record-list all now
+structurally accounted for) plus one concrete negative result narrowing
+the search for its content-diff scheme.
+
 **Honest, precise final scope**: this project can now decode **320
 real, individually-confirmed-coherent rooms** (up from 8) via general,
 tested, ROM-static code -- no live emulator state needed for any of
