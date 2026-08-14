@@ -85,20 +85,35 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "fourthRoom: real, live-traced second exit targets sixthRoom",
+  "fourthRoom: RETRACTED -- the second exit into sixthRoom was never real (2026-08-14)",
   romData ~= nil,
   "no development ROM found",
   function()
+    -- This test used to assert `#fourth.exits == 2` and a real, live-
+    -- traced west exit into `sixthRoom` (holdFrames=220). A dedicated
+    -- re-investigation ("die gesammte gamemap entschlüsseln, absolute
+    -- prio") found 3 independent, converging pieces of real evidence
+    -- that this was never a genuine "cut" transition: the documented
+    -- trigger never fires even after 3000+ frames of holding (the real
+    -- corridor is bigger than originally captured, with a second real
+    -- wall further west); the original "confirmation" evidence
+    -- (dynamicBank $C3F0=6) is non-discriminating (already true from
+    -- the moment fourthRoom itself is entered); and the real $1E9F/
+    -- $1EB6 scroll-reveal mechanism -- the SAME real ROM address
+    -- already proven for secondRoom's own continuation of willyRoom --
+    -- fires during this exact corridor walk, with real captured tile
+    -- data matching fourthRoom's own vocabulary. See rom_profiles.lua's
+    -- own "RETRACTED"/"CORRECTED" doc comments for the complete trail.
+    -- `sixthRoom`'s own table (tileOffsets etc.) is kept as real,
+    -- cross-validated ROM data -- only the exit pointing at it as a
+    -- separate room is removed.
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local fourth = profile.graphics.fourthRoom
-    Harness.assertTrue(fourth.exits ~= nil and #fourth.exits == 2,
-      "expected fourthRoom to have exactly 2 real exits (north->fifthRoom, west->sixthRoom)")
-    local exit = fourth.exits[2]
-    Harness.assertEqual(exit.targetRoom, "sixthRoom")
-    Harness.assertEqual(exit.transition.type, "cut")
-    Harness.assertEqual(exit.landingX, 80)
-    Harness.assertEqual(exit.landingY, 96)
-    Harness.assertEqual(exit.holdFrames, 220)
-    Harness.assertEqual(exit.holdDirection, "left")
+    Harness.assertTrue(fourth.exits ~= nil and #fourth.exits == 1,
+      "expected fourthRoom to have exactly 1 real exit now (north->fifthRoom only)")
+    for _, exit in ipairs(fourth.exits) do
+      Harness.assertTrue(exit.targetRoom ~= "sixthRoom",
+        "sixthRoom should no longer be a real exit target")
+    end
   end
 )

@@ -1836,40 +1836,63 @@ RomProfiles.PROFILES = {
             landingX = 136, landingY = 32,
             holdFrames = 64, holdDirection = "down",
           },
-          -- Real, LIVE-TRACED second exit (2026-08-13, direct user bug
-          -- report -- see `sixthRoom`'s own doc comment for the full
-          -- evidence trail). Reached via the SAME corridor as the exit
-          -- above: walk UP from the staircase landing spot into the
-          -- corridor, then continue LEFT. The zone below uses the REAL
-          -- live-observed WRAM Y range the corridor actually occupies
-          -- during this walk (`$C244` shifts from 88 to 96 partway
-          -- through, live-confirmed) -- RESOLVED same pass/same finding
-          -- as the fifthRoom exit above (task #75, 2026-08-14): this
-          -- raw-WRAM zone is correct as-is (matches this project's own
-          -- `player.x/y` convention exactly, no re-derivation needed),
-          -- and the real reconciliation formula against the static
-          -- `grid` is now understood in full -- see the fifthRoom
-          -- exit's own doc comment above for the complete evidence
-          -- trail (this exit's own corridor walk was the one that
-          -- actually turned up the 10 new wall-decoration tile IDs now
-          -- in `tileOffsets` above, all confirmed to sit only near the
-          -- screen's top edge, never under the player). `holdFrames=220`
-          -- is a real, tested, safe
-          -- value (a real 200-frame hold was directly confirmed to
-          -- fully settle; not chased down to its exact real minimum) --
-          -- unlike the north exit's own real, precisely-measured
-          -- ~64-frame delay, this is this project's own approximation
-          -- of a genuinely CONTINUOUS real hardware scroll (the real
-          -- SCX shadow moves gradually the whole time, not a single
-          -- discrete wait-then-cut), not a real, single ROM-authored
-          -- constant.
-          {
-            zone = { xMin = 0, xMax = 128, yMin = 80, yMax = 99 },
-            transition = { type = "cut" },
-            targetRoom = "sixthRoom",
-            landingX = 80, landingY = 96,
-            holdFrames = 220, holdDirection = "left",
-          },
+          -- RETRACTED (2026-08-14, "die gesammte gamemap entschlüsseln,
+          -- absolute prio" -- direct continuation, user follow-up "1"):
+          -- a second exit USED to be recorded here (west, holding LEFT
+          -- from the same corridor into a room named `sixthRoom`,
+          -- holdFrames=220). A dedicated re-investigation this pass
+          -- found THREE independent, converging real pieces of evidence
+          -- that it was never a real "cut" transition at all:
+          --   1. Live re-tested the documented holdFrames=220 trigger
+          --      with much longer, more careful holds (up to 3000+
+          --      frames, continuous AND intermittent-tapped) -- it never
+          --      fires. The real corridor is bigger than originally
+          --      captured (a second real wall exists further west, at
+          --      WRAM X=24, with further real walkable space beyond
+          --      that too) -- the original "settles at X=80" claim was
+          --      a real, understandable false read of a TEMPORARY pause
+          --      (~260 frames), not the room's own true boundary.
+          --   2. The original "confirmation" evidence (`dynamicBank`
+          --      `$C3F0`=6, "matches the willyRoom/secondRoom/thirdRoom
+          --      family") turned out to be non-discriminating: `$C3F0`
+          --      already reads 6 the instant `fourthRoom` itself is
+          --      entered via the staircase (roomSelector 1's own real
+          --      dynamicBank value) -- observing 6 anywhere in the
+          --      corridor is equally consistent with STILL being in
+          --      fourthRoom.
+          --   3. DECISIVE: live-captured the real `$1E9F`/`$1EB6` scroll-
+          --      time VRAM-write-queue calls during the corridor walk --
+          --      the EXACT SAME real mechanism (same ROM address,
+          --      `$1EB6`) already proven for `secondRoom`'s own real
+          --      continuation of `willyRoom`'s single continuous room
+          --      space. Captured 160 real tile-ID pairs (a full 16-row
+          --      x 20-col real strip) whose values are the literal same
+          --      tile vocabulary `fourthRoom` already uses (129-134 plus
+          --      the 145/146 corridor-decoration tiles). A completely
+          --      independent, pre-existing doc comment (see
+          --      `StandardScriptHandlers.lua`'s own `peekTwoByteGate`
+          --      doc comment) had ALSO already flagged, from an entirely
+          --      different investigation (the real cut-sequence landing-
+          --      tile-source table), that no real table entry for
+          --      fourthRoom->sixthRoom was ever found, unlike the real,
+          --      confirmed thirdRoom->fourthRoom and fourthRoom->
+          --      fifthRoom entries -- a fourth, independent corroboration.
+          --
+          -- Conclusion: "sixthRoom" is real further columns of
+          -- `fourthRoom`'s own single continuous room space (the same
+          -- "one room, several screens" pattern as `willyRoom`/
+          -- `secondRoom`), not a genuinely separate room -- there is no
+          -- real cut to reproduce here. The `sixthRoom` table below is
+          -- KEPT (its own `tileOffsets` are real, independently cross-
+          -- validated ROM data, still useful reference), but this exit
+          -- is removed rather than left pointing at a target that was
+          -- never real. The 160 real captured tile-pairs from this
+          -- pass's own full-corridor scan are a real, concrete
+          -- foundation for properly extending `fourthRoom.grid` itself
+          -- westward -- not done this pass (needs the real per-event
+          -- SCX value, not captured this round, to place each captured
+          -- tile at its correct WORLD position rather than just a
+          -- native BG column) -- a well-scoped, bounded follow-up.
         },
       },
       -- Real room found LIVE (2026-08-12, "fourthRoom systematisch
@@ -1978,8 +2001,22 @@ RomProfiles.PROFILES = {
       -- `dynamicBank` exactly -- this is real, further content of that
       -- SAME already-explored screen, not a new tile region or a
       -- different `roomSelector` state.
+      -- CORRECTED (2026-08-14, "gamemap absolute prio"): the paragraph
+      -- above already had the real answer, three separate real
+      -- confirmations later just made it decisive -- see `fourthRoom
+      -- .exits`'s own "RETRACTED" doc comment above for the full
+      -- evidence trail (the documented cut-trigger never fires even
+      -- after 3000+ frames; the `$C3F0`=6 "confirmation" was non-
+      -- discriminating; the real `$1E9F`/`$1EB6` scroll-reveal
+      -- mechanism -- the exact one that proved `secondRoom` is part of
+      -- `willyRoom` -- fires here too, with real captured tile data
+      -- matching `fourthRoom`'s own vocabulary). This table's own real,
+      -- independently-verified `tileOffsets` are KEPT (genuine,
+      -- cross-validated ROM data, still useful), but "sixthRoom" is
+      -- NOT a real, separately-reachable room -- `fourthRoom.exits` no
+      -- longer points here.
       sixthRoom = {
-        status = "VERIFIED",
+        status = "VERIFIED (tile data only -- NOT a real, separately-reachable room, see doc comment above)",
         romRoomSelectors = { 2, 3, 4, 5, 6 },
         cols = 20,
         rows = 16,

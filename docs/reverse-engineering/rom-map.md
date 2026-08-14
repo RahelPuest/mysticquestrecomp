@@ -6338,3 +6338,25 @@ based on how far X travels), assembling it into a real extended
 `fourthRoom.grid`, and retiring the separate `sixthRoom` room
 definition in `rom_profiles.lua` (folding its own already-decoded tile
 offsets into `fourthRoom.tileOffsets`, which mostly already overlaps).
+
+**Code-level retraction carried out (2026-08-14, same pass).** The
+conclusion above is now reflected in the shipped code, not just this
+doc: `fourthRoom.exits` in `rom_profiles.lua` had its second (west,
+`sixthRoom`) entry removed -- it now holds exactly 1 real exit (north,
+to `fifthRoom`). A "RETRACTED" doc comment replaces it, citing all 4
+converging pieces of evidence (never-firing documented trigger even
+after 3000+ frames; non-discriminating `$C3F0` dynamicBank evidence;
+the real `$1E9F`/`$1EB6` scroll-reveal mechanism firing with real
+captured tile data matching `fourthRoom`'s own vocabulary; and an
+independently pre-existing doc comment in `StandardScriptHandlers.lua`
+from an unrelated investigation that had already flagged the same
+gap). `sixthRoom`'s own table (tileOffsets/grid) is KEPT as real,
+cross-validated ROM data -- only the exit pointing at it as a separate
+room is gone. `tests/import/sixth_room_test.lua` now asserts this
+directly (`#fourth.exits == 1`, no exit targets `"sixthRoom"`);
+`tests/import/fifth_room_test.lua` and
+`tests/import/tile_landing_position_test.lua` were updated for the
+direct, expected fallout (one fewer real recorded landing position).
+Full suite green afterward: 414 passed, 0 failed. `rom-inspector/js
+/data/open-questions.js`'s "No real camera-scroll rendering" entry
+corrected to match (was still describing "two 'cut' exits").

@@ -7603,3 +7603,34 @@ correction. The bug's blast radius was exactly the one finding already
 corrected -- it did not touch `sixthRoom`'s own conclusion, the
 `$242B`/metatile-table pipeline findings, or any earlier project
 history.
+
+## Code-level retraction of the fourthRoom->sixthRoom exit (2026-08-14)
+
+Followed through on the `sixthRoom` conclusion above with an actual
+code change, not just a documented hypothesis: `rom_profiles.lua`'s
+`fourthRoom.exits` had its second (west, `sixthRoom`) entry removed --
+it now holds exactly 1 real exit (north, to `fifthRoom`), with a
+"RETRACTED" doc comment in its place citing all 4 converging pieces
+of evidence from `rom-map.md`. `sixthRoom`'s own table (tileOffsets,
+grid) is kept -- it's real, cross-validated ROM data, just not a
+separately-reachable room.
+
+Direct, expected fallout fixed across 3 test files:
+- `tests/import/sixth_room_test.lua`: old "second exit targets
+  sixthRoom" test replaced with a "RETRACTED" test asserting exactly
+  1 real exit and that none target `"sixthRoom"`.
+- `tests/import/fifth_room_test.lua`: stale doc comment corrected.
+- `tests/import/tile_landing_position_test.lua`: its "at least 5
+  already-known real landing positions" floor dropped to 4 -- one
+  fewer real recorded landing position (the retracted exit's own
+  `landingX=80/landingY=96`) is now the honest count, not a loosened
+  check.
+
+`rom-inspector/`: regenerated all code-derived JS data files via
+`export_data.lua` (rooms.js/room-maps.js no longer imply a separate
+sixthRoom exit target; sixthRoom's own tile data stays, correctly,
+since it's real). Hand-fixed the one stale hand-curated line in
+`open-questions.js`'s "No real camera-scroll rendering" entry (was
+still describing "fourthRoom's two 'cut' exits").
+
+Full suite green: **414 passed, 0 failed, 0 skipped**.

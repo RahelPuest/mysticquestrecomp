@@ -82,10 +82,14 @@ Harness.testIfAvailable(
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local fourth = profile.graphics.fourthRoom
-    -- CORRECTED (2026-08-13, "fourthRoom->sixthRoom-Lücken"): fourthRoom
-    -- now has a real SECOND exit too (west, into sixthRoom -- see
-    -- sixth_room_test.lua) -- this test only asserts on the FIRST
-    -- (north, into fifthRoom), not the total count anymore.
+    -- CORRECTED AGAIN (2026-08-14, "gamemap absolute prio"): fourthRoom
+    -- briefly had a real SECOND exit recorded here (west, into
+    -- sixthRoom, 2026-08-13) -- RETRACTED this pass, see sixth_room_test
+    -- .lua's own "RETRACTED" test and rom_profiles.lua's doc comments
+    -- for the full evidence trail (it was never a real cut). Still
+    -- asserting `>= 1` rather than an exact count, same reasoning as
+    -- before -- this test only cares about the FIRST (north, fifthRoom)
+    -- exit either way.
     Harness.assertTrue(fourth.exits ~= nil and #fourth.exits >= 1, "expected fourthRoom to have at least 1 real exit")
     local exit = fourth.exits[1]
     Harness.assertEqual(exit.targetRoom, "fifthRoom")

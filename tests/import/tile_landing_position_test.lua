@@ -30,6 +30,15 @@ end)
 -- transition it was live-traced from. Walks the actual profile data
 -- (not a hardcoded copy of it) so this test stays honest if any
 -- landing value is ever corrected.
+--
+-- CORRECTED (2026-08-14, "gamemap absolute prio"): the minimum count
+-- was 5 (including fourthRoom's own since-RETRACTED second exit into
+-- "sixthRoom", landingX=80/landingY=96 -- see sixth_room_test.lua's
+-- own "RETRACTED" test and rom_profiles.lua's doc comments). That
+-- exit was never a real cut transition, so its landing position is
+-- gone too -- the real count of already-known landing positions is
+-- now 4. Lowering this floor is the honest, direct consequence of
+-- that retraction, not a loosened check.
 local function collectLandingPositions(node, out)
   if type(node) ~= "table" then return end
   if type(node.landingX) == "number" and type(node.landingY) == "number" then
@@ -45,8 +54,8 @@ end
 Harness.test("TileLandingPosition: every real landingX/landingY already recorded in rom_profiles.lua decomposes into a clean integer tile coordinate", function()
   local positions = {}
   collectLandingPositions(RomProfiles.PROFILES, positions)
-  Harness.assertTrue(#positions >= 5,
-    "expected at least the 5 already-known real landing positions, found " .. #positions)
+  Harness.assertTrue(#positions >= 4,
+    "expected at least the 4 already-known real landing positions, found " .. #positions)
   for _, p in ipairs(positions) do
     local tx, ty = TileLandingPosition.tileFromScreen(p.x, p.y)
     Harness.assertTrue(tx ~= nil and ty ~= nil,

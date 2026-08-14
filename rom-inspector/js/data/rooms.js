@@ -7,11 +7,6 @@ const ROOMS = [
         "reverse": false,
         "targetRoom": "fifthRoom",
         "transitionType": "cut"
-      },
-      {
-        "reverse": false,
-        "targetRoom": "sixthRoom",
-        "transitionType": "cut"
       }
     ],
     "heightTiles": 16,
