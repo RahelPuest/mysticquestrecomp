@@ -198,8 +198,28 @@ function BattleIntro:update(dt)
   -- for the walk-in animation above) unchanged for the rest of the
   -- cutscene, which never matched the real ROM. Reset exactly once,
   -- right as the walk-in phase ends.
+  --
+  -- FIXED FOR REAL (2026-08-14, direct user report the player still
+  -- doesn't visibly face north here): the line above only ever touched
+  -- `self.player.facing`, a plain DATA field `:draw()` never reads for
+  -- this state's own player sprite (see below) -- `PlayerSprite`'s own
+  -- rendered pose is driven entirely by `self.playerSprite.animGroup`/
+  -- `.phase`, which `:update()` only touches while `moving` is true
+  -- (see that module's own doc comment: it deliberately freezes on the
+  -- LAST WALK POSE once movement stops, a real, separately-verified
+  -- general gameplay fact -- not a bug, and not something to change).
+  -- So the walk-in's own last "left" pose kept rendering forever after,
+  -- unaffected by the facing assignment. This ONE moment is a real,
+  -- SCRIPTED cutscene event with its own direct OAM evidence (the doc
+  -- comment above), genuinely different from "the player just stopped
+  -- walking" -- forcing the render state to the idle (up-facing) pose
+  -- here matches that specific real trace without contradicting the
+  -- general freeze-on-last-pose rule anywhere else.
   if self.frame == walkEnd + 1 then
     self.player.facing = "up"
+    if self.playerSprite then
+      self.playerSprite.animGroup = nil
+    end
   end
 
   -- Real boss walk-in (see rom_profiles.lua's `enemyDescent` doc
