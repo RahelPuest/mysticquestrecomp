@@ -269,19 +269,19 @@ function Field.new(romData, profile, input, overlay, stack, heroName, savedStats
         TileImage.paletteFromShadeIndices(flash.shadeIndices))
       self.enemyFlashFrames = flash.frames
     end
-    -- Real death "explosion" sprite (2026-08-12, see rom_profiles.lua's
-    -- own `enemyDeath` doc comment) -- the same 4 real body-part tiles
-    -- drawn once per scattered position in :draw() below, not a
-    -- dedicated 6-tile sheet (the real capture shows 6 OAM PAIRS
-    -- reusing this same 4-tile set in different combinations frame to
-    -- frame -- one shared 2x2 image, drawn 6 times at 6 real
-    -- interpolated positions, reproduces the real "parts flying apart"
-    -- look without needing to track which exact pair used which exact
-    -- 2 of the 4 tiles at every real frame, see that field's own
-    -- "honest simplification" note).
+    -- Real death "explosion" sprite (2026-08-12, CORRECTED 2026-08-14 --
+    -- see rom_profiles.lua's own `enemyDeath` doc comment for the full
+    -- live-OAM re-trace this fix is based on): used to combine all 4
+    -- real tile offsets into ONE static 2x2 (16x16) image, always fully
+    -- shown -- the real ROM never draws all 4 together; each of the 6
+    -- real flying pieces is a 2-tile-wide, 1-tile-tall sprite that
+    -- alternates between 2 real captured frames. Two separate 2x1
+    -- sprites built here; `:draw()` below alternates between them (a
+    -- real, live-confirmed 2-frame debris flap/spin, not a guess).
     local deathData = profile.graphics.enemyDeath
     if deathData then
-      self.enemyDeathSprite = CreatureSprite.fromOffsets(romData, deathData.tileOffsets, 2, 2)
+      self.enemyDeathSpriteA = CreatureSprite.fromOffsets(romData, deathData.frameA, 2, 1)
+      self.enemyDeathSpriteB = CreatureSprite.fromOffsets(romData, deathData.frameB, 2, 1)
     end
     -- Real per-tile wall collision (2026-08-09) -- see Player.lua's
     -- `canMoveTo` doc comment and rom_profiles.lua's `startRoom
@@ -681,21 +681,32 @@ function Field:draw()
   -- (rather than removed) so a future room that genuinely doesn't have
   -- a visible enemy yet can still say so explicitly instead of drawing
   -- an unverified guess.
-  if self.enemy.death and self.enemyDeathSprite and not self.enemy:deathComplete() then
-    -- Real death "explosion" (2026-08-12, see rom_profiles.lua's own
-    -- `enemyDeath` doc comment for the live-traced evidence): the real
-    -- creature's six body-part tile pairs scatter outward over
-    -- `totalFrames` real frames -- linear interpolation between the
-    -- real captured start (its own resting pose) and end (frame 81,
-    -- the last real sample before the frame-86 vanish) positions, per
-    -- part, matching that field's own "honest simplification" note.
+  if self.enemy.death and self.enemyDeathSpriteA and not self.enemy:deathComplete() then
+    -- Real death "explosion" (2026-08-12, CORRECTED 2026-08-14, see
+    -- rom_profiles.lua's own `enemyDeath` doc comment for the full
+    -- live-traced re-check): the real creature's six body-part tile
+    -- pairs scatter outward over `totalFrames` real frames -- linear
+    -- interpolation between the real captured start (its own resting
+    -- pose) and end (frame 81, the last real sample before the
+    -- frame-86 vanish) positions, per part, matching that field's own
+    -- "honest simplification" note. Each part now alternates between
+    -- the 2 real captured debris frames (`frameA`/`frameB`) instead of
+    -- showing both stacked together as one static double-height block
+    -- -- the alternation CADENCE itself (every 4 real frames here) is
+    -- an honest approximation, not independently re-verified to the
+    -- exact real frame boundary (the live trace that found the real
+    -- 2-frame shape sampled every 8 frames, coarser than the real
+    -- period) -- same "not frame-exact, real shape not real timing"
+    -- honesty bar as the position interpolation already documented.
     local d = self.profile.graphics.enemyDeath
     local es = self.profile.graphics.enemySprite
-    local t = math.min(1, self.enemy.death.elapsedFrames / d.totalFrames)
+    local elapsed = self.enemy.death.elapsedFrames
+    local t = math.min(1, elapsed / d.totalFrames)
+    local sprite = (math.floor(elapsed / 4) % 2 == 0) and self.enemyDeathSpriteA or self.enemyDeathSpriteB
     for _, part in ipairs(d.parts) do
       local px = es.screenX + part.dx * t
       local py = es.screenY + part.dy * t
-      self.enemyDeathSprite:draw(px, py)
+      sprite:draw(px, py)
     end
   elseif self.enemy:isAlive() and self.enemyConfirmedVisible then
     -- Real hit-flash (2026-08-09, see rom_profiles.lua's

@@ -2751,9 +2751,43 @@ RomProfiles.PROFILES = {
       -- starting position (the creature's real resting pose, see
       -- `enemySprite.screenX/screenY`), not an invented starburst.
       enemyDeath = {
-        status = "VERIFIED (positions) / UNCONFIRMED (exact tile bank, see doc comment)",
+        status = "VERIFIED (positions + real 2-frame debris shape)",
         bank = 8,
-        tileOffsets = { 0x23db0, 0x23dc0, 0x23df0, 0x23e00 }, -- $38 $3a $3c $3e
+        -- CORRECTED (2026-08-14, direct user report: "bei den einzelnen
+        -- sprites scheint jeweils die untere Hälfte bei der Explosion
+        -- zu fehlen"): the old doc comment's own "6 real body-part
+        -- PAIRS" framing was never actually cross-checked against a
+        -- fresh live capture -- these 4 tile offsets were being drawn
+        -- as ONE static, always-fully-shown 2x2 (16x16) sprite at each
+        -- of the 6 scatter positions. A real live OAM trace (mgba,
+        -- `courtyard_boss_defeated`, sampled every 8 real frames
+        -- through the whole death sequence) found the real hardware
+        -- NEVER shows all 4 tiles together: each of the 6 real flying
+        -- OAM pairs is only TWO tiles wide, ONE tile tall (real tile
+        -- IDs $38/$3a or $3c/$3e, never all four at once), alternating
+        -- between them over time -- a real 2-FRAME debris animation,
+        -- not a static double-height block. `frameA`/`frameB` below
+        -- are those 2 real captured frames (each a real 2-tile-wide,
+        -- 1-tile-tall sprite); `Field.lua` alternates between them
+        -- (see its own doc comment for the exact real cross-reference
+        -- of these 4 offsets to the real tile IDs $38/$3a/$3c/$3e).
+        frameA = { 0x23db0, 0x23dc0 }, -- real tiles $38 $3a
+        frameB = { 0x23df0, 0x23e00 }, -- real tiles $3c $3e
+        -- Real, live-CONFIRMED (NOT a bug): the same live OAM trace
+        -- also checked `OBP1` (the enemy's own real sprite palette
+        -- register) through the whole death sequence -- it reads
+        -- `$D0` throughout the explosion, i.e. this game's own
+        -- already-implemented DEFAULT sprite palette (see
+        -- `spritePalette.registerValue` above, same value) -- already
+        -- what `CreatureSprite.fromOffsets` falls back to when no
+        -- explicit palette is passed (as this death sprite does). A
+        -- direct user suspicion ("da müsste auch ein Palettn-Effekt
+        -- drüber") checked and found NOT needed: no separate death-
+        -- flash palette exists in the real ROM, the ordinary default
+        -- already matches. (The enemy's own PRE-death resting pose DID
+        -- read a different real value, `$3F` -- a real, separate,
+        -- not-yet-investigated fact about its own idle rendering, out
+        -- of scope for this specific bug report.)
         totalFrames = 86, -- real: OAM entry count hits 0 exactly here
         -- 6 real body-part pairs, each `{dx, dy}` -- the real captured
         -- delta from the creature's own resting top-left screen
