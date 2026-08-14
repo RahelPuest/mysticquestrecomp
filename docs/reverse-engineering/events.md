@@ -7237,3 +7237,79 @@ No new decoder logic added this pass (pure exploration/documentation,
 using the already-committed `MapTable.tryDecodeActorAction`) beyond
 the real Weltkarte performance fix. Full Lua test suite: 421/421
 passing (unchanged -- this pass is JS-side + pure investigation).
+
+## Connecting systems: roomSelectorTable's own unexplained bytes vs. the ACTOR_ACTION corpus (2026-08-14, "können wir jetzt systeme verbinden bei denen das vorher nicht möglich war?")
+
+Direct instruction to look for new connections between systems this
+session's own work has separately decoded. Two attempts, one honest
+negative, one genuine (carefully-caveated) positive.
+
+**Attempt 1 (negative): does `roomSelectorTable`'s own still-
+unexplained byte fields (byte2, byte5, bytes9-10, all marked "not
+consumed"/"never read" in this table's own doc comment) point at real
+script bytecode, the same way bank-5/bank-6's own per-record header
+field turned out to?** Tested bytes9-10 (a 16-bit LE value) both as a
+bank-window CPU address (all 16 real values are `< 0x4000` -- not
+even structurally valid for that interpretation) and as a direct
+bank-8 file offset (`0x20000 + value` -- lands in a plausible
+neighborhood near the already-known metatile-pool region for several
+selectors, but the raw bytes there don't show the clean metatile- or
+script-shaped structure either format would predict). **Genuinely
+inconclusive/negative** -- reported honestly rather than forced into
+a conclusion.
+
+**Attempt 2 (positive, with an honest self-caught methodology
+correction along the way): does the room-catalog's own ACTOR_ACTION
+usage (104/320 scripts, only groups 3-6 seen) connect to the REST of
+the real script corpus (all 1357 `scriptPointerTable` entries, the
+main game's own real, gameplay-connected scripts)?**
+
+First attempt at this scanned a raw, fixed 200-byte window per script
+checking every byte offset independently -- produced implausible
+noise (1334/1357 "scripts" matching, every one of the 56 possible
+`(group,action)` combinations thousands of times each in just 200
+bytes) -- a real methodology bug (not respecting real instruction
+boundaries, i.e. treating arbitrary byte alignments as if they were
+real opcode dispatch points), self-caught before being reported,
+matching this project's own established "no silent methodology bugs"
+discipline (the exact same class of mistake as this session's earlier
+`Watcher.step()` self-correction).
+
+**Corrected**, using the real `ScriptRuntime` (proper handler
+dispatch, real cursor advancement, the same convention `scripts/
+scan_all_scripts.lua` already uses, `stepBudget=500`):
+- **762/1357 real scripts (56%) genuinely dispatch at least one real
+  ACTOR_ACTION opcode.**
+- **All 7 groups (0-6) appear in the real corpus** -- including
+  groups 0-2, which NEVER appear in the room catalog's own 104
+  resolved scripts. This is the real connection: the room catalog
+  only uses a SUBSET (groups 3-6) of the full group-numbering space
+  the main game's own scripts use across the board -- consistent with
+  groups 3-6 being a location/region-specific slice, not the complete
+  picture.
+- **The same 8 real action-code values already documented** (`0x04/
+  0x05/0x0E/0x0F/0x1C/0x1D/0x1E/0x1F`) are the ONLY ones dispatched
+  anywhere in the real corpus too -- independent cross-validation,
+  from a completely different investigation angle (room-catalog event
+  scripts vs. whole-corpus interpreter shadow-run), of the exact same
+  "8 action-code variants" this project's own earlier bank-3
+  disassembly pass already found.
+
+**Honest caveat on the raw numbers**: total per-pair "hit" counts
+(up to 281 for one pair) are inflated by this opcode family's own
+already-documented HALT behavior -- a script waiting on a real,
+unsatisfied actor-flag condition just re-dispatches the SAME opcode
+every remaining step of the budget (matches the boss-defeat script's
+own already-documented "queue-gate halt" issue). The trustworthy
+number is "762 real scripts use this family at all," not the raw
+dispatch tally.
+
+**Net result**: one honest negative (roomSelectorTable's own
+remaining unknown bytes stay unknown), one genuine, cross-validated
+positive connecting the room-catalog's own new event-script findings
+to the broader, already-established real script system -- with a
+self-caught and corrected methodology mistake documented along the
+way rather than silently fixed.
+
+No code changes this pass (pure investigation, scratchpad scripts
+only). Full Lua test suite unchanged: 421/421 passing.
