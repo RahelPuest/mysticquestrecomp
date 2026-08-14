@@ -85,17 +85,56 @@ transitions is now understood (see the room-connectivity table above),
 though the Lua engine itself still reads empirical/captured data, not
 the live ROM table, at runtime.
 
-## Collision — HYPOTHESIS, not a decoded ROM table
+## Collision — willyRoom CLOSED (real ROM byte, decoded and wired); the rest still HYPOTHESIS
 
 `rom_profiles.lua`'s `floorTileIds` fields (one per room) are this
 project's own classification of the real captured tile IDs into floor
 vs. wall/gate, used for real per-tile player movement collision
 (`src/entities/Player.lua`'s `canMoveTo`). No decoded ROM collision-flag
-table has been found — this is a reasonable approximation from visually
-inspecting each real layout (with one real bug caught and fixed this
-session: `thirdRoom`'s own staircase tiles weren't marked walkable,
-making its own exit zone physically unreachable), not a verified ROM
-fact.
+table has been found for most rooms — this is a reasonable
+approximation from visually inspecting each real layout (with one real
+bug caught and fixed earlier: `thirdRoom`'s own staircase tiles weren't
+marked walkable, making its own exit zone physically unreachable), not
+a verified ROM fact.
+
+**CLOSED for willyRoom (2026-08-14, "Kollision generalisieren")**: a
+real, per-metatile-instance ROM collision byte DOES exist (the
+already-known 6-byte metatile record's own 5th field, see
+`RoomFloorLayout.lua`) -- the earlier blocker was never "no such byte
+exists," it was that this project's own first bit-interpretation rule
+(`isWalkableCollision`, confirmed for fourthRoom's shared tile IDs and
+unknownRoomA's table) turned out to have the OPPOSITE polarity in
+willyRoom's own table. Re-derived willyRoom's own real rule from
+scratch by cross-tabulating all 320 real grid cells' collision bytes
+against the room's own already-live-movement-verified `floorTileIds`
+ground truth: a perfectly clean split, zero exceptions -- `collision ==
+0x30` means floor in THIS table (`RoomFloorLayout
+.isWalkableCollisionWillyFamily`), confirming collision-byte semantics
+really are set per metatile TABLE, not fixed ROM-wide. `buildCollisionGrid`
+generalized to take this rule as an explicit parameter instead of a
+hardcoded module constant. Wired into `VictorySequence.lua` as
+willyRoom's real, live collision (replacing the flat `floorTileIds`
+heuristic there) -- confirmed behavior-preserving both headlessly (all
+320 real cells, zero disagreement, see `tests/import/
+room_floor_layout_test.lua`) and live (`love .`, held the real player
+into the north-east wall corner from two different hold durations,
+100 vs. 220 frames -- both converge to the identical stopped position
+`x=128,y=16`, proving a real, stable wall-stop, not a still-moving
+snapshot).
+
+**Still open, honestly**: `secondRoom`/`thirdRoom` share willyRoom's
+own tile-source pointer and are very likely further extensions of the
+SAME metatile table (2 real indices, 80/81, already found past
+willyRoom's own last entry -- see rom-map.md's "secondRoom cracked"),
+but this hasn't been generalized into a full collision grid for those
+rooms yet -- a real, concrete, bounded next step. `fourthRoom`/
+`fifthRoom`/`sixthRoom`/`startRoom` have no known metatile+layout-stream
+data of their own at all (captured via live VRAM tile-ID snapshot only)
+-- collision there stays the flat heuristic until/unless a real
+metatile source is found for them too. `unknownRoomA`'s/`unknownRoomB`'s
+own tables have real collision bytes but NO live-movement ground truth
+possible (no gameplay ever reaches them) -- their own rule stays
+genuinely unverified extrapolation, not silently upgraded to "closed."
 
 ## Map objects, NPCs — the secondRoom NPCs are procedurally placed, not table-driven (2026-08-10)
 

@@ -5958,3 +5958,85 @@ register write), `0x25` (a real classifier, gates on WRAM `$CF5B`
 against 2 thresholds), `0x26` (writes 3 real WRAM cells and calls
 `0x1F` directly as a subroutine -- confirmed produces fresh `$CEF0`
 queue entries via `$5C9F`). None of the 4 sets player position.
+
+## Collision generalized: willyRoom's own real bit-rule found, reversed polarity from fourthRoom/unknownRoomA (2026-08-14)
+
+Direct instruction ("die gesammte gamemap entschlüsseln... wie weit
+sind wir davon weg") — task 1 of the resulting priority list:
+generalize the collision-byte mechanism found for fourthRoom/
+unknownRoomA (2026-08-12) beyond that one table.
+
+**The blocker was never "does a real collision byte exist" — it was
+polarity.** `RoomFloorLayout.lua`'s own `isWalkableCollision`
+(`COLLISION_WALL_MASK=0xF0`, "upper nibble zero = floor") was already
+confirmed correct for fourthRoom's own real metatile table and
+DEMONSTRABLY WRONG for willyRoom's — a real, already-documented
+counter-example (willyRoom's own live-verified checkerboard floor
+reads as "wall" under that rule). This pass re-derived willyRoom's OWN
+correct rule from first principles instead of guessing a second time.
+
+**Method**: for willyRoom's own real metatile table (`roomFloorLayoutPipeline
+.exampleRoom`, file `0x206B0`/`0x1DA50`, 8x10 metatiles = 320 real
+pixel-tile grid cells), decoded the layout stream + every metatile's
+own real collision byte, and cross-tabulated EVERY ONE of the 320 real
+cells' `(finalTileId, collisionByte)` pair against `willyRoom
+.floorTileIds` — this project's own extensively live-movement-tested
+ground truth (2026-08-09: held UP, watched the real player stop dead
+at the wall boundary; only tiles 151-154 are real floor).
+
+**Result: a perfectly clean, zero-exception split.** Tiles 151-154
+show real collision `0x30` at every one of their 192 occurrences (48
+each); every one of the room's other 39 real tile IDs shows ONLY
+`0x00`/`0x08`, never `0x30`, across their combined 128 occurrences.
+So willyRoom's own real rule is simply `collision == 0x30` means
+floor — the exact opposite polarity from fourthRoom/unknownRoomA's
+"upper nibble zero" rule. Confirms the earlier "collision byte meanings
+are set per metatile TABLE, not fixed ROM-wide" hypothesis with a
+SECOND independently-derived real table, not just the original
+assertion.
+
+**Historical note**: `RoomFloorLayout.lua`'s own `buildCollisionGrid`
+doc comment used to claim willyRoom's tiles 151-154 show "BOTH `0x08`
+(open) AND `0x30` (wall) collision bytes across different metatile
+instances." This pass's full, exhaustive (all 320 cells, not a sample)
+re-derivation found this is NOT the case — 151-154 are `0x30` at every
+single real occurrence. Left as an open, flagged historical
+discrepancy (possibly an earlier, since-corrected version of
+`willyRoom.grid`, or a different tile range) rather than silently
+erased.
+
+**Generalized the mechanism**: `RoomFloorLayout.buildCollisionGrid`
+now takes an explicit `isWalkable(collision)` predicate (default:
+the old `isWalkableCollision`, unchanged behavior for existing
+callers) instead of hardcoding one rule — the real design fix the
+willyRoom counter-example exposed. New `RoomFloorLayout
+.isWalkableCollisionWillyFamily` implements willyRoom's own real rule.
+
+**Wired in for real** (not just left as available infrastructure):
+`VictorySequence.lua`'s `ensureRoomLoaded` now builds willyRoom's real,
+position-aware collision grid via this mechanism instead of the flat
+`floorTileIds` heuristic every other room still uses. Proven
+behavior-preserving two ways: headlessly (new test asserts zero
+disagreement between the ROM-decoded grid and the old floorTileIds
+classification across all 320 real cells) and live (`love .`,
+`MYSTICQUEST_VICTORY_DEMO=1`, scripted input through the intro pages
+into willyRoom's own free-roam, then held the real player into the
+room's NE wall corner from two different hold durations — 100 and 220
+frames both converge on the identical stopped position `x=128,y=16`,
+proving a real, stable, correct wall-stop, not a lucky still-moving
+snapshot).
+
+**Honest remaining scope** (see maps.md's own updated "Collision"
+section for the concise summary): secondRoom/thirdRoom very likely
+extend the SAME willyRoom metatile table (2 real indices, 80/81,
+already found past willyRoom's own last entry, see this doc's own
+"secondRoom cracked" section) but this wasn't generalized into a full
+collision grid for them this pass. fourthRoom/fifthRoom/sixthRoom/
+startRoom have no known metatile+layout-stream source of their own at
+all — collision there stays the flat heuristic. unknownRoomA's/
+unknownRoomB's own tables have real collision bytes but no live-
+movement ground truth is possible (no gameplay reaches them) — their
+own rule stays genuinely unverified, not silently upgraded.
+
+Full Lua test suite: 410 -> 411 (one old spot-check test rewritten in
+place plus one new exhaustive-match test added).

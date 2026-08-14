@@ -206,9 +206,49 @@ RoomFloorLayout.COLLISION_WALL_MASK = 0xF0
 
 --- Whether a real metatile `collision` byte reads as walkable floor
 -- under this project's own established bitmask rule (see
--- `COLLISION_WALL_MASK`'s own doc comment).
+-- `COLLISION_WALL_MASK`'s own doc comment). This is the fourthRoom/
+-- unknownRoomA-style rule specifically -- NOT a ROM-wide default, see
+-- `buildCollisionGrid`'s own `isWalkable` parameter below. Kept as the
+-- default for existing callers (`buildCollisionGridFromMapTableRecord`,
+-- used by bank 5/6's un-ground-truthed 320-room browser) that have no
+-- reason yet to prefer a different table's own rule.
 function RoomFloorLayout.isWalkableCollision(collision)
   return bit.band(collision, RoomFloorLayout.COLLISION_WALL_MASK) == 0
+end
+
+-- CRACKED for real (2026-08-14, task "Kollision generalisieren"):
+-- willyRoom's own metatile table (`roomFloorLayoutPipeline.exampleRoom`,
+-- file 0x206B0) uses the OPPOSITE polarity from fourthRoom/unknownRoomA
+-- -- confirmed decisively, not extrapolated, by cross-tabulating EVERY
+-- ONE of willyRoom's real 320 grid cells' own collision byte against
+-- `rom_profiles.lua`'s already-live-movement-verified `floorTileIds`
+-- (only 151-154 are real floor, confirmed 2026-08-09 by holding UP and
+-- watching the real player stop dead at the wall boundary): tiles
+-- 151-154 show collision `0x30` at EVERY one of their 192 real
+-- occurrences (48 each), and every other one of the room's 39 other
+-- real tile IDs shows ONLY `0x00`/`0x08`, NEVER `0x30`, at any of their
+-- combined 128 occurrences -- a perfectly clean, zero-exception split
+-- across all 320 real grid cells, not a majority/heuristic rule. So for
+-- THIS table specifically: `collision == 0x30` means floor, full stop
+-- -- exactly backwards from `isWalkableCollision`'s own `COLLISION_WALL_
+-- MASK` rule. Matches this module's own earlier "collision byte meanings
+-- are set per metatile TABLE, not fixed ROM-wide" hypothesis (see
+-- `COLLISION_WALL_MASK`'s doc comment) -- now confirmed with a second,
+-- independently-derived real table, not just asserted.
+--
+-- NOTE on an earlier, less precise claim: this module's own
+-- `buildCollisionGrid` doc comment (below) used to say willyRoom's real
+-- floor tiles 151-154 show "BOTH 0x08 (open) AND 0x30 (wall) collision
+-- bytes across different metatile instances." A full, exhaustive
+-- re-derivation this pass (all 320 cells, not a sample) found this is
+-- NOT the case for 151-154 specifically -- they are 0x30 at every one
+-- of their 192 real occurrences, no exceptions. The earlier claim may
+-- have been checking a different tile range or an earlier, since-
+-- corrected version of `willyRoom.grid`; left as an open historical
+-- discrepancy rather than silently erased, since this project doesn't
+-- overwrite an earlier claim without flagging the correction.
+function RoomFloorLayout.isWalkableCollisionWillyFamily(collision)
+  return collision == 0x30
 end
 
 --- Build a real, POSITION-AWARE collision grid straight from each real
@@ -224,39 +264,33 @@ end
 -- keyed by final rendered tile ID (`TileWalkability.build` checks
 -- `floorTileIds[grid[row][col]]`, no position awareness at all) --
 -- fine as long as no single tile ID is ever legitimately BOTH floor
--- and wall decoration in the same room. Re-deriving willyRoom's own
--- floorTileIds from real collision bytes (the same method that fixed
--- fourthRoom) found this assumption genuinely FALSE there: real tile
--- IDs 151-154 (willyRoom's own checkerboard -- already extensively
--- live-verified as real, walkable floor throughout this whole project)
--- show BOTH `0x08` (open) AND `0x30` (wall) collision bytes across
--- different metatile instances -- i.e. the SAME graphic is genuinely
--- reused as both real floor AND real wall/border decoration elsewhere
--- in the same room. A flat `floorTileIds[151]` can only ever be one
--- answer for tile 151 everywhere it appears -- it CANNOT represent
--- "floor here, wall there." This function sidesteps that limitation
--- entirely by keying on GRID POSITION (via the metatile stream's own
--- real per-cell collision byte) instead of on the remapped tile ID --
--- strictly more precise than a flat tile-ID set, for any room with
--- real metatile+layout-stream+`$D070` data available. Whether upper-
--- nibble-zero actually MEANS "walkable" in that room's own metatile
--- table is a SEPARATE question this function does not answer by
--- itself -- see `COLLISION_WALL_MASK`'s own doc comment for why that
--- specific rule is confirmed for fourthRoom and demonstrably wrong for
--- willyRoom.
+-- and wall decoration in the same room. This function sidesteps that
+-- limitation entirely by keying on GRID POSITION (via the metatile
+-- stream's own real per-cell collision byte) instead of on the
+-- remapped tile ID -- strictly more precise than a flat tile-ID set,
+-- for any room with real metatile+layout-stream data available.
 --
--- NOT yet wired in as willyRoom's own live collision (see rom-map.md's
--- own write-up for why: this needs a dedicated live behavioral
--- re-verification pass of its own before replacing extensively-tested,
--- already-working collision -- a real, deliberate scope boundary, not
--- an oversight). Available now as real, tested, general infrastructure
--- for the next room that gets its own full pipeline data.
-function RoomFloorLayout.buildCollisionGrid(romData, layout)
+-- GENERALIZED (2026-08-14, task "Kollision generalisieren"): takes an
+-- explicit `isWalkable(collision)` predicate now, instead of always
+-- calling the module-level `isWalkableCollision`. This fixes a real
+-- design flaw the willyRoom investigation exposed: `isWalkableCollision`
+-- 's own bit rule is CONFIRMED for fourthRoom's real metatile table but
+-- DEMONSTRABLY WRONG (opposite polarity) for willyRoom's -- there is no
+-- single ROM-wide rule, so hardcoding one function call here was always
+-- going to be right for at most one table. Defaults to
+-- `RoomFloorLayout.isWalkableCollision` (unchanged behavior for
+-- existing callers -- the bank 5/6 320-room browser, which has no
+-- ground truth of its own yet to prefer a different rule); pass
+-- `RoomFloorLayout.isWalkableCollisionWillyFamily` explicitly for
+-- willyRoom's own table (see that function's own doc comment for the
+-- full, exhaustive ground-truth derivation).
+function RoomFloorLayout.buildCollisionGrid(romData, layout, isWalkable)
   assert(type(layout) == "table" and layout.metatileTableFileOffset and
     layout.layoutStreamFileOffset and layout.rleLength and
     layout.metatileGridRows and layout.metatileGridCols,
     "RoomFloorLayout.buildCollisionGrid expects a layout table with " ..
     "metatileTableFileOffset/layoutStreamFileOffset/rleLength/metatileGridRows/metatileGridCols")
+  isWalkable = isWalkable or RoomFloorLayout.isWalkableCollision
 
   local metatileCount = layout.metatileGridRows * layout.metatileGridCols
   local indices = RoomFloorLayout.decodeLayoutStream(
@@ -271,7 +305,7 @@ function RoomFloorLayout.buildCollisionGrid(romData, layout)
     for mc = 0, layout.metatileGridCols - 1 do
       local index = indices[mr * layout.metatileGridCols + mc + 1]
       local mt = RoomFloorLayout.readMetatile(romData, layout.metatileTableFileOffset, index)
-      local walkable = RoomFloorLayout.isWalkableCollision(mt.collision)
+      local walkable = isWalkable(mt.collision)
       local row1, row2 = mr * 2 + 1, mr * 2 + 2
       local col1, col2 = mc * 2 + 1, mc * 2 + 2
       grid[row1][col1] = walkable
@@ -460,7 +494,7 @@ function RoomFloorLayout.buildCollisionGridFromMapTableRecord(romData, mapTable,
     rleLength = rleLength,
     metatileGridRows = opts.metatileGridRows,
     metatileGridCols = opts.metatileGridCols,
-  })
+  }, opts.isWalkable)
 end
 
 --- Adapter: turn a `buildRoomFromMapTableRecord`/`buildPixelGridFromTileset`

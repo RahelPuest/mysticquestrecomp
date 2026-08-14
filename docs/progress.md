@@ -7457,3 +7457,45 @@ no camera-scroll rendering; updated the "Enemy DEF" entry with task
 5's 3rd negative lead and the new HP formula) and `wram-map.js` (added
 the new `$C240` real facing-bitmask entry). Both re-validated with
 `node -c`. Full Lua test suite re-verified: 410/410 unaffected.
+
+## "Ganze Gamemap entschlüsseln" -- status assessment, then task 1: collision generalized for willyRoom
+
+Direct request to decode the entire game map (connections, collision,
+tilesets) end to end. Gave an honest status assessment first (not
+executed, a planning turn): tilesets/graphics extraction is solved and
+general (320 real records decode as coherent ROM art), but only 8
+rooms have a confirmed real in-game identity/placement -- the rest is
+blocked because room CONNECTIVITY is genuinely script-bytecode-driven,
+not a static ROM table (the room-selector table only resolves 5 real
+rooms across 16 selectors; which exit leads where is decided at
+runtime by the `$235B`/`$22FE` script opcodes). Collision has NO
+decoded ROM table found for most rooms (a live-tested visual
+heuristic); bank 7's "Templated" room format remains completely
+uncracked. Proposed 5 prioritized next steps; user picked #1
+(generalize collision) to start.
+
+**Task 1, done**: re-derived willyRoom's own real metatile collision-
+byte rule from scratch (the earlier fourthRoom/unknownRoomA rule was
+already known wrong there, opposite polarity) by cross-tabulating ALL
+320 real grid cells' collision bytes against the room's own
+extensively live-movement-tested `floorTileIds` ground truth -- a
+perfectly clean, zero-exception split: `collision == 0x30` means
+floor in willyRoom's own table (`RoomFloorLayout
+.isWalkableCollisionWillyFamily`). Generalized `buildCollisionGrid` to
+take this as an explicit parameter instead of a hardcoded module rule
+(the real design flaw the willyRoom counter-example exposed). Wired
+willyRoom's real, position-aware, ROM-decoded collision into
+`VictorySequence.lua` for real (not just left as available
+infrastructure) -- proven behavior-preserving headlessly (new
+exhaustive test, all 320 cells, zero disagreement with the old
+heuristic) AND live (`love .`, scripted input through the intro into
+willyRoom's free-roam, held the player into the NE wall corner from
+two different hold durations -- both converge on the identical stopped
+position, a real, stable wall-stop). `docs/reverse-engineering/maps.md`'s
+"Collision" section and `rom-map.md` updated with the full derivation;
+`rom-inspector/`'s open questions updated to reflect the new state
+(closed for willyRoom, explicitly scoped what's still open: secondRoom/
+thirdRoom's likely table extension not yet wired, fourthRoom-family has
+no metatile source at all, unknownRoomA/B stay unverified extrapolation
+since no live ground truth is possible there). Full Lua test suite:
+411/411 (one test rewritten, one new one added).

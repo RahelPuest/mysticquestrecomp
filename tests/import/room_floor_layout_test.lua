@@ -395,41 +395,67 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "RoomFloorLayout.buildCollisionGrid: real, position-aware collision -- and the real reason it isn't willyRoom's live collision (2026-08-12)",
+  "RoomFloorLayout.buildCollisionGrid: the DEFAULT (fourthRoom/unknownRoomA) rule reads willyRoom's own real floor backwards (2026-08-12)",
   romData ~= nil,
   "no development ROM found",
   function()
-    -- Direct follow-up to "untersuche die dinge die ueber einzelfixes
-    -- hinnaus gehen, dokumentiere sie als systeme": this is the general
-    -- position-aware collision mechanism (see RoomFloorLayout.lua's own
-    -- `buildCollisionGrid` doc comment) proven against real ROM bytes,
-    -- AND a direct, in-code demonstration of exactly why it replaces a
-    -- flat `floorTileIds` set for willyRoom specifically: real tile IDs
-    -- 151-154 (willyRoom's own extensively live-verified real floor)
-    -- show real collision `0x30` -- upper nibble non-zero -- at EVERY
-    -- position they actually occupy in the room's own real grid. A
-    -- flat, ID-keyed floorTileIds set literally cannot represent "this
-    -- exact graphic is floor here" when the ROM's own collision byte
-    -- itself disagrees with what live gameplay already proved -- this
-    -- test locks that real, structured disagreement in as a concrete
-    -- regression check, not just prose.
+    -- Kept as a real, concrete regression check that the default rule
+    -- (`isWalkableCollision`) really does NOT transfer to willyRoom's
+    -- own table -- see `isWalkableCollisionWillyFamily`'s own doc
+    -- comment (RoomFloorLayout.lua) for the full, exhaustive
+    -- ground-truth derivation of the CORRECT rule, exercised in the
+    -- next test below.
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local ex = profile.roomFloorLayoutPipeline.exampleRoom
     local pixelGrid = profile.graphics.willyRoom.grid
 
-    local collisionGrid = RoomFloorLayout.buildCollisionGrid(romData, ex)
+    local collisionGrid = RoomFloorLayout.buildCollisionGrid(romData, ex) -- default rule, no 3rd arg
     Harness.assertEqual(#collisionGrid, 16)
     Harness.assertEqual(#collisionGrid[1], 20)
 
-    -- The real checkerboard floor cells (tile 151, top-left of each
-    -- 2x2 metatile in the pattern -- e.g. real grid position row3/col3)
-    -- read as NOT walkable under this rule -- real, live-contradicted
-    -- data, not a bug in this function.
     Harness.assertEqual(pixelGrid[3][3], 151)
     Harness.assertTrue(not collisionGrid[3][3],
-      "willyRoom's own real floor (tile 151) reads as collision-non-walkable -- " ..
-      "see RoomFloorLayout.lua's own COLLISION_WALL_MASK doc comment for why " ..
-      "this rule does not transfer here")
+      "willyRoom's own real floor (tile 151) reads as collision-non-walkable under the DEFAULT " ..
+      "rule -- expected, see RoomFloorLayout.lua's own isWalkableCollisionWillyFamily doc comment")
+  end
+)
+
+Harness.testIfAvailable(
+  "RoomFloorLayout.buildCollisionGrid + isWalkableCollisionWillyFamily: exactly matches willyRoom's live-tested floorTileIds, all 320 real cells (2026-08-14)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- Task "Kollision generalisieren" (2026-08-14): the general
+    -- position-aware mechanism, with willyRoom's own real, ground-truth
+    -- -derived rule, checked against EVERY real cell of the room's own
+    -- grid -- not a spot check. `willyRoom.floorTileIds` is this
+    -- project's own extensively live-movement-tested ground truth
+    -- (2026-08-09: held UP, watched the real player stop dead at the
+    -- wall boundary) -- this test proves the ROM-decoded collision byte
+    -- reproduces it exactly, cell for cell, with zero disagreement.
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local ex = profile.roomFloorLayoutPipeline.exampleRoom
+    local room = profile.graphics.willyRoom
+
+    local collisionGrid = RoomFloorLayout.buildCollisionGrid(
+      romData, ex, RoomFloorLayout.isWalkableCollisionWillyFamily)
+
+    local checked, disagreements = 0, 0
+    for row = 1, 16 do
+      for col = 1, 20 do
+        checked = checked + 1
+        local tileId = room.grid[row][col]
+        local expectedFloor = room.floorTileIds[tileId] == true
+        if collisionGrid[row][col] ~= expectedFloor then
+          disagreements = disagreements + 1
+        end
+      end
+    end
+    Harness.assertEqual(checked, 320)
+    Harness.assertEqual(disagreements, 0,
+      "expected the real collision-byte-derived grid to exactly match willyRoom's own " ..
+      "live-tested floorTileIds everywhere -- any disagreement here is a real, new finding, " ..
+      "not a rounding error")
   end
 )
 

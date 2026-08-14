@@ -111,6 +111,7 @@ local NpcSprite = require("src.rendering.NpcSprite")
 local TileImage = require("src.rendering.TileImage")
 local Player = require("src.entities.Player")
 local TileWalkability = require("src.entities.TileWalkability")
+local RoomFloorLayout = require("src.import.RoomFloorLayout")
 local ZoneMatch = require("src.entities.ZoneMatch")
 local HoldTrigger = require("src.entities.HoldTrigger")
 local RoomWipeTransition = require("src.entities.RoomWipeTransition")
@@ -714,7 +715,27 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   local room = self.profile.graphics[roomKey]
   if not room then return end
   self.roomBg[roomKey] = TileGridBackground.new(self.romData, room)
-  self.roomWalk[roomKey] = TileWalkability.build(room, 16, 16)
+  -- UPGRADED (2026-08-14, task "Kollision generalisieren"): willyRoom
+  -- specifically now uses real, ROM-decoded, POSITION-AWARE collision
+  -- (`RoomFloorLayout.buildCollisionGrid` against its own real metatile
+  -- table, with its own ground-truth-derived `isWalkableCollisionWillyFamily`
+  -- rule -- see that function's own doc comment for the full exhaustive
+  -- derivation: matches the room's previous, live-tested `floorTileIds`
+  -- classification exactly, cell for cell, all 320 real grid cells, zero
+  -- disagreement -- see tests/import/room_floor_layout_test.lua) instead
+  -- of the flat, heuristic `floorTileIds` set every other room still
+  -- uses. Provably behavior-preserving (same test), so this is a real
+  -- "guess -> decoded ROM fact" upgrade, not a gameplay change -- every
+  -- other room keeps the flat approach until it gets its own real
+  -- metatile-table ground truth the same way.
+  if roomKey == "willyRoom" then
+    local layout = self.profile.roomFloorLayoutPipeline.exampleRoom
+    local collisionGrid = RoomFloorLayout.buildCollisionGrid(
+      self.romData, layout, RoomFloorLayout.isWalkableCollisionWillyFamily)
+    self.roomWalk[roomKey] = TileWalkability.buildFromCollisionGrid(collisionGrid, 16, 16)
+  else
+    self.roomWalk[roomKey] = TileWalkability.build(room, 16, 16)
+  end
 
   local sceneData = (self.roomSceneData and self.roomSceneData[roomKey]) or room.scene
   if sceneData then

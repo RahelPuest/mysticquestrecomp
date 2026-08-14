@@ -20,6 +20,11 @@ const OPEN_QUESTIONS = [
     description: "RESOLVED 2026-08-14 that this was never a coordinate bug: fourthRoom's two 'cut' exits (to fifthRoom/sixthRoom) already use the correct trigger coordinates (this project's player.x/y IS the same raw-WRAM coordinate space the ROM itself uses, no translation needed). The real, general gap found instead: Field.lua has no camera-scroll implementation at all, so a real ROM room that scrolls before its own 'cut' fires (like fourthRoom's corridor) never gets its scrolled-past content rendered here. 10 real, newly-decoded wall/border tiles from that corridor sit in rom_profiles.lua's fourthRoom.tileOffsets, documented but unused, waiting on this future scroll-camera feature."
   },
   {
+    title: "Collision: willyRoom closed, most other rooms still a visual heuristic, not a decoded ROM fact",
+    area: "Room system",
+    description: "CLOSED for willyRoom specifically (2026-08-14): its real metatile collision byte's own bit rule was re-derived from scratch (cross-tabulated against live-movement-tested ground truth, all 320 real grid cells, zero exceptions) -- collision==0x30 means floor in willyRoom's own table, the OPPOSITE polarity from fourthRoom/unknownRoomA's table (confirming collision semantics are set per metatile TABLE, not fixed ROM-wide). Wired in as willyRoom's real live collision, proven behavior-preserving both headlessly and via a live love . movement test. Still open: secondRoom/thirdRoom likely extend the SAME metatile table (2 real indices already found past willyRoom's own last entry) but aren't wired yet; fourthRoom/fifthRoom/sixthRoom/startRoom have no known metatile source of their own at all; unknownRoomA/unknownRoomB have real collision bytes but no live-movement ground truth is possible there (no gameplay ever reaches them), so their own rule stays unverified extrapolation."
+  },
+  {
     title: "The real cross-bank CHAIN mystery",
     area: "Script interpreter",
     description: "7 real scripts CHAIN (opcode 0x02) to a cursor address that would fall in a DIFFERENT bank than the one currently mapped -- the real bank-switch mechanism that must accompany those specific jumps hasn't been found."
