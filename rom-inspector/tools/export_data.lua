@@ -255,6 +255,52 @@ writeJs("opcodes.js", "OPCODES", opcodes,
   "Real per-opcode decode status for all 256 primary script opcodes -- 'decoded' means ScriptRuntime actually has a registered Lua handler for that real ROM address (checked by building a live ScriptRuntime, not hand-classified); 'default' is the real ROM-confirmed no-op; 'known-hard' is traced but deliberately unwired (see the 'note' field); 'undecoded' is genuinely open.")
 
 ----------------------------------------------------------------------
+-- 4b. Script-tracer EXAMPLES (2026-08-14, direct user request: "kannst
+--     du mal den ganzen script mechanismus mal in app... intuitiver
+--     darstellen. vielleicht mit einem beispielscript so das man
+--     verfolgen kann was passiert"). Two real, already-decoded, SHORT
+--     event scripts from the room catalog (`MapTable.tryDecodeActor
+--     Action`'s own real examples this session) -- small enough to
+--     walk through opcode-by-opcode without needing to port this
+--     project's whole ScriptRuntime to JS. Only real FILE OFFSETS are
+--     exported (never raw ROM bytes, same "never ship ROM content"
+--     convention every other page here already follows) -- the
+--     client reads and decodes live from the user's own locally
+--     loaded ROM file.
+----------------------------------------------------------------------
+local function headerFileOffsetFor(mapTable, recordIndex)
+  local records = MapTable.decode(romData, mapTable)
+  local record = records[recordIndex + 1]
+  local headerAddr = record.headerAddr
+  return mapTable.bankFileStart + (headerAddr - 0x4000)
+end
+local scriptExamples = {
+  {
+    id = "actor-action",
+    title = "Bank-5-Raum 0: ein Actor-Action-Ereignis-Skript",
+    scriptFileOffset = headerFileOffsetFor(profile.mapTable, 0),
+    -- Real, already-verified this session (see MapTable.lua's own
+    -- "NAMING CORRECTED" doc comment + events.md's dated writeup):
+    -- opcode $76 resolves to handler $152C, matching the ALREADY-
+    -- documented ACTOR_ACTION family shape byte for byte.
+  },
+  {
+    id = "default-fallthrough",
+    title = "Bank-5-Raum 1: ein Opcode ist No-Op, das Skript geht zum nächsten Byte weiter",
+    scriptFileOffset = headerFileOffsetFor(profile.mapTable, 1),
+    -- Real: opcode $7C resolves to the ROM-confirmed DEFAULT_HANDLER
+    -- (a genuine no-op) -- the interpreter does NOT stop, it reads the
+    -- next byte ($00) as the next real opcode, which resolves to the
+    -- ALREADY fully-decoded QUEUE_GATE_HANDLER_ADDRESS ($3297, opcode
+    -- 0x00 -- a real conditional halt on the script continuation
+    -- queue, this project's own already-implemented mechanism). A
+    -- complete, well-understood 2-opcode chain, not an open ending.
+  },
+}
+writeJs("script-example.js", "SCRIPT_EXAMPLES", scriptExamples,
+  "2 real, curated example event scripts for the Skript-Opcode-Explorer's own interactive step-tracer -- only real ROM file offsets, decoded live client-side from the user's own loaded ROM (never shipped ROM bytes). See MapTable.lua's own 'NAMING CORRECTED' doc comment and events.md's dated writeup for the full evidence these bytes really are script bytecode.")
+
+----------------------------------------------------------------------
 -- 5. Whole-corpus scan results (same method as scripts/scan_all_scripts.lua)
 ----------------------------------------------------------------------
 local spt = profile.scriptPointerTable

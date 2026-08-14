@@ -7826,3 +7826,34 @@ selecting "group" alone (the exact reported scenario) now visibly
 changes the canvas.
 
 Full suite: 421 passed, 0 failed (JS-only fix).
+
+## Interactive script step-tracer in rom-inspector (2026-08-14)
+
+Direct instruction: "kannst du mal den ganzen script mechanismus mal
+in app einerfach noch ein wenig intutiver darstellen. vielleicht mit
+einem beispielscript so das man verfolgen kann was passiert". Added
+an interactive step-tracer to the Skript-Opcode-Explorer page: two
+real, curated example event scripts (both real bank-5 room-catalog
+scripts from this session's own work) that the user can step through
+one real opcode at a time, live from their own loaded ROM.
+
+Example 1 (bank-5 room 0): opcode 0x76 -> ACTOR_ACTION_WITH_READINESS
+_PARAM_HANDLER_ADDRESS_76 -> handler $152C -- shows the real, directly
+disassembled effect (enqueues group=6/action=0x1C into the actor-
+command queue, $C4E0/$C5A0), reusing the exact byte pattern already
+verified this session (`MapTable.tryDecodeActorAction`, ported 1:1 to
+client-side JS for live display).
+
+Example 2 (bank-5 room 1): opcode 0x7C -> real confirmed no-op ->
+interpreter continues to the next byte -> opcode 0x00 -> the already-
+fully-decoded QUEUE_GATE_HANDLER_ADDRESS -- a complete, honest 2-step
+chain (caught and corrected an inaccurate draft comment along the way:
+this opcode is NOT undecoded, it's QUEUE_GATE, already implemented).
+
+Only real ROM file offsets are exported (never raw ROM bytes, same
+convention as every other page); the client reads and decodes live
+from the user's own loaded ROM file. Verified end to end with a real
+headless-browser test asserting the exact expected annotations appear
+after stepping through both examples.
+
+Full suite: 421 passed, 0 failed.
