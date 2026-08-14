@@ -7,12 +7,12 @@ const OPEN_QUESTIONS = [
   {
     title: "Cross-actor dispatch mechanism ($31AD / $C3F0 / $C3FE / $C3FF)",
     area: "Script interpreter",
-    description: "A shared dispatcher with 15 independent real call sites resolves which script a given actor/context should run, reading a WRAM record at $C3F0/$C3FE/$C3FF. The MECHANISM is confirmed; the record's own general schema (per-room? per-actor? something else?) is not. This is the concrete blocker for driving real NPC/story content from the interpreter instead of hand-authored cutscene code."
+    description: "A shared dispatcher with 15 independent real call sites resolves which script a given actor/context should run, reading a WRAM record at $C3F0/$C3FE/$C3FF. The MECHANISM is confirmed; the record's own general schema (per-room? per-actor? something else?) is not fully confirmed. UPDATE 2026-08-14 (task #86): a real, concrete structural clue found while tracing the boss-defeat block -- one real consumer ($24A7, a family of near-identical sibling blocks) dereferences a pointer stored at $C3FE/$C3FF, offsets it by 0-2 bytes depending on which sibling runs, then further indexes by the PLAYER'S OWN CURRENT FACING NIBBLE ($02AB) before calling $31AD. Reads like a pointer to a small per-context table indexed by [sibling block] + [player facing] -- a real lead, not yet the full schema."
   },
   {
-    title: "Boss-defeat sequence: real completion blocked by a queue-gate halt",
+    title: "Boss-defeat sequence: CLOSED -- it's an edge-triggered actor-cleanup detector, not a queue-gate halt",
     area: "Script interpreter",
-    description: "The boss-defeat story script's own opcode list is now almost fully decoded (only 0xBC/0xBD remain, both known-hard palette-fade family members). But a live headless shadow-run shows it gets stuck almost immediately on opcode 0x00 (a real conditional halt on the script continuation queue) because no CHAIN populated the queue first in a single synchronous burst -- the real release condition genuinely depends on passage of real game time this project's one-shot shadow run can't reproduce."
+    description: "CLOSED 2026-08-14 (task #86, live mGBA re-trace): the earlier 'queue-gate halt on the $C5A0 actor-command queue' explanation did NOT survive a direct live re-check ($D874 bit 0 never changes during the whole block; $C5A0 stays all-zero throughout) and was retracted. The REAL mechanism, fully live-verified: $1F35 selector 0x13 ticks every ~2500-3500 steps calling $4BE0, which recomputes a classified-actor count and reports 'ready' only on the SPECIFIC tick where that count (cached at $C5AF) transitions from nonzero to exactly 0 -- an edge detector, not a level check. Live-watched $C5AF directly: it sits at 0x01 for the whole ~200,000-step block, then flips to 0x00 right before the block releases. The real ~1.7s delay is the boss's own entity slot genuinely taking that long to finish despawning after its HP hits the dead sentinel -- real engine cleanup latency, not an arbitrary timer."
   },
   {
     title: "No real camera-scroll rendering (engine-wide, found via fourthRoom's corridor)",

@@ -7680,3 +7680,90 @@ Real mGBA tooling used throughout (`tools/rom/watcher.py`,
 `checkpoints.py`, `courtyard_boss_defeated`), same methodology as
 every other live trace this session. No Lua behavior changed (doc-
 comment correction only). Full Lua test suite: 421/421 passing.
+
+## Task #86, CLOSED FOR REAL: the boss-defeat block is a real, edge-triggered "actor cleanup finished" detector (2026-08-14, same day, "dann mach da weiter und kommentiere alles")
+
+Direct continuation of the retraction above, chasing its own sharpened
+open question: why does `$31AD` only succeed once, ~200,000 steps into
+the block, not on some earlier attempt? Fully traced the real call
+chain, live-verifying every single link (narrated step by step per
+direct instruction):
+
+**Step 1 -- how often is `$31AD` itself even reached?** Watched its
+real entry point (bank 0, `$31AD`) across the full 400,000-step
+window. Result: **exactly ONE hit, at step 221303** -- not "called
+often but gated," genuinely called once. The real return address on
+the stack at that hit (`$24D0`) identifies its caller precisely.
+
+**Step 2 -- who calls it, and how often is THAT reached?** `$24D0` is
+the instruction right after `CALL $31AD` inside a real function at
+`$24A7` (bank 0) -- a genuinely new, previously-untraced helper this
+session's own earlier "connecting systems" pass had already flagged as
+one of the still-open `$1F35`-selector leaf addresses. Disassembled it:
+a small family of near-identical sibling blocks (`$2460`, `$2483`,
+`$24A7`, `$24D4`, `$24F9`, ...) that each read a real WRAM record via
+`$C3F0`/`$C3FE`/`$C3FF` -- **the exact same record task #85's own open
+question names** ("the record's own general schema... is not
+[confirmed]") -- dereference a pointer from it, offset by 0-2 bytes
+(one per sibling), then combine that with the player's own CURRENT
+FACING NIBBLE (`CALL $02AB / AND 0x0F`, the exact already-cracked
+accessor from this session's own earlier "task 10") before calling
+`$31AD`. A real, concrete structural clue for task #85's still-open
+question: this record looks like a pointer to a small per-context
+table, indexed by [which sibling block] + [player facing].
+
+`$24A7` itself has exactly ONE real static caller: file `0xCC34`,
+inside `$1F35` selector `0x13`'s own body (`0xCC30`-`0xCC37`):
+```
+CALL $4BE0   ; the already-known "$C5AF actor count refresh" routine
+RET NZ       ; still busy -- bail out
+CALL $24A7   ; only reached if $4BE0 signals "done"
+RET
+```
+
+**Step 3 -- selector 0x13's own real frequency, and `$4BE0`'s real
+completion rule.** Watched selector `0x13`'s trampoline/body/`$4BE0`
+across the same window: **71 real hits**, at a steady ~2500-3500-step
+cadence (a real, periodic background tick, unrelated to the boss fight
+specifically) -- but `$24A7` is only reached on the LAST of those 71
+ticks. Fully disassembled `$4BE0`'s own tail this time (file
+`0xCC10`-`0xCC2F`): it recomputes a real classified-actor count (the
+same `PARAM2` high-nibble `0x90`/`0xB0`/`0x10` scan from an earlier
+entry this session), compares it against a CACHED previous count at
+`$C5AF`, and reports "ready" (Z) **only on the specific tick where the
+count transitions from nonzero to exactly 0** (plus one further real
+gate, `CALL $28C2`, not traced further) -- every other tick,
+regardless of the count's actual value, reports "busy" (NZ)
+unconditionally. A genuine EDGE detector, not a level check.
+
+**Step 4 -- direct confirmation.** Watched `$C5AF` itself across the
+whole window: sits at `0x01` from the checkpoint through the entire
+~200,000-step block, then flips to `0x00` at step 221251 -- immediately
+before `$24A7` (step 221259) and `$31AD` (step 221303) fire in exact
+sequence. Decisive, direct, no more inference needed.
+
+**Real, now genuinely CLOSED conclusion**: the boss-defeat block IS a
+real "wait for actor cleanup" -- exactly what this project's earlier
+sessions always suspected -- just through a completely different real
+mechanism than either prior hypothesis (not today's own `$C5A0`/`$4B70`
+actor-COMMAND queue, not the retracted `$D874`-bit0 guess): a periodic
+edge-triggered "did my own classified-actor count just drop to 0"
+detector, gating a facing-driven story-activation call. The real
+~1.7-second delay is the boss's own entity slot genuinely taking that
+long to finish despawning after HP hits the dead sentinel -- real
+game-engine cleanup latency, not an arbitrary or hand-tuned timer.
+
+**Honest remaining scope**: `$28C2`'s own exact role in the final gate
+was not traced; the `$C3F0`/`$C3FE`/`$C3FF` record's FULL schema
+(beyond "pointer + facing-indexed sub-table," now a real structural
+lead rather than a total unknown) remains task #85's own open item;
+whether `ctx.isQueueBlocked` should model THIS mechanism (an actor-
+despawn-completion signal) instead of the actor-command queue is a
+real, separate design question for whoever picks up the interpreter
+side next -- this pass stayed on the reverse-engineering side, per its
+own scope.
+
+Real mGBA tooling throughout, same methodology as every trace this
+session. No Lua behavior changed (doc-comment resolution, appended to
+the retraction above rather than overwriting it). Full Lua test suite:
+421/421 passing.

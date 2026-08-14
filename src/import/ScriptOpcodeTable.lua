@@ -1173,6 +1173,58 @@ ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A = 0x33B0
 -- time" conclusion still stands, just now pointing at `$31AD`'s own
 -- real trigger condition instead of the `$C5A0` queue). See events.md's
 -- own dated entry for the complete trace data.
+--
+-- CLOSED FOR REAL (2026-08-14, same day, direct continuation, "dann
+-- mach da weiter"): traced `$31AD`'s own single real hit (there is
+-- exactly ONE across the whole 400,000-step window) back through its
+-- real call chain, live-verifying every link:
+--   `$31AD` (step 221303) <- called from inside `$24A7`'s own body
+--   (step 221259) -- a real, previously-untraced helper (this session's
+--   own earlier "connecting systems" pass had flagged `$24A7` as one
+--   of the still-open `$1F35`-selector leaf helpers) that reads the
+--   player's own CURRENT FACING NIBBLE (`CALL $02AB / AND 0x0F`, the
+--   same already-cracked accessor from task 10) and combines it with
+--   a small per-block constant to select which real `$C3F0`/`$C3FE`/
+--   `$C3FF`-indexed script to activate via `$31AD` -- a real, concrete
+--   structural clue for task #85's own still-open "what is that
+--   record's general schema" question (this specific block reads a
+--   pointer from `$C3FE`/`$C3FF`, dereferences it, offsets by 0-2
+--   bytes depending on which of 5 sibling blocks runs, then further
+--   indexes by the player's own facing).
+--   `$24A7` <- called from EXACTLY ONE real static site, `$1F35`
+--   selector `0x13`'s own body (file `0xCC30`): `CALL $4BE0 / RET NZ /
+--   CALL $24A7 / RET`.
+--   Selector `0x13` itself fires **71 times** across the trace, at
+--   regular ~2500-3500-step intervals (a real, periodic background
+--   tick) -- but only on the LAST of those 71 ticks does it proceed
+--   past `RET NZ` to reach `$24A7` at all.
+--   **`$4BE0`'s own full tail, fully disassembled**: it recomputes a
+--   real classified-actor count (the same `PARAM2` high-nibble
+--   `0x90`/`0xB0`/`0x10` scan already documented) and compares it
+--   against a CACHED previous count at `$C5AF`. It returns "ready"
+--   (Z) ONLY on the specific tick where the count TRANSITIONS from
+--   nonzero to exactly 0 (plus one further real gate, `CALL $28C2`,
+--   not traced further) -- an EDGE-triggered completion signal, not a
+--   level check; every other tick (including every later one, if any)
+--   returns "busy" (NZ) unconditionally.
+--   **Live-confirmed the transition directly**: `$C5AF` sits at `0x01`
+--   from the checkpoint through the ENTIRE block, then flips to `0x00`
+--   at step 221251 -- immediately before `$24A7`/`$31AD` fire in
+--   sequence. Exact match.
+--
+-- **Real, decisive, now-CLOSED conclusion**: the boss-defeat block
+-- genuinely IS "wait for actor cleanup," as this project's own
+-- earlier sessions always suspected -- just via a real, different,
+-- previously-undocumented mechanism than either prior hypothesis (not
+-- today's `$C5A0`/`$4B70` actor-COMMAND queue, not a raw `$D874`-bit0
+-- flag): a periodic (`$1F35` selector `0x13`, ~71 ticks) EDGE-
+-- triggered "did my own classified-actor count just drop to 0"
+-- detector (`$4BE0`/`$C5AF`), gating a facing-driven story-activation
+-- call (`$24A7` -> `$31AD`). The real ~1.7-second delay is the boss's
+-- own entity slot genuinely taking that long to finish despawning
+-- after its HP hits the dead sentinel -- not an arbitrary timer, and
+-- not (contrary to this doc's own retracted claim above) the actor-
+-- COMMAND queue.
 ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS = 0x3297
 
 -- `0x08` ($3370) -- structurally traced in task #83 (2026-08-13), its
