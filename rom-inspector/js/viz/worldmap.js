@@ -27,11 +27,41 @@
 // Map-Viewer's own catalog tileset -- NOT independently gameplay-
 // confirmed (no live trigger reaches any of these rooms). The page
 // says so explicitly.
+//
+// ACTOR-ACTION OVERLAY (2026-08-14, direct follow-up "verfolge mal
+// diese eventscripte und schaue dir an was diese machen"): each
+// catalog room's own `actorAction` field (export_data.lua, from
+// `MapTable.tryDecodeActorAction`) is the real `(group, action)` pair
+// its own per-room event script enqueues, for the 104/320 records
+// whose script matches the already-documented "ACTOR_ACTION" opcode
+// family -- a real actor-command-queue mechanism (`$C4E0`/`$C5A0`),
+// NOT tile/graphics/room-selection data (see MapTable.lua's own doc
+// comment). Real, controlled finding backing this overlay: several
+// (group,action) values form tight, CONTIGUOUS regions on the bank-5
+// grid (e.g. group=3/action=4 -> cols 7-11, rows 4-6; group=4/
+// action=15 -> cols 0-3, rows 9-13) -- suggestive of real, distinct
+// game areas/zones, though the exact GAMEPLAY MEANING of each value
+// stays open (events.md's own honest note).
 
 const WORLDMAP_SOURCES = {
   bank5: { stride: 16, label: "Bank 5 (16×16 = 256 Räume)" },
   bank6: { stride: 8, label: "Bank 6 (8×8 = 64 Räume)" },
 };
+
+// A small, stable, high-contrast palette -- enough for the ~10 real
+// distinct (group,action) pairs actually observed; unseen extras
+// cycle back through the same palette rather than erroring.
+const ACTOR_ACTION_PALETTE = [
+  "#e85f5f", "#f0a13a", "#e8d33a", "#7ed13a", "#3ad19a",
+  "#3ac6d1", "#3a8ed1", "#7a5fe8", "#c05fe8", "#e85fb0",
+];
+function actorActionColor(aa) {
+  if (!aa) return null;
+  // Stable hash over (group,action) -> palette index (order-independent
+  // of insertion, so the same pair always gets the same color).
+  const key = aa.group * 31 + aa.action;
+  return ACTOR_ACTION_PALETTE[key % ACTOR_ACTION_PALETTE.length];
+}
 
 function render_worldmap(main) {
   main.innerHTML = `
@@ -56,6 +86,9 @@ function render_worldmap(main) {
       <label style="font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="worldmapGrid" checked> Raum-Grenzen einzeichnen
       </label>
+      <label style="font-size:12px; color:var(--text-dim);">
+        <input type="checkbox" id="worldmapActorAction"> Actor-Action-Overlay (Event-Skript-Flag)
+      </label>
     </div>
 
     <div id="worldmapNote" style="font-size:12px; color:var(--text-dim); margin:4px 0; max-width:900px;"></div>
@@ -70,6 +103,7 @@ function render_worldmap(main) {
   sourceSelect.addEventListener("change", drawWorld);
   document.getElementById("worldmapZoom").addEventListener("input", drawWorld);
   document.getElementById("worldmapGrid").addEventListener("change", drawWorld);
+  document.getElementById("worldmapActorAction").addEventListener("change", drawWorld);
   onSectionUnload(RomBytes.onChange(() => { updateRomBanner(document.getElementById("worldmapRomBanner")); drawWorld(); }));
 
   function roomsForSource(key) {
@@ -94,6 +128,14 @@ function render_worldmap(main) {
 
     const zoom = parseInt(document.getElementById("worldmapZoom").value, 10) || 1;
     const showGrid = document.getElementById("worldmapGrid").checked;
+    const showActorAction = document.getElementById("worldmapActorAction").checked;
+    if (showActorAction) {
+      const withFlag = rooms.filter(r => r.actorAction).length;
+      note.innerHTML += ` <strong>Actor-Action-Overlay an:</strong> ${withFlag}/${rooms.length} Räume ` +
+        `haben ein reales, erkanntes (group,action)-Paar (echte ROM-Handler-Bytes, siehe MapTable.lua) -- ` +
+        `Farbe = Paar-Identität. Bedeutet reales Akteur-Kommando (Actor-Command-Queue), <strong>nicht</strong> ` +
+        `Tile-Zuordnung -- gleiche Farbe kann echte, zusammenhängende Spielgebiete markieren.`;
+    }
     const roomW = rooms[0].cols, roomH = rooms[0].rows;
     const tilePx = 8 * zoom;
     const canvas = document.getElementById("worldmapCanvas");
@@ -130,6 +172,12 @@ function render_worldmap(main) {
           }
         }
       }
+      if (showActorAction && room.actorAction) {
+        ctx2d.fillStyle = actorActionColor(room.actorAction);
+        ctx2d.globalAlpha = 0.45;
+        ctx2d.fillRect(baseX, baseY, roomW * tilePx, roomH * tilePx);
+        ctx2d.globalAlpha = 1;
+      }
       if (showGrid) {
         ctx2d.strokeStyle = "rgba(232,95,95,.55)";
         ctx2d.lineWidth = 1;
@@ -152,7 +200,9 @@ function render_worldmap(main) {
       if (roomRow < 0 || roomCol < 0 || roomCol >= stride) return;
       const i = roomRow * stride + roomCol;
       if (i < 0 || i >= rooms.length) return;
-      info.innerHTML = `${key}-record-${String(i).padStart(3, "0")} &middot; Gitter-Position (Zeile ${roomRow}, Spalte ${roomCol})`;
+      const aa = rooms[i].actorAction;
+      const aaLabel = aa ? ` &middot; Actor-Action group=${aa.group} action=0x${aa.action.toString(16).padStart(2, "0")}` : "";
+      info.innerHTML = `${key}-record-${String(i).padStart(3, "0")} &middot; Gitter-Position (Zeile ${roomRow}, Spalte ${roomCol})${aaLabel}`;
     };
   }
 

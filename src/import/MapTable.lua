@@ -62,6 +62,28 @@ end
 --   *next* record's header pointer (or, for the last record, by
 --   `mapTable.recordCount`'s implied end -- there is no known explicit
 --   terminator inside a blob itself, see rom-map.md).
+--
+-- NAMING CORRECTED (2026-08-14, direct user question "welche tiles
+-- gehören zu den räumen"): "header" is a MISNOMER kept only for
+-- backward compatibility (the field/param names below are unchanged,
+-- a rename would be a wider, separate refactor). The external
+-- FFA-Disassembly project's own docs name this SAME pointer-pair
+-- position "script" (not "header"), and testing it directly against
+-- this project's own already-built `ScriptInterpreter`/
+-- `ScriptOpcodeTable` confirms that: these bytes decode as REAL,
+-- valid opcodes resolving to already-catalogued ROM handler addresses
+-- (e.g. bank-5 record 0's own first byte, `0x76`, resolves to the
+-- real, ALREADY-DOCUMENTED `$28C2`/`$2879` "~70-opcode actor action"
+-- family, see events.md's "Back to the primary table" section -- a
+-- WRAM `$C200` actor-struct command, NOT a graphics/tileset selector).
+-- So: every one of the 320 room-catalog records carries its own real,
+-- tiny per-room EVENT SCRIPT (likely room-entry NPC/actor setup),
+-- structurally consistent with the external doc's "script, tiles"
+-- pointer-pair naming -- but this does NOT resolve the separate,
+-- still-open "which metatile table" question (see rom_profiles.lua's
+-- own `genericCatalogMetatileTableFileOffset` doc comment) -- a real,
+-- different kind of per-room data, honestly reported as a negative
+-- result for THAT specific question.
 function MapTable.decode(romData, mapTable)
   assert(type(romData) == "string", "MapTable.decode expects a byte string")
   assert(mapTable and mapTable.pointerTableFileOffset,
@@ -192,6 +214,78 @@ function MapTable.decodeRoomTiles(romData, mapTable, recordIndex)
   assert(record and record.blob, "MapTable.decodeRoomTiles: record " ..
     tostring(recordIndex) .. " has no data blob")
   return MapTable.rleDecode(record.blob, header.rleLength), header
+end
+
+--- Try to extract a real `(group, action)` pair from a record's own
+-- "header" bytes (2026-08-14, direct follow-up to "verfolge mal diese
+-- eventscripte und schaue dir an was diese machen" -- see this
+-- module's own "NAMING CORRECTED" doc comment above `MapTable.decode`
+-- for why "header" is really a per-room event-script pointer).
+--
+-- The first (or, if that byte resolves to the real, ROM-confirmed
+-- no-op `ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS`, the second)
+-- opcode byte is resolved through the real `scriptOpcodeTable` to its
+-- own real ROM handler address. If that address holds the EXACT,
+-- already-documented "ACTOR_ACTION" family instruction sequence
+-- (`src/import/ScriptOpcodeTable.lua`'s own `ACTOR_ACTION_HANDLER_
+-- ADDRESS_*` constants, events.md's "Back to the primary table"
+-- section: `CALL $28C2 / ADD A,<group> / LD C,A / LD A,<action> /
+-- CALL $2879 / RET`), the real, baked-in `group`/`action` constants
+-- are read directly out of the handler's own bytes -- not inferred,
+-- not guessed, the literal immediate operands of that specific real
+-- routine. Returns `nil` if neither byte matches (a real, honest
+-- "not this family" result, not a fabricated default).
+--
+-- HONEST SCOPE: this identifies WHICH real actor-action command a
+-- room's own entry script enqueues (see `ScriptOpcodeTable.lua`'s own
+-- corrected note: a real actor-COMMAND-QUEUE mechanism, `$C4E0`/
+-- `$C5A0`, NOT room-selection or spawn-coordinate data) -- it does
+-- NOT reveal which TILES a room uses (a separate, still-open
+-- question, see rom_profiles.lua's own `genericCatalogMetatileTable
+-- FileOffset` doc comment) and does NOT explain the exact real-world
+-- GAMEPLAY MEANING of a given `action` value (open per events.md).
+--
+-- All handler addresses seen for this family so far are `< 0x4000`
+-- (fixed bank 0, file offset == CPU address directly, same
+-- convention already established for `ScriptOpcodeTable.DEFAULT_
+-- HANDLER_ADDRESS` elsewhere) -- a handler `>= 0x4000` is honestly
+-- reported as "not resolvable this way" (`nil`) rather than guessing
+-- a bank.
+local ACTOR_ACTION_PATTERN_PREFIX = string.char(0xCD, 0xC2, 0x28) -- CALL $28C2
+local ACTOR_ACTION_PATTERN_MID = string.char(0x4F, 0x3E) -- LD C,A / LD A,n
+local ACTOR_ACTION_PATTERN_SUFFIX = string.char(0xCD, 0x79, 0x28) -- CALL $2879
+
+local function matchActorActionHandler(romData, handlerAddr)
+  if handlerAddr >= 0x4000 then return nil end
+  local b = romData:sub(handlerAddr + 1, handlerAddr + 11)
+  if #b < 11 then return nil end
+  if b:sub(1, 3) ~= ACTOR_ACTION_PATTERN_PREFIX then return nil end
+  if b:byte(4) ~= 0xC6 then return nil end -- ADD A,n
+  local group = b:byte(5)
+  if b:sub(6, 7) ~= ACTOR_ACTION_PATTERN_MID then return nil end
+  local action = b:byte(8)
+  if b:sub(9, 11) ~= ACTOR_ACTION_PATTERN_SUFFIX then return nil end
+  return { group = group, action = action }
+end
+
+function MapTable.tryDecodeActorAction(romData, header, opcodeEntries)
+  assert(type(romData) == "string", "MapTable.tryDecodeActorAction expects a byte string")
+  assert(type(header) == "string" and #header >= 1,
+    "MapTable.tryDecodeActorAction expects a non-empty header byte string")
+  assert(type(opcodeEntries) == "table", "MapTable.tryDecodeActorAction expects decoded scriptOpcodeTable entries")
+
+  local ScriptOpcodeTable = require("src.import.ScriptOpcodeTable")
+  local firstOpcode = header:byte(1)
+  local firstHandler = opcodeEntries[firstOpcode + 1]
+  if firstHandler ~= ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS then
+    return matchActorActionHandler(romData, firstHandler)
+  end
+  -- First byte is a real, confirmed no-op -- try the second (matches
+  -- the live step-by-step trace this finding was based on).
+  if #header < 2 or header:byte(2) == 0xFF then return nil end
+  local secondOpcode = header:byte(2)
+  local secondHandler = opcodeEntries[secondOpcode + 1]
+  return matchActorActionHandler(romData, secondHandler)
 end
 
 return MapTable

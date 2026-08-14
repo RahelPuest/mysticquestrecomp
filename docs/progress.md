@@ -7790,3 +7790,23 @@ Honest scope, stated on the page itself: structurally/statistically
 derived, not independently gameplay-confirmed.
 
 Full suite: 417 passed, 0 failed.
+
+## Room-catalog event scripts decoded: real ACTOR_ACTION family + regional clustering (2026-08-14)
+
+Direct follow-up: "ok dann verfolge mal diese eventscripte und schaue
+dir an was diese machen". Confirmed the room-catalog's "header" bytes
+are real script bytecode resolving to the ALREADY-DOCUMENTED
+"ACTOR_ACTION" opcode family (a real actor-command-queue mechanism,
+NOT tile/graphics data -- an honest negative for the earlier "which
+tiles" question, but a real positive here). New `MapTable.
+tryDecodeActorAction()` (+ 4 tests) extracts the real `(group,action)`
+pair for 104/320 catalog records -- only 10 distinct pairs recur.
+Found real, controlled evidence several pairs cluster into tight,
+contiguous map regions (e.g. group=3/action=4 -> a specific 5x3
+column/row block) -- visually confirmed on a new Weltkarte
+"Actor-Action-Overlay" (large, coherent colored zones, not scattered
+noise). Honest scope maintained throughout: this identifies WHICH
+actor command a room's script enqueues, not what it means in gameplay
+terms, and not the separate tileset question.
+
+Full suite: 421 passed, 0 failed.

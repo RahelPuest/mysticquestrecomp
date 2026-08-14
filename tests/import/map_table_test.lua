@@ -2,6 +2,7 @@ local Harness = require("tests.harness")
 local MapTable = require("src.import.MapTable")
 local RomIdentity = require("src.import.RomIdentity")
 local RomProfiles = require("src.import.rom_profiles")
+local ScriptOpcodeTable = require("src.import.ScriptOpcodeTable")
 local DevRomLocator = require("tests.dev_rom_locator")
 
 -- Synthetic-data tests: exercise the table-shape decoder against
@@ -183,6 +184,20 @@ Harness.testIfAvailable(
   romData ~= nil,
   "no development ROM found",
   function()
+    -- NOW UNDERSTOOD WHY (2026-08-14, same day, direct follow-up
+    -- question "findest du in den headern auch informationen dazu
+    -- welche tiles zu den räumen gehören"): this "header" field is
+    -- itself a MISNOMER -- decoding it as real script bytecode (this
+    -- project's own already-built ScriptInterpreter/ScriptOpcodeTable)
+    -- shows it resolves to real, already-catalogued ROM handler
+    -- addresses (the documented "~70-opcode actor action" family,
+    -- events.md's "Back to the primary table" section) -- i.e. it's a
+    -- genuine per-room EVENT SCRIPT, not tileset metadata at all. See
+    -- MapTable.lua's own "NAMING CORRECTED" doc comment for the full
+    -- trace. This test's own conclusion (not a metatile pointer)
+    -- stands, now with a real, understood root cause instead of just
+    -- an empirical negative.
+    --
     -- Direct follow-up to a real user report ("die sind bei allen
     -- ausser den bekannten total off") that the room-catalog export's
     -- tile assignment looks wrong for every bank-5/bank-6 record
@@ -238,6 +253,66 @@ Harness.testIfAvailable(
     Harness.assertEqual(hits, 0,
       "expected zero bank-5 records whose header resolves to the known-good metatile table " ..
       "(if this changes, the header-as-metatile-pointer hypothesis may be worth re-examining)")
+  end
+)
+
+-- Synthetic tests: exercise MapTable.tryDecodeActorAction against
+-- hand-built bytes, independent of any real ROM, per this project's
+-- own "headlessly testable" rule.
+Harness.test("MapTable.tryDecodeActorAction: extracts group/action from a real-shaped handler at the first opcode", function()
+  -- Real bytes, real shape (bank5 record 0's own actual handler at
+  -- $152C, live-verified 2026-08-14): CALL $28C2 / ADD A,6 / LD C,A /
+  -- LD A,$1C / CALL $2879 / RET, placed at a synthetic handler address.
+  local HANDLER_ADDR = 0x0100
+  local rom = string.rep("\0", HANDLER_ADDR) ..
+    "\xCD\xC2\x28\xC6\x06\x4F\x3E\x1C\xCD\x79\x28\xC9"
+  local opcodeEntries = {}
+  for i = 1, 256 do opcodeEntries[i] = 0x3FFF end -- filler, never DEFAULT
+  opcodeEntries[0x76 + 1] = HANDLER_ADDR
+  local header = "\x76\x00\xFF"
+  local result = MapTable.tryDecodeActorAction(rom, header, opcodeEntries)
+  Harness.assertTrue(result ~= nil, "expected a real (group,action) match")
+  Harness.assertEqual(result.group, 0x06)
+  Harness.assertEqual(result.action, 0x1C)
+end)
+
+Harness.test("MapTable.tryDecodeActorAction: falls through to the SECOND byte when the first is the real confirmed no-op", function()
+  local HANDLER_ADDR = 0x0200
+  local rom = string.rep("\0", HANDLER_ADDR) ..
+    "\xCD\xC2\x28\xC6\x04\x4F\x3E\x04\xCD\x79\x28\xC9"
+  local opcodeEntries = {}
+  for i = 1, 256 do opcodeEntries[i] = 0x3FFF end
+  opcodeEntries[0x7C + 1] = ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS
+  opcodeEntries[0x00 + 1] = HANDLER_ADDR
+  local header = "\x7C\x00\xFF"
+  local result = MapTable.tryDecodeActorAction(rom, header, opcodeEntries)
+  Harness.assertTrue(result ~= nil, "expected a real (group,action) match via the second byte")
+  Harness.assertEqual(result.group, 0x04)
+  Harness.assertEqual(result.action, 0x04)
+end)
+
+Harness.test("MapTable.tryDecodeActorAction: returns nil (not a fabricated default) when neither byte matches the real pattern", function()
+  local opcodeEntries = {}
+  for i = 1, 256 do opcodeEntries[i] = 0x3FFF end
+  local rom = string.rep("\0", 0x4000) -- $3FFF's own bytes: all zero, never matches
+  local header = "\x00\xFF" -- opcode 0 -> handler $3FFF, not DEFAULT, doesn't match
+  local result = MapTable.tryDecodeActorAction(rom, header, opcodeEntries)
+  Harness.assertTrue(result == nil, "expected nil, not a guessed/fabricated match")
+end)
+
+Harness.testIfAvailable(
+  "MapTable.tryDecodeActorAction: real bank-5 record 0 resolves to the SAME (group,action) already live-verified this pass",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTable)
+    local records = MapTable.decode(romData, profile.mapTable)
+    local record0 = records[0 + 1]
+    local result = MapTable.tryDecodeActorAction(romData, record0.header, opcodeEntries)
+    Harness.assertTrue(result ~= nil, "expected bank-5 record 0's own real header to resolve")
+    Harness.assertEqual(result.group, 0x06)
+    Harness.assertEqual(result.action, 0x1C)
   end
 )
 

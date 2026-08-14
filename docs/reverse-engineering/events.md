@@ -7089,3 +7089,73 @@ bounded lead for a future pass ("find the handler that returns a
 boolean cursor instead of a real one").
 
 Full Lua test suite: 411 -> 414.
+
+## Room-catalog event scripts: the misnamed "header" is a real ACTOR_ACTION script, real regional clustering found (2026-08-14, "verfolge mal diese eventscripte und schaue dir an was diese machen")
+
+Direct follow-up after the "welche tiles gehören zu den räumen"
+question led to a real, unrelated find: `MapTable.decode`'s own
+per-record "header" field (a short, 0xFF-terminated blob before each
+bank-5/bank-6 record's real data blob) was a MISNOMER. The external
+FFA-Disassembly project's own docs name this exact pointer-pair
+position "script" (`map00_room00_00_script, map00_room00_00_tiles`),
+not "header" -- and testing it directly against this project's own
+already-built `ScriptInterpreter`/`ScriptOpcodeTable` confirms it:
+these bytes resolve to REAL, already-catalogued ROM handler
+addresses, not arbitrary/coincidental data.
+
+**Concretely, bank-5 record 0's own first header byte (`0x76`)
+resolves to real handler `$152C`**, disassembling to `CALL $28C2 /
+ADD A,$06 / LD C,A / LD A,$1C / CALL $2879 / RET` -- the EXACT,
+already-fully-documented "ACTOR_ACTION" family this project traced
+in an earlier session (see this file's own "Back to the primary
+table" and "Bank 3, followed" sections above, `ScriptOpcodeTable.lua`'s
+own `ACTOR_ACTION_HANDLER_ADDRESS_*` constants). That earlier work
+already corrected the initial "quest/story-flag" hypothesis to a more
+precise one: a real actor-COMMAND-QUEUE mechanism (`$C4E0`/`$C5A0`
+WRAM tables, "enqueue a real `(group, actionCode)` pair... dedup'd
+against an 8-slot pending set") -- **explicitly NOT room-selection,
+spawn-coordinate, or tile/graphics data** (that file's own prior,
+decisive negative result). So: real, new structural fact (every one
+of the 320 catalog records carries its own tiny per-room event
+script), but a genuine, honest NEGATIVE for the separate "which tiles"
+question that prompted this investigation.
+
+**New, committed capability**: `MapTable.tryDecodeActorAction(romData,
+header, opcodeEntries)` -- resolves a record's own first (or, if that
+byte is the real confirmed no-op, second) opcode byte through the
+real `scriptOpcodeTable`, and extracts the literal `(group, action)`
+immediate operands when the target handler matches the exact known
+6-instruction shape. Returns `nil` (not a guess) when it doesn't
+match. 4 new tests (3 synthetic, 1 against bank-5 record 0's own real
+bytes, cross-verified against the live disassembly above).
+
+**Systematic pass across all 320 catalog records**: 104/320 (101
+bank-5, 3 bank-6) resolve to a real `(group, action)` pair -- only
+**10 distinct pairs** recur across all of them (e.g. `group=3
+action=0x04`: 8 rooms; `group=5 action=0x1e`: 16 rooms). The other 216
+records' own scripts either use a genuinely different, real opcode
+(several already partially known -- e.g. `0x79`'s own already-named
+`ACTOR_SLOT_POSITION_WITH_READINESS_PARAM` family) or a shape not
+matching this specific template -- an honest, structured catalog, not
+a forced 100% classification.
+
+**Real, controlled regional-clustering finding**: for bank 5's 16x16
+grid, several `(group, action)` pairs form tight, largely CONTIGUOUS
+map regions -- e.g. `group=3 action=0x04` -> columns 7-11, rows 4-6;
+`group=4 action=0x0f` -> columns 0-3, rows 9-13; `group=5 action=0x05`
+-> columns 1-5, rows 2-7. Visually confirmed on the new Weltkarte
+overlay (real ROM pixels): large, coherent, differently-colored zones
+are directly visible, not scattered noise -- strong, if still
+structural/statistical (not gameplay-ground-truth), evidence these
+represent real, distinct game areas.
+
+**New website feature**: `rom-inspector`'s Weltkarte page gained an
+"Actor-Action-Overlay" checkbox -- color-codes each catalog room by
+its own real `(group,action)` pair (a small, stable, hashed palette),
+with the honest note that this is a real actor-command signal, NOT
+tile/graphics data, and that same-color clustering "can mark real,
+connected game areas" (careful, not-overclaiming language -- the
+exact gameplay MEANING of any value stays open, same honest boundary
+this file's own earlier sections already established).
+
+Full suite: 421 passed, 0 failed (was 417 -- +4 new MapTable tests).

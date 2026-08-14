@@ -26,6 +26,7 @@ local TextDecoder = require("src.import.TextDecoder")
 local RomScriptStream = require("src.scripting.RomScriptStream")
 local ScriptRuntime = require("src.scripting.ScriptRuntime")
 local RoomFloorLayout = require("src.import.RoomFloorLayout")
+local MapTable = require("src.import.MapTable")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -403,6 +404,21 @@ writeJs("room-maps.js", "ROOM_MAPS", roomMaps,
 --     "UPGRADED" doc comments and rom-map.md's "World scope" sections
 --     for the full evidence chain, including 2 negative methods tried
 --     and ruled out before this one was found.
+--
+--     `actorAction` field ADDED 2026-08-14 ("verfolge mal diese
+--     eventscripte und schaue dir an was diese machen"): each
+--     record's own real "header" bytes are now understood to be a
+--     genuine per-room EVENT SCRIPT (see MapTable.lua's own "NAMING
+--     CORRECTED" doc comment) -- `MapTable.tryDecodeActorAction`
+--     extracts the real, already-documented `(group, action)` pair
+--     when a record's script matches the ALREADY-KNOWN "ACTOR_ACTION"
+--     opcode family (`ScriptOpcodeTable.lua`'s own `ACTOR_ACTION_
+--     HANDLER_ADDRESS_*` constants -- a real actor-command-queue
+--     mechanism, `$C4E0`/`$C5A0`, per that module's own corrected
+--     note -- NOT room-selection, spawn-coordinate, or TILE data).
+--     `nil` for the majority of records whose own script doesn't
+--     match this specific family (a real, honest "not this family"
+--     result, not every room necessarily using it).
 ----------------------------------------------------------------------
 local roomCatalog = {}
 local catalogMetatileTableFileOffset =
@@ -414,6 +430,7 @@ local function exportCatalogSource(mapTable, sourceLabel)
     metatileGridRows = 8,
     metatileGridCols = 10,
   }
+  local records = MapTable.decode(romData, mapTable)
   for recordIndex = 0, mapTable.recordCount - 1 do
     local fileOffsetGrid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIndex, opts)
     local room = RoomFloorLayout.toTileGridBackgroundData(fileOffsetGrid, opts.tilesetFileOffset)
@@ -421,6 +438,9 @@ local function exportCatalogSource(mapTable, sourceLabel)
     for tileId, off in pairs(room.tileOffsets) do
       tileOffsets[tostring(tileId)] = off
     end
+    local record = records[recordIndex + 1]
+    local actorAction = record and record.header and
+      MapTable.tryDecodeActorAction(romData, record.header, opcodeEntries)
     roomCatalog[#roomCatalog + 1] = {
       name = string.format("%s-record-%03d", sourceLabel, recordIndex),
       source = sourceLabel,
@@ -429,13 +449,14 @@ local function exportCatalogSource(mapTable, sourceLabel)
       rows = #room.grid,
       grid = room.grid,
       tileOffsets = tileOffsets,
+      actorAction = actorAction, -- {group=N, action=N} or nil, see doc comment above
     }
   end
 end
 exportCatalogSource(profile.mapTable, "bank5")
 exportCatalogSource(profile.mapTableBank6, "bank6")
 writeJs("room-catalog.js", "ROOM_CATALOG", roomCatalog,
-  "ALL 320 real, individually-decodable bank-5 (256 records) + bank-6 (64 records) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. UPGRADED 2026-08-14: every entry now renders through genericCatalogMetatileTableFileOffset, a real, structurally-derived default (roomSelectorTable's own record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still NOT independently ground-truth-verified (no live gameplay reaches these 320 rooms). See rom_profiles.lua's own dated doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
+  "ALL 320 real, individually-decodable bank-5 (256 records) + bank-6 (64 records) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. UPGRADED 2026-08-14: every entry now renders through genericCatalogMetatileTableFileOffset, a real, structurally-derived default (roomSelectorTable's own record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still NOT independently ground-truth-verified (no live gameplay reaches these 320 rooms). `actorAction` (added same day): the real (group,action) pair a record's own per-room event script enqueues, when it matches the already-documented ACTOR_ACTION opcode family -- a real actor-command-queue mechanism, NOT tile/graphics data. See rom_profiles.lua's own dated doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
 
 writeJs("font-tileset.js", "FONT_TILESET", {
   fileOffset = profile.graphics.font.fileOffset,
