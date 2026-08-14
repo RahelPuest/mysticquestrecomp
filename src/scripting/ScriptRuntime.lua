@@ -149,7 +149,16 @@ ScriptRuntime.__index = ScriptRuntime
 --                             evidence this is built on). Optional,
 --                             defaults to `"up"` (matching this
 --                             project's own already-independently-
---                             verified `Player.DEFAULT_FACING`).
+--                             verified `Player.DEFAULT_FACING`). ALSO
+--                             feeds opcode `0x81` (CRACKED 2026-08-14,
+--                             same session, direct continuation) --
+--                             SAME callback, combined through
+--                             `EntityStructLayout.OPPOSITE_FACING`
+--                             first (0x81's own real formula reads the
+--                             OPPOSITE of the player's current facing,
+--                             see `ScriptOpcodeTable
+--                             .ACTOR_ACTION_HANDLER_ADDRESS_81`'s doc
+--                             comment for the full disassembly).
 --   ctx.onSetActorSlotPosition(byte1, byte2) -- opcodes 0x49 AND 0x19
 --                             (the real `$123E`-family members that
 --                             consume operand bytes -- same handler
@@ -492,28 +501,49 @@ function ScriptRuntime:registerStandardHandlers()
   -- `Player.DEFAULT_FACING`) is looked up in the real
   -- `EntityStructLayout.PLAYER_FACING_BIT` table and combined with
   -- the real fixed `+0x90` offset the ROM's own code applies.
+  -- Shared by 0x80 and 0x81 below (factored out 2026-08-14 when 0x81
+  -- turned out to need the SAME safe facing lookup, just combined
+  -- differently afterward): resolves `ctx.getPlayerFacing()` to a real
+  -- facing STRING, coercing anything missing/unrecognized to the
+  -- documented `"up"` default (matching `Player.DEFAULT_FACING`) rather
+  -- than asserting. SELF-CAUGHT BUG this guards against: a generic
+  -- caller (e.g. this project's own whole-corpus scan tool) may supply
+  -- a stub `ctx.getPlayerFacing` that returns a non-facing placeholder
+  -- (its own generic `__index` stub returns `true` for every unset
+  -- callback, regardless of that callback's own real return type -- the
+  -- SAME crash class already caught and fixed twice earlier this same
+  -- session for `twoBitFieldCommand`/`threeWayFlagBitCommand`).
+  local function resolvePlayerFacing()
+    local facing = ctx.getPlayerFacing and ctx.getPlayerFacing()
+    if not EntityStructLayout.PLAYER_FACING_BIT[facing] then
+      facing = "up"
+    end
+    return facing
+  end
+
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_80,
     StandardScriptHandlers.actorAction(function()
-      -- SELF-CAUGHT BUG, fixed same pass: a generic caller (e.g. this
-      -- project's own whole-corpus scan tool) may supply a stub
-      -- `ctx.getPlayerFacing` that returns a non-facing placeholder
-      -- (its own generic `__index` stub returns `true` for every
-      -- unset callback, regardless of that callback's own real return
-      -- type -- the SAME crash class already caught and fixed twice
-      -- earlier this same session for `twoBitFieldCommand`/
-      -- `threeWayFlagBitCommand`) -- coerce anything that isn't a
-      -- real, recognized facing string to the documented default
-      -- (`"up"`) rather than asserting; `"up"` genuinely IS this
-      -- opcode's own honest default (matching `Player.DEFAULT_FACING`),
-      -- so falling back to it for an unrecognized value is consistent
-      -- with this project's own established convention, not a
-      -- silently-guessed fabrication.
-      local facing = ctx.getPlayerFacing and ctx.getPlayerFacing()
-      local bits = EntityStructLayout.PLAYER_FACING_BIT[facing]
-      if not bits then
-        bits = EntityStructLayout.PLAYER_FACING_BIT.up
-      end
-      return bits + 0x90
+      return EntityStructLayout.PLAYER_FACING_BIT[resolvePlayerFacing()] + 0x90
+    end, isActorReady, ctx.onActorAction))
+
+  -- `0x81` (CRACKED 2026-08-14, direct continuation of the same $02AB
+  -- investigation): SAME real leaf (`$02AB`, via `resolvePlayerFacing`
+  -- above) but combined through `$29E4`'s own real "opposite facing"
+  -- bit trick before the fixed `OR 0xB0` -- see `ScriptOpcodeTable
+  -- .ACTOR_ACTION_HANDLER_ADDRESS_81`'s own doc comment for the full
+  -- disassembly and truth table. `EntityStructLayout.OPPOSITE_FACING`
+  -- is this project's own Lua-side equivalent of `$29E4` (a plain
+  -- lookup, exactly as correct as the real bit trick since every real
+  -- input is one-hot). Falls back through the SAME `"up"`-default path
+  -- as 0x80 when facing is missing/unrecognized -- `OPPOSITE_FACING
+  -- .up = "down"`, so the honest default resolves to `PLAYER_FACING_BIT
+  -- .down | 0xB0` here, deliberately different from 0x80's own default
+  -- result (a real, correct consequence of the two opcodes' different
+  -- real formulas, not an inconsistency).
+  interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81,
+    StandardScriptHandlers.actorAction(function()
+      local opposite = EntityStructLayout.OPPOSITE_FACING[resolvePlayerFacing()]
+      return EntityStructLayout.PLAYER_FACING_BIT[opposite] + 0xB0
     end, isActorReady, ctx.onActorAction))
 
   interp:registerHandler(ScriptOpcodeTable.MESSAGE_HANDLER_ADDRESS,
@@ -956,6 +986,14 @@ function ScriptRuntime:registerStandardHandlers()
         -- the `_7B$`/`WORD_COMMAND_HANDLER_ADDRESS_EF$` exclusions
         -- below. No longer "documented-dynamic, unmodelable" -- that
         -- was the OLD, since-corrected reasoning.
+      elseif key:match("^ACTOR_ACTION_HANDLER_ADDRESS_81$") then
+        -- CRACKED 2026-08-14 (direct continuation of the 0x80 fix,
+        -- same session, "gamemap absolute prio" pass): already
+        -- explicitly registered above with its real, live, dynamic
+        -- group (opposite-facing | 0xB0, see that registration's own
+        -- doc comment) -- excluded here for the SAME reason as the
+        -- `_80$` exclusion right above: so this generic sweep doesn't
+        -- overwrite it with a group-less generic registration.
       elseif key:match("^ACTOR_ACTION_HANDLER_ADDRESS_7B$") then
         -- SELF-CAUGHT BUG, fixed 2026-08-14 (task-11 quality pass, "kommentiere
         -- alles"): opcode `0x7B` was originally discovered TWICE, in two

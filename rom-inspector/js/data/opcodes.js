@@ -1036,8 +1036,11 @@ const OPCODES = [
   },
   {
     "handler": 5559,
+    "names": [
+      "ACTOR_ACTION_HANDLER_ADDRESS_81"
+    ],
     "opcode": 129,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 14671,

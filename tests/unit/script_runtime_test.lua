@@ -106,6 +106,54 @@ Harness.test(
   end)
 
 Harness.test(
+  "ScriptRuntime: opcode 0x81's real dynamic group is the OPPOSITE facing | 0xB0 (2026-08-14, $02AB family continued)",
+  function()
+    local entries = makeOpcodeTable({ [0x81] = ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 })
+    local facing = "right"
+    local seenGroups = {}
+    local runtime = ScriptRuntime.new(entries, {
+      getPlayerFacing = function() return facing end,
+      onActorAction = function(g) seenGroups[#seenGroups + 1] = g end,
+    })
+
+    local stream = { 0x81 }
+    runtime:run(stream, 1, 1)
+    Harness.assertEqual(seenGroups[1], 0xB2) -- opposite of right is left (bit 0x02), + 0xB0
+
+    facing = "down"
+    runtime:run(stream, 1, 1)
+    Harness.assertEqual(seenGroups[2], 0xB4) -- opposite of down is up (bit 0x04), + 0xB0
+  end)
+
+Harness.test(
+  "ScriptRuntime: opcode 0x81 defaults to the opposite of 'up' (i.e. 'down') when ctx.getPlayerFacing is omitted",
+  function()
+    local entries = makeOpcodeTable({ [0x81] = ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 })
+    local seenGroup = nil
+    local runtime = ScriptRuntime.new(entries, {
+      onActorAction = function(g) seenGroup = g end,
+    })
+    runtime:run({ 0x81 }, 1, 1)
+    Harness.assertEqual(seenGroup, 0xB8) -- down = bit 0x08, + 0xB0
+  end)
+
+Harness.test(
+  "ScriptRuntime: opcode 0x81 falls back the same way as 0x80 (not a crash) when ctx.getPlayerFacing returns garbage",
+  function()
+    -- Same regression shape as 0x80's own garbage-value test above --
+    -- 0x81 resolves facing through the SAME shared `resolvePlayerFacing`
+    -- helper, so it inherits the same fix.
+    local entries = makeOpcodeTable({ [0x81] = ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 })
+    local seenGroup = nil
+    local runtime = ScriptRuntime.new(entries, {
+      getPlayerFacing = function() return true end, -- deliberately garbage
+      onActorAction = function(g) seenGroup = g end,
+    })
+    runtime:run({ 0x81 }, 1, 1)
+    Harness.assertEqual(seenGroup, 0xB8) -- same fallback as the "omitted" case
+  end)
+
+Harness.test(
   "ScriptRuntime:step: a real, undecoded opcode captures the failure instead of throwing -- and stays stopped",
   function()
     local entries = makeOpcodeTable({ [0x55] = 0xBEEF }) -- a real-shaped, deliberately unregistered address

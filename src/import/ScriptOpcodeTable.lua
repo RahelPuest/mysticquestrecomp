@@ -710,15 +710,39 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_87 = 0x15D7 -- group 0x02, $1588 
 -- honest-limit as those three.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_86 = 0x15CB -- group 0x01, $1588 gate
 
--- `0x81` ($15B7, TRACED, DELIBERATELY NOT WIRED, 2026-08-14, whole-
--- corpus scan): `CALL $1588 / RET NZ / PUSH HL / CALL $02AB / CALL
--- $29E4 / POP HL / OR 0xB0 / LD C,0xFF / CALL $2879 / RET` -- a FOURTH
--- confirmed real sibling of the already-known-hard `$02AB` family
--- (`0x80`/`0xEC`/`0xED`/`0xEE`) -- its real GROUP value is computed
--- from `$02AB`'s own return (further combined via `$29E4` and `OR
--- 0xB0`), needing the same live player-entity WRAM state this project
--- doesn't simulate. Left deliberately unwired, same reasoning as its
--- siblings (no constant assigned here either).
+-- `0x81` ($15B7) -- CRACKED for real (2026-08-14, direct instruction
+-- "die gesammte gamemap entschlüsseln... das hat absolute prio",
+-- continuing the whole-corpus-scan sweep): `CALL $1588 / RET NZ / PUSH
+-- HL / CALL $02AB / CALL $29E4 / POP HL / OR 0xB0 / LD C,0xFF / CALL
+-- $2879 / RET` -- the FOURTH real sibling of the `$02AB` family
+-- (`0x80`/`0xEC`/`0xED`/`0xEE`), and the SECOND to close for real (see
+-- `EntityStructLayout.lua`'s own `PLAYER_FACING_BIT` doc comment for
+-- `0x80`'s own earlier closure -- the same 0x02AB leaf this one reuses).
+--
+-- `$29E4`, disassembled: `AND 0x0F` then a real bit trick -- XOR 0x03
+-- on the low pair (bits 0-1) whenever it's not already zero, XOR 0x0C
+-- on the high pair (bits 2-3) whenever it's not already zero. Worked
+-- out by truth table against every real one-hot input `$02AB` can
+-- produce (per the 0x80 investigation, `$02AB`'s own low nibble is
+-- ALWAYS one-hot): `0x01<->0x02` (right<->left), `0x04<->0x08`
+-- (up<->down), `0x00->0x00` -- i.e. `$29E4` is a real, general "flip to
+-- the OPPOSITE facing direction" helper. `0x81`'s real group is
+-- therefore `flip(player's own current facing) | 0xB0` -- an "opposite-
+-- facing" counterpart to `0x80`'s own "same-facing" `... + 0x90`
+-- formula (both read the exact same `$02AB` leaf, just combined
+-- differently afterward).
+--
+-- Same `$1588` gate as `0x84`-`0x87` above (WRAM `$C240` bit 7, already
+-- approximated via `ctx.isActorReady`) -- note `$1588` ITSELF calls
+-- `$02AB` internally as part of its own gate check (see `0x84`'s doc
+-- comment above), a real, harmless double-read of the same byte, not a
+-- bug. Implemented via `EntityStructLayout.OPPOSITE_FACING` (a plain
+-- lookup table -- exactly as correct as reproducing `$29E4`'s own bit
+-- trick, since every real input is one-hot) and an explicit dynamic-
+-- group registration in `ScriptRuntime.lua`, same pattern as `0x80`'s
+-- own (excluded from the generic `^ACTOR_ACTION_HANDLER_ADDRESS_`
+-- sweep for the same reason).
+ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, opposite-facing | 0xB0 (CRACKED 2026-08-14)
 --
 -- `0xA4` ($01C1, TRACED, DELIBERATELY NOT WIRED, 2026-08-14, whole-
 -- corpus scan's own next real untouched blocker after `0x86`):

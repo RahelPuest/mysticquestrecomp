@@ -7036,3 +7036,56 @@ Real offsets found via the established exact-16-byte-VRAM-pattern -> ROM-byte-se
 New test file `tests/import/fourth_room_test.lua` (2 tests: the 10 new offsets are real in-bounds ROM addresses with genuine tile data; the 5-way cross-validation against `sixthRoom`). `tests/import/sixth_room_test.lua`'s shared-count assertion updated (`7`->`14`). Both `fourthRoom.exits` doc comments in `rom_profiles.lua` rewritten from "HONEST LIMIT, still OPEN" to "RESOLVED" with the full evidence trail (original text kept, not deleted, for the historical record). Full Lua test suite: 408 -> 410. Whole-corpus scan re-run for the discipline (unaffected, as expected -- this task touched room/tile data, not script opcodes).
 
 This closes the "11, 12, 5, 10, 75" task sequence in full.
+
+## 2026-08-14: "die gesammte gamemap entschlüsseln... absolute prio" -- opcode 0x81 CLOSED (second real member of the $02AB family)
+
+Direct instruction to decode the whole game map (connections,
+collision, tilesets) with absolute priority. Continued the whole-
+corpus-scan sweep started earlier this session, going after the
+biggest remaining blockers.
+
+**Opcode `0x81` ($15B7) CLOSED for real.** Full disassembly: `CALL
+$1588 / RET NZ / PUSH HL / CALL $02AB / CALL $29E4 / POP HL / OR 0xB0
+/ LD C,0xFF / CALL $2879 / RET` -- the same `$02AB` leaf as `0x80`
+(already cracked earlier this session), but piped through a new real
+helper, `$29E4`, before the final `OR`.
+
+`$29E4` disassembled and worked out by truth table: `AND 0x0F` then a
+bit trick -- XOR 0x03 on the low pair (bits 0-1) whenever it's not
+already zero, XOR 0x0C on the high pair (bits 2-3) whenever it's not
+already zero. Since `$02AB`'s own low nibble is always one-hot (per
+the 0x80 investigation), this resolves to a clean, general "opposite
+facing direction" swap: `0x01<->0x02` (right<->left), `0x04<->0x08`
+(up<->down). So `0x81`'s real group is `flip(player's current facing)
+| 0xB0` -- the "opposite-facing" counterpart to `0x80`'s own "same-
+facing" `+0x90` formula, both reading the exact same `$02AB` leaf.
+
+Implemented via a new `EntityStructLayout.OPPOSITE_FACING` lookup
+table (a plain lookup is exactly as correct as reproducing `$29E4`'s
+own bit trick, since every real input is one-hot) and an explicit
+dynamic-group registration in `ScriptRuntime.lua`, refactored to share
+a `resolvePlayerFacing()` helper with `0x80`'s own registration (same
+safe-default behavior: falls back to `"up"` when `ctx.getPlayerFacing`
+is missing or returns garbage, matching `Player.DEFAULT_FACING`).
+Excluded from the generic `^ACTOR_ACTION_HANDLER_ADDRESS_` sweep, same
+pattern as `0x80`/`0x7B`'s own exclusions. 3 new tests (real dynamic
+group across 2 facings, default-facing case, garbage-value fallback --
+mirroring `0x80`'s own 3 tests exactly).
+
+**Real, measured result**: whole-corpus scan `clean` 871 -> 876 (+5),
+`halt_undecoded` 342 -> 332 (-10), `0x15B7` fully gone from the
+ranking (was blocking 17 real scripts). The remaining ~12 of those 17
+scripts progress further and hit OTHER, different, already-existing
+blockers instead of stopping cleanly -- including a real, PRE-EXISTING
+"cursor true" error class (130 -> 134 occurrences, `ScriptInterpreter
+.lua:79`) that already existed before this change and is NOT caused by
+`0x81`'s own handler (verified: `actorAction`'s own implementation
+always returns the numeric `cursor` it was given, never a boolean --
+this is some OTHER, not-yet-identified handler elsewhere in the corpus
+returning a boolean cursor, now simply reached by a few more scripts
+since they get further before failing). Flagged honestly as a real,
+separate, still-open gap, not chased down this pass -- a concrete,
+bounded lead for a future pass ("find the handler that returns a
+boolean cursor instead of a real one").
+
+Full Lua test suite: 411 -> 414.

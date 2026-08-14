@@ -95,6 +95,26 @@ EntityStructLayout.PLAYER_FACING_BIT = {
   down = 0x08,
 }
 
+-- CRACKED (2026-08-14, task "gamemap/connections absolute priority",
+-- opcode 0x81/$15B7): a real, general ROM helper (`$29E4`) takes a
+-- `PLAYER_FACING_BIT`-shaped low nibble and returns the OPPOSITE
+-- direction, via a real bit trick: `AND 0x0F`, then XOR 0x03 on the
+-- low pair (bits 0-1, right/left) whenever it's not already zero, XOR
+-- 0x0C on the high pair (bits 2-3, up/down) whenever it's not already
+-- zero. Worked out by truth table (only one-hot inputs matter, since
+-- `$02AB`'s own low nibble is always one-hot per the 0x80 investigation):
+-- `0x01<->0x02` (right<->left), `0x04<->0x08` (up<->down), `0x00->0x00`.
+-- `$29E4` is a real, general helper -- this table is this project's own
+-- Lua-side equivalent (a plain lookup is simpler and exactly as
+-- correct as reproducing the bit trick, since the real input is always
+-- one-hot in every real call site found so far).
+EntityStructLayout.OPPOSITE_FACING = {
+  right = "left",
+  left = "right",
+  up = "down",
+  down = "up",
+}
+
 --- Real, general helper: the WRAM address of `field` within `slotIndex`.
 -- Pure arithmetic, matches the real ROM's own `$C200 + slotIndex*16 +
 -- field` computation exactly (both `$0AE3`'s 4x `ADD HL,HL` doubling
