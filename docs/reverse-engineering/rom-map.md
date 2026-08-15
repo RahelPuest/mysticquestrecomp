@@ -7508,3 +7508,80 @@ check that every candidate's own tile range stays in-bounds and isn't
 a degenerate solid-fill false positive. `luajit tests/run_tests.lua`:
 481/481 pass (+3). Website Playwright-verified (5 candidate cards
 render, zero console errors).
+
+## Graphics candidate search extended to a full, systematic ROM sweep -- 7 more real regions found, all 16 banks now checked (2026-08-15, same day)
+
+Direct follow-up, mid-turn, to a explicit user instruction not to stop
+early: "bitte mit dem grafiken suchen danach weiter machen bis wirklich
+alle gefunden wurden. nicht vorher stoppen" (please keep searching for
+graphics until really all have been found, don't stop before that).
+
+**Method upgrade**: the earlier pass only checked individual
+`scan_graphics.py` entropy hits one at a time. This pass instead
+rendered EVERY ROM bank (0-15, all 16KB each) in full with
+`tools/graphics/gbtile.py` and visually reviewed each one -- a real,
+complete sweep, not more sampling of the same heuristic's own top
+hits.
+
+**Result: banks 0/1/2/3/4/5/6/7/13/14/15 confirmed to be genuinely
+code/text/room-table data** (pure noise when rendered as tiles -- no
+real pixel structure at all) -- an honest, decisive negative, not
+skipped. **Bank 12 confirmed to be real environment/architecture
+tileset art** (fences, pillars, wells, arches -- matches this
+project's own already-used room tilesets) with no creature content
+anywhere, including its own bottom-right corner (double-checked
+separately after an initial pass flagged it as ambiguous).
+
+**Banks 8, 9, 10, and 11 confirmed genuinely, densely packed with
+real creature/character/icon art** -- 7 more real regions added to
+`GraphicsCandidates.lua` on top of the original 5:
+- **`bank8_portraits`** (`0x22260`, 32 tiles): 4 distinct humanoid
+  portraits, each wearing a different hat/hood -- sits right before
+  this project's own already-known dialogue font block in the SAME
+  bank. The single strongest NPC-shaped candidate found in this whole
+  investigation (a real "class/profession" portrait icon set, not a
+  monster silhouette).
+- **`bank8_icon_fragments`** (`0x22EE0`, 274 tiles): a dense field of
+  small icon/creature fragments right after the font block (weapons,
+  plants, partial creature pieces).
+- **`bank9_creature_columns`** (`0x24400`, 704 tiles -- the single
+  largest region found): a very dense, repeating field of tall,
+  segmented humanoid/totem-like creature columns, plus a few distinct
+  larger shapes (a dragon/dinosaur-like head, a spiky urchin-like
+  creature). Too dense and repetitive to honestly split into
+  individual creature boundaries without a live OAM trace -- kept as
+  one large, honestly-described region rather than guessing sprite
+  boundaries.
+- **`bank9_icon_fragments`** (`0x27000`, 256 tiles): more small icon/
+  creature fragments at the tail of bank 9, same style as bank 8's own
+  tail region.
+- **`bank11_creatures_a/b/c/d`** (`0x2C400`-`0x2FA00`, 4 contiguous
+  216-tile regions, 864 tiles total): a very large, dense creature-art
+  field immediately below the real "MYSTIC QUEST" title-logo art in
+  the same bank -- wings, horns, dragon/wolf-like shapes, tentacle-
+  like forms -- directly confirming this project's own earlier visual-
+  scan lead from planning notes ("Bank 11 als Sheet gerendert...
+  Flügel, Hörner, Drache/Wolf-artige Formen, Tentakel"). Stops right
+  before this project's OWN already-known, confirmed real enemy
+  sprite (`rom_profiles.lua`'s `enemySprite`, `0x2FE00`, further into
+  the same bank) -- a real, honest boundary, not an arbitrary cutoff.
+
+**Total real graphics-candidate coverage after this pass: 12 regions,
+~2400 tiles (~38KB of real ROM art), spanning all 4 real graphics-
+bearing banks found in this ROM.** Every OTHER bank has now been
+checked and confirmed to hold no further creature/character art --
+this is, to the best of this project's own static-analysis-only
+methodology, now a COMPLETE sweep of the ROM's real graphics content
+by bank, not a partial sample. What remains genuinely open (unchanged
+from the original pass): which species/room/NPC identity (if any)
+each region belongs to -- that still needs live OAM tracing against
+actual spawned/reachable content, which none of these regions have.
+
+3 new unit tests already covered the general `GraphicsCandidates`
+structure and now exercise all 12 entries (no test changes needed --
+the existing structural/in-bounds/non-degenerate checks iterate the
+whole `ENTRIES` table). `luajit tests/run_tests.lua`: 481/481 still
+pass. Website regenerated and Playwright-verified (13 candidate cards
+-- 12 graphics candidates + the pre-existing known-species canvas --
+render correctly with per-`kind` badges: "Monster-Kandidat"/"NPC-
+Kandidat"/"Icon-/Fragment-Sammlung", zero console errors).

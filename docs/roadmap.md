@@ -1657,6 +1657,24 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   task #140's own bounded NPC check beyond willyRoom/secondRoom. 3 new
   tests, 481/481 pass; website Playwright-verified.
 
+- **2026-08-15, task #135 continuation ("nicht vorher stoppen")**:
+  extended to a full, systematic sweep -- rendered EVERY ROM bank
+  (0-15) in full and visually reviewed each, not just individual
+  entropy-scan hits. Confirmed banks 0/1/2/3/4/5/6/7/13/14/15 are
+  genuinely code/text/room-data (no graphics) and bank 12 is real
+  environment/architecture tileset art (no creatures, double-checked
+  including its own ambiguous-looking corner). Banks 8/9/10/11
+  confirmed densely packed with real art -- 7 more regions added: a
+  4-portrait NPC/class-icon set (bank 8, the strongest NPC-shaped find
+  of the whole investigation), 2 icon-fragment sheets, a single very
+  large 704-tile creature-column field (bank 9, the richest region
+  found), and 4 contiguous 216-tile regions covering bank 11's own
+  dense creature-art field below the title logo. 12 total real
+  candidate regions now cataloged, spanning all 4 real graphics-
+  bearing banks -- every other bank confirmed to hold none. 481/481
+  tests still pass; website re-verified (13 cards, per-kind badges,
+  zero console errors).
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

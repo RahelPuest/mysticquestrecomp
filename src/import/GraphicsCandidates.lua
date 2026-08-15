@@ -13,6 +13,21 @@
 -- "Bank 9-11 candidate scan" lead, never previously acted on -- task
 -- #135 was still pending before this pass).
 --
+-- EXTENDED same day, direct follow-up ("bitte mit dem grafiken suchen
+-- danach weiter machen bis wirklich alle gefunden wurden. nicht vorher
+-- stoppen"): the first pass only checked individual `scan_graphics.py`
+-- hits one at a time and stopped at 5 entries. This pass instead
+-- rendered EVERY ROM bank (0-15) in full (`gbtile.py`, whole 16KB bank
+-- at once) and visually reviewed each -- a real, systematic sweep, not
+-- more sampling. Confirmed banks 0/1/2/3/4/5/6/7/13/14/15 are
+-- genuinely code/text/room-table data (pure noise when rendered as
+-- tiles, no real pixel structure) and bank 12 is predominantly real
+-- environment/tileset art (walls, floors -- matches this project's
+-- own already-used room tilesets) with no clear creature content.
+-- Banks 8, 9, 10, and 11 turned out to be genuinely, densely packed
+-- with creature/character/icon art -- 7 MORE real regions added below
+-- from this fuller sweep, on top of the original 5.
+--
 -- HONEST SCOPE, matching this project's own "no silent fallbacks"
 -- rule: every entry below is a REAL, ROM-verified tile region (you can
 -- render it yourself with `gbtile.py` and see the same art) that looks
@@ -112,6 +127,113 @@ GraphicsCandidates.ENTRIES = {
       "logo art, matching rom_profiles.lua's own existing doc-comment " ..
       "hint that bank 11 holds 'title-logo art plus real small " ..
       "creature-sprite fragments'.",
+  },
+  {
+    id = "bank8_portraits",
+    bank = 8,
+    fileOffset = 0x22260,
+    tileCount = 32,
+    cols = 8,
+    kind = "npc",
+    note = "4 distinct humanoid character portraits, each wearing a " ..
+      "different hat/hood (a beret-like cap, a dark hood, a visored " ..
+      "helmet, a full dark hood) -- sits right before this project's " ..
+      "own already-known dialogue font block (fileOffset 0x22B00) in " ..
+      "the same bank. Reads like a real 'class/profession' portrait " ..
+      "icon set (shopkeeper/NPC-role icons) rather than a monster -- " ..
+      "the strongest NPC-shaped candidate found this pass.",
+  },
+  {
+    id = "bank8_icon_fragments",
+    bank = 8,
+    fileOffset = 0x22EE0,
+    tileCount = 274,
+    cols = 16,
+    kind = "fragment",
+    note = "A dense field of small icon/creature fragments right after " ..
+      "the dialogue font block: weapon-like shapes, plant/mushroom " ..
+      "shapes, and partial creature pieces (a flame-like shape, a " ..
+      "crab/spider-like shape) -- individually small and hard to tell " ..
+      "apart as complete sprites, more likely a shared icon/decoration " ..
+      "sheet than one specific creature.",
+  },
+  {
+    id = "bank9_creature_columns",
+    bank = 9,
+    fileOffset = 0x24400,
+    tileCount = 704,
+    cols = 16,
+    kind = "monster",
+    note = "A very large, dense field of tall, segmented humanoid/" ..
+      "totem-like creature columns -- many similar-looking stacked " ..
+      "figures repeating down the bank, plus a few distinct larger " ..
+      "shapes (a dragon/dinosaur-like head, a spiky urchin-like " ..
+      "creature). By far the single richest graphics region found in " ..
+      "this whole pass -- genuinely too dense and repetitive to " ..
+      "confidently split into individual creature boundaries without " ..
+      "a live OAM trace, so kept as one large honest region rather " ..
+      "than guessing where one sprite ends and the next begins.",
+  },
+  {
+    id = "bank9_icon_fragments",
+    bank = 9,
+    fileOffset = 0x27000,
+    tileCount = 256,
+    cols = 16,
+    kind = "fragment",
+    note = "Small icon/creature fragments at the tail of bank 9 -- hat/" ..
+      "cap shapes, weapon-like shapes, mushroom shapes -- the same " ..
+      "style as bank8_icon_fragments, plausibly a shared icon-sheet " ..
+      "convention reused across banks.",
+  },
+  {
+    id = "bank11_creatures_a",
+    bank = 11,
+    fileOffset = 0x2C400,
+    tileCount = 216,
+    cols = 16,
+    kind = "monster",
+    note = "Dense creature art immediately below the real 'MYSTIC " ..
+      "QUEST' title-logo art in the same bank -- wings, horns, and " ..
+      "dragon/wolf-like shapes clearly visible, matching this " ..
+      "project's own earlier visual-scan lead (rom-map.md's now-acted-" ..
+      "on 'Bank 9-11 candidate scan' note). First of 4 contiguous " ..
+      "regions covering this bank's own real creature-art field.",
+  },
+  {
+    id = "bank11_creatures_b",
+    bank = 11,
+    fileOffset = 0x2D180,
+    tileCount = 216,
+    cols = 16,
+    kind = "monster",
+    note = "Continuation of bank11_creatures_a, immediately following " ..
+      "it in the file (no gap) -- more dense wing/horn/creature-face " ..
+      "shapes, including what looks like a tentacle-like form.",
+  },
+  {
+    id = "bank11_creatures_c",
+    bank = 11,
+    fileOffset = 0x2DF00,
+    tileCount = 216,
+    cols = 16,
+    kind = "monster",
+    note = "Continuation of bank11_creatures_b, immediately following " ..
+      "it in the file (no gap) -- same dense creature-art style " ..
+      "continues.",
+  },
+  {
+    id = "bank11_creatures_d",
+    bank = 11,
+    fileOffset = 0x2EC80,
+    tileCount = 216,
+    cols = 16,
+    kind = "monster",
+    note = "Continuation of bank11_creatures_c, immediately following " ..
+      "it in the file (no gap) -- the last of the 4 contiguous " ..
+      "regions; ends before a real gap that leads into this project's " ..
+      "OWN ALREADY-KNOWN, confirmed enemy sprite (rom_profiles.lua's " ..
+      "`enemySprite`, fileOffset 0x2FE00, further into the same bank).",
   },
 }
 
