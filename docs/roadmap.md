@@ -1577,6 +1577,20 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   closes the entire multi-session "decode the remaining primary script
   opcodes" arc.
 
+- **2026-08-15, task #150 continuation**: refined the remaining 154
+  `tick`-error bytes' static classification -- 10/12 top values fail
+  MID-run (after 1-20 real characters already decoded), matching real,
+  still-unidentified embedded digraph/control bytes rather than
+  scan-tool artifacts; 2/12 (`0x07`/`0x0C`) fail as the first character
+  of their own run, a separate, less certain shape. Confirmed the
+  `tools-external/mgba` Python tooling still works on this machine with
+  no rebuild needed. Tried one live-injection shortcut (force a
+  not-yet-reached script to render via direct WRAM/bank poking from a
+  known idle checkpoint) -- the real game's own per-frame logic reset
+  the forced bank before the dispatch could read it; honestly reported
+  as not working rather than forced into a false result. Task #150
+  stays open; no production code changed.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
