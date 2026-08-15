@@ -214,6 +214,49 @@ def third_room_free(session=None):
     return s
 
 
+def fourth_room_free(session=None):
+    """Real moment: the real "cut" transition out of `thirdRoom`'s own
+    staircase (zone `x=128-143,y=16-31` per `rom_profiles.lua`'s
+    `thirdRoom.exits`) has resolved and the player has walked clear of
+    the landing spot in `fourthRoom` (real tile-source pointer `$40B0`,
+    live-confirmed here via `$D392`/`$D393` reading `0xb0`/`0x40`).
+
+    Built 2026-08-15 (task #127, "zweiter boss" -- see
+    docs/reverse-engineering/combat.md's own dated entry for why this
+    was needed): NO existing checkpoint reached past `thirdRoom` before
+    this. `third_room_free()`'s own resting spot is Y=64, X=112 --
+    OUTSIDE the exit zone's own `x=128-143` band, so `RIGHT` first (40
+    frames lands X~136, comfortably inside the band) is required before
+    `UP` actually reaches the real cut trigger; holding `UP` from the
+    unadjusted position just walks the corridor without ever
+    transitioning. The real landing settles at Y=88, X=120 (X matches
+    `rom_profiles.lua`'s own documented `landingX=120` exactly; Y
+    differs from the documented `landingY=112`, not itself
+    investigated further this pass -- the X match plus the confirmed
+    `$D392`/`$D393` pointer change are decisive enough that this is
+    genuinely the same real transition, not a different one).
+
+    Real gotcha, live-caught building this: holding `DOWN` to "walk
+    clear" (the convention every earlier checkpoint in this file uses)
+    instead walks the player straight back through the SAME real cut
+    IN REVERSE -- confirmed via `$D392`/`$D393` reverting to
+    `0xb0`/`0x46` (thirdRoom's own pointer) after 60 real frames of
+    `DOWN`. The real cut is bidirectional and sits right at/near the
+    landing spot vertically. `LEFT` (a horizontal move, doesn't
+    re-trigger the north-south staircase) is used instead -- a modest
+    60 frames, short of the real west wall (confirmed separately to
+    sit at X=0, ~120 frames of `LEFT` from the landing spot, with the
+    room pointer staying `fourthRoom`'s own the whole way -- i.e. this
+    room's own real west side is a plain wall, not a further real
+    transition, at least not reachable this directly)."""
+    s = session or third_room_free()
+    _hold(s, s.core.KEY_RIGHT, 40)  # (Y=64,X=112) -> X~136, inside the real x=128-143 exit band
+    _hold(s, s.core.KEY_UP, 250)  # real cut transition into fourthRoom
+    s.run(60)  # settle
+    _hold(s, s.core.KEY_LEFT, 60)  # walk clear of the landing spot WITHOUT reversing the cut (see doc comment)
+    return s
+
+
 CHECKPOINTS = {
     "courtyard_enemy_engaged": courtyard_enemy_engaged,
     "courtyard_boss_defeated": courtyard_boss_defeated,
@@ -222,6 +265,7 @@ CHECKPOINTS = {
     "door_ready": door_ready,
     "second_room_free": second_room_free,
     "third_room_free": third_room_free,
+    "fourth_room_free": fourth_room_free,
 }
 
 

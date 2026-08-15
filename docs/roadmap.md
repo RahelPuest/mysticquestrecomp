@@ -1626,6 +1626,24 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   pickup, not yet built. Task #128 stays open; no production code
   changed.
 
+- **2026-08-15, task #127 ("zweiter boss")**: decisive correction --
+  the Lua port's own `secondBoss` placement (fourthRoom) has NO real
+  ROM trigger, live-confirmed (not just re-read from prior docs) by
+  building a new, permanent `fourth_room_free()` mgba checkpoint (the
+  first to reach past `thirdRoom`) and dumping all 20 real entity
+  slots at that location: only the player is a genuinely live,
+  positioned entity; the rest are uninitialized boot-time
+  placeholders. The underlying real evidence (species byte `0x16` --
+  the SAME species as the FIRST boss) and its 3 real, reachable but
+  room-unidentified trigger scripts were already exhausted via static
+  analysis in an earlier session. Testing DEF against a genuinely
+  different real encounter still needs one of two known, harder paths
+  (find the real triggering room, or force one of the 3 scripts via
+  live injection -- the same concurrent-script obstacle task #150 hit).
+  Time-boxed at this decisive negative result. Task #127 stays open;
+  no production code changed except the new, reusable
+  `fourth_room_free()` checkpoint.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
