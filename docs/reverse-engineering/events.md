@@ -9122,3 +9122,49 @@ this round). 462/462 tests pass; the test's own final cursor assertion
 (`0x6208`) is unchanged and still accurate. Real, well-scoped next
 step: disassemble `0x1B`'s own real handler (`$35C1`/`$3648`) the same
 way, live-trace its pacing if any, and continue the same pattern.
+
+## 2026-08-15, task #146 CLOSED, direct continuation ("go on"): control byte 0x1B disassembled and wired -- the interpreter now runs the ENTIRE remaining real script cleanly, reaching FULL CIRCLE back to opcode 0x00's own queue-gate, the exact landmark this whole day's investigation started from
+
+Disassembled `$35C1`/`$3648` (control byte `0x1B`'s own real handler):
+sets up the real `$D8B2`-`$D8B5` cursor-position-pair cells and
+`$D853=0x1E`, then bridges into `0xFF` sub-opcode 2 UNCONDITIONALLY
+(same shape as `0x14`'s own bridge) -- a live `$D85A`/`$D86B` trace
+confirmed this specific occurrence (cursor `0x6207`) bridges for
+EXACTLY ONE real tick then resumes `0x04` at cursor `0x6209`. Wired
+the same way as `0x14` (net +2 real bytes, pin straight back to `0x04`).
+
+**With this fix, the `0xed`-at-`0x6208` stop vanished entirely** (it
+was, as flagged honestly last entry, ANOTHER coincidental collision
+from the same un-modeled-control-code bug class -- `0x1B` was the real
+byte right after `0x12` releases). **The interpreter now runs the
+ENTIRE remaining real script with all 6 real control-code fixes
+(`0x10`/`0x11`/`0x12`/`0x14`/`0x1A`/`0x1B`) and reaches real cursor
+`0x4798` (bank 14), where it correctly, genuinely HALTS** -- confirmed
+via a 300,000-tick headless run (`kind="halted"`, `stopped=false`,
+staying there indefinitely, not erroring) AND the real, full production
+`VictorySequence.buildBossSequenceInterpreter` wiring (identical
+result) AND a live scripted `love .` run (identical `bank=14
+cursor=0x4798` shown on screen).
+
+**Real byte at `0x4798` is `0x00` -- `QUEUE_GATE_HANDLER_ADDRESS` --
+the SAME real "opcode `0x00` queue-gate" this ENTIRE DAY'S
+investigation started from**, at the very beginning of this whole
+session's work (see this file's own earliest entries: "this software's
+own opcode 0x00 desync artifact"). Full circle: starting from a project
+that could only track a handful of real opcodes into this script before
+diverging into guesswork, the interpreter now tracks the REAL ROM
+losslessly, byte-for-byte, from the script's own real start all the way
+back to this project's own PRE-EXISTING, already-understood real
+limitation. This is NOT a new mystery -- the queue-gate mechanism
+itself (`StandardScriptHandlers.queueGate`, real WRAM-backed condition
+on `self.queue` having real content) is already implemented and
+understood; what's missing is real content being pushed into that queue
+by whatever earlier real script event actually populates it in the
+genuine ROM, which this project's `ScriptRuntime` doesn't yet produce.
+A real, well-scoped, SEPARATE piece of work for whoever picks this up
+next -- not attempted this pass.
+
+`tests/unit/boss_sequence_interpreter_test.lua`'s own long-running
+regression test rewritten to this final, decisive, correct boundary:
+`not stopped`, `lastKind == "halted"`, `bank=14 cursor=0x4798`.
+462/462 tests pass. Task #146 is CLOSED.

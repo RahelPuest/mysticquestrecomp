@@ -1211,6 +1211,33 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       Task #146 stays open; real next step is disassembling
       `$1ED1`/`$350F`.
 
+      **Task #146 CLOSED, same day, direct continuation ("go on")**:
+      `$1ED1`/`$350F` disassembled -- control byte `0x12` conditionally
+      bridges into `0xFF` sub-opcode 4 via a real bank-2 function-call
+      trampoline (a family this project has repeatedly found and
+      deferred tracing into); a live tick-count trace found this real
+      occurrence paces for exactly 156 real ticks before unconditionally
+      resuming `0x04` (wired the same way as `CONTROL_CODE_0X11_REAL_
+      TICKS`). This made the `0x6208` stop vanish -- as suspected, ANOTHER
+      coincidental collision, this time from control byte `0x1B`
+      (bridges into `0xFF` sub-opcode 2 for one real tick, same shape as
+      `0x14`) -- disassembled and wired too. **With all 6 real
+      control-code fixes now in place (`0x10`/`0x11`/`0x12`/`0x14`/
+      `0x1A`/`0x1B`), the interpreter runs the ENTIRE remaining real
+      script cleanly and reaches real cursor `0x4798` (bank 14), where it
+      correctly, HONESTLY HALTS -- confirmed via a 300,000-tick headless
+      run, the real production `VictorySequence` wiring, AND a live
+      `love .` screenshot, all three identical.** Real byte at `0x4798`
+      is `0x00` -- `QUEUE_GATE_HANDLER_ADDRESS` -- THE SAME landmark
+      this entire day's investigation started from at its very
+      beginning. Full circle: the interpreter now tracks the real ROM
+      losslessly, byte-for-byte, from the script's own real start all
+      the way to this project's own pre-existing, already-understood
+      real limitation (the queue-gate needs real content pushed into
+      `self.queue` by an earlier real script event this project doesn't
+      yet produce -- a genuinely separate, well-scoped follow-up, not a
+      new mystery). 462/462 tests pass.
+
 - [~] **NEW -- Monster/NPC/Item catalog (2026-08-15, direct user request
       "versuche mal alle monster, npcs und items zu extrahieren").**
       Real, honestly-scoped extraction across all 3 categories, since

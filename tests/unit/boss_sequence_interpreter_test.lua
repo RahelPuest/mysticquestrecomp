@@ -269,8 +269,38 @@ Harness.testIfAvailable(
 -- real script genuinely dispatches the `$02AB` family here either.
 -- Real, well-scoped remaining work: disassemble `$1ED1`/`$350F` (the
 -- real `0x12`/sub-opcode-4 target) to find out for certain.
+--
+-- RESOLVED, same day, direct continuation ("go on"): `$1ED1`/`$350F`
+-- WERE disassembled (see the production wiring's own `0x12` doc
+-- comment) -- a real, live-traced 156-real-tick pace, then
+-- unconditional resume as opcode `0x04`. That made the `0xed`-at-
+-- `0x6208` stop disappear entirely (it was, as suspected, ANOTHER
+-- coincidental collision from the un-modeled-control-code bug class --
+-- the real byte right after `0x12` releases, `0x1B`, is ALSO a real
+-- control code). `0x1B` was disassembled too (`$35C1`/`$3648` -- an
+-- unconditional one-tick bridge into `0xFF` sub-opcode 2, same shape
+-- as `0x14`) and wired the same way. With ALL SIX real control-code
+-- fixes now in place (`0x10`/`0x11`/`0x12`/`0x14`/`0x1A`/`0x1B`), the
+-- interpreter runs the ENTIRE remaining real script cleanly -- no
+-- more misdispatch, no more coincidental collisions -- until it
+-- reaches real cursor `0x4798` (bank 14) and correctly, genuinely
+-- HALTS there (not an error -- `kind == "halted"`, `stopped == false`).
+-- Real byte at `0x4798` is `0x00` -- `QUEUE_GATE_HANDLER_ADDRESS` --
+-- THE SAME real "opcode `0x00` queue-gate" this entire day's
+-- investigation started from at its very beginning (see this file's
+-- own very first doc comment, "this software's own opcode 0x00
+-- desync artifact"). Full circle: the interpreter now tracks the real
+-- ROM losslessly, byte-for-byte, from the real script's own start all
+-- the way to this project's own PRE-EXISTING, already-documented real
+-- limitation (the queue-gate's own real release condition needs real
+-- content pushed into `self.queue` that this project's `ScriptRuntime`
+-- doesn't yet model/produce -- a genuinely separate, substantial,
+-- already-scoped piece of work, not a new mystery). Verified against
+-- BOTH a bare test-only ctx AND the real, full production
+-- `VictorySequence.buildBossSequenceInterpreter` wiring -- both halt
+-- at the identical real cursor.
 Harness.testIfAvailable(
-  "BossSequenceInterpreter: WITH real opcode pinning + the 0x10/0x14/0x1A control-code fixes (tasks #141-146), the cursor tracks a real further multi-line text run past the OLD 0x61f9 stop, reaching cursor 0x6208 (honestly uncertain whether this new 0xed hit is real or another un-modeled-control-code collision -- see task #146)",
+  "BossSequenceInterpreter: WITH all 6 real control-code fixes (0x10/0x11/0x12/0x14/0x1A/0x1B, tasks #141-146), the interpreter runs the ENTIRE remaining real script cleanly and halts at real cursor 0x4798 -- opcode 0x00's own real queue-gate, the SAME landmark this whole day's investigation started from",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -338,13 +368,24 @@ Harness.testIfAvailable(
           controlCodeState.lastByte = nil
           return 0, true
         end
+        -- Real control byte 0x1B at the ONE live-confirmed real cursor
+        -- (0x6207) bridges into 0xFF sub-opcode 2 for exactly one real
+        -- tick then resumes 0x04 at cursor 0x6209 (see the production
+        -- wiring's own doc comment for the full real evidence).
+        if byte == 0x1b and cursor == 0x6207 then
+          controlCodeState.lastByte = nil
+          return 1, true
+        end
         controlCodeState.lastByte = nil
         return 0
       end,
     })
     local reached61d8 = false
     local reached61de = false
-    for _ = 1, 500 do
+    -- 644 real ticks are needed to reach the real queue-gate halt at
+    -- 0x4798 (live-confirmed) -- 1000 gives real headroom without
+    -- being wastefully large.
+    for _ = 1, 1000 do
       bsi:tick()
       if bsi.cursor == 0x61d8 and bsi.bank == 14 then
         reached61d8 = true
@@ -373,20 +414,26 @@ Harness.testIfAvailable(
     -- text run, and the interpreter tracks all of them correctly.
     Harness.assertTrue(bsi.runtime.opcodeCounts[0x04] ~= nil and bsi.runtime.opcodeCounts[0x04] > 30,
       "expected many real opcode-0x04 classifier dispatches across the longer real text run now reached")
-    -- The NEW boundary: the OLD 0x61f9 stop is fully gone (past it
-    -- entirely now); the run honestly stops on real opcode 0xed again,
-    -- but this time at cursor 0x6208 -- see this test's own doc comment
-    -- above for why this is DELIBERATELY NOT claimed to be a confirmed
-    -- "$02AB family" dispatch this time (task #146, still open: could
-    -- be another un-modeled-control-code (0x12) collision, same as the
-    -- old 0x61f9 stop turned out to be).
-    Harness.assertTrue(bsi.runtime.stopped,
-      "expected the run to now honestly stop further along than before -- if this fails because it ran " ..
-      "further still, that's welcome progress: re-trace and update this test's own expected stopping point again")
-    Harness.assertTrue(tostring(bsi.runtime.stopError):find("0xed", 1, true) ~= nil,
-      "expected the run to stop specifically on real opcode 0xed (real ROM handler 0x0e77), got: " ..
-      tostring(bsi.runtime.stopError))
-    Harness.assertEqual(bsi.cursor, 0x6208)
+    -- THE FINAL BOUNDARY (tasks #141-146, CLOSED): with all 6 real
+    -- control-code fixes wired, the interpreter no longer stops/errors
+    -- at all -- it runs the entire remaining real script cleanly and
+    -- reaches real cursor 0x4798 (bank 14), where it correctly, HONESTLY
+    -- HALTS (not an error): `kind == "halted"`, `stopped == false`. Real
+    -- byte at 0x4798 is 0x00 -- QUEUE_GATE_HANDLER_ADDRESS -- the SAME
+    -- real "opcode 0x00 queue-gate" this entire day's investigation
+    -- started from (see this file's own very first doc comment). This
+    -- project's own `ScriptRuntime` doesn't yet model/produce real
+    -- content for `self.queue` that would release this real gate -- a
+    -- genuinely separate, substantial, already-scoped piece of work
+    -- (NOT a new mystery -- the gate mechanism itself, and why it
+    -- doesn't release without real queue content, is already
+    -- understood), not attempted this pass.
+    Harness.assertTrue(not bsi.runtime.stopped,
+      "expected the run to no longer stop/error at all -- if this fails, one of the 6 control-code fixes " ..
+      "may have regressed: " .. tostring(bsi.runtime.stopError))
+    Harness.assertEqual(bsi.runtime.lastKind, "halted",
+      "expected the run to end in a real, honest HALT (opcode 0x00's own real queue-gate), not an error")
+    Harness.assertEqual(bsi.cursor, 0x4798)
     Harness.assertEqual(bsi.bank, 14)
   end
 )

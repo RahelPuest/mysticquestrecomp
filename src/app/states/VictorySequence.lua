@@ -459,13 +459,37 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
         return 0, true
       end
 
+      if byte == 0x1b and cursor == 0x6207 then
+        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct continuation).
+        -- Full disassembly of `$35C1` (0x1B's own real handler: `CALL
+        -- $3648 / POP HL / RET`) and `$3648` (the real work: sets up
+        -- `$D8B2`-`$D8B5` cursor-position-pair cells, `$D853=0x1E`,
+        -- then `LD B,2 / CALL $3C74` -- bridges into `0xFF` sub-opcode
+        -- 2 UNCONDITIONALLY, same shape as `0x14`'s own bridge) --
+        -- AFTER the bridge, `$3648` also does `LD A,($D84A) / CP 0 /
+        -- JR Z,$36A8 / RET` -- a REAL conditional on the SAME mode
+        -- register `0x10` sets, meaning this project does NOT claim
+        -- this generalizes to every real occurrence (same caution as
+        -- `0x10` itself) -- only the ONE live-confirmed real cursor
+        -- (`0x6207`) is pinned here. A live `$D85A`/`$D86B` trace found
+        -- this occurrence bridges into `0xFF` (`D86B=2`) for EXACTLY
+        -- ONE real tick then resumes `0x04` at cursor `0x6209` --
+        -- modeled the same way as `0x14`: consumes 1 extra real byte
+        -- (net +2 from this control byte's own position) and pins
+        -- straight back to `0x04`, without literally dispatching
+        -- `0xFF` sub-opcode 2's own real line-clear/blank internals.
+        controlCodeState.lastByte = nil
+        return 1, true
+      end
+
       -- HONEST SCOPE: every OTHER real control code (0x13/0x15-0x19/
-      -- 0x1B-0x1F, and 0x10/0x12/0x14/0x15 at any OTHER real cursor
-      -- than the ones live-confirmed above) is NOT yet live-traced for
-      -- its own real pacing/bridge/pin behavior -- defaults to the
-      -- old, simple immediate single-byte consume (0 extra bytes, no
-      -- pin) rather than guessing whether it also needs either
-      -- treatment (see StandardScriptHandlers.tick's own doc comment).
+      -- 0x1C-0x1F, and 0x10/0x12/0x14/0x15/0x1B at any OTHER real
+      -- cursor than the ones live-confirmed above) is NOT yet
+      -- live-traced for its own real pacing/bridge/pin behavior --
+      -- defaults to the old, simple immediate single-byte consume (0
+      -- extra bytes, no pin) rather than guessing whether it also
+      -- needs either treatment (see StandardScriptHandlers.tick's own
+      -- doc comment).
       controlCodeState.lastByte = nil
       return 0
     end,
