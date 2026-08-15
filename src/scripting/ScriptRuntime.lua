@@ -966,6 +966,23 @@ function ScriptRuntime:registerStandardHandlers()
   -- threaded through yet" convention).
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B7,
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
+  -- `0xA1`/`0xA2`/`0xB6`/`0xAA`/`0xAB` (added 2026-08-15, direct user
+  -- request "ok dann mal die fehlenden opcodes dekodieren"): SAME real
+  -- shape as `0xAF`/`0xB7` above (zero operand bytes, unconditional) --
+  -- see `ScriptOpcodeTable.lua`'s own doc comments at each address for
+  -- the complete real disassembly. Same established convention: reuse
+  -- the same factory and callback since neither opcode's own
+  -- distinction is threaded through yet.
+  interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A1,
+    StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
+  interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A2,
+    StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
+  interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B6,
+    StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
+  interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AA,
+    StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
+  interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB,
+    StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
   -- `0xC5` (added 2026-08-14, whole-corpus scan): a real "6-bit WRAM
   -- field write" command -- see `StandardScriptHandlers
   -- .sixBitFieldCommand`'s own doc comment.

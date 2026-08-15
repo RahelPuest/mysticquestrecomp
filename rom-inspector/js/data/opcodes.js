@@ -1108,8 +1108,9 @@ const OPCODES = [
   },
   {
     "handler": 5627,
+    "note": "Sixth confirmed sibling of the known-hard $02AB family, reached MOST directly of all of them: $1588 is PUSH HL / CALL $02AB / POP HL / BIT 7,A / RET Z -- a real halt gated straight on $02AB's own bit 7, no further indirection. The outer opcode genuinely halts (never reaches $3727) for as long as that bit stays set. Same real mechanism/blocker as 0x0E73 above.",
     "opcode": 138,
-    "status": "undecoded"
+    "status": "known-hard"
   },
   {
     "handler": 3355,
@@ -1286,13 +1287,19 @@ const OPCODES = [
   },
   {
     "handler": 419,
+    "names": [
+      "CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A1"
+    ],
     "opcode": 161,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 434,
+    "names": [
+      "CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A2"
+    ],
     "opcode": 162,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 464,
@@ -1304,8 +1311,9 @@ const OPCODES = [
   },
   {
     "handler": 449,
+    "note": "Fifth confirmed sibling of the known-hard $02AB family (via a NEW indirection path: $01CA -> real $1ED7 selector 0x08 -> $50F9, which does PUSH DE / CALL $02AB / CALL $28F0 / POP DE / RET NZ -- a genuine real conditional halt gated on $02AB's own result). Same real mechanism/blocker as 0x0E73 above -- needs live player-entity WRAM simulation this project doesn't have.",
     "opcode": 164,
-    "status": "undecoded"
+    "status": "known-hard"
   },
   {
     "handler": 476,
@@ -1349,13 +1357,19 @@ const OPCODES = [
   },
   {
     "handler": 12159,
+    "names": [
+      "CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AA"
+    ],
     "opcode": 170,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 3459,
+    "names": [
+      "CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB"
+    ],
     "opcode": 171,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 4581,
@@ -1430,8 +1444,11 @@ const OPCODES = [
   },
   {
     "handler": 3468,
+    "names": [
+      "CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B6"
+    ],
     "opcode": 182,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 3483,
@@ -1649,13 +1666,19 @@ const OPCODES = [
   },
   {
     "handler": 14861,
+    "names": [
+      "WORD_COMMAND_HANDLER_ADDRESS_D2"
+    ],
     "opcode": 210,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 14876,
+    "names": [
+      "WORD_COMMAND_HANDLER_ADDRESS_D3"
+    ],
     "opcode": 211,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 15016,

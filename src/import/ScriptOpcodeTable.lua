@@ -513,6 +513,43 @@ ScriptOpcodeTable.BYTE_WORD_COMMAND_HANDLER_ADDRESS = 0x0F1E
 -- word, what to do with it is the caller's business.
 ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS = 0x3A4F
 
+-- Real opcodes `0xD2`/`0xD3` (ROM `$3A0D`/`$3A1C`) -- CLOSED 2026-08-15
+-- (direct user request "ok dann mal die fehlenden opcodes dekodieren"):
+-- a SIBLING pair of `WORD_COMMAND_HANDLER_ADDRESS` above -- SAME
+-- shape (2-byte little-endian operand, `CALL $3727 / RET`, ALWAYS
+-- continues), but operating on a DIFFERENT real WRAM counter, and with
+-- a real, decoded, specific meaning this pass:
+--   `0xD2` ($3A0D): `LD E,(HL)/INC HL/LD D,(HL)/INC HL` (operand word)
+--     `/ PUSH HL / PUSH DE / POP HL / CALL $3D21 / POP HL / CALL $3727
+--     / RET` -- delegates the real add to `$3D21`.
+--   `$3D21`: reads the real 24-bit WRAM counter `$D7BB`(low)/`$D7BC`
+--     (mid)/`$D7BD`(high, only ever 0 or a small carry) and does
+--     `HL,A = ($D7BC:$D7BB) + DE`, `A += carry`, then clamps to a
+--     SPECIFIC real ceiling: `high==0x0F` and `mid==0x42` and
+--     `low==0x3F` (i.e. the 24-bit value `0x0F423F` = decimal
+--     **999999**) -- writes the clamped result back to the SAME 3
+--     cells (`$3D48` onward, not shown here).
+--   `0xD3` ($3A1C): the exact mirror -- `HL,C = ($D7BC:$D7BB:$D7BD) -
+--     DE` (SUBTRACT instead of add), clamps to 0 on underflow instead
+--     of to the ceiling, writes back to the same 3 cells.
+-- **Real, well-evidenced role (still HYPOTHESIS -- inferred from the
+-- exact cap value, not independently live-verified via gameplay)**:
+-- the real 24-bit GOLD counter (`$D7BB`-`$D7BD`) -- a classic RPG
+-- "999999 max gold" ceiling is a much more specific, decisive signal
+-- than a generic 0xFFFF/0xFF overflow clamp would be, and this
+-- project's own decoded shop dialogue ("Du hast nicht genug
+-- Goldstuecke!" = "You don't have enough gold!", see rom-map.md's
+-- text-decoding section) independently confirms a real gold system
+-- exists in this game. `0xD2` = ADD gold, `0xD3` = SUBTRACT gold (shop
+-- purchase). This project does not reproduce the real WRAM counter
+-- itself (same honest scope as `WORD_COMMAND_HANDLER_ADDRESS` above)
+-- -- `onCommand` receives the raw operand word, what to do with it
+-- (and which direction) is the caller's business; both share the SAME
+-- generic `ctx.onWordCommand` callback via `ScriptRuntime.lua`'s own
+-- existing `^WORD_COMMAND_HANDLER_ADDRESS` sweep, same as `0xD0`.
+ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_D2 = 0x3A0D -- ADD (real 24-bit gold counter, capped at 999999)
+ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_D3 = 0x3A1C -- SUBTRACT (same real counter, clamped to 0)
+
 -- Real opcode `0xE8` (ROM `$0F5A`) -- CLOSED 2026-08-14 (the
 -- `$1ED7` dispatcher this session separately, fully mapped while
 -- tracing the real cut-transition tile-coordinate mechanism is
@@ -801,6 +838,24 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, op
 -- yet another indirection layer -- needs the same live player-entity
 -- WRAM state this project doesn't simulate. Left deliberately
 -- unwired, no constant assigned.
+--
+-- `0x8A` ($15FB, TRACED, DELIBERATELY NOT WIRED, 2026-08-15, direct
+-- user request "ok dann mal die fehlenden opcodes dekodieren"): `CALL
+-- $1588 / RET NZ / CALL $120B / CALL $3727 / RET` -- **a SIXTH
+-- confirmed real sibling of the same $02AB known-hard family**, this
+-- time reached MOST directly of all of them: `$1588` itself is `PUSH
+-- HL / CALL $02AB / POP HL / BIT 7,A / RET Z` (real halt gated
+-- straight on `$02AB`'s own bit 7, no further indirection) followed by
+-- a real conditional leaf call (`$2938`-gated `CALL $02AB` again then
+-- `$2879`, the SAME "queue an actor command" primitive the
+-- `actorAction` family already uses) before returning NZ. The OUTER
+-- wrapper's own `RET NZ` means: **opcode `0x8A` genuinely HALTS
+-- (never reaches `$3727`) for as long as `$02AB`'s own real bit 7
+-- stays SET**, only continuing once it clears -- exactly the same real
+-- shape (a live, per-frame-reconfirmed gate on the player's own real
+-- entity state) as `0x80`/`0xEC`/`0xED`/`0xEE`/`0xA4` above. Left
+-- deliberately unwired for the SAME reason as those -- no constant
+-- assigned.
 
 -- `0xFC`/`0xFD` ($27F9/$2820) -- structurally traced in task #83
 -- (2026-08-13), the real "cursor commit" ambiguity resolved live in
@@ -1682,6 +1737,103 @@ ScriptOpcodeTable.SIX_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C5 = 0x3B71
 -- (0 explicit operand bytes, 1 via the standard `$3727` skip,
 -- unconditional) -- reuses that factory directly, no new Lua code.
 ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B7 = 0x0D9B
+
+-- `0xA1`/`0xA2` (`$01A3`/`$01B2`) -- CLOSED 2026-08-15 (direct user
+-- request "ok dann mal die fehlenden opcodes dekodieren"): byte-for-
+-- byte the SAME `PUSH HL / CALL <helper> / POP HL / CALL $3727 / RET`
+-- shape as `0xB7` above, where `<helper>` is `PUSH AF / LD A,<sel> /
+-- JP $1ED7` -- `0xA1` uses selector `0x0A` (real target `$5156`),
+-- `0xA2` uses selector `0x0B` (real target `$5176`). Both real
+-- selector bodies are STRUCTURALLY IDENTICAL to each other (only 2
+-- small immediate constants differ -- `0x0D`/`0xF1` for `0xA1` vs.
+-- `0x0E`/`0xF5` for `0xA2`): `LD A,<c1> / CALL $3E9A / LD C,4 / CALL
+-- $29BA / LD C,4 / LD A,2 / CALL $0C5D / LD C,4 / LD A,<c2> / CALL
+-- $0C86 / XOR A / LD ($C4D2),A / CALL $28D5 / RET` -- a real, always-
+-- unconditional multi-step actor sub-effect (resets the real `$C4D2`
+-- actor-state flag, several opaque leaf calls with small baked-in
+-- parameters -- plausibly a sound/animation trigger pair, not
+-- independently confirmed further). Zero explicit script-stream
+-- operand bytes, unconditional -- reuses `StandardScriptHandlers
+-- .chainedOpaqueEffectCommand` directly, no new Lua code.
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A1 = 0x01A3 -- selector 0x0A
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A2 = 0x01B2 -- selector 0x0B
+
+-- `0xB6` (`$0D8C`) -- CLOSED 2026-08-15, same pass: SAME wrapper shape
+-- again, selector `0x16` (real target `$4059`). This one's real body
+-- is substantially larger (a real VRAM tile-copy/animation-load
+-- sequence -- writes `$C0AA`/`$C0A5` pending-graphics flags, then
+-- copies real tile data via `$02F3`/`$2DF5` toward VRAM `$8F00`) but
+-- the WRAPPER's own contract doesn't depend on what the delegate does
+-- internally -- still zero operand bytes, still unconditional (no
+-- branch anywhere in the wrapper). Real leaf effect HYPOTHESIS (a
+-- graphics/animation trigger), matching this project's established
+-- scope for this whole opaque-effect family -- reuses the same
+-- factory, no new Lua code.
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B6 = 0x0D8C -- selector 0x16
+
+-- `0xAA` (`$2F7F`) -- CLOSED 2026-08-15, same pass: `PUSH HL / CALL
+-- $2EF7 / POP HL / CALL $3727 / RET`, where `$2EF7` is ITSELF another
+-- `$1ED7` trampoline, selector `0x1F` -- the SAME real selector
+-- rom-map.md's own "$1ED7" section ALREADY documents: "processes a
+-- real 7-slot 'pending sound-trigger queue' at WRAM `$CEF0`, each
+-- entry played via `$0611`". A real, ALREADY-understood effect (not a
+-- new leaf this pass had to characterize) -- zero operand bytes,
+-- unconditional -- reuses the same factory.
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AA = 0x2F7F -- selector 0x1F (real pending-sound-queue processor)
+
+-- `0xAB` (`$0D83`) -- CLOSED 2026-08-15, same pass: `PUSH HL / CALL
+-- $21B4 / POP HL / CALL $3727 / RET` -- UNLIKE its siblings above,
+-- `$21B4` does NOT go through `$1ED7` at all, it's a direct real leaf:
+-- `LD HL,$C400 / LD B,0x80 / LD A,0xFF / CALL $2B5D / RET`, where
+-- `$2B5D` is a real, generic "fill B bytes starting at HL with A"
+-- primitive -- i.e. this opcode's real effect is UNCONDITIONALLY
+-- filling the entire 128-byte real WRAM block `$C400`-`$C47F` with
+-- `0xFF`. `$C400` is the SAME real per-actor state-flag region this
+-- project already tracks elsewhere this session (task #146's own
+-- `$C400`+index bit-7 marker) -- plausibly a real "reset all actor
+-- states" bulk operation. Zero operand bytes, unconditional -- reuses
+-- the same factory (the real fill effect itself is not reproduced,
+-- same honest scope as every other member of this family).
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB = 0x0D83 -- real 128-byte $C400 block fill (0xFF)
+
+-- Genuinely still open after this pass (2026-08-15, "ok dann mal die
+-- fehlenden opcodes dekodieren") -- characterized, NOT guessed into a
+-- constant, matching this project's own "no silent fallbacks" rule:
+--   `0x8B` ($0D1B): a real, SELF-CONTAINED $D499/$D49A state machine
+--     (`LD A,($D499) / CP 0 / CALL Z,$0D51 / LD B,A / LD A,($D49A) /
+--     DEC A / LD ($D49A),A / RET NZ / <else, real work via $0C99 +
+--     $2C27, storing back into $D499>`) -- unlike `0xAC`/`0xAE` below,
+--     this does NOT delegate through `$1ED7` at all, so it's a
+--     genuinely different, standalone mechanism. Real halt condition
+--     present (`RET NZ`) but $0D51/$0C99/$2C27 not traced further this
+--     pass -- needs another session.
+--   `0xAC`/`0xAE` (`$11E5`/`$11F8`, real `$1ED7` selectors `0x11`/
+--     `0x12`, targets `$4164`/`$4180`): BOTH real, genuine `$D499`-
+--     phase-driven state machines -- structurally related to the
+--     ALREADY-modeled `paletteFadeCompletionGate` (opcode `0xF3`'s own
+--     selector `0x10` family, see that function's own doc comment):
+--     their own phase-0 AND phase-1 sub-table entries are BYTE-
+--     IDENTICAL in shape to that family's (`$419C`≈unconditional
+--     `$D49A=0/$D499++`; phase 1 = the SAME real `$4477` dual-gate
+--     `$C8E0`/`$CEE8` check) -- but phase 2 (`$41D6`) is A GENUINELY
+--     DIFFERENT, more substantial real routine (a bounded pointer walk
+--     over WRAM `$D3A0` with its own internal branch, not a trivial
+--     "unconditional advance"), and phases 3/5 differ substantially
+--     between the two selectors AND from the palette-fade family's own
+--     phases 2/4. **NOT safe to reuse `paletteFadeCompletionGate`
+--     wholesale** -- the gating SHAPE (phase 0/1) matches, but phase 2
+--     onward needs its own real trace before wiring, or the real
+--     pacing would be silently wrong. Left deliberately unwired.
+--   `0xAD` ($0DBC): `PUSH HL / CALL $1ED1 / CP 0x00 / JR NZ,<halt-ish
+--     path> / ...`, where `$1ED1` is `PUSH AF / LD A,0x01 / JP $1F06`
+--     -- a DIFFERENT dispatcher (`$1F06`, not `$1ED7`) this project has
+--     only partially mapped (see task #146's own control-code `0x12`
+--     entry, which reached the SAME `$1ED1` trampoline from a
+--     completely different real caller). `$1F06`'s own selector-1
+--     target not traced this pass.
+-- All 4 are real, decodable-in-principle mechanisms (not opaque dead
+-- ends like the `$02AB` family) -- genuinely a "needs more tracing
+-- time" gap, not a "needs live state this project can never have" one.
 
 -- `0x9A`/`0x9B` ($1674/$1681, added 2026-08-14, whole-corpus scan's
 -- own next real untouched blockers after `0xB7`, found right next to

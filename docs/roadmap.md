@@ -1499,6 +1499,20 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   rather than oversold. Task #150 stays open for the remaining
   higher-frequency bytes and the structural opcode question.
 
+- **2026-08-15, "ok dann mal die fehlenden opcodes dekodieren"**: 9 of
+  the primary opcode table's last 13 "undecoded" entries closed (7
+  newly wired -- `0xA1`/`0xA2`/`0xAA`/`0xAB`/`0xB6` reuse the existing
+  `chainedOpaqueEffectCommand` factory via the already-mapped `$1ED7`
+  dispatcher; `0xD2`/`0xD3` are a real ADD/SUBTRACT sibling pair of the
+  known `WORD_COMMAND` opcode, operating on a 24-bit WRAM counter
+  capped at decimal 999999 -- very likely the real gold counter -- 2
+  more, `0xA4`/`0x8A`, correctly recategorized as known-hard, a 5th and
+  6th sibling of the already-documented `$02AB` family). Primary
+  opcode table: 197 decoded / 49 default / 6 known-hard / 4 undecoded
+  (was 190/49/4/13). Real, measured corpus-scan impact: `clean`
+  832->853, `haltUndecoded` 221->185. 469/469 tests pass; website
+  regenerated and Playwright-verified.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

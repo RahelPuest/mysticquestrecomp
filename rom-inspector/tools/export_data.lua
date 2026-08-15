@@ -319,6 +319,22 @@ local KNOWN_HARD = {
   [0x0E77] = "Second confirmed sibling of the known-hard $02AB family (offset +1 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above. Directly confirmed reachable 2026-08-15: BossSequenceInterpreter's own real boss-defeat script lands here as its new, further, honest stopping point once the 0xF3 5-byte-release fix (task #126) is wired.",
   [0x0E7B] = "Fourth confirmed sibling of the known-hard $02AB family (offset +2 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above.",
   [0x0EB2] = "A real, fully-traced $D499-driven 2-step entity-lifecycle state machine (step0 allocates a real entity slot via the already-known $0A74 primitive, calls $2F03; step1 calls $2ED3 -- real halt if not ready -- else despawns the slot via $0AE3). Both $2F03/$2ED3 resolve to real cases of the already-mapped $1ED7 bank-1 dispatcher. Genuinely known-hard NOT because the mechanism is opaque (it's real, traced, decodable ROM code) but because fully resolving \"ready\" needs the $52CD sub-table's own untraced targets AND a live entity/OAM lifecycle simulation this project doesn't have.",
+
+  -- ADDED 2026-08-15 (direct user request "ok dann mal die fehlenden
+  -- opcodes dekodieren"): 0xA4 ($01C1) was ALREADY fully traced and
+  -- deliberately left unwired back on 2026-08-14 (see
+  -- ScriptOpcodeTable.lua's own doc comment) but, like the entries
+  -- above before task #126's own consolidation pass, was NEVER added
+  -- here -- so it was showing as plain "undecoded" (genuinely
+  -- open/unexplored) instead of "known-hard" (traced, deliberately
+  -- deferred, with a real reason), and was in fact this whole
+  -- project's own SINGLE LARGEST undecoded blocker by real script
+  -- count (17/1357) once this session's other opcode-family fixes
+  -- cleared the earlier ones out of the way. 0x8A ($15FB) is a NEW
+  -- find this same pass -- a sixth confirmed sibling of the same
+  -- family, reached even more directly than 0xA4's own indirection.
+  [0x01C1] = "Fifth confirmed sibling of the known-hard $02AB family (via a NEW indirection path: $01CA -> real $1ED7 selector 0x08 -> $50F9, which does PUSH DE / CALL $02AB / CALL $28F0 / POP DE / RET NZ -- a genuine real conditional halt gated on $02AB's own result). Same real mechanism/blocker as 0x0E73 above -- needs live player-entity WRAM simulation this project doesn't have.",
+  [0x15FB] = "Sixth confirmed sibling of the known-hard $02AB family, reached MOST directly of all of them: $1588 is PUSH HL / CALL $02AB / POP HL / BIT 7,A / RET Z -- a real halt gated straight on $02AB's own bit 7, no further indirection. The outer opcode genuinely halts (never reaches $3727) for as long as that bit stays set. Same real mechanism/blocker as 0x0E73 above.",
 }
 
 local opcodes = {}
