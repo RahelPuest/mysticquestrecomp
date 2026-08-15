@@ -1591,6 +1591,27 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   as not working rather than forced into a false result. Task #150
   stays open; no production code changed.
 
+- **2026-08-15, task #150, "weiterverfolgen"**: refined the injection
+  to single-instruction precision (found the real MBC2 bank-switch
+  convention, `core.memory.u8[0x2100]=bank`; found `$3727`, the real
+  fetch primitive, genuinely does NOT run during plain overworld idle
+  time -- 5M steps across 2 idle contexts never hit it -- but DOES run
+  richly during active scripted sequences, e.g. the post-boss heal/
+  black-wipe, hit within 108k steps there). The injection technically
+  worked for exactly one real tick (independently confirmed table index
+  213 starts with the TICK opcode, matching the earlier static trace),
+  but the real boss-sequence's OWN concurrent script reclaimed the
+  shared `$D85A`/`HL` dispatch state within ~1 more real per-frame
+  cycle -- a genuine, decisive finding: the SAME cross-actor dispatch
+  mechanism this project already documented (task #85) means multiple
+  real scripts genuinely TIME-SHARE the per-frame interpreter, so a
+  single foreign injection survives only until the next real script's
+  own turn. Closing this further needs either a genuinely quiet moment
+  (not yet found) or neutralizing concurrent scripts on purpose -- a
+  real, deeper research question, explicitly time-boxed rather than
+  pursued indefinitely. Task #150 stays open; no production code
+  changed.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
