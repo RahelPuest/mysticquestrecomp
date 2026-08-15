@@ -320,6 +320,20 @@ ScriptRuntime.__index = ScriptRuntime
 --                             after this call is a scan-classification
 --                             convenience only, not a real continuation
 --                             point.
+--   ctx.isAnyButtonPressed() -- opcode `0xAD` (added 2026-08-15, task
+--                             #152) -- optional predicate for the real
+--                             "wait for any button" gate -- defaults
+--                             to `true` (never blocks) when unset, same
+--                             "unwired gate defaults open" convention
+--                             as `ctx.isActorReady` -- see
+--                             `StandardScriptHandlers
+--                             .waitForAnyButtonCommand`'s own doc
+--                             comment.
+--   ctx.onWaitForAnyButtonIdleTick(elapsedFrames) -- optional observer
+--                             for the SAME opcode `0xAD`'s own real
+--                             idle-leaf calls (2 real, opaque leaves
+--                             this project doesn't distinguish -- see
+--                             that same handler's own doc comment).
 --   ctx.hasSufficientBudget(amount) -- opcode `0xD1` (added 2026-08-14,
 --                             whole-corpus scan) -- optional predicate
 --                             for the real `$D7BE`/`$D7BF` 16-bit
@@ -564,6 +578,12 @@ function ScriptRuntime:registerStandardHandlers()
   -- those handlers' own doc comments already describe as honest, not a
   -- claim about real timing.
   local isActorReady = ctx.isActorReady or function() return true end
+  -- Real gate for `0xAD`'s own "wait for any button" opcode (see
+  -- StandardScriptHandlers.waitForAnyButtonCommand's own doc comment)
+  -- -- defaults to "always pressed" (never blocks) when the caller
+  -- hasn't wired real Input.lua awareness yet, same "unwired gate
+  -- defaults open" convention as `isActorReady` above.
+  local isAnyButtonPressed = ctx.isAnyButtonPressed or function() return true end
 
   -- `0x80` (added 2026-08-14, task 10, "die 6 $02AB-Geschwister
   -- wirklich lösen" -- CRACKING the whole-corpus scan's own longest-
@@ -983,6 +1003,12 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB,
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
+  -- `0xAD` (added 2026-08-15, direct follow-up "ok die restlichen
+  -- bitte auch noch", task #152): a real "wait for any button" gate --
+  -- see `StandardScriptHandlers.waitForAnyButtonCommand`'s own doc
+  -- comment for the complete real disassembly.
+  interp:registerHandler(ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD,
+    StandardScriptHandlers.waitForAnyButtonCommand(isAnyButtonPressed, ctx.onWaitForAnyButtonIdleTick))
   -- `0xC5` (added 2026-08-14, whole-corpus scan): a real "6-bit WRAM
   -- field write" command -- see `StandardScriptHandlers
   -- .sixBitFieldCommand`'s own doc comment.

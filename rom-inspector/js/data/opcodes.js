@@ -1378,8 +1378,11 @@ const OPCODES = [
   },
   {
     "handler": 3516,
+    "names": [
+      "WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD"
+    ],
     "opcode": 173,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 4600,

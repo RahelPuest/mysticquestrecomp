@@ -1820,6 +1820,34 @@ Harness.test("StandardScriptHandlers.chainedOpaqueEffectCommand: real opcode 0xA
   Harness.assertEqual(fired, 1)
 end)
 
+Harness.test("StandardScriptHandlers.waitForAnyButtonCommand: real opcode 0xAD releases immediately once a button is held, halting (re-dispatched at the SAME opcode position) while nothing is pressed", function()
+  local addr = ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xAD] = addr }))
+  local pressed = false
+  local idleTicks = {}
+  interp:registerHandler(addr, StandardScriptHandlers.waitForAnyButtonCommand(
+    function() return pressed end, function(elapsed) idleTicks[#idleTicks + 1] = elapsed end))
+
+  local stream = { 0xAD, 0xFF }
+  -- Not pressed: real halt. Per ScriptInterpreter:step's own halt
+  -- convention (the handler returns nil), step returns the ORIGINAL
+  -- pre-fetch cursor so the SAME opcode gets re-dispatched next tick --
+  -- matches the real ROM's own bare "RET", never reaching $3727.
+  local cursor = interp:step(stream, 1)
+  Harness.assertEqual(cursor, 1)
+  cursor = interp:step(stream, cursor)
+  Harness.assertEqual(cursor, 1)
+  Harness.assertEqual(#idleTicks, 2)
+  Harness.assertEqual(idleTicks[1], 0)
+  Harness.assertEqual(idleTicks[2], 1)
+
+  -- Now a button IS held: real immediate release (CALL $3727 -> the
+  -- standard trailing 1-byte skip, same shape as chainedOpaqueEffectCommand).
+  pressed = true
+  cursor = interp:step(stream, cursor)
+  Harness.assertEqual(cursor, 3)
+end)
+
 Harness.test("StandardScriptHandlers.sixBitFieldCommand: real opcode 0xC5 masks its operand byte to 6 bits and consumes exactly 2 real bytes", function()
   local addr = ScriptOpcodeTable.SIX_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C5
   local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xC5] = addr }))

@@ -1562,6 +1562,72 @@ function StandardScriptHandlers.chainedOpaqueEffectCommand(onEffect)
   end
 end
 
+--- Real opcode `0xAD` handler (`$0DBC`, CLOSED 2026-08-15 -- direct
+-- user request "ok die restlichen bitte auch noch" -- task #152).
+-- Byte-for-byte: `PUSH HL / CALL $1ED1 / CP 0x00 / JR NZ,<release>`,
+-- where `$1ED1` (`PUSH AF / LD A,0x01 / JP $1F06`) reaches selector
+-- `0x01` of the ALREADY-known bank-2 `$1F35`/`$1F06` dispatcher family
+-- (rom-map.md's own "$1ED7" section already documents this as a real
+-- sibling of `$1ED7`, just switching to bank 2 instead of bank 1 --
+-- confirmed here by cross-checking `$1F06`'s own table base against
+-- `$1ED7`'s: passing `A=2` instead of `A=1` to the shared `$29FB`
+-- bank-switch primitive lands on a COMPLETELY DIFFERENT real table,
+-- ruling out a shared-table coincidence). Selector `0x01`'s own real
+-- target (`$4218`) is a **complete, classic Game Boy joypad-polling
+-- routine**: `LD HL,$FF00 / LD (HL),0x10 / <2 real settle reads> / LD
+-- (HL),0x20` (the standard D-pad-then-buttons hardware select
+-- sequence) `/ CPL / AND 0x0F / CP 0x0F / JP Z,$0150` (the real
+-- A+B+Select+Start SOFT-RESET COMBO check -- all 4 button bits read as
+-- "pressed" simultaneously) `/ SWAP A / LD C,A / <8 more real settle
+-- reads> / LD (HL),0x30 / CPL / AND 0x0F / OR C / LD C,A` (combines
+-- D-pad + button bits into one real 8-bit state byte) `/ LD A,($C0AF)
+-- / XOR C / AND C / LD B,A` (a real rising-edge "just pressed"
+-- computation, discarded by this specific caller) `/ LD A,C / LD
+-- ($C0AF),A / RET` (real state byte returned in `A`, also cached for
+-- next time). Back in `$0DBC`: **if the returned state is NONZERO
+-- (ANY real button held), releases immediately** (`CALL $3727`); if
+-- ZERO (nothing held), increments a real WRAM idle counter (`$D49A`)
+-- and calls one of 2 real, opaque leaf effects every real tick
+-- (`$0695` once the counter's own bit 5 sets, ~32 real frames; else
+-- `$05CD`) -- both real branches HALT (never reach `$3727` while
+-- idle). **A real "wait for any button press" gate**, zero explicit
+-- script-stream operand bytes. The real soft-reset combo's own `JP Z,
+-- $0150` branch (INSIDE the joypad-poll routine, bypassing this
+-- opcode's normal return path entirely) is genuinely NOT modeled here
+-- -- a rare, separate real code path, matching this project's already-
+-- narrower existing `ctx.onSoftReset` scope (real opcode `0xC8`, a
+-- DIFFERENT trigger). `onIdleTick(elapsedFrames)` is an optional
+-- observer for the 2 real, still-opaque idle-leaf calls -- this
+-- project has no honest way to distinguish which of the 2 real
+-- branches fired without tracing `$0695`/`$05CD` further.
+--
+-- `isAnyButtonPressed` is REQUIRED (matching this project's own
+-- established convention for gate predicates, e.g. `actorAction`'s/
+-- `queuedAction`'s own `isReady()` -- called directly, no internal nil
+-- default). The "unwired gate defaults open" convention lives one
+-- layer UP, in `ScriptRuntime.lua`'s own `ctx.isAnyButtonPressed or
+-- function() return true end` wiring, same as `ctx.isActorReady`.
+function StandardScriptHandlers.waitForAnyButtonCommand(isAnyButtonPressed, onIdleTick)
+  local state = { idleFrames = 0 }
+  return function(stream, cursor)
+    if isAnyButtonPressed() then
+      state.idleFrames = 0
+      local _, afterSkip = ScriptInterpreter.fetch(stream, cursor)
+      return afterSkip
+    end
+    if onIdleTick then
+      onIdleTick(state.idleFrames)
+    end
+    state.idleFrames = state.idleFrames + 1
+    -- Real halt: per ScriptInterpreter:step's own halt convention, a
+    -- handler signals "re-dispatch me again next tick" by returning
+    -- `nil` (NOT the unchanged cursor) -- `step` then re-derives the
+    -- opcode from the ORIGINAL pre-fetch position, matching the real
+    -- ROM's own bare RET (never reaching $3727).
+    return nil
+  end
+end
+
 --- Real "bitmask dispatch" handler (opcode `0xC2`, real ROM `$3981`,
 -- found 2026-08-14 -- the whole-corpus scan's own next real untouched
 -- blocker after `0xDA`/`0xDB`). Byte-for-byte:

@@ -1796,17 +1796,53 @@ ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AA = 0x2F7F -- s
 -- same honest scope as every other member of this family).
 ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB = 0x0D83 -- real 128-byte $C400 block fill (0xFF)
 
+-- `0xAD` ($0DBC) -- CLOSED 2026-08-15, direct follow-up ("ok die
+-- restlichen bitte auch noch", task #152): `PUSH HL / CALL $1ED1 / CP
+-- 0x00 / JR NZ,<release>`, where `$1ED1` (`PUSH AF / LD A,0x01 / JP
+-- $1F06`) reaches selector `0x01` of the ALREADY-known bank-2
+-- `$1F35`/`$1F06` dispatcher family (rom-map.md's own "$1ED7" section
+-- already flags this as `$1ED7`'s real sibling, just bank 2 instead of
+-- bank 1 -- confirmed here: passing `A=2` instead of `A=1` to the
+-- shared `$29FB` bank-switch primitive lands on a COMPLETELY DIFFERENT
+-- real table, ruling out a shared-table coincidence). Selector `0x01`
+-- (`$4218`) is a complete, classic Game Boy joypad-polling routine
+-- (real `$FF00` D-pad/button hardware reads, including the real
+-- A+B+Select+Start soft-reset combo check) that returns the current
+-- 8-bit button state in `A`. `0xAD` itself: **releases immediately if
+-- ANY real button is held; while nothing is held, halts, incrementing
+-- a real idle counter and calling one of 2 opaque leaves every real
+-- tick** -- a real "wait for any button press" gate. See
+-- `StandardScriptHandlers.waitForAnyButtonCommand`'s own doc comment
+-- for the complete real disassembly.
+ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD = 0x0DBC
+
 -- Genuinely still open after this pass (2026-08-15, "ok dann mal die
--- fehlenden opcodes dekodieren") -- characterized, NOT guessed into a
--- constant, matching this project's own "no silent fallbacks" rule:
+-- fehlenden opcodes dekodieren" / "ok die restlichen bitte auch noch")
+-- -- characterized, NOT guessed into a constant, matching this
+-- project's own "no silent fallbacks" rule:
 --   `0x8B` ($0D1B): a real, SELF-CONTAINED $D499/$D49A state machine
 --     (`LD A,($D499) / CP 0 / CALL Z,$0D51 / LD B,A / LD A,($D49A) /
 --     DEC A / LD ($D49A),A / RET NZ / <else, real work via $0C99 +
 --     $2C27, storing back into $D499>`) -- unlike `0xAC`/`0xAE` below,
 --     this does NOT delegate through `$1ED7` at all, so it's a
---     genuinely different, standalone mechanism. Real halt condition
---     present (`RET NZ`) but $0D51/$0C99/$2C27 not traced further this
---     pass -- needs another session.
+--     genuinely different, standalone mechanism. `$0D51` (the real
+--     `D499==0` init case) reads a REAL SCRIPT-STREAM OPERAND BYTE
+--     (`LD A,(HL+)`) and stores `byte-0x20` into `$D498` -- this
+--     opcode DOES consume 1 real operand byte, only on its own first
+--     real tick. `$0C99` is now FULLY understood (2026-08-15, same
+--     pass): it's the ALREADY-known real entity-slot struct accessor
+--     (`WRAM $C200 + slotIndex*16`, see rom-map.md's own "generic
+--     entity-slot struct" section) called with a FIXED `C=4` -- i.e.
+--     this opcode reads the real PLAYER slot's own alive/state byte
+--     (slot 4, this project's own already-confirmed player slot).
+--     `$2C27` is ANOTHER `$1ED7` trampoline (selector `0x1C`), which
+--     itself further dispatches on 4 individual bits of the real,
+--     original `$D499` value into 4 more real sub-handlers (`$2C43`/
+--     `$2C57`/`$2C6B`/`$2C7F`) -- NONE of which were traced this pass.
+--     Real halt condition present (`RET NZ`), real operand-byte
+--     consumption now understood, but the real COMPLETION condition
+--     (whether the newly-computed `$D499` becomes 0) still depends on
+--     this untraced 4-way sub-dispatch -- not safe to wire without it.
 --   `0xAC`/`0xAE` (`$11E5`/`$11F8`, real `$1ED7` selectors `0x11`/
 --     `0x12`, targets `$4164`/`$4180`): BOTH real, genuine `$D499`-
 --     phase-driven state machines -- structurally related to the
@@ -1815,25 +1851,25 @@ ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB = 0x0D83 -- r
 --     their own phase-0 AND phase-1 sub-table entries are BYTE-
 --     IDENTICAL in shape to that family's (`$419C`≈unconditional
 --     `$D49A=0/$D499++`; phase 1 = the SAME real `$4477` dual-gate
---     `$C8E0`/`$CEE8` check) -- but phase 2 (`$41D6`) is A GENUINELY
---     DIFFERENT, more substantial real routine (a bounded pointer walk
---     over WRAM `$D3A0` with its own internal branch, not a trivial
---     "unconditional advance"), and phases 3/5 differ substantially
---     between the two selectors AND from the palette-fade family's own
---     phases 2/4. **NOT safe to reuse `paletteFadeCompletionGate`
---     wholesale** -- the gating SHAPE (phase 0/1) matches, but phase 2
---     onward needs its own real trace before wiring, or the real
---     pacing would be silently wrong. Left deliberately unwired.
---   `0xAD` ($0DBC): `PUSH HL / CALL $1ED1 / CP 0x00 / JR NZ,<halt-ish
---     path> / ...`, where `$1ED1` is `PUSH AF / LD A,0x01 / JP $1F06`
---     -- a DIFFERENT dispatcher (`$1F06`, not `$1ED7`) this project has
---     only partially mapped (see task #146's own control-code `0x12`
---     entry, which reached the SAME `$1ED1` trampoline from a
---     completely different real caller). `$1F06`'s own selector-1
---     target not traced this pass.
--- All 4 are real, decodable-in-principle mechanisms (not opaque dead
--- ends like the `$02AB` family) -- genuinely a "needs more tracing
--- time" gap, not a "needs live state this project can never have" one.
+--     `$C8E0`/`$CEE8` check) -- but phase 2 (`$41D6`) is a GENUINELY
+--     DIFFERENT, more substantial real routine: a bounded "2 markers
+--     expanding toward each other" comparator over 4 real bytes at
+--     WRAM `$D3A0` (each real tick, the low marker `+= 2`, the high
+--     marker `-= 2`; while they haven't met/crossed, increments
+--     `$D49A` and halts; once they meet, calls a real "finish" leaf
+--     (`$0313`) that touches `$C0A5` and references the real LCDC
+--     hardware register address (`$FF40`) as a literal value -- likely
+--     a genuine screen-transition/wipe completion, not yet confirmed
+--     further). Phases 3/5 differ substantially between the two
+--     selectors AND from the palette-fade family's own phases 2/4.
+--     **NOT safe to reuse `paletteFadeCompletionGate` wholesale** --
+--     the gating SHAPE (phase 0/1) matches, but phase 2 onward needs
+--     `$0313`/`$1D5E` (and phases 3-5) traced before wiring, or the
+--     real pacing would be silently wrong. Left deliberately unwired.
+-- Both remaining are real, decodable-in-principle mechanisms (not
+-- opaque dead ends like the `$02AB` family) -- genuinely a "needs more
+-- tracing time" gap, not a "needs live state this project can never
+-- have" one.
 
 -- `0x9A`/`0x9B` ($1674/$1681, added 2026-08-14, whole-corpus scan's
 -- own next real untouched blockers after `0xB7`, found right next to

@@ -1513,6 +1513,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   832->853, `haltUndecoded` 221->185. 469/469 tests pass; website
   regenerated and Playwright-verified.
 
+- **2026-08-15, "ok die restlichen bitte auch noch"**: `0xAD` (`$0DBC`)
+  fully closed -- a real, classic GB joypad-polling routine (via
+  `$1ED1`->`$1F06` selector `0x01`, including the real A+B+Select+Start
+  soft-reset combo check) revealed a genuine "wait for any button
+  press" gate; new `StandardScriptHandlers.waitForAnyButtonCommand`,
+  wired via `ctx.isAnyButtonPressed`/`ctx.onWaitForAnyButtonIdleTick`.
+  Self-caught bug during test-writing: the first draft signaled "halt"
+  by returning the unchanged cursor instead of `nil` (the real
+  `ScriptInterpreter:step` halt convention) -- caught by 2 failing unit
+  tests before trusting the implementation, fixed. `0x8B` and
+  `0xAC`/`0xAE` further characterized (new `$0C99`/`$2C27` 4-way
+  sub-dispatch findings for `0x8B`; new `$D3A0` converging-marker phase-2
+  mechanism for `0xAC`/`0xAE`) but honestly left open -- concrete next
+  leads documented, not guessed at. Primary opcode table: 198 decoded /
+  49 default / 6 known-hard / 3 undecoded (was 197/49/6/4). Real,
+  measured corpus-scan impact: `clean` 853->856, `halt_undecoded`
+  185->182. 470/470 tests pass; website regenerated and
+  Playwright-verified. Task #152 narrowed to `0x8B`/`0xAC`/`0xAE`.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
