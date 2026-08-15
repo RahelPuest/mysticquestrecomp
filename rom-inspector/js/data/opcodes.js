@@ -1114,8 +1114,11 @@ const OPCODES = [
   },
   {
     "handler": 3355,
+    "names": [
+      "WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B"
+    ],
     "opcode": 139,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 14671,

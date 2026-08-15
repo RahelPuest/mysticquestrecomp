@@ -1816,33 +1816,67 @@ ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB = 0x0D83 -- r
 -- for the complete real disassembly.
 ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD = 0x0DBC
 
+-- `0x8B` ($0D1B) -- CLOSED 2026-08-15, direct follow-up ("ok die
+-- restlichen bitte auch noch", task #152, continuing straight from
+-- `0xAD` above): a real, self-contained "play back a pre-baked
+-- waypoint/step sequence" gate. Byte-for-byte: `LD A,($D499) / CP 0 /
+-- CALL Z,$0D51 / LD B,A / LD A,($D49A) / DEC A / LD ($D49A),A / RET
+-- NZ / <else: PUSH HL / LD C,0x04 / PUSH BC / CALL $0C99 / LD D,A /
+-- POP BC / LD A,($D498) / LD E,A / LD A,B / LD B,0 / CALL $2C27 / POP
+-- HL / LD ($D499),A / CP 0 / JR Z,<release> / LD A,0x08 / LD
+-- ($D49A),A / RET>`.
+--
+-- **Real INIT** (`$0D51`, fires exactly once, when `$D499==0`): reads
+-- ONE real script-stream operand byte (`LD A,(HL+)`), stores
+-- `operand-0x20` into `$D498` (a fixed real "which waypoint table"
+-- selector, unchanged for the rest of this opcode's lifetime), and
+-- arms the real wait counter `$D49A=1`.
+--
+-- **Real per-tick pacing**: `$D49A` decrements every real tick; while
+-- still nonzero, HALTS (bare `RET`, no `$3727`, no further bytes
+-- consumed) -- 1 real frame after init, 8 real frames after every
+-- subsequent step (`LD A,0x08` on the re-arm path).
+--
+-- **Real step-advance** (once `$D49A` hits 0): `$0C99` is the ALREADY-
+-- confirmed real entity-slot ALIVE-field getter (`WRAM $C200 +
+-- slotIndex*16 + 0`, see `EntityStructLayout.FIELD.ALIVE`), called
+-- with a FIXED `C=4` -- this project's own already-confirmed PLAYER
+-- slot -- giving the player's current ALIVE/state byte (`D`). `$2C27`
+-- (`PUSH AF / LD A,0x1C / JP $1ED7`) reaches `$1ED7` selector `0x1C`
+-- (real target `$76AB`, cross-checked against the ALREADY-known
+-- selector `0x08`->`$50F9` before trusting this new selector read):
+-- a real WAYPOINT-TABLE WALK, indexing a real 2-byte-per-entry table
+-- at `$776F` by `E` (the fixed `$D498` selector) to get a BASE
+-- address, then reading the 16-bit entry at `base + A*2` (`A` = the
+-- real step index, 0 on the first check, else the PERSISTED previous
+-- `$D499` result) as a `(D,E)` coordinate/delta pair. **A real `0x80`
+-- low-byte SENTINEL means "sequence finished"** -- returns `A=0`,
+-- released. Otherwise, a second real table (`$78EF`, indexed by
+-- `E&0x1F`) plus a real `C<7` branch (`$08D4` vs `$2889`, both real,
+-- untraced distance helpers) computes a real per-step distance,
+-- returned as `A = 1+distance` (always nonzero on this path) -- this
+-- becomes the NEXT real step index, persisted into `$D499`, and the
+-- wait counter re-arms to 8 frames.
+--
+-- **Real total consumption across the whole opcode's lifetime**:
+-- opcode(1) + operand(1, at init only) + zero bytes on every halting
+-- tick + the standard `$3727` trailing skip (1, at release) -- exactly
+-- 2 real bytes beyond the opcode itself, matching this project's own
+-- generic `ScriptInterpreter.fetch`-based tail convention.
+--
+-- The exact real waypoint-table CONTENTS (`$776F`/`$78EF`) and the two
+-- real distance helpers (`$08D4`/`$2889`) are deliberately NOT
+-- reproduced -- `advanceStep(operand, stepIndex)` is the caller's own
+-- opaque real evaluator (same abstraction level as
+-- `chainedOpaqueEffectCommand`'s own untraced leaves), returning
+-- `(done, nextStepIndex)` once per real check. See
+-- `StandardScriptHandlers.waypointStepCommand`'s own doc comment.
+ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B = 0x0D1B
+
 -- Genuinely still open after this pass (2026-08-15, "ok dann mal die
 -- fehlenden opcodes dekodieren" / "ok die restlichen bitte auch noch")
 -- -- characterized, NOT guessed into a constant, matching this
 -- project's own "no silent fallbacks" rule:
---   `0x8B` ($0D1B): a real, SELF-CONTAINED $D499/$D49A state machine
---     (`LD A,($D499) / CP 0 / CALL Z,$0D51 / LD B,A / LD A,($D49A) /
---     DEC A / LD ($D49A),A / RET NZ / <else, real work via $0C99 +
---     $2C27, storing back into $D499>`) -- unlike `0xAC`/`0xAE` below,
---     this does NOT delegate through `$1ED7` at all, so it's a
---     genuinely different, standalone mechanism. `$0D51` (the real
---     `D499==0` init case) reads a REAL SCRIPT-STREAM OPERAND BYTE
---     (`LD A,(HL+)`) and stores `byte-0x20` into `$D498` -- this
---     opcode DOES consume 1 real operand byte, only on its own first
---     real tick. `$0C99` is now FULLY understood (2026-08-15, same
---     pass): it's the ALREADY-known real entity-slot struct accessor
---     (`WRAM $C200 + slotIndex*16`, see rom-map.md's own "generic
---     entity-slot struct" section) called with a FIXED `C=4` -- i.e.
---     this opcode reads the real PLAYER slot's own alive/state byte
---     (slot 4, this project's own already-confirmed player slot).
---     `$2C27` is ANOTHER `$1ED7` trampoline (selector `0x1C`), which
---     itself further dispatches on 4 individual bits of the real,
---     original `$D499` value into 4 more real sub-handlers (`$2C43`/
---     `$2C57`/`$2C6B`/`$2C7F`) -- NONE of which were traced this pass.
---     Real halt condition present (`RET NZ`), real operand-byte
---     consumption now understood, but the real COMPLETION condition
---     (whether the newly-computed `$D499` becomes 0) still depends on
---     this untraced 4-way sub-dispatch -- not safe to wire without it.
 --   `0xAC`/`0xAE` (`$11E5`/`$11F8`, real `$1ED7` selectors `0x11`/
 --     `0x12`, targets `$4164`/`$4180`): BOTH real, genuine `$D499`-
 --     phase-driven state machines -- structurally related to the

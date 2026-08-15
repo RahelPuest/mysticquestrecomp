@@ -1628,6 +1628,66 @@ function StandardScriptHandlers.waitForAnyButtonCommand(isAnyButtonPressed, onId
   end
 end
 
+--- Real opcode `0x8B` handler (`$0D1B`, CLOSED 2026-08-15 -- direct
+-- follow-up "ok die restlichen bitte auch noch", task #152). A real
+-- "play back a pre-baked waypoint/step sequence" gate -- see
+-- `ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B`'s own
+-- doc comment for the full real disassembly this is distilled from.
+--
+-- Real shape: reads exactly ONE real script-stream operand byte, but
+-- ONLY on its own first real tick (`operand - 0x20`, the real
+-- ROM's `$D498`) -- every later tick re-reads nothing, tracked here
+-- via closure state (matching `waitForAnyButtonCommand`'s own
+-- `state.idleFrames` precedent: the `cursor` parameter this function
+-- receives stays FIXED at the same real position across every halting
+-- tick, so the "have I already consumed the operand" bookkeeping must
+-- live in the closure, not in `cursor`). Real pacing: 1 real frame
+-- after init, then 8 real frames between every subsequent step check
+-- (both baked in directly, matching this project's convention of
+-- encoding verified real numeric constants rather than abstracting
+-- them away). `advanceStep(operand, stepIndex)` is the caller's own
+-- opaque real evaluator for the untraced real waypoint-table walk --
+-- returns `(done, nextStepIndex)`; `done == true` matches the real
+-- ROM's own `0x80` low-byte sentinel and releases the script (the
+-- standard trailing `$3727` skip); otherwise `nextStepIndex` becomes
+-- the real `$D499` value fed back into the NEXT check.
+function StandardScriptHandlers.waypointStepCommand(advanceStep)
+  local operand = nil
+  local stepIndex = 0
+  local waitFrames = 0
+
+  return function(stream, cursor)
+    if operand == nil then
+      -- Real init (`$0D51`, fires exactly once): consumes the ONE real
+      -- operand byte for its VALUE only -- the real ROM's own `LD
+      -- A,(HL+)` permanently advances its script-stream pointer here,
+      -- but since the RETURNED cursor on every halting tick is the
+      -- ORIGINAL pre-fetch position anyway (see the halt-convention
+      -- note above), the "past the operand" position only matters once
+      -- we actually release below, where it becomes `afterSkip`.
+      local rawOperand = ScriptInterpreter.fetch(stream, cursor)
+      operand = rawOperand - 0x20
+      stepIndex = 0
+      waitFrames = 1
+    end
+
+    waitFrames = waitFrames - 1
+    if waitFrames > 0 then
+      return nil -- real halt: $D49A hasn't hit 0 yet
+    end
+
+    local done, nextStepIndex = advanceStep(operand, stepIndex)
+    if done then
+      local _, afterSkip = ScriptInterpreter.fetch(stream, cursor)
+      return afterSkip
+    end
+
+    stepIndex = nextStepIndex
+    waitFrames = 8 -- real re-arm value (`LD A,0x08`)
+    return nil
+  end
+end
+
 --- Real "bitmask dispatch" handler (opcode `0xC2`, real ROM `$3981`,
 -- found 2026-08-14 -- the whole-corpus scan's own next real untouched
 -- blocker after `0xDA`/`0xDB`). Byte-for-byte:

@@ -334,6 +334,18 @@ ScriptRuntime.__index = ScriptRuntime
 --                             idle-leaf calls (2 real, opaque leaves
 --                             this project doesn't distinguish -- see
 --                             that same handler's own doc comment).
+--   ctx.advanceWaypointStep(operand, stepIndex) -- opcode `0x8B` (added
+--                             2026-08-15, task #152, direct follow-up
+--                             from `0xAD` above) -- optional real
+--                             evaluator for the untraced real waypoint-
+--                             table walk ($776F/$78EF/$08D4/$2889);
+--                             returns `(done, nextStepIndex)`. Defaults
+--                             to "always done immediately" (never
+--                             blocks) when unset, same "unwired gate
+--                             defaults open" convention as
+--                             `ctx.isActorReady` -- see
+--                             `StandardScriptHandlers
+--                             .waypointStepCommand`'s own doc comment.
 --   ctx.hasSufficientBudget(amount) -- opcode `0xD1` (added 2026-08-14,
 --                             whole-corpus scan) -- optional predicate
 --                             for the real `$D7BE`/`$D7BF` 16-bit
@@ -584,6 +596,13 @@ function ScriptRuntime:registerStandardHandlers()
   -- hasn't wired real Input.lua awareness yet, same "unwired gate
   -- defaults open" convention as `isActorReady` above.
   local isAnyButtonPressed = ctx.isAnyButtonPressed or function() return true end
+  -- Real evaluator for `0x8B`'s own "waypoint step" opcode (see
+  -- StandardScriptHandlers.waypointStepCommand's own doc comment) --
+  -- defaults to "always done immediately" (never blocks, step index
+  -- irrelevant) when the caller hasn't wired the real, untraced
+  -- waypoint-table walk, same "unwired gate defaults open" convention
+  -- as `isActorReady`/`isAnyButtonPressed` above.
+  local advanceWaypointStep = ctx.advanceWaypointStep or function() return true, 0 end
 
   -- `0x80` (added 2026-08-14, task 10, "die 6 $02AB-Geschwister
   -- wirklich lösen" -- CRACKING the whole-corpus scan's own longest-
@@ -1009,6 +1028,13 @@ function ScriptRuntime:registerStandardHandlers()
   -- comment for the complete real disassembly.
   interp:registerHandler(ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD,
     StandardScriptHandlers.waitForAnyButtonCommand(isAnyButtonPressed, ctx.onWaitForAnyButtonIdleTick))
+  -- `0x8B` (added 2026-08-15, direct follow-up "ok die restlichen
+  -- bitte auch noch", task #152, continuing straight from `0xAD`
+  -- above): a real "play back a pre-baked waypoint/step sequence" gate
+  -- -- see `StandardScriptHandlers.waypointStepCommand`'s own doc
+  -- comment for the complete real disassembly.
+  interp:registerHandler(ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B,
+    StandardScriptHandlers.waypointStepCommand(advanceWaypointStep))
   -- `0xC5` (added 2026-08-14, whole-corpus scan): a real "6-bit WRAM
   -- field write" command -- see `StandardScriptHandlers
   -- .sixBitFieldCommand`'s own doc comment.

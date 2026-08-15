@@ -1532,6 +1532,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   185->182. 470/470 tests pass; website regenerated and
   Playwright-verified. Task #152 narrowed to `0x8B`/`0xAC`/`0xAE`.
 
+- **2026-08-15, "Die letzten 2 Opcodes fertig dekodieren (Task
+  #152)"**: `0x8B` (`$0D1B`) fully closed -- a real waypoint-table-walk
+  ("play back a pre-baked step sequence, one step every ~8 frames,
+  until a real `0x80` terminator"), reached via `$1ED7` selector `0x1C`
+  (`$76AB`). Self-caught correction of this SAME day's earlier
+  characterization: the prior entry's "4-way sub-dispatch to
+  `$2C43`/`$2C57`/`$2C6B`/`$2C7F`" was wrong -- those addresses turned
+  out to be real but UNRELATED code (2 different, uninvestigated real
+  callers elsewhere), not reachable from `0x8B` at all; caught by
+  reading `$1ED7`'s own table directly and whole-ROM-searching for real
+  callers of `$2C2D` before trusting the earlier claim. New
+  `StandardScriptHandlers.waypointStepCommand`, wired via
+  `ctx.advanceWaypointStep`. `0xAC`/`0xAE` untouched this pass. Primary
+  opcode table: 199 decoded / 49 default / 6 known-hard / 2 undecoded
+  (was 198/49/6/3) -- 99.2% decoded-or-classified. Real, measured
+  corpus-scan impact: `clean` 856->859, `halt_undecoded` 182->178.
+  472/472 tests pass; website regenerated and Playwright-verified.
+  Task #152 narrowed to `0xAC`/`0xAE` only.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

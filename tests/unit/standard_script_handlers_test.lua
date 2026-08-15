@@ -1848,6 +1848,64 @@ Harness.test("StandardScriptHandlers.waitForAnyButtonCommand: real opcode 0xAD r
   Harness.assertEqual(cursor, 3)
 end)
 
+Harness.test("StandardScriptHandlers.waypointStepCommand: real opcode 0x8B consumes its 1 operand byte only on the first tick, checks on the SAME tick (1-frame initial wait), and releases (2 real bytes total) once advanceStep signals done", function()
+  local addr = ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x8B] = addr }))
+  local calls = {}
+  interp:registerHandler(addr, StandardScriptHandlers.waypointStepCommand(function(operand, stepIndex)
+    calls[#calls + 1] = { operand = operand, stepIndex = stepIndex }
+    return true, nil -- done on the very first real check
+  end))
+
+  local stream = { 0x8B, 0x25, 0xFF }
+  local cursor = interp:step(stream, 1)
+  Harness.assertEqual(#calls, 1)
+  Harness.assertEqual(calls[1].operand, 0x05) -- real operand-0x20 (0x25-0x20)
+  Harness.assertEqual(calls[1].stepIndex, 0)
+  -- Real total consumption: opcode(1) + operand(1, at init) + the
+  -- standard trailing $3727 skip(1) -- exactly 2 real bytes beyond the
+  -- opcode itself, matching chainedOpaqueEffectCommand's own shape.
+  Harness.assertEqual(cursor, 3)
+end)
+
+Harness.test("StandardScriptHandlers.waypointStepCommand: halts (re-dispatched at the SAME opcode position) while advanceStep isn't done, re-arming a real 8-frame wait between checks", function()
+  local addr = ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x8B] = addr }))
+  local calls = {}
+  interp:registerHandler(addr, StandardScriptHandlers.waypointStepCommand(function(operand, stepIndex)
+    calls[#calls + 1] = { operand = operand, stepIndex = stepIndex }
+    if #calls == 1 then
+      return false, 7 -- real "still walking" case: not done, advances to a new step index
+    end
+    return true, nil -- done on the second real check
+  end))
+
+  local stream = { 0x8B, 0x30, 0xFF }
+  -- Tick 1: real init (1-frame initial wait, checked the SAME tick) --
+  -- advanceStep fires once, "not done" re-arms the real 8-frame wait.
+  local cursor = interp:step(stream, 1)
+  Harness.assertEqual(cursor, 1)
+  Harness.assertEqual(#calls, 1)
+  Harness.assertEqual(calls[1].operand, 0x10) -- 0x30-0x20
+  Harness.assertEqual(calls[1].stepIndex, 0)
+
+  -- 7 more halting ticks (real $D49A counting down from 8): NO second
+  -- advanceStep call yet, cursor stays fixed at the re-dispatch position.
+  for _ = 1, 7 do
+    cursor = interp:step(stream, cursor)
+    Harness.assertEqual(cursor, 1)
+    Harness.assertEqual(#calls, 1)
+  end
+
+  -- 8th tick: the real wait counter hits 0 -- advanceStep fires again,
+  -- with the PERSISTED step index from the first call, and releases.
+  cursor = interp:step(stream, cursor)
+  Harness.assertEqual(#calls, 2)
+  Harness.assertEqual(calls[2].operand, 0x10) -- unchanged across the whole opcode's lifetime
+  Harness.assertEqual(calls[2].stepIndex, 7) -- the persisted real $D499 value from call 1
+  Harness.assertEqual(cursor, 3)
+end)
+
 Harness.test("StandardScriptHandlers.sixBitFieldCommand: real opcode 0xC5 masks its operand byte to 6 bits and consumes exactly 2 real bytes", function()
   local addr = ScriptOpcodeTable.SIX_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C5
   local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xC5] = addr }))
