@@ -1612,6 +1612,20 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   pursued indefinitely. Task #150 stays open; no production code
   changed.
 
+- **2026-08-15, task #128 continuation**: `$5BA7` (the attack-side
+  equipment-bonus lookup) fully disassembled -- a real indexed
+  table-pick (`$2E99`/`$2EB1`, selected via `$CF5C`) feeding the
+  already-known numbered-effect dispatcher `$297D`, returning `7-C`.
+  Self-caught correction via a live write-watchpoint: the total-stats
+  recompute at `$97E0` runs CONTINUOUSLY every real frame, not once at
+  boot as the previous entry concluded (retracts that specific claim;
+  the underlying class-kit lookup may still be one-shot). A real
+  equip-swap test was attempted but blocked on a genuine precondition
+  -- the player starts with exactly one weapon and no alternate to
+  swap to; needs the checkpoint chain extended to a real shop/item
+  pickup, not yet built. Task #128 stays open; no production code
+  changed.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
