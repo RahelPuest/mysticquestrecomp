@@ -532,6 +532,15 @@ function ScriptRuntime.new(opcodeEntries, ctx)
     finished = false, -- true once a real fetch runs off the stream's own end
     stopped = false, -- true once a genuinely undecoded opcode halted this run for good
     stopError = nil,
+    -- Real opcode-pinning state (2026-08-15, task #144/#145 -- see
+    -- ScriptInterpreter:step's own "PINNING" doc comment for the full
+    -- real evidence/mechanism this models). `nil` = normal dispatch
+    -- (read the next opcode from the stream, the overwhelming majority
+    -- case); an opcode byte = "keep re-dispatching THIS SAME real
+    -- opcode's handler regardless of what raw byte now sits at cursor"
+    -- -- set/cleared automatically from each `interp:step`'s own `pin`
+    -- return value, never touched directly by callers.
+    pinnedOpcode = nil,
   }, ScriptRuntime)
   self:registerStandardHandlers()
   return self
@@ -1173,8 +1182,8 @@ function ScriptRuntime:step(stream, cursor)
   if self.stopped or self.finished then
     return cursor
   end
-  local ok, newCursorOrErr, opcode, kind = pcall(function()
-    return self.interp:step(stream, cursor)
+  local ok, newCursorOrErr, opcode, kind, pin = pcall(function()
+    return self.interp:step(stream, cursor, self.pinnedOpcode)
   end)
   if not ok then
     self.stopped = true
@@ -1186,6 +1195,11 @@ function ScriptRuntime:step(stream, cursor)
   self.lastOpcode = opcode
   self.lastKind = kind
   self.lastCursor = newCursorOrErr
+  -- Real opcode-pinning (see ScriptInterpreter:step's own doc comment):
+  -- `pin==true` keeps this SAME opcode active for the next real
+  -- dispatch; anything else releases back to normal stream-driven
+  -- opcode selection.
+  self.pinnedOpcode = pin and opcode or nil
   return newCursorOrErr
 end
 

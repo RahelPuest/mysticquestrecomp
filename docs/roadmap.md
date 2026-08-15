@@ -1156,6 +1156,35 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       identical to the headless trace, through the unmodified
       production code path. 462/462 tests pass.
 
+      **Tasks #141-146, same day ("weiter arbeiten bis das spiel zu
+      100% durchläuft")**: full-scope live trace mapped the ENTIRE
+      remaining real script path (27 real jumps / 67 dispatches),
+      ending in a genuine, live-confirmed STALL at real cursor `0x472e`
+      -- likely the real, intended destination, not a bug. Found and
+      fixed a real architectural gap: opcode `0x04`'s classifier needs
+      to stay "pinned" as the active opcode across many real per-
+      character ticks while the persistent cursor moves underneath it
+      -- this project's interpreter had no way to express that,
+      misdispatching raw text bytes as fresh top-level opcodes once one
+      character finished (succeeding by coincidence until landing on a
+      genuinely undecoded one). Shipped real opcode pinning in
+      `ScriptInterpreter:step` (fully backward-compatible, 462/462
+      pass), with TWO self-caught corrections along the way (a first,
+      broader "pin unconditionally" attempt broke two DIFFERENT,
+      already-working real dispatches once tested -- narrowed to only
+      the ONE live-confirmed real occurrence). Also disassembled a
+      whole 13-fragment real CHAIN cluster the classifier eventually
+      reaches (`0x622c`-`0x6337`) and found EVERY opcode in it already
+      decoded -- zero new opcode work needed there. **Honest net
+      result**: the pinning architecture is real, tested, general-
+      purpose infrastructure, but this script's own practical
+      interpreter reach is UNCHANGED (`bank=14 cursor=0x61f9`, the same
+      pre-existing `$02AB`-family ceiling) -- the one confirmed pin
+      point gets immediately followed by another real control code
+      this project hasn't traced yet. A genuine discrepancy between the
+      live WRAM trace and a static byte read remains open (task #146),
+      documented precisely rather than declared solved prematurely.
+
 - [~] **NEW -- Monster/NPC/Item catalog (2026-08-15, direct user request
       "versuche mal alle monster, npcs und items zu extrahieren").**
       Real, honestly-scoped extraction across all 3 categories, since

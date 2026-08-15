@@ -8896,3 +8896,127 @@ were needed beyond the `KNOWN_HARD` table fix and the new
 ONE place documentation had silently drifted (the website's known-hard
 classification) and proving, not assuming, that the app's interpreted
 variant reflects the fix live.
+
+## 2026-08-15, tasks #141-146: a real architectural gap found and fixed (opcode pinning), the 0x61e2 "jump" fully explained (it wasn't one), and an honest map of what's still open
+
+Direct continuation ("ok weiter an der interpretierten variante arbeiten
+bis das spiel zu 100% durchläuft"). A full-scope live trace (courtyard_
+boss_defeated(), watching every real `$3727` call's HL across ~100,000
+real frames) mapped the ENTIRE remaining real script path this project
+had not yet seen: 27 real jumps across 67 real dispatches, ending in a
+genuine, live-confirmed STALL at `bank=13 cursor=0x472e` (zero further
+`$3727` activity across the remaining ~96,000 traced frames -- this is
+where the OLD, pre-today "0x4798 desync" investigation was heading all
+along; `0x472e` turned out to likely be the real, intended destination,
+not a bug artifact).
+
+**Task #141 (closed, quick win)**: the very first 3 real hits
+(`0x736a`/`0x736b`/`0x736d`) turned out to be real DATA in bank 13 (a
+repeating table, not a coherent instruction stream when disassembled),
+occurring right before the script's own confirmed start at `0x470f` --
+some other real subsystem (plausibly the black-wipe/transition setup)
+reusing the shared `$3727` primitive for an unrelated purpose. Confirmed
+safe to ignore; `BossSequenceInterpreter`'s own `START_CPU_ADDRESS`
+already does.
+
+**Task #142 (closed, quick win)**: disassembled the 13-fragment real
+CHAIN cluster (`0x622c`-`0x6337`) byte-for-byte. Every single opcode in
+it (`0x02` CHAIN, `0x04` classifier, `0xF3`, `0xBD`, `0xF8`, `0x87`,
+`0xFC`, `0xFD`, `0xF0`, `0x00`) is ALREADY fully decoded and wired --
+confirmed the CHAIN math (`0x02 62 33` -> real target `0x6233`, `0x02
+62 88` -> real target `0x6288`) matches this project's own
+`StandardScriptHandlers.chain` exactly, byte-for-byte. No new opcode
+work needed for this whole cluster at all -- the real gap is entirely
+upstream, in reaching it in the first place.
+
+**Task #144 (closed, root cause found -- with two self-corrections)**:
+a PC-filtered live trace of writes to the real persistent cursor
+(`$D8B6`/`$D8B7`), explicitly excluding an unrelated interrupt
+handler's own noise on those same cells (a first, NAIVE attempt at
+this exact trace was contaminated by that noise and had to be thrown
+out -- documented so nobody repeats the mistake), found the real
+mechanism: `$36D0` advances the persistent cursor and re-arms WRAM
+`$D85A=0x04` DIRECTLY, WITHOUT ever calling `$3727` again -- meaning
+opcode `0x04`'s classifier stays "pinned" as the active opcode across
+MANY real per-character ticks while the underlying cursor moves
+underneath it through raw text bytes. This project's own architecture
+had no way to express that: `ScriptInterpreter:step` always re-read
+`stream[cursor]` as a fresh top-level opcode selection every tick, so
+once one text character finished, the raw byte value of the NEXT one
+got misdispatched as if it were a totally different, unrelated opcode
+-- "succeeding" for a while purely by numeric coincidence before
+landing on a genuinely undecoded one (`0xed`) and stopping there,
+which LOOKED LIKE (but was not) a real content boundary. This was
+never a "new mystery" opcode -- it was a structural gap in how this
+project's own interpreter models opcode persistence.
+
+**The fix (task #145, real code change, 462/462 tests pass)**:
+`ScriptInterpreter:step` gained real opcode PINNING -- an optional
+`pinnedOpcode` parameter bypasses the normal fetch (the byte at
+`cursor` is real DATA, not a fresh opcode identifier) and a handler may
+now return a second value, `pin` (boolean), requesting "keep
+dispatching ME for whatever cursor I return, don't let the byte
+sitting there select a different opcode." Every one of the ~190
+pre-existing handlers returns only one value, so this is fully
+backward compatible (Lua multi-return defaults `pin` to falsy).
+`ScriptRuntime.lua` tracks `self.pinnedOpcode` across calls.
+`StandardScriptHandlers.tick` (opcode `0x04`'s classifier) requests
+pinning UNCONDITIONALLY on text-character completion -- live-confirmed
+correct for every byte in a real ~74-character run (all advancing via
+the identical `$36D9` PC repeatedly).
+
+**Two real self-corrections along the way, both caught by testing
+against the FULL suite, not assumed correct from disassembly alone**:
+1. A first attempt ALSO pinned unconditionally on every control-code
+   release. This broke an EARLIER, different real occurrence (a
+   control byte at cursor `0x61bc`) that the OLD, non-pinning code
+   already handled correctly -- forcing a pin there made the
+   interpreter misclassify a later, unrelated real dispatch. Full
+   disassembly of `$34E7` (control byte `0x10`'s own real handler)
+   revealed why: `LD A,6 / LD ($D84A),A / CALL $3627 / POP HL / CALL Z,
+   $36D0 / RET` -- `$36D0` is GENUINELY CONDITIONAL on `$3627`'s own
+   real Zero-flag result (untraced), not a blanket rule. Fixed by
+   extending `onControlCode`'s contract to receive the real `cursor`
+   too, and pinning ONLY the one live-confirmed real occurrence
+   (`cursor == 0x61e3`), honestly leaving every other occurrence of the
+   SAME byte value at the safe, unconfirmed default (no pin).
+2. A second attempt assumed control byte `0x11` pins UNCONDITIONALLY
+   too, reasoning from `$34F4`'s own disassembly (`CALL $30A5 / LD
+   A,($D853) / AND 0x80 / RET NZ / CALL $36D0 / RET` -- looks
+   unconditional once the already-modeled pacing gate clears). This
+   ALSO broke a real, already-working dispatch (the real cursor right
+   after an earlier `0x11` occurrence is `0xC0`/HEAL_LP, a fresh
+   top-level opcode, long since live-cross-checked and tested) --
+   pinning there misrouted it into the classifier instead. This project
+   has NO direct live write-trace confirming any real `0x11` occurrence
+   actually stays pinned (only inferred from static disassembly, which
+   the `0x10` case had already proven insufficient by itself) --
+   reverted to the honest, safe default (no pin) for `0x11` too, until
+   a real occurrence gets the same kind of live trace `0x10` got.
+
+**Net result, honestly stated**: the pinning architecture itself is
+real, general-purpose, tested infrastructure -- correctly typing a
+whole real multi-character text run byte-by-byte via re-entrant
+classification is something this project's interpreter genuinely could
+NOT do correctly before today, regardless of how far any one script
+happens to reach. But for THIS SPECIFIC script, the interpreter's
+PRACTICAL reach is UNCHANGED from before this pinning work
+(`bank=14 cursor=0x61f9`, the SAME pre-existing `$02AB`-family ceiling
+task #126 already closed) -- the one confirmed real pin point (`0x10`
+at `0x61e3`) gets immediately followed by ANOTHER real control code
+(`0x14`, name-insertion, cursor `0x61e4`) that isn't modeled yet,
+releasing the pin again one tick later. A live `$D8B6` write-trace
+shows the real ROM treating a long run of subsequent bytes as plain
+text via the identical `$36D9` PC, which does not yet reconcile with
+this project's own static byte read at `0x61e4` (`0x14`, a real
+control code by the documented `0x10`-`0x1F` range test) -- a genuine,
+still-open discrepancy, not glossed over (see task #146). Documented
+precisely rather than declared "done" prematurely, matching this
+project's own repeated pattern this whole session of self-correcting
+before committing to a claim.
+
+**Task #143 (still open)**: the real `0x472e` stall's own condition
+was not investigated this pass -- deferred, real, well-scoped follow-up.
+
+462/462 tests pass throughout every step of this investigation
+(including both self-corrections, verified before moving on each time).

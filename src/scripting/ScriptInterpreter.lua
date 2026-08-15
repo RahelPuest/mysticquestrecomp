@@ -99,8 +99,8 @@ function ScriptInterpreter:registerHandler(handlerAddress, fn)
 end
 
 --- One real fetch-and-dispatch step (the real ROM's own per-opcode
--- unit of work). Returns `newCursor, opcode, kind` where `kind` is
--- `"default"` (a real, ROM-confirmed no-op opcode), `"handled"` (a
+-- unit of work). Returns `newCursor, opcode, kind, pin` where `kind`
+-- is `"default"` (a real, ROM-confirmed no-op opcode), `"handled"` (a
 -- registered Lua implementation ran and advanced the cursor), or
 -- `"halted"` (see below). Raises a real Lua error for any opcode that
 -- is neither known-default nor registered -- see this module's own
@@ -119,12 +119,55 @@ end
 -- caller driving this once per real game tick naturally re-dispatches
 -- the exact same opcode next time, matching the real ROM's own
 -- behavior, without the caller needing to know which opcodes can halt.
-function ScriptInterpreter:step(stream, cursor)
-  local opcode, afterOpcode = ScriptInterpreter.fetch(stream, cursor)
-  local addr = self:handlerAddress(opcode)
+--
+-- PINNING (2026-08-15, task #144/#145 -- live mgba $D8B6/$D8B7 write-
+-- tracing found the REAL mechanism behind opcode `0x04`'s own classifier
+-- ($333D): the real ROM keeps WRAM `$D85A` ("current opcode") PINNED at
+-- `0x04` across MANY real per-character ticks while the real persistent
+-- cursor keeps advancing underneath it through raw TEXT bytes -- each
+-- advance goes through `$36D0` directly, WITHOUT ever re-calling `$3727`
+-- (confirmed live: `$36D0`'s own body is `INC HL / cache into $D8B6/
+-- $D8B7 / LD A,0x04 / LD ($D85A),A / RET` -- no `CALL $3727` at all).
+-- This project's OLD architecture had no way to express "re-dispatch
+-- THIS SAME handler for the next tick, even though the cursor moved and
+-- the raw byte now sitting there isn't a fresh opcode identifier at
+-- all" -- it always re-read `stream[cursor]` as a brand-new top-level
+-- opcode selection on every call, which happened to "succeed" for many
+-- ticks by sheer coincidence (real TEXT byte values occasionally
+-- colliding with OTHER real opcodes' own numeric IDs) before finally
+-- landing on a genuinely undecoded one -- a real, structural bug, not a
+-- missing opcode.
+--
+-- `pinnedOpcode`, if provided by the caller, bypasses the normal
+-- `fetch()` (which would misread real DATA as a fresh opcode byte) --
+-- the pinned handler is invoked directly against the CURRENT `cursor`
+-- (there is no opcode byte to consume for a pinned re-dispatch, since
+-- the real ROM doesn't read one either). A handler may now return a
+-- SECOND value, `pin` (boolean): `true` means "keep dispatching ME on
+-- this exact opcode for whatever cursor I just returned, don't let the
+-- caller re-derive the opcode from the byte now sitting there" --
+-- modeling the real ROM's own `$D85A`-pinning technique directly. Every
+-- OTHER existing handler (the ~190 already registered) returns only one
+-- value; Lua's multi-return semantics make `pin` default to `nil`
+-- (falsy) for all of them -- zero behavior change, fully backward
+-- compatible.
+function ScriptInterpreter:step(stream, cursor, pinnedOpcode)
+  local opcode, afterOpcode, addr
+
+  if pinnedOpcode then
+    -- Pinned re-dispatch: `cursor` already points at real DATA (a text
+    -- character or control-code byte), not an opcode identifier to
+    -- consume -- see this function's own "PINNING" doc comment above.
+    opcode = pinnedOpcode
+    afterOpcode = cursor
+    addr = self:handlerAddress(opcode)
+  else
+    opcode, afterOpcode = ScriptInterpreter.fetch(stream, cursor)
+    addr = self:handlerAddress(opcode)
+  end
 
   if addr == ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS then
-    return afterOpcode, opcode, "default"
+    return afterOpcode, opcode, "default", false
   end
 
   local handler = self.handlers[addr]
@@ -134,11 +177,14 @@ function ScriptInterpreter:step(stream, cursor)
       "Lua implementation -- this is a real, undecoded opcode, not guessed at", opcode, addr))
   end
 
-  local nextCursor = handler(stream, afterOpcode)
+  local nextCursor, pin = handler(stream, afterOpcode)
   if nextCursor == nil then
-    return cursor, opcode, "halted"
+    -- Halted: re-dispatch the SAME opcode next time. If we were
+    -- already pinned, stay pinned (matches the real ROM: a halt inside
+    -- a pinned classify-loop doesn't release the pin either).
+    return cursor, opcode, "halted", pinnedOpcode ~= nil
   end
-  return nextCursor, opcode, "handled"
+  return nextCursor, opcode, "handled", (pin == true)
 end
 
 return ScriptInterpreter

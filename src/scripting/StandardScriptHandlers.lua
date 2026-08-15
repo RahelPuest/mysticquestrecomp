@@ -279,8 +279,11 @@ local FRAMES_PER_TICK = 5
 --     confirmed-unused/reserved slots) -- see events.md for what each
 --     of the 12 real, populated entries does (mode switches, name
 --     insertion, cursor moves, bridges into the ALREADY-documented
---     "0xFF sub-table" system). `onControlCode(byte)` is the caller's
---     own hook for whatever real per-code behavior it wants to model --
+--     "0xFF sub-table" system). `onControlCode(byte, cursor)` (2nd arg
+--     added 2026-08-15, see this function's own "PINNING FIX" doc
+--     comment below for why the real cursor position matters, not just
+--     the byte value) is the caller's own hook for whatever real
+--     per-code behavior it wants to model --
 --     see `ScriptRuntime.lua`'s own doc comment for what this project
 --     currently does with it. HONEST SCOPE: the real jump table's own
 --     targets mostly bridge into the "0xFF sub-table" via the real
@@ -306,6 +309,53 @@ local FRAMES_PER_TICK = 5
 --     discovering the terminator/control codes/more text as it goes --
 --     no pre-computed text length needed, unlike this handler's own
 --     immediately-preceding version).
+--
+-- PINNING FIX (2026-08-15, task #144/#145, direct continuation of
+-- today's `0xF3` fix): "the classifier re-enters for the NEXT byte on
+-- the interpreter's next real dispatch" above was true in INTENT but
+-- NOT actually implemented until now -- a live mgba trace (watching
+-- real writes to the persistent cursor `$D8B6`/`$D8B7`, filtered to
+-- exclude an unrelated interrupt handler's own noise on those same
+-- cells) found the real ROM keeps WRAM `$D85A` ("current opcode")
+-- PINNED at `0x04` across MANY real per-character ticks (confirmed:
+-- `$36D0`'s own real body advances the cursor and re-arms `$D85A=0x04`
+-- DIRECTLY, without ever calling `$3727` again) while the underlying
+-- cursor keeps moving through raw text bytes underneath it -- this
+-- project's OLD interpreter architecture had no way to express that: it
+-- always re-read `stream[cursor]` as a FRESH top-level opcode on every
+-- tick, so once one text character finished, the NEXT raw text byte's
+-- own numeric value got misdispatched as if it were a completely
+-- different, unrelated opcode -- "succeeding" for a while purely by
+-- coincidence (real text byte values occasionally colliding with other
+-- real, already-registered opcodes' own IDs) before eventually landing
+-- on a genuinely undecoded one and stopping there, which looked like
+-- (but was NOT) a real content boundary. `ScriptInterpreter:step` now
+-- supports real opcode pinning (see its own doc comment) -- the
+-- TEXT-CHARACTER-release path below always returns a SECOND value,
+-- `true`, requesting exactly this: stay dispatched as opcode `0x04` for
+-- the resulting cursor, regardless of the raw byte sitting there. Live
+-- evidence supports pinning UNCONDITIONALLY for text characters (every
+-- byte in a real, live-traced ~74-character run advanced this exact
+-- way, confirmed via the SAME real `$36D9` PC repeatedly).
+--
+-- The CONTROL-CODE-release path's own `pin` comes from `onControlCode`
+-- ITSELF now (see that parameter's own updated doc comment below) --
+-- NOT a blanket default -- because a SEPARATE live trace (same
+-- session) caught this project over-generalizing "control codes always
+-- pin": an EARLIER, real occurrence's own control byte does NOT stay
+-- pinned in the real ROM (its real target hands off elsewhere),
+-- exactly matching this function's own pre-existing "HONEST SCOPE"
+-- note above -- only SOME control codes route through `$36D0` (live-
+-- confirmed for `0x10`/`0x11` so far), others bridge into the `0xFF`
+-- sub-table or bank-2 code this project hasn't traced. Pinning only
+-- what's actually confirmed per real byte value, not applying one
+-- blanket rule, is the whole discipline this project runs on -- see
+-- docs/reverse-engineering/events.md's task #144/#145 entry for the
+-- real trace that caught the over-generalization. The TERMINATOR case
+-- ALSO never pins -- the real ROM genuinely hands control back to a
+-- fresh top-level opcode dispatch there (confirmed: this is exactly
+-- how the classifier correctly lands on a REAL `CHAIN` (`0x02`) opcode
+-- once a real multi-character text run's own terminator is reached).
 -- Per-occurrence pacing state, same reasoning as `.textboxWait`'s own
 -- doc comment (a shared closure counter would misalign two separate
 -- real uses of this opcode) -- keyed by the CURRENT byte's own cursor
@@ -351,10 +401,28 @@ function StandardScriptHandlers.tick(onTick, onControlCode)
         states[cursor] = nil
         return cursor + 1
       end
-      local extraBytes = onControlCode(byte)
+      -- `onControlCode` now receives the real CURSOR too (2nd arg), and
+      -- may return a SECOND value, `pin` (boolean, 2026-08-15 follow-up
+      -- to the PINNING FIX above): `true` means THIS SPECIFIC real
+      -- occurrence's own real target is `$36D0` (the SAME bridge the
+      -- text-character path below always pins through). The CURSOR
+      -- matters, not just the byte value: full disassembly of `$34E7`
+      -- (control byte 0x10's real handler) found a genuine CONDITIONAL
+      -- -- `CALL $3627 / CALL Z,$36D0` -- so whether THIS byte pins
+      -- depends on a real, still-untraced condition, NOT on the byte
+      -- value alone (live-confirmed: the SAME byte value 0x10 pins at
+      -- one real script position and does NOT at another, in the SAME
+      -- real playthrough). The caller is the right place for this
+      -- decision since it's the one with LIVE, per-occurrence evidence
+      -- -- this generic classifier can't know on its own (see this
+      -- function's own doc comment above for why NOT every real control
+      -- code pins). Omitting `pin` (old callers, or occurrences this
+      -- project hasn't live-traced yet) keeps the honest, safe default:
+      -- no pin, hand off to a fresh top-level dispatch.
+      local extraBytes, pin = onControlCode(byte, cursor)
       if extraBytes then
         states[cursor] = nil
-        return cursor + 1 + extraBytes
+        return cursor + 1 + extraBytes, pin
       end
       return nil
     end
@@ -375,7 +443,7 @@ function StandardScriptHandlers.tick(onTick, onControlCode)
     remaining = remaining - 1
     if remaining <= 0 then
       states[cursor] = nil
-      return cursor + 1
+      return cursor + 1, true
     end
     states[cursor] = remaining
     return nil

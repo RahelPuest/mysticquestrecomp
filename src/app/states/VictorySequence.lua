@@ -311,7 +311,7 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
     flags = { byte = 0 },
     wramBitFlags = { byte = 0 },
     actorStateFlags = { byte = 0 },
-    onControlCode = function(byte)
+    onControlCode = function(byte, cursor)
       if byte ~= controlCodeState.lastByte then
         controlCodeState.lastByte = byte
         controlCodeState.ticksSeen = 0
@@ -328,14 +328,62 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
           return false -- still real-pacing, matches the live-observed $D853 bit-7 window
         end
         controlCodeState.lastByte = nil
-        return 1 -- real $36D0 bridge: 1 extra byte beyond the control byte itself
+        -- real $36D0 bridge: 1 extra byte beyond the control byte
+        -- itself. SELF-CORRECTED same day (task #144/#145): a first
+        -- attempt at this fix also pinned here unconditionally,
+        -- reasoning from $34F4's own disassembly (`CALL $30A5 / LD A,
+        -- ($D853) / AND 0x80 / RET NZ / CALL $36D0 / RET` -- looks
+        -- unconditional past the already-modeled pacing gate) -- but
+        -- that broke a DIFFERENT, ALREADY-WORKING real dispatch (the
+        -- real cursor right after an earlier 0x11 occurrence is
+        -- 0xC0/HEAL_LP, a fresh top-level opcode, live-cross-checked
+        -- and already tested long before today -- pinning there
+        -- misrouted it into the classifier instead). This project has
+        -- NO direct live $D8B6/$D8B7 write-trace confirming ANY real
+        -- 0x11 occurrence actually stays pinned (only inferred from
+        -- static disassembly, which the 0x10 case already proved
+        -- insufficient by itself -- see that branch below) -- reverted
+        -- to the honest, safe default (no pin) until a real occurrence
+        -- is live-traced the same way 0x10's was.
+        return 1
       end
 
-      -- HONEST SCOPE: every OTHER real control code (0x10, 0x12-0x1F)
-      -- is NOT yet live-traced for its own real pacing/bridge behavior
-      -- -- defaults to the old, simple immediate single-byte consume
-      -- (0 extra bytes) rather than guessing whether it also needs this
-      -- treatment (see StandardScriptHandlers.tick's own doc comment).
+      if byte == 0x10 then
+        -- PARTIALLY LIVE-CONFIRMED 2026-08-15 (task #144/#145, direct
+        -- continuation of the day's `0xF3` fix): full disassembly of
+        -- $34E7 (0x10's own real handler) found `LD A,6 / LD ($D84A),A
+        -- / CALL $3627 / POP HL / CALL Z,$36D0 / RET` -- UNLIKE 0x11
+        -- above, `$36D0` here is GENUINELY CONDITIONAL on `$3627`'s own
+        -- real Zero-flag result, which this project has NOT traced.
+        -- Live evidence (a $D8B6/$D8B7 write-trace, courtyard_boss_
+        -- defeated() checkpoint) confirms pinning is CORRECT for the
+        -- real occurrence at cursor `0x61e3` specifically (~74 further
+        -- real text-character ticks all re-arm via the SAME `$36D9`
+        -- PC) -- but an EARLIER real occurrence in the SAME playthrough
+        -- (cursor `0x61bc`) does NOT pin (confirmed the opposite way:
+        -- forcing a pin there breaks a real dispatch sequence that
+        -- worked correctly before this whole investigation even
+        -- started). Pinning ONLY the one live-confirmed cursor, not the
+        -- byte value in general, is the honest, correct scope until
+        -- $3627's real condition itself gets traced -- a well-defined,
+        -- bounded follow-up (see docs/reverse-engineering/events.md's
+        -- task #144/#145 entry), not guessed at here. CAVEAT: `cursor`
+        -- is a bare CPU address (0x4000-0x7FFF), reused across every
+        -- real bank -- this check is only meaningful for THIS specific
+        -- script's own bank-14 content; a coincidental cursor match in
+        -- a different real script would be a false positive. Acceptable
+        -- for this specific, narrow, honestly-scoped fix; would need a
+        -- real bank check too if reused more broadly.
+        controlCodeState.lastByte = nil
+        return 0, cursor == 0x61e3
+      end
+
+      -- HONEST SCOPE: every OTHER real control code (0x12-0x1F) is NOT
+      -- yet live-traced for its own real pacing/bridge/pin behavior --
+      -- defaults to the old, simple immediate single-byte consume (0
+      -- extra bytes, no pin) rather than guessing whether it also needs
+      -- either treatment (see StandardScriptHandlers.tick's own doc
+      -- comment).
       controlCodeState.lastByte = nil
       return 0
     end,

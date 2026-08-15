@@ -270,7 +270,18 @@ Harness.testIfAvailable(
       flags = { byte = 0 },
       wramBitFlags = { byte = 0 },
       actorStateFlags = { byte = 0 },
-      onControlCode = function(byte)
+      -- Mirrors VictorySequence.buildBossSequenceInterpreter's own real
+      -- production wiring (see its own doc comment for the full real
+      -- evidence, including a self-correction): control byte 0x11's
+      -- own real pinning is NOT confirmed for any real occurrence (a
+      -- first attempt assumed it from static disassembly alone and
+      -- broke an already-working dispatch) -- stays at the honest,
+      -- unconfirmed default (no pin). Control byte 0x10's own real
+      -- handler ($34E7) is GENUINELY CONDITIONAL on an untraced real
+      -- flag ($3627) -- only the ONE live-confirmed real occurrence
+      -- (cursor 0x61e3) is known to pin; an EARLIER real occurrence
+      -- (cursor 0x61bc) does NOT.
+      onControlCode = function(byte, cursor)
         if byte ~= controlCodeState.lastByte then
           controlCodeState.lastByte = byte
           controlCodeState.ticksSeen = 0
@@ -280,6 +291,10 @@ Harness.testIfAvailable(
           if controlCodeState.ticksSeen < 9 then return false end
           controlCodeState.lastByte = nil
           return 1
+        end
+        if byte == 0x10 then
+          controlCodeState.lastByte = nil
+          return 0, cursor == 0x61e3
         end
         controlCodeState.lastByte = nil
         return 0
