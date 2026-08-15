@@ -1435,6 +1435,22 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   `$36D0`/`$D85A` pinning mechanism and all 6 control codes with their
   live-confirmed status (Playwright-verified, zero console errors).
 
+- **2026-08-15, task #147 corrected + closed**: the queue-gate halt at
+  bank=14 cursor=0x4798 is a real, PERMANENT, correct stop for the
+  boss-defeat script specifically -- `self.queue` never gains new
+  content again, so "model queue content" was the wrong framing.
+  Two live mgba traces (frame-level, then PC-filtered instruction-
+  level via `tools/rom/watcher.py`) found the real continuation
+  instead comes from the SAME already-understood `$31AD` cross-actor
+  dispatcher (tasks #85/#111) firing again for a different real
+  trigger, overwriting the same shared cursor cells with a fresh
+  script entry that turns out to drive the real courtyard-story +
+  Willy-exchange dialogue through the exact same opcode-0x04 machinery
+  this project built last session. New task #149 created, correctly
+  scoped: generalize the boss's one-shot `$31AD` trigger into a
+  re-armable one so this project's own interpreter can drive that
+  dialogue too. No production code changed -- investigation only.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

@@ -9232,3 +9232,129 @@ project's own engineering discipline demands: a previously-inflated
 accuracy even though the raw number looks worse. Left as an open,
 separate observation for whoever next works the corpus-scan blockers
 list (task #89's ongoing successor work) -- not folded into #147.
+
+## 2026-08-15, task #147: the premise was wrong -- the queue-gate halt at 0x4798 is a genuine, permanent stop for THIS script; real progress comes from the SAME already-understood $31AD cross-actor dispatcher (tasks #85/#111) firing again for a different real trigger
+
+Task #147 was scoped as "model real content for opcode 0x00's
+queue-gate (`self.queue`) so the interpreter can run past bank=14
+cursor=0x4798" -- i.e. the working assumption was that a real CHAIN
+(opcode `0x02`) or opcode `0x03` producer, somewhere this project
+hasn't modeled yet, eventually pushes a real entry into the same
+script's own queue. Live investigation this pass shows that premise is
+wrong: nothing ever pushes into THIS script's queue again. The real
+continuation comes through a completely different, already-understood
+real mechanism, and checkpoints.py's own long-established
+`post_black_wipe`/`willy_room_free` real checkpoint chain (2026-08-11)
+already proves the real ROM keeps going past this exact point -- this
+project's software just never watched WHY.
+
+**Method**: two live mgba traces from `courtyard_boss_defeated()`,
+running forward through the real `post_black_wipe`/`willy_room_free`
+button sequence (`checkpoints.py`'s own established real recipe, not
+reinvented). Pass 1 (frame-level, `run_frame()` snapshots of WRAM
+`$D85A`/`$D8B6`/`$D8B7`/`$D874`) found the boss-defeat script's own
+persistent cursor genuinely does NOT stay frozen at `0x4798` -- around
+real frame 3820 it briefly reads `0xC0A2`, then ~70 real frames later
+snaps to `0x470F`/`0x4710` -- byte-identical to `BossSequenceInterpreter
+.START_CPU_ADDRESS`. Pass 2 (instruction-level, `tools/rom/watcher.py`'s
+`Watcher` class -- the SAME PC-filtered technique task #144 already
+established, since frame-level `currentBank` sampling in an
+intermediate pass turned out unreliable: it read bank=1 constantly,
+almost certainly some unrelated subsystem's bank mapped at the
+once-per-frame sample instant, not the bank the script cursor was
+fetched from) watched real writes to `$D8B6`/`$D8B7` with full
+(pc, romOffset) context.
+
+**Real, decisively-identified sequence** (all addresses/bytes
+confirmed via `tools/rom/disasm.py` against the real ROM, not
+inferred):
+
+1. Right as the queue genuinely empties, `$D8B6`/`$D8B7` briefly read
+   `0xC0A2` -- this LIVE-CONFIRMS (previously only a HYPOTHESIS,
+   `StandardScriptHandlers.queueGate`'s own doc comment) that the real
+   `queue:isEmpty()` idle path really does touch `$C0A1`/`$C0A2`.
+   Disassembly of the real code right before `$31AD` (`$319E`-`$31AC`)
+   shows exactly this: `LD HL,$C0A1 / SET 3,(HL) / LD HL,$C0A2 / SET
+   3,(HL) / RET` -- setting bit 3 of both cells, with HL left pointing
+   at `$C0A2` right as the routine returns, which is what this
+   project's own "persist HL to the cursor cells" epilogue (the SAME
+   real code path `$3727`'s own fetch uses) captures. So `$D8B6`/
+   `$D8B7` do NOT hold a meaningful "resume here" cursor while the
+   script is genuinely idle -- they get clobbered with whatever HL the
+   idle-path code last touched, confirming this project's existing
+   "persistent cursor" model only applies while a script is actively
+   progressing.
+2. ~200,000 real instructions later (~11 real frames), `$D8B6`/`$D8B7`
+   get written to `0x470F` -- but this time from a COMPLETELY
+   DIFFERENT real PC, `$31F2`/`$31F6`, not `$3727`'s own write-back
+   site (`$3275`/`$3279`) or advance site (`$372D`/`$3731`) used
+   everywhere else in this trace. Disassembly of `$31A0`-`$3212`
+   confirms this PC is inside **`$31AD` itself** -- this project's OWN
+   ALREADY-FULLY-UNDERSTOOD real "cross-actor script dispatch"
+   function (tasks #85/#86/#111, `rom-map.md`'s own "The generic
+   entity-slot struct" section): gated on `$C0A1` BIT 1 (a genuinely
+   DIFFERENT flag than the BIT 3 the idle path set in step 1 -- so
+   whatever clears BIT 1 is a separate, real trigger this project
+   hasn't watched for yet), it resolves a real script pointer (via the
+   already-decoded `$C3FE`/`$C3FF` actor-record cell or one of 3
+   already-decoded special-case WRAM overrides, task #52), adds
+   `+0x4000`, and writes the result straight into `$D8B6`/`$D8B7` --
+   the EXACT SAME shared cells this project's own persistent-cursor
+   model already tracks. It then unconditionally `CALL`s the real
+   fetch-dispatch primitive `$3727` itself.
+3. From there the observed opcode sequence (`0x08` flag-list, "list
+   exhausted" leaf jumping past `0x472a`, then a real CHAIN landing at
+   `0x61b3`, then `0x04` typewriter ticks with `$D8B6` climbing by
+   exactly 1 per real advance) is BYTE-FOR-BYTE the same shape this
+   project already fully decoded last session for the boss's own
+   name-reveal text (tasks #141-146) -- and it runs for exactly as
+   long as `checkpoints.willy_room_free`'s own long-established real
+   button recipe (14 `A` taps) needs to clear the real courtyard-story
+   + Willy-exchange dialogue (9 real page advances, matching that
+   checkpoint's own doc comment), with `$D874` bit 1 changing partway
+   through (frame 3957, right around the first real advance) -- a
+   real, independent confirmation that the SAME already-modeled opcode
+   `0x04` classifier and text machinery is what's driving these boxes
+   too, just a different real stretch of script bytes than the boss's
+   own death text.
+
+**Conclusion, corrected**: the "queue-gate" framing of task #147 was
+the wrong mental model. `self.queue`'s own real producers (opcode
+`0x02` CHAIN, opcode `0x03`) genuinely never fire again for THIS
+script -- the halt at `bank=14 cursor=0x4798` is a real, permanent,
+correct stop for the boss-defeat script specifically, exactly as this
+project's own `StandardScriptHandlers.queueGate` already models it.
+Real further progress (into the courtyard story + Willy exchange) does
+NOT come from this script resuming at all -- it comes from the SAME
+general, already-understood `$31AD` cross-actor dispatch mechanism
+(rom-map.md's own "$026DC ALSO computes the cross-actor script-dispatch
+pointer" section: a real, general "which script becomes active" system
+with (at least) 4 known real trigger call sites, `$4261`/`$42A0`/
+`$434F`/`$4395`) firing AGAIN for a different real trigger, and
+REDISPATCHING A FRESH SCRIPT through the exact same shared WRAM cursor
+cells `BossSequenceInterpreter` already tracks. This project's own
+`BossSequenceInterpreter` currently only simulates ONE such trigger
+(hardcoded at construction, to reach the boss's own `$470F`/bank 13
+entry) -- it does not watch for, or re-fire on, a SECOND real `$31AD`
+redirect the way the real ROM genuinely does.
+
+**Task #147 is CLOSED with this correction** (its original "model queue
+content" framing does not apply -- there is no missing queue content to
+model). **New task #149 created**, correctly scoped from this finding:
+generalize the boss's own one-shot `$1F35`/`$24A7`/`$31AD` trigger
+handling into a repeatable, re-armable detector (or, more simply, build
+a SECOND script driver that starts once the first one's queue-gate
+genuinely idles and the SAME `$31AD` redirect is observed/simulated
+again) so the real courtyard-story + Willy-exchange dialogue can also
+be driven by this project's own real script interpreter, closing the
+actual remaining gap toward "boss fight fully interpreted." Not
+attempted this pass -- this is a genuinely separate, sizable
+architecture change (generalizing a currently one-shot trigger into a
+re-triggerable one), not a quick continuation of a characterization
+pass, matching this project's own established discipline (see, e.g.,
+the `$1ED7` selector `0x10` entries earlier this same day: "documented,
+NOT-YET-wired"). No production code changed this pass -- investigation
+only; `luajit tests/run_tests.lua` unaffected (462/462 still passing).
+Investigation scripts (`trace_queue_gate.py`/`...2.py`/`...3.py`) live
+in the session scratchpad, not checked in, matching this project's own
+established convention for one-off mgba traces.

@@ -1124,8 +1124,23 @@ end
 --      live-verified trace.
 --   2. else if `queue:isEmpty()`: halts, optionally calling `onIdle`
 --      (the real ROM ALSO does a `$D86E`->`$C0A0` WRAM copy and clears
---      a few bits of `$C0A1`/`$C0A2` here -- HYPOTHESIS, not modeled,
---      exposed only as this optional callback).
+--      a few bits of `$C0A1`/`$C0A2` here -- exposed only as this
+--      optional callback, still not modeled by any real caller of this
+--      module. CONFIRMED live, not just HYPOTHESIS, 2026-08-15 (task
+--      #147): the real code right before `$31AD` does exactly `LD
+--      HL,$C0A1 / SET 3,(HL) / LD HL,$C0A2 / SET 3,(HL) / RET` on this
+--      path, live-observed clobbering `$D8B6`/`$D8B7` (this project's
+--      own "persistent cursor" cells) with `0xC0A2` in the process --
+--      i.e. those cells do NOT hold a meaningful resume cursor while a
+--      script is genuinely idle. Task #147 ALSO found, live, that real
+--      further progress past this genuine halt does NOT come from
+--      `self.queue` gaining new content at all -- it comes from the
+--      SAME already-understood `$31AD` cross-actor dispatcher (tasks
+--      #85/#111) firing again for a DIFFERENT real trigger and
+--      overwriting `$D8B6`/`$D8B7` with a fresh script entry point,
+--      completely independent of this handler/queue. See events.md's
+--      2026-08-15 "task #147" entry for the full live trace and the
+--      new, correctly-scoped follow-up (task #149).
 --   3. else: pops one real entry. If it was a real `B==2` entry (only
 --      opcode `0x02` CHAIN ever pushes one), redirects the persistent
 --      cursor there and continues. Any other real entry (only opcode
