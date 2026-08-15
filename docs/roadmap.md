@@ -313,7 +313,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 | P2 | **NEW — Level/XP system** | 🔴 not started | Well-scoped, not a blocker for anything else. |
 | P3 | **2 — Graphics extraction (remainder)** | 🟡 partial | On-demand extraction is already working practice; a full sweep only pays off once P0 delivers more content to render. |
 | P3 | **Generated-cache pipeline** (task #34) | 🔴 deliberately deferred | Architecture decision already made 2026-08-11: build once enough normalized data exists to cache — depends on P0. |
-| P3 | **Audio** | 🔴 not started | Explicitly lowest priority since before this file existed (format totally unknown). |
+| P3 | **Audio** | 🟡 format DECODED (2026-08-15) | Song table, note/duration/octave encoding, and frequency table all real and verified (`tools/rom/decode_music.py` produces genuine, coherent music transcripts) — no `src/audio/` Lua module or `love.audio` playback yet (task #151). No longer the "format totally unknown" blocker; still not started as an in-game feature. |
 | P4 | **Parity-check process** (expand on task #33) | 🟡 proof of concept exists | Valuable alongside every new finding, not a standalone deliverable. |
 | P4 | **NEW — Interactive ROM documentation** (`rom-inspector/`) | 🟢 built 2026-08-14, all 9 sections working, verified live in-browser | Not a blocker for anything — a documentation/presentation artifact. Ongoing cost is small (rerun `export_data.lua`) but real: keep it in mind whenever opcode coverage, room count, or WRAM findings change, so it doesn't quietly go stale. |
 | Deferred | **Modding architecture** | 🔴 not started | Per the brief, deliberately deferred until core gameplay is stable. |
@@ -726,11 +726,22 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       stat existing; and, starkly, exactly ONE enemy exists in the
       whole game today — see the new Bestiary entry below.
 
-- [~] **Audio.** Format still entirely UNKNOWN. Driver location
-      VERIFIED (100% of sound-hardware-register writes during boot +
-      title music traced to ROM bank 15). Explicitly lowest ordinary
-      priority (task #6/P7) — no work beyond the original location
-      trace has happened.
+- [~] **Audio.** Format DECODED (2026-08-15, task #6/P7, direct user
+      request). Driver location VERIFIED (100% of sound-hardware-
+      register writes during boot + title music traced to ROM bank
+      15) since 2026-08-08; this pass added the real song table (30
+      songs, file `0x3CA12`), the real per-channel event-stream format
+      (note/duration/octave encoding, 13 real driver commands, all
+      operand lengths confirmed), the real frequency table
+      (CPU `$41A0`, ready-to-write GB hardware register pairs), and a
+      real, working decoder (`tools/rom/decode_music.py`) that
+      produces genuinely coherent, singable music transcripts as
+      decisive proof. See rom-map.md's own "Audio format — DECODED"
+      section for the full disassembly trail. Still open: the
+      auxiliary vibrato/pitch-delta layer, a few commands' exact
+      musical intent, and porting this into a real `src/audio/` Lua
+      module + `love.audio` playback (task #151) — the format itself
+      is no longer the blocker.
 
 - [x] **Save system.** Fully implemented and wired end to end
       (2026-08-10, task P6): the real MBC2 nibble-packed format

@@ -1542,6 +1542,106 @@ confirmed *where* the driver lives and that it's genuinely active, not
 *how* it's told what to play. `mgba`'s Python bindings also expose live
 PCM audio buffers (`core.get_audio_channels()`), not used this pass.
 
+### Audio format — DECODED (2026-08-15, direct user request "schau dir mal das musik und sound system an und entschluessel es")
+
+Full static disassembly of bank 15 (`tools/rom/disasm.py`, no live
+emulator needed this pass — the driver's own code is dense enough to
+read directly). A real, working decoder now exists:
+`tools/rom/decode_music.py` (`--list-songs`, `--song N`) — its own doc
+comment mirrors this section, kept in sync.
+
+**Song table — VERIFIED**: file offset `0x3CA12` (CPU `$4A12`), 6
+bytes/record, 3×2-byte little-endian CPU-address pointers (one per
+channel stream). Dumping all 40 possible slots shows exactly **30**
+real, monotonically-increasing, in-bank-range entries before the data
+degrades into clearly out-of-range garbage — a real, self-evident table
+boundary (same pattern this project has used to bound every other real
+table, e.g. the digraph/song tables elsewhere in this file). Entry
+point `$3C09E` takes a 1-based song index in `A`; `$3C048` is a
+separate "stop all sound" entry (called with no song, or via the
+boot-time reset vector at `$3C003`).
+
+**Per-channel event stream — VERIFIED via musically-coherent decoded
+output** (`decode_music.py --song 1` produces a real, singable melody
+with an exact phrase repeat and a clean closing C-E-G major arpeggio —
+not noise; see audio.md for the full transcript excerpt). Each channel
+stream is a byte sequence read one event at a time by real, disassembled
+per-frame update code (`$3C7C8` region, called every real driver tick
+from the top-level update at `$3C006`):
+- **`0xFF`**: hard stop (silences the channel).
+- **`0xE0`-`0xEC`**: 13 real driver commands, jump table at CPU `$4365`
+  (16-slot table, only 13 populated — `0xED`-`0xEF` are unused/never
+  emitted). Every command's real operand LENGTH is confirmed by direct
+  disassembly of its own handler (all fetch operand bytes via the
+  driver's own generic "read next stream byte, advance pointer"
+  primitive at `$47D9`/`$47E5`/`$4417` — a real, fixed-width
+  instruction, not guessed):
+  | Byte | Operand | Real, disassembled effect |
+  |---|---|---|
+  | `0xE0` | 2 | Saves a real "resume here" address (a loop point) into a WRAM cell pair for later use. |
+  | `0xE1` | 2 | Unconditional jump — sets the stream pointer directly (the real loop-BACK mechanism songs use to repeat). |
+  | `0xE2` | 2 | Sets up a real, per-frame-countdown-gated pitch bend/slide (WRAM `$C10F` counter). |
+  | `0xE3` | 1 | Sets a real per-channel parameter byte (`$C10F`). |
+  | `0xE4` | 2 | Sets the pointer for a SEPARATE, auxiliary per-note vibrato/pitch-delta stream (`$C107`-`$C10A`) — pairs of (duration-frames, SIGNED pitch delta) added on top of the channel's cached base frequency every countdown tick. NOT walked by the current decoder (a fine-modulation layer, not the core melody). |
+  | `0xE5` | 1 | Writes directly to the real GB duty-cycle/length register (NRx1) and caches the byte. |
+  | `0xE6` | 1 | PANNING: indexes an 8-entry real ROM table at CPU `$4664` and ORs the result into NR51 (`$FF25`, the real stereo-panning hardware register). |
+  | `0xE7` | 1 | Sets a real global parameter byte (`$C101`) — plausibly tempo/speed, not independently confirmed. |
+  | `0xE8` | 0 | Real jump-table target disassembles as a literal self-jump (`JP $4361` sitting AT `$4361`) — an unused/placeholder slot, treated as a true no-op. |
+  | `0xE9` | 2 | A second pitch-bend/slide variant (parallel structure to `0xE2`, different WRAM cell `$C119`). |
+  | `0xEA` | 1 | Sets a real per-channel parameter byte (`$C119`). |
+  | `0xEB` | 1 | A third pitch-bend/slide variant (parallel structure to `0xE2`/`0xE9`). |
+  | `0xEC` | 1 | Sets a real global parameter byte (`$C1C8`) — plausibly an SFX-priority/ducking marker, not independently confirmed. |
+- **`0xD0`-`0xD7`**: SET the current octave directly (`(byte&7)*24` — a
+  real byte-stride offset into the 24-byte-wide, 12-note frequency
+  table blocks below — VERIFIED by the real code doing exactly this
+  arithmetic before using the result as a table index).
+- **`0xD8`-`0xDF`**: ADD a signed octave/detune SHIFT instead of
+  overwriting — looked up from a real 8-entry ROM table at CPU `$47D1`
+  (`0x18,0x30,0x48,0x60,0xE8,0xD0,0xB8,0xA0` — the first 4 and last 4
+  are each other's two's-complement negation, `±24/±48/±72/±96`, a
+  clean "shift up/down by N semitones-worth-of-octave-bytes" design).
+- **Else (`0x00`-`0xCF`)**: a real NOTE event. High nibble (0-12)
+  indexes a real 13-entry ROM duration table at CPU `$424A`
+  (`0x60,0x48,0x30,0x20,0x24,0x18,0x10,0x12,0xC,0x8,0x6,0x4,0x3` = a
+  musically coherent whole/dotted-half/half/dotted-quarter/quarter/…
+  rhythm tree in real frame counts, 96 down to 3). Low nibble: `0`-`13`
+  = a real note index (0 = highest pitch in the current octave block);
+  `14` = rest; `15` = explicit note-off.
+
+**Frequency table — VERIFIED**: CPU `$41A0` (file `0x3C1A0`). A REAL,
+ready-to-write GB hardware register pair per note, little-endian
+16-bit, e.g. `0x802C, 0x809D, 0x8107, …, 0x87F0` — low byte is written
+directly to NRx3 (frequency low), high byte directly to NRx4 (bit 7
+already set = trigger, low 3 bits = the period's own top bits) with
+ZERO further transformation by the driver. 7 full 12-note chromatic
+octave blocks (84 notes) plus one extra top note (85 total),
+monotonically increasing period (= descending pitch) exactly as a real
+chromatic scale must — decisive, self-evident structural confirmation
+independent of the musical-coherence check above.
+
+**Per-frame playback mechanism — VERIFIED** (`$3C802`-`$3C868` for one
+channel, a byte-identical parallel block `$3C869`-`$3C8C8` for a
+second): a real per-note duration counter (WRAM `$C106`/`$C11E`)
+decrements every real driver tick; at 0, the next (duration, pitch)
+byte pair is fetched from the vibrato/delta stream (`$C109`-`$C10A` /
+`$C121`-`$C122`), the pitch byte is sign-extended and ADDED to the
+channel's cached base frequency (`$C10D`-`$C10E` / `$C125`-`$C126`),
+and the result is written straight to hardware (NR23/NR24 for one
+channel, NR13/NR14 for the other) — this is the auxiliary vibrato layer
+referenced above, confirmed live-structurally even though not walked
+by the transcript decoder. A duration byte of `0x00` in this stream is
+a real embedded loop marker (`$3C932`): reads a 2-byte address right
+there in the stream and jumps the pointer there, i.e. genuine loop-back
+support at the fine-grained note level too, not just via command `0xE1`.
+
+**Genuinely still open**: exact musical intent of `0xE2`/`0xE3`/`0xE7`/
+`0xE9`/`0xEB`/`0xEC` beyond their real WRAM side effect; the noise/wave
+channel's own real target register (channel 3 decodes as a coherent
+melodic line via the SAME mechanism in practice, so if it differs it's
+subtle); no `src/audio/` Lua module ports this into the actual game
+engine yet (`tools/rom/decode_music.py` is a real, standalone Python
+proof of the format).
+
 ## Item/spell table — real record structure found (2026-08-08, sixth pass, continued)
 
 The item/spell name table at file offset `0x9de5` (bank 2 — see text.md)
