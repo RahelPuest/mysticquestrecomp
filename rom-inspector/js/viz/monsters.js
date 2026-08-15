@@ -65,12 +65,25 @@ function render_monsters(main) {
       </div>
     </div>` : ""}
     <div class="card-grid" id="monsterCards" style="margin-top:16px;"></div>
+
+    <h2 class="page-title" style="margin-top:32px; font-size:1.3em;">Grafik-Kandidaten (unbestätigt)</h2>
+    <p class="page-lede">
+      Echte, per <code>tools/rom/scan_graphics.py</code> gefundene und visuell
+      bestätigte Kreatur-/Charakter-Grafikbereiche (Bank 10/11) &mdash; KEINER
+      davon ist einer bestätigten Spezies, einem Raum oder einem echten
+      Spawn-Trigger zugeordnet. Das sind echte ROM-Pixel (du siehst sie unten
+      direkt aus deiner geladenen ROM gerendert), aber die Identität ist
+      ehrlich unbestätigt &mdash; siehe GraphicsCandidates.lua für die volle
+      Methodik.
+    </p>
+    <div class="card-grid" id="graphicsCandidateCards" style="margin-top:16px;"></div>
   `;
 
   updateRomBanner(document.getElementById("monsterRomBanner"));
   onSectionUnload(RomBytes.onChange(() => {
     updateRomBanner(document.getElementById("monsterRomBanner"));
     if (ks) drawSpriteGrid(document.getElementById("monsterSpriteCanvas"), ks.tileOffsets, ks.cols, ks.rows, 4, false);
+    redrawGraphicsCandidates();
   }));
 
   if (ks) {
@@ -108,5 +121,31 @@ function render_monsters(main) {
       </div>
     `;
     host.appendChild(card);
+  }
+
+  const gcHost = document.getElementById("graphicsCandidateCards");
+  const candidates = (typeof GRAPHICS_CANDIDATES !== "undefined") ? GRAPHICS_CANDIDATES : [];
+  for (const c of candidates) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <h3>${c.id}</h3>
+      <span class="badge unknown-b">Spezies unbestätigt</span>
+      <div class="meta">
+        Bank ${c.bank} &middot; Datei-Offset ${hex(c.fileOffset, 6)} &middot;
+        ${c.tileCount} Kacheln
+      </div>
+      <canvas id="gc_${c.id}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated;"></canvas>
+      <div class="meta" style="margin-top:8px;">${c.note}</div>
+    `;
+    gcHost.appendChild(card);
+  }
+  redrawGraphicsCandidates();
+
+  function redrawGraphicsCandidates() {
+    for (const c of candidates) {
+      const canvas = document.getElementById(`gc_${c.id}`);
+      if (canvas) drawSpriteGrid(canvas, c.tileOffsets, c.cols, c.rows, 3, false);
+    }
   }
 }

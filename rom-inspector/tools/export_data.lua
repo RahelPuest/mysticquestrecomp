@@ -31,6 +31,7 @@ local EnemySpeciesTable = require("src.import.EnemySpeciesTable")
 local ItemTable = require("src.import.ItemTable")
 local WeaponTable = require("src.import.WeaponTable")
 local NpcCatalog = require("src.import.NpcCatalog")
+local GraphicsCandidates = require("src.import.GraphicsCandidates")
 local MusicDecoder = require("src.import.MusicDecoder")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
@@ -798,6 +799,35 @@ do
      "as raw data, not claimed to be a working DEF stat. Only 1 of 11 species has a known real " ..
      "sprite (found via live OAM tracing during actual combat) -- honestly flagged per-species; " ..
      "that one real sprite's own 2-pose animation (X-flip toggle) is included under knownSprite.")
+end
+
+----------------------------------------------------------------------
+-- 11b. Graphics candidates (GraphicsCandidates.lua) -- real, visually-
+-- confirmed creature/character art regions found via a heuristic ROM
+-- scan, NOT tied to any confirmed species/room/NPC identity. See that
+-- module's own doc comment for the full honest scope.
+----------------------------------------------------------------------
+do
+  local candidates = {}
+  for i, e in ipairs(GraphicsCandidates.ENTRIES) do
+    candidates[i] = {
+      id = e.id,
+      bank = e.bank,
+      fileOffset = e.fileOffset,
+      tileCount = e.tileCount,
+      cols = e.cols,
+      rows = math.ceil(e.tileCount / e.cols),
+      kind = e.kind,
+      note = e.note,
+      tileOffsets = GraphicsCandidates.tileOffsets(e),
+    }
+  end
+  writeJs("graphics-candidates.js", "GRAPHICS_CANDIDATES", candidates,
+    "Real, visually-confirmed candidate creature/character graphics regions -- found via " ..
+    "tools/rom/scan_graphics.py's heuristic tile-entropy scan, then confirmed by rendering each " ..
+    "one and looking at it (see GraphicsCandidates.lua's own doc comment). NOT tied to any " ..
+    "confirmed species/room/NPC/spawn-trigger identity -- shown as real ROM art with an honest " ..
+    "visual description, not a decoded fact.")
 end
 
 ----------------------------------------------------------------------

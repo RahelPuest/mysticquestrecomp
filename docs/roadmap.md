@@ -1644,6 +1644,19 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   no production code changed except the new, reusable
   `fourth_room_free()` checkpoint.
 
+- **2026-08-15, task #135 (bounded monster/NPC graphics search)**: 5
+  new, real, visually-confirmed creature/character art regions found
+  (bank 10 -- previously totally unexplored -- and bank 11), via
+  `scan_graphics.py` + manual `gbtile.py` visual confirmation. New
+  `src/import/GraphicsCandidates.lua` catalog, honestly scoped (no
+  species/room/spawn-trigger claims), wired into the rom-inspector
+  website's Monster tab as a new "Grafik-Kandidaten (unbestätigt)"
+  section. NPC side: a real, live-confirmed NEGATIVE -- dumped all 20
+  entity slots in both `thirdRoom` and `fourthRoom` via mgba, found
+  zero NPCs in either (only the player is a live entity) -- extends
+  task #140's own bounded NPC check beyond willyRoom/secondRoom. 3 new
+  tests, 481/481 pass; website Playwright-verified.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

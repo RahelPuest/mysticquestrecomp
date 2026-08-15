@@ -7435,3 +7435,76 @@ screenshot verification history that a blind, unverified global shift
 could silently break") and then didn't fully heed its own warning. A
 couple of spot-check screenshots are not the same rigor as actually
 playing the app -- the regression was caught the moment the user did.
+
+## Real graphics candidates found + wired: 5 new creature/character art regions (bank 10/11), plus a live-confirmed NPC negative in thirdRoom/fourthRoom (2026-08-15)
+
+Direct user request ("suche jetzt einfach mehr npcs mit den grafiken
+und mehr monster. ich glaube die die du bis jetzt gefunden hast sind
+nur bosse"), finally acting on the graphics-candidate lead this
+project's own planning notes had already scoped (task #135, "bounded
+search for more monster/NPC candidates") but never executed.
+
+**Method**: `tools/rom/scan_graphics.py` (a heuristic 2bpp-tile-entropy
+scan, already existed) against the whole ROM, `--min-run 24`, found 54
+candidate regions. Rendered the most promising ones (favoring bank 10/
+11, per this project's own EXISTING `rom_profiles.lua` hint on
+`enemySprite` that bank 11 holds "title-logo art plus real small
+creature-sprite fragments") with `tools/graphics/gbtile.py` and
+visually inspected each PNG -- exactly the "find a lead, then confirm
+it by looking at it" discipline this project's tooling doc comments
+already establish.
+
+**5 real, visually-confirmed creature/character art regions found**,
+all in bank 10 (previously completely unexplored territory -- zero
+prior mentions anywhere in this project's own docs) and bank 11:
+- `0x2B900` (44 tiles): a hooded/pointed-head humanoid with a dark
+  robe-like silhouette, in a repeated 2x2-tile pair (plausibly 2 real
+  animation poses of one creature).
+- `0x2A400` (34 tiles): bat-winged and blob-like creature shapes.
+- `0x2AA20` (33 tiles): armored/helmeted humanoid figures, several
+  similar variants.
+- `0x2AD90` (33 tiles): more helmet/face shapes, immediately adjacent
+  in the file to the region above (likely the same sprite family).
+- `0x2D220` (bank 11, 34 tiles): small round/blob creature shapes.
+
+Cross-checked a few OTHER large candidate runs (bank 4/8/9/12/14) for
+completeness -- most turned out to be environment/wall/floor tile art
+or outright noise (a repeating checkerboard dither pattern, not real
+pixel structure), NOT creature art -- an honest negative, not silently
+omitted.
+
+**Wired as a new, honestly-scoped catalog**: `src/import/
+GraphicsCandidates.lua` (a curated, hand-authored list -- these are
+heuristic SCAN RESULTS, not a decoded ROM table, so there's no
+"decode a formula" step the way `EnemySpeciesTable`/`ItemTable` work).
+Explicitly does NOT claim which (if any) of the 11 real
+`EnemySpeciesTable` species each region belongs to, exact real sprite
+tile boundaries, or real in-game reachability -- see that module's own
+doc comment for the full honest scope. Exported to the rom-inspector
+website (`graphics-candidates.js`, a new "Grafik-Kandidaten
+(unbestätigt)" section on the Monster tab, rendering each region's real
+pixels straight from the user's own locally-loaded ROM via the SAME
+canvas renderer the already-known enemy sprite uses).
+
+**NPC side: a real, live-confirmed negative, not silence.** Extended
+the mgba checkpoint chain (see combat.md's task #127 entry for the new
+`fourth_room_free()` checkpoint) and dumped all 20 real entity slots
+in BOTH `thirdRoom` and `fourthRoom` -- in each, only the player itself
+is a genuinely live, positioned entity; every other slot shares the
+same uninitialized boot-time placeholder pattern, and OAM shows only
+the player's own 2 real hardware sprite entries active. **No NPCs
+exist in either room** -- a real, decisive extension of task #140's own
+"bounded live NPC check in more rooms" (which had only covered
+willyRoom/secondRoom before). Consistent with this project's own
+already-established finding that NPCs aren't placed via any fixed
+table -- finding MORE would mean live-exploring further rooms one at a
+time (`fifthRoom`/`sixthRoom` and beyond), not decoding a table. Not
+pursued further this pass (a real, open-ended undertaking, matching
+this project's own "World scope" tracking).
+
+3 new unit tests (`tests/import/graphics_candidates_test.lua`):
+structural field checks, real tile-offset expansion, and a real-ROM
+check that every candidate's own tile range stays in-bounds and isn't
+a degenerate solid-fill false positive. `luajit tests/run_tests.lua`:
+481/481 pass (+3). Website Playwright-verified (5 candidate cards
+render, zero console errors).
