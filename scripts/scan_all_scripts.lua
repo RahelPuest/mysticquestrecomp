@@ -61,14 +61,49 @@ local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTabl
 -- conventions), harmless no-op for fire-and-forget callbacks whose
 -- return value is ignored.
 --
--- KNOWN LIMITATION (found 2026-08-14 auditing the `0x0B`/`0x0C` closure's
--- own `error_other` delta, not fixed here): `onRunListExhausted0B`/`0C`'s
--- real return value IS the next cursor, not a discardable side effect --
--- the blanket `true` stub leaks through as a bogus cursor ("cursor true
--- out of stream bounds"). This is a scan-tool stub limitation, not a bug
--- in `runListSearch` itself -- left as-is since fixing it would mean
--- fabricating a real cursor value this tool has no honest way to derive
--- without live WRAM.
+-- FIXED (2026-08-15, direct follow-up to the 2026-08-14 "KNOWN
+-- LIMITATION" note this replaces -- "beende jetzt mal den full corpus
+-- scan"): a full audit of `error_other`'s own first-line breakdown
+-- found the blanket `true` stub was NOT just leaking into
+-- `onRunListExhausted0B`/`0C` (opcodes `0x0B`/`0x0C`) as originally
+-- scoped -- the EXACT SAME "return value IS the next cursor" contract
+-- (`StandardScriptHandlers.zeroTerminatedFlagList`'s own `onExhausted`)
+-- is shared by `ctx.onFlagListExhausted` (opcode `0x08`) and
+-- `ctx.onTimerListExhausted09`/`0A` (opcodes `0x09`/`0x0A`) -- 5 real
+-- opcodes total, not 2. Together these accounted for 148/308 (48%) of
+-- this scan's own `error_other` bucket, ALL surfacing as the same
+-- confusing "cursor true out of stream bounds" message that gives no
+-- hint which real opcode or ROM address was actually involved.
+-- `ctx.onControlCode` (opcode `0x04`'s own control-code path,
+-- `StandardScriptHandlers.tick`) has a similar but distinct bug: its
+-- own honest default (when the FIELD IS ABSENT) is "not a known
+-- control code, cursor+1, no pin" (see that function's own `if not
+-- onControlCode then ... end` guard) -- but the blanket stub makes the
+-- field ALWAYS PRESENT (a callable returning `true`), which then flows
+-- into `cursor + 1 + extraBytes` as `cursor + 1 + true`, a genuine Lua
+-- type error (14/308, 4.5%). Both fixed the same way: give these
+-- fields explicit, real entries here so the blanket `__index` fallback
+-- never has to guess a type for them. The exhausted-list family gets a
+-- clearly-labeled `error()` (still counted as `error_other`, since this
+-- project genuinely has no honest way to fabricate the real, data-
+-- dependent resume cursor without live WRAM -- see rom-map.md's own
+-- "$1ED7" section -- but now self-explanatory instead of a mystery
+-- "cursor true" crash). `onControlCode = false` (a real, present,
+-- falsy value, same trick already used for `queue` below) makes
+-- `StandardScriptHandlers.tick`'s own `if not onControlCode` guard see
+-- it as genuinely unset, so it takes its own honest, already-correct
+-- default path instead of calling a bogus stub at all.
+local function exhaustedListStub(opcodeLabel)
+  return function(cursorAfterTerminator)
+    error(string.format(
+      "scan_all_scripts.lua stub: opcode %s's real 'list exhausted' resume cursor " ..
+      "(from real ROM cursor %#x) is genuine, data-dependent ROM content this " ..
+      "scan tool has no live WRAM to derive -- not a bug in the opcode's own " ..
+      "handler (see StandardScriptHandlers.zeroTerminatedFlagList's own doc comment)",
+      opcodeLabel, cursorAfterTerminator))
+  end
+end
+
 local stubCtx = setmetatable({
   stats = { curLP = 19, maxLP = 19, curMP = 6, maxMP = 6 },
   flags = { byte = 0 },
@@ -84,6 +119,15 @@ local stubCtx = setmetatable({
   onTimerListTest0A = function() return true end,
   runListMatchByte = function() return 0 end, -- generous stub: "matches" the first candidate byte seen (0 never appears as a real candidate, but keeps this deterministic)
   isRunListGateSet = function() return true end,
+  onFlagListExhausted = exhaustedListStub("0x08"),
+  onTimerListExhausted09 = exhaustedListStub("0x09"),
+  onTimerListExhausted0A = exhaustedListStub("0x0A"),
+  onRunListExhausted0B = exhaustedListStub("0x0B"),
+  onRunListExhausted0C = exhaustedListStub("0x0C"),
+  onControlCode = false, -- see this block's own doc comment -- makes
+                          -- StandardScriptHandlers.tick treat it as
+                          -- genuinely unset (honest cursor+1/no-pin
+                          -- default) instead of calling a bogus stub.
   queue = false, -- real raw key (falsy, not nil) so the __index stub below
                  -- never shadows it -- ScriptRuntime.new's own `ctx.queue or
                  -- ScriptContinuationQueue.new()` needs a real falsy value

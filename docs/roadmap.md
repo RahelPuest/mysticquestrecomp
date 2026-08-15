@@ -1451,6 +1451,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   re-armable one so this project's own interpreter can drive that
   dialogue too. No production code changed -- investigation only.
 
+- **2026-08-15, "beende jetzt mal den full corpus scan"**: found and
+  fixed 2 real scan-TOOL stub bugs (duplicated independently in both
+  `scripts/scan_all_scripts.lua` and `rom-inspector/tools/
+  export_data.lua`) that were inflating the whole-corpus scan's own
+  `errorOther` bucket with confusing, mislabeled crashes (a blanket
+  stub fallback leaking `true` into fields with a real "return value
+  is a cursor/byte-count" contract, opcodes `0x04`/`0x08`-`0x0C`) --
+  53% of `errorOther` was this, not real ROM gaps. Fixed both copies;
+  regenerated the website's own scan data. Honest remaining breakdown
+  of the corrected 304 `errorOther`: 49% genuinely known-hard (same
+  `$02AB`-family category as the existing topBlockers), 46% a real,
+  substantial, still-open gap (the already-documented, only-partially-
+  decoded digraph/low-byte text range below `0xB0` -- new task #150,
+  needs the same live dynamic-tracing methodology `text.md` used
+  originally, scaled up), 5% a small unexplained bank-4 cursor-drift
+  cluster folded into the same task. `clean` 821->832,
+  `haltUndecoded` 218->221. 462/462 tests pass (scan tooling only, no
+  production runtime code touched).
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

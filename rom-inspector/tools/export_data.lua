@@ -207,15 +207,51 @@ writeJs("entity-struct.js", "ENTITY_STRUCT", {
 ----------------------------------------------------------------------
 local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTable)
 
+-- FIXED (2026-08-15, "beende jetzt mal den full corpus scan" -- see
+-- scripts/scan_all_scripts.lua's own doc comment for the full
+-- rationale, duplicated here verbatim since this stub was itself an
+-- independent copy carrying the exact same bug): the blanket `__index`
+-- fallback below (a function always returning `true`) is only a safe
+-- default for gate/predicate-shaped ctx fields. Several real fields
+-- have a "return value IS the next cursor" contract instead
+-- (`onFlagListExhausted`/`onTimerListExhausted09`/`0A`/
+-- `onRunListExhausted0B`/`0C`, opcodes 0x08-0x0C) or a "return value is
+-- an extra-byte COUNT" contract (`onControlCode`, opcode 0x04) -- the
+-- generic `true` stub leaked through as a bogus non-number in both
+-- cases, producing confusing "cursor true out of stream bounds" /
+-- "attempt to perform arithmetic on a boolean value" errors that were
+-- really scan-tool stub artifacts, not real ROM decoding gaps.
+local function exhaustedListStub(opcodeLabel)
+  return function(cursorAfterTerminator)
+    error(string.format(
+      "export_data.lua stub: opcode %s's real 'list exhausted' resume cursor " ..
+      "(from real ROM cursor %#x) is genuine, data-dependent ROM content this " ..
+      "scan tool has no live WRAM to derive -- not a bug in the opcode's own " ..
+      "handler (see StandardScriptHandlers.zeroTerminatedFlagList's own doc comment)",
+      opcodeLabel, cursorAfterTerminator))
+  end
+end
+
 local stubCtx = setmetatable({
   stats = { curLP = 19, maxLP = 19, curMP = 6, maxMP = 6 },
   flags = { byte = 0 },
   wramBitFlags = { byte = 0 },
+  actorStateFlags = { byte = 0 }, -- real WRAM $C4D4 shadow (opcodes 0xA3/0xA5/0xA6) --
+                                    -- MUST be a real table, not the generic
+                                    -- function-returning __index fallback below.
   isTriggerEventGateClear = function() return true end,
   onTimerListTest09 = function() return true end,
   onTimerListTest0A = function() return true end,
   runListMatchByte = function() return 0 end,
   isRunListGateSet = function() return true end,
+  onFlagListExhausted = exhaustedListStub("0x08"),
+  onTimerListExhausted09 = exhaustedListStub("0x09"),
+  onTimerListExhausted0A = exhaustedListStub("0x0A"),
+  onRunListExhausted0B = exhaustedListStub("0x0B"),
+  onRunListExhausted0C = exhaustedListStub("0x0C"),
+  onControlCode = false, -- makes StandardScriptHandlers.tick treat it as
+                          -- genuinely unset (honest cursor+1/no-pin default)
+                          -- instead of calling a bogus stub.
   queue = false,
 }, { __index = function() return function() return true end end })
 local runtime = ScriptRuntime.new(opcodeEntries, stubCtx)
