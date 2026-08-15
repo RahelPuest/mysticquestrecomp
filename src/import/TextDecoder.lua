@@ -147,6 +147,60 @@ TextDecoder.QUESTION_BYTE = 0xF4
 -- give-item template, colon before a following item-name insertion).
 TextDecoder.COLON_BYTE = 0xF5
 
+-- VERIFIED (2026-08-15, task #150, "beende jetzt mal den full corpus
+-- scan" -> "na dann entschluessel mal"): a DIFFERENT byte from
+-- COLON_BYTE above, despite the same rendered glyph and the same
+-- grammatical role. This project's own 2026-08-11 investigation
+-- (see the `[0x12][0x1B]` control-byte note above) had already found
+-- "18 confirmed instances of `[0x12][0x1B]<Name>[0x2C]` with 6
+-- different real named speakers" and flagged "0x2C appears to be a
+-- 'speaker name:' tag delimiter" -- a strong lead, never independently
+-- re-confirmed or wired. This pass's own fresh `dump_strings.py --gaps`
+-- run found the SAME pattern with 20 independent named speakers (all
+-- real, already-known characters/nouns: Alter, Amanda, Bogard, Bowow,
+-- Cibba, Davias, Glaive, Hasim, Julia, Koenig, Lester, Lord, Maedchen,
+-- Mann, Marcie, Medaa, Mutter, Sarah, Watts, Willy) -- EVERY single
+-- occurrence in the exact same structural position (immediately after
+-- a name, immediately before that speaker's own dialogue line begins),
+-- plus 6 further occurrences after `0x14`/`0x15` (the already-VERIFIED
+-- hero/heroine NAME-INSERTION control bytes above) instead of a
+-- literal name -- e.g. `[14][2C]Bogard!` = "<HeroName>: Bogard!" --
+-- independently cross-validating BOTH this byte's own role AND the
+-- pre-existing 0x14/0x15 finding at the same time. Far exceeds this
+-- table's own 2-independent-occurrences bar.
+-- NOT the same byte as COLON_BYTE (0xF5) -- that one's own real,
+-- independently-confirmed contexts are credits-screen "ROLE:NAME" and
+-- shop "Ware:" lines, structurally unrelated to a dialogue-box speaker
+-- tag; the real ROM apparently uses two distinct byte values for the
+-- same rendered punctuation mark in different string contexts (not
+-- unprecedented -- SPACE_BYTE/PERIOD_BYTE/etc. are each single, fixed
+-- values only because no second real "same glyph, different byte"
+-- case had been found before this one). Rendering hypothesis (a
+-- literal ":") is NOT independently live-VRAM-confirmed the way
+-- COLON_BYTE's own 0xF6 sibling investigation was (no font-tile
+-- cross-check possible without already knowing this byte's real
+-- on-screen tile ID, which is exactly what's unconfirmed) -- but
+-- structurally this is by far the most likely reading (this project's
+-- own original 2026-08-11 note already reached the same conclusion
+-- independently), and NOT wiring it at all would leave the interpreter
+-- refusing to render otherwise-perfectly-readable dialogue over a
+-- single, well-understood punctuation mark. HONEST NOTE on the whole-
+-- corpus scan's own OWN measured impact (`scripts/scan_all_scripts
+-- .lua`, task #150): wiring this byte did NOT move the scan's own
+-- headline "clean" count (dozens of real scripts contain 0x2C in their
+-- own text, but the scan only reports each script's FIRST blocking
+-- byte, and most of those scripts already fail EARLIER on a different,
+-- still-undecoded digraph before ever reaching their own 0x2C) --
+-- confirmed via a real before/after diff of the scan's own per-byte
+-- breakdown: the ONE script whose own first failure WAS 0x2C now
+-- fails on 0x70 instead, net zero change to the aggregate numbers.
+-- Real, verified, permanent progress regardless (four independently
+-- decoded, grammatically perfect German sentences prove the byte value
+-- itself is correct) -- it just won't show up in the scan's own
+-- aggregate count until more of the higher-frequency blocking bytes
+-- (0xFC/0xFE/0x05/0x07/the 0x70-0x7F range/...) are ALSO closed.
+TextDecoder.SPEAKER_COLON_BYTE = 0x2C
+
 -- HYPOTHESIS-status control-byte family, bytes 0x10-0x1F (2026-08-15,
 -- see docs/reverse-engineering/events.md's "the $38F6 table decoded"
 -- section for the full disassembly trail). Found from the OPPOSITE
@@ -813,6 +867,9 @@ function TextDecoder.decodeByte(b)
     return "?"
   end
   if b == TextDecoder.COLON_BYTE then
+    return ":"
+  end
+  if b == TextDecoder.SPEAKER_COLON_BYTE then
     return ":"
   end
   if TextDecoder.UMLAUT_PARTIAL[b] then

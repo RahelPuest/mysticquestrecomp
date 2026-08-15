@@ -413,7 +413,7 @@ const TEXT_DECODER = {
         135,
         0
       ],
-      "decoded": "WILLY!\nWilly",
+      "decoded": "WILLY!\nWilly:Mana",
       "fileOffset": 238184,
       "label": "the real dump this project's digraph table was built from (starts on a literal \"WILLY\")"
     },

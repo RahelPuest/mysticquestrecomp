@@ -70,6 +70,19 @@ Harness.test("TextDecoder.decodeByte: exclamation byte 0xF3 decodes (real 'Kaemp
   Harness.assertEqual(TextDecoder.decodeByte(0xF3), "!")
 end)
 
+Harness.test("TextDecoder.decodeByte: speaker-tag colon byte 0x2C decodes (2026-08-15, task #150)", function()
+  -- A DIFFERENT byte from COLON_BYTE (0xF5, credits/shop "label:" role)
+  -- -- this one is the real "<SpeakerName>:" tag delimiter used at the
+  -- start of dialogue-box lines, 20+ independent named speakers
+  -- confirmed via a fresh dump_strings.py --gaps run (Alter, Amanda,
+  -- Bogard, Bowow, Cibba, Davias, Glaive, Hasim, Julia, Koenig, Lester,
+  -- Lord, Maedchen, Mann, Marcie, Medaa, Mutter, Sarah, Watts, Willy),
+  -- plus 6 more after the already-VERIFIED hero-name control bytes
+  -- 0x14/0x15 instead of a literal name -- see TextDecoder.lua's own
+  -- SPEAKER_COLON_BYTE doc comment for the full evidence trail.
+  Harness.assertEqual(TextDecoder.decodeByte(0x2C), ":")
+end)
+
 Harness.test("TextDecoder.decodeByte: confirmed digraph-compression bytes decode (2026-08-09, real ROM dialogue trace)", function()
   -- All 15 found by decoding a real ~1KB German dialogue block around
   -- ROM file offset 0x3A268 (see docs/reverse-engineering/text.md) --
@@ -263,9 +276,15 @@ Harness.testIfAvailable(
     -- text.md) -- immediately followed by "\nWilly" which DOES use the
     -- compression (0x55 = "ll"), i.e. this one real ROM location proves
     -- both the plain-text and the compressed path in a single string.
+    -- UPDATED (2026-08-15, task #150: SPEAKER_COLON_BYTE 0x2C wired):
+    -- this string decodes FURTHER now that 0x2C (immediately after
+    -- "Willy") is recognized -- "Willy:Mana" (stops again at the next
+    -- still-unrecognized byte, one real word into the following
+    -- sentence). Real, honest consequence of the fix, not a widening
+    -- of what this specific test claims to exercise.
     local text, nextOffset = TextDecoder.decodeString(romData, 0x3A268)
-    Harness.assertEqual(text, "WILLY!\nWilly")
-    Harness.assertEqual(nextOffset, 0x3A273) -- stops at the next unrecognized byte
+    Harness.assertEqual(text, "WILLY!\nWilly:Mana")
+    Harness.assertEqual(nextOffset, 0x3A277) -- stops at the next unrecognized byte
   end
 )
 
@@ -309,9 +328,18 @@ Harness.testIfAvailable(
   function()
     -- File offset 0x034963 -- one of 25+ identical occurrences of this
     -- real character's name found across the story dialogue this pass.
+    --
+    -- UPDATED (2026-08-15, task #150: SPEAKER_COLON_BYTE 0x2C wired):
+    -- decodes the FULL real speaker-tagged line now instead of just the
+    -- bare name -- a perfectly grammatical German sentence ("Julia:
+    -- Nun erfahre die wahre Macht des Mana!" = "Julia: Now learn the
+    -- true power of Mana!", the hyphen splitting "erfahre" across a
+    -- real line break exactly as HYPHEN_BYTE already models), stopping
+    -- cleanly at the real terminator -- itself a strong further
+    -- confirmation that 0x2C really does decode as ":" here.
     local text, nextOffset = TextDecoder.decodeString(romData, 0x034963)
-    Harness.assertEqual(text, "Julia")
-    Harness.assertEqual(nextOffset, 0x034967)
+    Harness.assertEqual(text, "Julia:Nun er-\nfahredie wahre\nMacht des Mana!")
+    Harness.assertEqual(nextOffset, 0x034981) -- one past the real terminator byte
   end
 )
 
@@ -321,9 +349,14 @@ Harness.testIfAvailable(
   "no development ROM found",
   function()
     -- File offset 0x036CF2 -- one of 20+ identical occurrences.
+    --
+    -- UPDATED (2026-08-15, task #150: SPEAKER_COLON_BYTE 0x2C wired):
+    -- decodes the real speaker tag AND a following ellipsis-style pause
+    -- now ("Bogard: ......", a dramatic pause) instead of stopping at
+    -- the bare name.
     local text, nextOffset = TextDecoder.decodeString(romData, 0x036CF2)
-    Harness.assertEqual(text, "Bogard")
-    Harness.assertEqual(nextOffset, 0x036CF7)
+    Harness.assertEqual(text, "Bogard:......")
+    Harness.assertEqual(nextOffset, 0x036CFF)
   end
 )
 
@@ -334,9 +367,16 @@ Harness.testIfAvailable(
   function()
     -- File offset 0x0352D4 -- one of 10+ identical occurrences; the
     -- first confirmed CAPITALIZED digraph (0x88="Da").
+    --
+    -- UPDATED (2026-08-15, task #150: SPEAKER_COLON_BYTE 0x2C wired):
+    -- decodes the full real speaker-tagged line now ("Dark Lord: Sieht
+    -- so a[u]s, als wärst du jetzt stärker." = "Dark Lord: Looks like
+    -- you're stronger now.", grammatical apart from one small, real,
+    -- PRE-EXISTING gap -- "aa" for "aus" -- a different, still-
+    -- unmapped digraph this fix doesn't touch, left as-is).
     local text, nextOffset = TextDecoder.decodeString(romData, 0x0352D4)
-    Harness.assertEqual(text, "Dark Lord")
-    Harness.assertEqual(nextOffset, 0x0352DB)
+    Harness.assertEqual(text, "Dark Lord:Sieht\nso aa, als w\195\164rst\ndu jetzt st\195\164rker.")
+    Harness.assertEqual(nextOffset, 0x0352F8) -- one past the real terminator byte
   end
 )
 

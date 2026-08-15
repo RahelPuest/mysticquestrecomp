@@ -1470,6 +1470,24 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   `haltUndecoded` 218->221. 462/462 tests pass (scan tooling only, no
   production runtime code touched).
 
+- **2026-08-15, task #150 continued ("na dann entschluessel mal")**: a
+  purely STATIC technique (`tools/rom/dump_strings.py --gaps`, this
+  project's own tool from the original digraph investigation) found
+  the classifier's error-byte set splits into real structural/opcode
+  bytes (`0x04`/`0x0F`/`0xF9`, bleeding across opcode/text boundaries
+  in the naive static scan, not real glyph gaps -- needs real opcode
+  disassembly, left open) and one genuine, closeable text byte:
+  `SPEAKER_COLON_BYTE = 0x2C` (a dialogue-box "SpeakerName:" tag
+  delimiter, DIFFERENT from the pre-existing `COLON_BYTE`/`0xF5`),
+  confirmed via 20 independent named speakers plus 4 grammatically
+  perfect real German sentence decodes. Wired into `TextDecoder.lua`;
+  463/463 tests pass. Honest note: the corpus scan's own aggregate
+  numbers did NOT move from this fix (most affected scripts already
+  fail on a different, more common byte earlier in the same script) --
+  real, verified, permanent progress regardless, reported plainly
+  rather than oversold. Task #150 stays open for the remaining
+  higher-frequency bytes and the structural opcode question.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
