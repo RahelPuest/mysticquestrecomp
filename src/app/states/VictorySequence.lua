@@ -428,13 +428,44 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
         return 0, true
       end
 
-      -- HONEST SCOPE: every OTHER real control code (0x12/0x13/0x15-
-      -- 0x19/0x1B-0x1F, and 0x14/0x15 at any OTHER real cursor than the
-      -- one live-confirmed above) is NOT yet live-traced for its own
-      -- real pacing/bridge/pin behavior -- defaults to the old, simple
-      -- immediate single-byte consume (0 extra bytes, no pin) rather
-      -- than guessing whether it also needs either treatment (see
-      -- StandardScriptHandlers.tick's own doc comment).
+      if byte == 0x12 and cursor == 0x6206 then
+        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct continuation).
+        -- Full disassembly of `$3502` (0x12's own real handler): `CALL
+        -- $1ED1 / POP HL / LD A,C / OR A / RET NZ / LD B,4 / CALL $3C74
+        -- / RET` -- `$1ED1` is a real bank-2 function-call trampoline
+        -- (`PUSH AF / LD A,0x01 / JP $1F06` -- the SAME dispatch stub
+        -- family this project has repeatedly found and deferred
+        -- tracing into elsewhere) whose real C-register result decides
+        -- whether to bridge into `0xFF` sub-opcode 4 at all. Once
+        -- bridged, `$350F` (sub-opcode 4's own real per-tick body:
+        -- `CALL $1ED1 / POP HL / LD A,C / AND A / RET Z / CALL $36D0 /
+        -- RET`) re-checks the SAME real bank-2 condition every real
+        -- tick, halting (real `RET Z`) until it finally goes nonzero,
+        -- THEN unconditionally resuming as opcode `0x04` via `$36D0`
+        -- (matching the `0x1A`/`0x14` pattern above, not the
+        -- `$3627`-style genuine per-occurrence conditional `0x10` has).
+        -- A live tick-count trace (courtyard_boss_defeated()) found
+        -- this SPECIFIC real occurrence paces for exactly 156 real
+        -- ticks before releasing -- like `CONTROL_CODE_0X11_REAL_TICKS`,
+        -- an empirically-observed real constant for THIS occurrence,
+        -- not a claim about bank 2's own internal computation (not
+        -- traced -- a real, well-scoped, deferred follow-up, matching
+        -- this project's own established precedent for `$1F06`-
+        -- dispatched bank-2 calls elsewhere).
+        if controlCodeState.ticksSeen < 156 then
+          return false
+        end
+        controlCodeState.lastByte = nil
+        return 0, true
+      end
+
+      -- HONEST SCOPE: every OTHER real control code (0x13/0x15-0x19/
+      -- 0x1B-0x1F, and 0x10/0x12/0x14/0x15 at any OTHER real cursor
+      -- than the ones live-confirmed above) is NOT yet live-traced for
+      -- its own real pacing/bridge/pin behavior -- defaults to the
+      -- old, simple immediate single-byte consume (0 extra bytes, no
+      -- pin) rather than guessing whether it also needs either
+      -- treatment (see StandardScriptHandlers.tick's own doc comment).
       controlCodeState.lastByte = nil
       return 0
     end,

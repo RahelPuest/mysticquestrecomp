@@ -9076,3 +9076,49 @@ regression test updated to the new, further, honestly-hedged checkpoint
 (`bank=14 cursor=0x6208`) with the "permanent ceiling" language removed
 from its doc comment -- replaced with the corrected understanding above.
 462/462 tests pass.
+
+## 2026-08-15, task #146, direct continuation ("ja weiter rein"): control byte 0x12 disassembled and correctly wired, but the observable cursor endpoint didn't move -- a real, honest report of diminishing returns
+
+Disassembled `$3502` (control byte `0x12`'s own real handler) and
+`$1ED1`/`$350F`: `0x12` conditionally bridges into `0xFF` sub-opcode 4
+via `$1ED1` (a real bank-2 function-call trampoline -- `PUSH AF / LD
+A,0x01 / JP $1F06`, the SAME dispatch-stub family this project has
+repeatedly found and deferred tracing into for other opcodes). Once
+bridged, `$350F` re-checks the same real bank-2 condition every real
+tick, halting until it clears, then unconditionally resuming as opcode
+`0x04` via `$36D0` (same pattern as `0x1A`/`0x14`, not `0x10`'s
+per-occurrence conditional). A live tick-count trace found this
+SPECIFIC real occurrence (cursor `0x6206`) paces for exactly 156 real
+ticks -- wired the same way `CONTROL_CODE_0X11_REAL_TICKS` was, an
+empirically-observed real constant for this occurrence, not a claim
+about bank 2's own internal computation (not traced -- deferred, same
+precedent as other `$1F06`-dispatched calls this project has
+repeatedly left alone).
+
+**Verified correct, but the interpreter's observable stopping cursor
+is UNCHANGED (`0x6208`)**: the real byte right after `0x12` releases
+(`0x1B`, cursor `0x6207`) is ALSO a real control code -- per the
+already-known `$38F6` table census, it "bridges into `0xFF` sub-opcode
+2 (the real line-clear/blank routine)". This project's classifier
+correctly recognizes it as a control code now (since `0x12`'s own fix
+makes the interpreter correctly resume classifying at `0x6207` instead
+of misdispatching it as a fresh top-level opcode) but has no specific
+handling for it yet, so it falls to the honest "consume, no pin"
+default -- which happens to consume the exact same net byte count
+(1 byte) as the OLD, wrong top-level-opcode-`0x1B` dispatch did,
+landing on the identical cursor `0x6208` by coincidence. The `0x12` fix
+is real, live-confirmed, and correctly wired (485 real ticks now
+elapse instead of 330, matching the added 156-tick pace) -- it just
+doesn't move the OBSERVABLE endpoint yet, since `0x1B` needs the same
+treatment next.
+
+**Honest assessment**: this text run sits in a dense cluster of
+several real control codes close together (likely marking a real
+formatting-heavy transition near the end of this dialogue box) -- each
+additional one needs its own live trace + disassembly cycle, with
+visibly diminishing returns per additional cycle at this point (real,
+verified work with no forward movement in the observable checkpoint
+this round). 462/462 tests pass; the test's own final cursor assertion
+(`0x6208`) is unchanged and still accurate. Real, well-scoped next
+step: disassemble `0x1B`'s own real handler (`$35C1`/`$3648`) the same
+way, live-trace its pacing if any, and continue the same pattern.

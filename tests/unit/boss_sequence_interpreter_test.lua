@@ -327,6 +327,17 @@ Harness.testIfAvailable(
           controlCodeState.lastByte = nil
           return 0, true
         end
+        -- Real control byte 0x12 at the ONE live-confirmed real cursor
+        -- (0x6206) bridges into 0xFF sub-opcode 4 (real bank-2-
+        -- delegated conditional halt, $1ED1/$350F) -- live-traced to
+        -- pace for exactly 156 real ticks before unconditionally
+        -- resuming as opcode 0x04 (see the production wiring's own doc
+        -- comment for the full real evidence).
+        if byte == 0x12 and cursor == 0x6206 then
+          if controlCodeState.ticksSeen < 156 then return false end
+          controlCodeState.lastByte = nil
+          return 0, true
+        end
         controlCodeState.lastByte = nil
         return 0
       end,
