@@ -31,6 +31,7 @@ local EnemySpeciesTable = require("src.import.EnemySpeciesTable")
 local ItemTable = require("src.import.ItemTable")
 local WeaponTable = require("src.import.WeaponTable")
 local NpcCatalog = require("src.import.NpcCatalog")
+local MusicDecoder = require("src.import.MusicDecoder")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -876,6 +877,52 @@ if profile.storyText then
     "found in dialogue text only, with NO live position ever captured for it " ..
     "(positionKnown=false, honestly labeled, not omitted). bossDefeats has NO confirmed link " ..
     "to enemySpeciesTable's own 11 numbered species rows -- shown standalone, not force-matched.")
+end
+
+----------------------------------------------------------------------
+-- 15. Music (MusicDecoder.lua, 2026-08-15, direct user request "schau
+-- dir mal das musik und sound system an und entschluessel es" ->
+-- "konsolidieren, dokumentieren und in die website einbauen") -- real
+-- Bank-15 sound-driver song table + per-channel event streams, decoded
+-- by actually walking the real ROM bytes (same module task #151's own
+-- future love.audio playback will build on), not hand-transcribed.
+-- See docs/reverse-engineering/rom-map.md's "Audio format -- DECODED"
+-- section for the full disassembly trail this module is built from.
+----------------------------------------------------------------------
+do
+  local songTable = MusicDecoder.loadSongTable(romData)
+  local MAX_EVENTS_PER_CHANNEL = 260 -- generous enough to capture one full real loop for most songs (see the real LOOP_DETECTED marker below)
+  local songs = {}
+  for i, channelOffsets in ipairs(songTable) do
+    local channels = {}
+    for ch = 1, 3 do
+      channels[ch] = MusicDecoder.decodeChannel(romData, channelOffsets[ch], MAX_EVENTS_PER_CHANNEL)
+    end
+    songs[i] = { index = i, channels = channels }
+  end
+  writeJs("music.js", "MUSIC", {
+    songCount = #songTable,
+    songTableFileOffset = MusicDecoder.SONG_TABLE_FILE_OFFSET,
+    freqTableFileOffset = MusicDecoder.FREQ_TABLE_FILE_OFFSET,
+    durationTableFileOffset = MusicDecoder.DURATION_TABLE_FILE_OFFSET,
+    songs = songs,
+  }, "Real Bank-15 sound-driver data: the real 30-song table (file " ..
+    string.format("%#x", MusicDecoder.SONG_TABLE_FILE_OFFSET) ..
+    ") plus each song's 3 real channel event streams, decoded by src/import/MusicDecoder.lua " ..
+    "(a direct Lua port of tools/rom/decode_music.py, the tool this format was originally found " ..
+    "and proven with -- see that file's own doc comment / rom-map.md's \"Audio format -- DECODED\" " ..
+    "section for the full disassembly trail). Event `type`s: NOTE (real note-on, `noteName`/" ..
+    "`durationFrames`/`regPair` all real, decoded values -- `regPair` is the literal GB hardware " ..
+    "register pair this event writes, `noteName` is a DERIVED convenience via the real GB " ..
+    "period formula, not itself a ROM finding), REST, NOTE_OFF, SET_OCTAVE/SHIFT_OCTAVE (real " ..
+    "octave-select commands), COMMAND (one of the 13 real driver commands -- `jumpTarget` on a " ..
+    "0xE1 COMMAND is the real loop-back target this decoder actually follows), LOOP_DETECTED " ..
+    "(the real stream returned to an already-visited position -- this IS the real song " ..
+    "repeating, not a decoder bug), STOP (real 0xFF hard-stop), EOF (ran past the ROM data this " ..
+    "exporter was given, only relevant near a bank boundary). NOT decoded: the auxiliary per-" ..
+    "frame vibrato/pitch-delta stream (real, disassembled, structurally confirmed, but a fine " ..
+    "modulation layer this decoder doesn't walk -- see rom-map.md); exact musical intent of " ..
+    "several commands beyond their real WRAM side effect.")
 end
 
 io.stderr:write("done.\n")

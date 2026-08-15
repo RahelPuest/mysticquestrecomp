@@ -14,6 +14,7 @@ const SECTIONS = [
   { id: "worldmap", icon: "🗺", label: "Weltkarte", group: "Welt" },
   { id: "tiles", icon: "◱", label: "Tile-Viewer", group: "Welt" },
   { id: "text", icon: "“”", label: "Text-Encoding", group: "Welt" },
+  { id: "music", icon: "♪", label: "Musik & Sound", group: "Welt" },
   { id: "monsters", icon: "👾", label: "Monster", group: "Katalog" },
   { id: "items", icon: "🗡", label: "Items & Waffen", group: "Katalog" },
   { id: "npcs", icon: "🧑", label: "NPCs", group: "Katalog" },
@@ -32,6 +33,7 @@ function countFor(id) {
     if (id === "items") return String(ITEMS.items.length + ITEMS.weapons.length);
     if (id === "npcs") return String(NPCS.length);
     if (id === "story") return String(STORY.bossDefeats.length + STORY.namedCharacters.length);
+    if (id === "music") return String(MUSIC.songCount);
   } catch (e) { /* data not loaded yet */ }
   return "";
 }

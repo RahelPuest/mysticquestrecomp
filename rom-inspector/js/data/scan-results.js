@@ -51,6 +51,10 @@ const SCAN_RESULTS = {
       "count": 7
     },
     {
+      "address": "0x0dbc",
+      "count": 4
+    },
+    {
       "address": "0x0d1b",
       "count": 4
     },
@@ -60,8 +64,8 @@ const SCAN_RESULTS = {
       "note": "Second confirmed sibling of the known-hard $02AB family (offset +1 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above. Directly confirmed reachable 2026-08-15: BossSequenceInterpreter's own real boss-defeat script lands here as its new, further, honest stopping point once the 0xF3 5-byte-release fix (task #126) is wired."
     },
     {
-      "address": "0x0dbc",
-      "count": 4
+      "address": "0x01b2",
+      "count": 3
     },
     {
       "address": "0x0d83",
@@ -73,10 +77,6 @@ const SCAN_RESULTS = {
     },
     {
       "address": "0x3a0d",
-      "count": 3
-    },
-    {
-      "address": "0x01b2",
       "count": 3
     }
   ],

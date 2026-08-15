@@ -55,6 +55,7 @@ require("tests.import.message_text_pointer_test")
 require("tests.import.tile_landing_position_test")
 require("tests.import.npc_catalog_test")
 require("tests.import.story_text_test")
+require("tests.import.music_decoder_test")
 require("tests.gameplay.boss_encounter_test")
 
 local Harness = require("tests.harness")

@@ -148,10 +148,15 @@ def decode_channel(data, start_file_offset, max_events=400):
     events = []
     octave_offset = 0  # real "c10b" WRAM cell this driver tracks -- byte stride into the 24-byte octave blocks
     pos = start_file_offset
+    visited = set()  # real position -> seen, to detect the real loop-back and stop cleanly instead of decoding forever
     for _ in range(max_events):
         if pos >= len(data):
             events.append({"type": "EOF"})
             break
+        if pos in visited:
+            events.append({"type": "LOOP_DETECTED", "atFileOffset": pos})
+            break
+        visited.add(pos)
         byte = data[pos]
         pos += 1
         if byte == 0xFF:
@@ -163,6 +168,18 @@ def decode_channel(data, start_file_offset, max_events=400):
                 events.append({"type": "COMMAND", "byte": byte, "note": "operand length not confirmed -- stopping cleanly, not guessing"})
                 break
             operand = data[pos:pos + operand_len]
+            # Real, disassembled JUMP semantics (opcode 0xE1): the
+            # 2-byte operand IS a real CPU address the stream pointer
+            # jumps to directly (the real loop-back mechanism songs use
+            # to repeat) -- honored here so a full transcript/playback
+            # follows the real repeating structure.
+            if byte == 0xE1:
+                target = operand[0] | (operand[1] << 8)
+                f = cpu_to_file(target)
+                events.append({"type": "COMMAND", "byte": byte, "name": COMMAND_NAMES.get(byte, "?"), "operand": operand.hex(), "jumpTarget": f})
+                if f is not None:
+                    pos = f
+                continue
             pos += operand_len
             events.append({"type": "COMMAND", "byte": byte, "name": COMMAND_NAMES.get(byte, "?"), "operand": operand.hex()})
             continue
@@ -217,7 +234,11 @@ def format_event(e):
     if t == "COMMAND":
         if "note" in e:
             return f"COMMAND      0x{e['byte']:02x} -- {e['note']}"
+        if e.get("jumpTarget") is not None:
+            return f"COMMAND      0x{e['byte']:02x} {e['name']:<18} operand={e['operand']} -> file {hex(e['jumpTarget'])}"
         return f"COMMAND      0x{e['byte']:02x} {e['name']:<18} operand={e['operand']}"
+    if t == "LOOP_DETECTED":
+        return f"LOOP_DETECTED (real stream returns to file {hex(e['atFileOffset'])} -- this IS the real song repeating, not a decoder bug)"
     if t == "STOP":
         return "STOP (real 0xFF)"
     if t == "EOF":

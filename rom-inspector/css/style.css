@@ -277,6 +277,7 @@ table.data-table td {
 }
 table.data-table tr:hover td { background: var(--bg-hover); }
 table.data-table td.addr, table.data-table td.num { font-family: var(--mono); color: var(--accent2); }
+table.data-table tr.ev-playing td { background: rgba(107,207,127,.18); }
 
 input[type=text], input[type=search], select, textarea {
   background: var(--bg-elevated);
