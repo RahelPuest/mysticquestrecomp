@@ -314,6 +314,10 @@ function BattleIntro:draw()
   local hidden, walkEnd, settleEnd, typingStart, typingEnd, boxEnd = self:phaseBounds()
 
   if self.frame > hidden and self.playerSprite then
+    -- REVERTED (2026-08-15, same day, see Field.lua's own matching
+    -- revert note): this walk-in leads straight into `startRoom`'s own
+    -- courtyard fight, calibrated the same OLD (unshifted) way -- the
+    -- real OAM-vs-WRAM offset is real, but not safe to apply here.
     self.playerSprite:draw(self.player.x, self.player.y, false)
   end
 

@@ -116,6 +116,18 @@ const WRAM_MAP = [
     description: "A separate register for the real 0xFF sub-dispatch table (11 records, file $3BAC)."
   },
   {
+    address: "$D79D / $D7A2",
+    name: "Name-insertion string source slots",
+    status: "PARTIALLY VERIFIED",
+    description: "2026-08-15: two distinct real WRAM string-pointer slots, each cached into $D8AA/$D8AB by control bytes 0x14/0x15 respectively (opcode 0x04's own $38F6 control-code table), then bridged via $3C74 into the 0xFF sub-table's sub-opcode 1 -- very likely the real mechanism behind the long-flagged, never-decoded '[0x14]'-style speaker/name tag seen in the boss-defeat script's own text. The link from these two slots back to NameEntry.lua's own real save-format bytes has not yet been traced."
+  },
+  {
+    address: "$D853",
+    name: "Control-code pacing-active flag (bit 7)",
+    status: "VERIFIED",
+    description: "2026-08-15, live mGBA write-watchpoint trace: bit 7 is SET one real frame after opcode 0x04's classifier enters a real control-code byte (confirmed for byte 0x11), stays SET for a real, fixed 9-frame pacing window, then CLEARS on exactly the same real frame the persistent cursor ($D8B6/$D8B7) advances past that control byte. Control byte 0x11's own real handler ($34F4) checks this bit directly (RET NZ = still pacing, halt; bit clear = fall through to the real $36D0 'consume one more byte, re-enter classifier' bridge). Confirmed as a real, live-observed pacing signal, not a guess -- now implemented byte-exact in StandardScriptHandlers.tick's ctx.onControlCode contract."
+  },
+  {
     address: "$D86F",
     name: "Fade-active gate bit 1",
     status: "PARTIALLY VERIFIED",

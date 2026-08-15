@@ -147,14 +147,90 @@ TextDecoder.QUESTION_BYTE = 0xF4
 -- give-item template, colon before a following item-name insertion).
 TextDecoder.COLON_BYTE = 0xF5
 
--- HYPOTHESIS, not yet VERIFIED (found same pass as the above): 0xF6
--- appears exactly where the already-known real HUD text's numeric
--- values must go ("LP [F6] MP [F6]" matching the live HUD's own real
--- "LP <n> MP <n>" display) -- i.e. this reads as a real "insert a
--- numeric value here" template/substitution opcode, NOT a printable
--- character at all. Deliberately NOT added to decodeByte (which would
--- wrongly render it as some literal glyph) -- flagged here so a future
--- pass treats it as a control byte, not text, once traced further.
+-- HYPOTHESIS-status control-byte family, bytes 0x10-0x1F (2026-08-15,
+-- see docs/reverse-engineering/events.md's "the $38F6 table decoded"
+-- section for the full disassembly trail). Found from the OPPOSITE
+-- direction of every other constant in this file: not from a real text-
+-- corpus scan, but from disassembling the real ROM's own script-
+-- interpreter opcode 0x04 handler ($333D), which reads the byte right
+-- after itself and dispatches via a real jump table at $38F6 (indexed
+-- by `(byte - 0x10)`) -- i.e. these are real, decoded CONTROL codes a
+-- SCRIPT's own embedded text can contain, not (necessarily) bytes that
+-- appear in the static message-text blobs `TextDecoder.decodeString`
+-- normally reads. NOT wired into the normal decode path (this project's
+-- own "2+ independent occurrences" VERIFIED bar isn't cleared for most
+-- of these -- only 0x1A already was, independently, from the completely
+-- separate text-corpus side, a real decisive cross-validation that this
+-- table is correctly understood). Real, disassembled conclusions per
+-- byte, not guesses:
+--   0x10 -- sets a real mode register ($D84A=6), hands off to the
+--           already-documented "0xFF sub-table" system (multi-line
+--           textbox mode switch).
+--   0x11 -- a real conditional-halt bridge (tests WRAM $D853 bit 7 --
+--           the same real cell the 0xFF sub-table's own "release
+--           point" sub-opcode already reads).
+--   0x12 -- reschedules into the 0xFF sub-table's own sub-opcode 4 (a
+--           real conditional halt via a bank-2 call).
+--   0x13 -- a real, substantial 164-byte WRAM block copy ($D4A7->
+--           $D56E) plus a smaller $C0A0->$D862 copy -- not yet further
+--           characterized.
+--   0x14, 0x15 -- the real NAME-INSERTION mechanism: each sets a real
+--           WRAM pointer ($D79D for 0x14, $D7A2 for 0x15 -- two
+--           different real string slots, plausibly hero/heroine or two
+--           distinct stored strings) into $D8AA/$D8AB, then bridges
+--           into the 0xFF sub-table. Very likely the real mechanism
+--           behind the long-flagged, never-decoded "[0x14]-style
+--           speaker tag" this project's own VictorySequence.lua doc
+--           comments have referenced since early in this project's
+--           history -- the exact real string SOURCE ($D79D/$D7A2's own
+--           relationship to NameEntry.lua's real save format) is not
+--           yet traced.
+--   0x16-0x19 -- real, structured 0x0000 (unused/reserved) table
+--           entries -- deliberately not real control codes.
+--   0x1A -- NEWLINE_BYTE, see above -- independently, decisively
+--           cross-validated: this byte's own real handler ($35B0) does
+--           real newline/line-advance work, matching this file's own
+--           completely separately-derived text-corpus finding exactly.
+--   0x1B -- sets up the real text-cursor position pair ($D8B2-$D8B5)
+--           from a real WRAM base position, then bridges into the 0xFF
+--           sub-table's own line-clear routine.
+--   0x1C-0x1F -- a real up/down/left/right TEXT-CURSOR MOVE family --
+--           these are the EXACT SAME real code (file $35C6-$35E3) this
+--           project's own earlier, separate "0xFF sub-table"
+--           investigation already fully disassembled and named a
+--           "cursor-delta dispatcher", now confirmed reachable directly
+--           through embedded script text as well.
+-- Real jump-table targets (kept here for anyone continuing this, not
+-- otherwise used by this module): 0x10=$34E7, 0x11=$34F4, 0x12=$3502,
+-- 0x13=$351A, 0x14=$357D, 0x15=$3582, 0x1A=$35B0, 0x1B=$35C1,
+-- 0x1C=$35C6, 0x1D=$35CD, 0x1E=$35D4, 0x1F=$35DD.
+
+-- STRENGTHENED (2026-08-15, quick-win follow-up): the original finding
+-- was a single live-VRAM observation ("LP [F6] MP [F6]" matching the
+-- live HUD's own "LP <n> MP <n>" display), never independently cross-
+-- checked a second way. Found a real, STATIC ROM string containing the
+-- exact same pattern this pass -- file offset 0xBE10, decodes cleanly
+-- (via this exact module) to "LP   [F6]   MP   [F6]Naechster Level"
+-- (a real German status-menu screen: "Kraft"/"Reife"/"Wille" stat
+-- labels immediately precede it, "Naechster Level" = "Next Level"
+-- immediately follows) -- a second, genuinely independent confirmation
+-- of the exact same real-world meaning, this time from actual ROM text
+-- data rather than a live screen read. A SECOND, unrelated real
+-- occurrence also found in the on-screen name-entry keyboard's own
+-- static layout string (file ~0xBE6x, immediately before the digit
+-- row "01234...") -- a real use in a completely different UI screen.
+-- Also cross-checked against `rom_profiles.lua`'s own `font
+-- .extraGlyphs` doc comment: the SAME linear tile-offset formula
+-- already used for `.`/`-`/`!`/`?`/`:` predicts 0xF6's own real font
+-- tile as file `0x22F60` -- directly decoded, and it's a plain
+-- diagonal line, NOT a punctuation glyph -- ruling out "printable
+-- character this project just hasn't assigned a name yet" as an
+-- alternative explanation. Still reads as a real "insert a numeric
+-- value here" template/substitution opcode, NOT a printable character
+-- -- deliberately NOT added to decodeByte (would wrongly render it as
+-- a literal glyph). What remains genuinely open: which CPU code reads
+-- it and how the substitution actually happens (no live trace attempted
+-- yet) -- the WHAT is now solidly evidenced, the HOW is still open.
 
 -- VERIFIED (2026-08-09): the real "documented two-character dialogue-
 -- compression scheme" mentioned (as an unconfirmed reference-project
@@ -284,6 +360,21 @@ TextDecoder.DIGRAPH_PARTIAL = {
   [0x47] = "ar", -- "W[47]te...ier"="Warte hier", "Bog[47]d"="Bogard" (a real character name, 20+ identical occurrences)
   [0x4C] = " b", -- "Zyklop[4C]ezwungen"/"Garuda[4C]ezwungen"/"Chimä[4F][4C]ezwungen"="...bezwungen" (3 different monster names, space-inclusive)
   [0x5B] = "a", -- "Juli[5B]"="Julia" (a real character name, 25+ identical occurrences) -- single-letter code, same shape as the already-flagged 0x43="n" lead
+  -- NEWLY FOUND CONTRADICTION (2026-08-15, checked while hunting
+  -- secondRoom's real "Amanda" dialogue -- direct user report "es muss
+  -- ja ganz klar ausrüstung heißen"): this byte ALSO wants "us" (not
+  -- "a") in every one of 5 independent real words this pass found --
+  -- "A[5B]rüstung"="Ausrüstung" (equipment), "Da[8E][5B]"="Daraus"
+  -- (from that), "[8E][5B]!"="raus!" (get out, Amanda's own line),
+  -- "gr[8E][5B]a[82]r"="grausamer" (crueler), "gr[8E][5B]am!"=
+  -- "grausam!" (terrible!) -- all clean, all real, all contradict the
+  -- "a" reading above just as directly as "Julia" demands it. Same
+  -- genuinely-contradictory shape as `0x82` below (not force-picked a
+  -- side) -- the default here stays "a" (unchanged, still correct for
+  -- "Julia" and any other caller of this shared decoder), but any
+  -- HAND-transcribed string built from bytes matching one of the 5
+  -- "us" words above should read it as "us" locally, not call
+  -- `TextDecoder.decodeString` and trust the default blindly.
   [0x65] = " h", -- "Sie[65]abe[25]das"="Sie haben das", "W[47]te[65]ier"="Warte hier" (space-inclusive, same shape as 0x3A/0x25)
   [0x6E] = "mm", -- "Willko[6E]en"="Willkommen" (x2), "entko[6E]en"="entkommen", "Ko[6E][65]ier[3F]r"="Komm hierher"
   [0x88] = "Da", -- "[88]rk Lord"="Dark Lord" (10+ identical occurrences) -- first confirmed CAPITALIZED 2-letter code, a proper noun/title
@@ -604,6 +695,22 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- "hat" (x2), "halte", "festgehalten", "verhalf", "Spitzhacke"
   -- (pickaxe), "geschaffen", "Charakter", "Unterhaltung", "schaffe",
   -- "geschah", "Chance".
+  -- NOT added here (2026-08-15, checked while hunting secondRoom's real
+  -- characterB/"Amanda" dialogue): `0x82` reads cleanly as "me" in
+  -- every occurrence THIS pass's own `dump_strings.py --gaps` scan
+  -- happened to look at ("meinem"/"meinen" in Amanda's own "Bruder"
+  -- lines, "namens", "kamen", "Samen", "Baumes", ...) -- but this byte
+  -- was ALREADY investigated and left deliberately unmapped (see
+  -- text.md's 2026-08-12 entries): it is genuinely CONTRADICTORY
+  -- across ITS OWN occurrences elsewhere in the ROM (wants "e" in one
+  -- word, "ute" in another, "me" in a third). This pass's own evidence
+  -- doesn't overturn that -- it only sampled the dialogue region this
+  -- specific hunt touched, not the full ROM the original investigation
+  -- covered. Left unmapped here on purpose; the one place this pass
+  -- needed a reading (`characterB`'s own dialogue, rom_profiles.lua)
+  -- resolves it LOCALLY by hand for that one hand-transcribed string,
+  -- same as how that whole field is already sourced -- not by
+  -- overriding this shared, global table.
 }
 
 -- A real, now better-understood side-finding from this third round:

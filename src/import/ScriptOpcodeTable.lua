@@ -1301,6 +1301,55 @@ ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CA = 0x3921
 -- unusual real shape: peeks 2 bytes without consuming them, gates on
 -- WRAM $D499, and re-reads the SAME 2 bytes as the next opcode once
 -- clear).
+--
+-- **`0xF3`'s own real release condition FULLY DECODED, 2026-08-15**
+-- (direct continuation of the palette-fade-family investigation --
+-- `0xF3`'s own handler unconditionally calls a real `$1ED7` selector
+-- `0x10` dispatch EVERY invocation, gated or not, BEFORE its own
+-- `$D499==0` check): selector `0x10`'s own real target, `$414C`, is
+-- ANOTHER real `$D499`-indexed jump table (same `$2B70` shape as
+-- opcode `0xBA`'s own already-documented `$0EB2`), table base `$4158`,
+-- cross-validated the SAME way the outer `$1ED7` table itself was
+-- (matching the already-known selector `0x07` -> `$50AC` damage-
+-- formula mapping before trusting a new result). Exactly 6 real
+-- entries (index 6+ reads into unrelated code, confirmed by nonsense
+-- target addresses) -- a real, finite 6-phase state machine sharing
+-- `$D499` as a phase counter, DIFFERENT semantics than the palette-
+-- fade opcodes' own 0-10 outer-pacing use of the SAME cell (same
+-- "one real hardware byte, several unrelated real consumers,
+-- sequenced not concurrent" pattern already established for `0xFB`/
+-- `0xBF`/`0xBA`):
+--   phase 0 ($41CA): `$D49A=0`, `$D499++` (0->1), unconditional.
+--   phase 1 ($4477): checks the REAL, ALREADY-MODELED dual gate
+--     `$C8E0`/`$CEE8` (the SAME gate `0xFC`/`0xFD`/`0xE8`-`0xEB` use --
+--     see `ctx.isTriggerEventGateClear`) -- only `$D499++` (1->2) once
+--     BOTH cells read 0; otherwise returns without incrementing (real
+--     halt, re-dispatches).
+--   phase 2 ($4387): calls `$26DC` (the ALREADY-KNOWN real transition-
+--     dispatch entry, see rom-map.md's own "`$04138→$02B70→$04395→
+--     $026DC`" chain) and `$04A4`, then `$D499++` (2->3) unconditional.
+--   phase 3 (`$4477` again): the SAME dual-gate check as phase 1,
+--     `$D499++` (3->4) once clear.
+--   phase 4 ($43EE): real OAM/sprite-position work (calls `$0375`/
+--     `$44A5`/`$28C2`/`$289B`/`$28AA`, several already-known real
+--     helpers from the actor-readiness family), then `$D499++` (4->5)
+--     unconditional.
+--   phase 5 ($448C): final real cleanup call, then `$D499=0`
+--     (unconditional reset) -- this SAME call's own caller-side check
+--     (`$D499==0`, right after `$1ED7` returns) now succeeds
+--     immediately, releasing via `CALL $3727` on this exact tick.
+-- Crucially for cursor tracking: NONE of these 6 phases ever touch the
+-- real script-stream HL (it's cached into `$C0B4`/`$C0B5` by `$1ED7`'s
+-- own prologue and restored verbatim in its epilogue, regardless of
+-- what any individual phase does to its own local HL) -- so this whole
+-- state machine is "script-stream-inert," just real per-frame pacing
+-- plus real (currently unmodeled, cosmetic) OAM/transition side
+-- effects, matching the same "paced correctly, cosmetic writes left
+-- optional" precedent as `0xFB`/`0xBF`/`0xBC`/`0xBD`/`0xBE`. See
+-- `StandardScriptHandlers.paletteFadeCompletionGate`'s own doc comment
+-- for the Lua port (wired for `0xF3` specifically -- `0xF4`'s own
+-- selector, `0x0F`, remains untraced, so it keeps the old, honestly-
+-- unwired `ctx.isPeekGateClear` default).
 ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3 = 0x11CE
 ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F4 = 0x11B7
 
@@ -1460,46 +1509,61 @@ ScriptOpcodeTable.ACTOR_SLOT_POSITION_OR_SKIP_HANDLER_ADDRESS_99 = 0x1663
 -- complete real disassembly.
 ScriptOpcodeTable.TILE_CURSOR_SET_HANDLER_ADDRESS_EF = 0x0E7F
 
--- `0xBD` ($1046) -- TRACED, DELIBERATELY NOT WIRED, 2026-08-14 (same
--- consolidation pass as `0x88`/`0x89` above): real disassembly
--- confirms `0xBD` is a SECOND member of the SAME already-known-hard
--- palette-fade family as `0xBC` (just above) -- `0xBD`'s own handler
--- computes an index from `$D499`/`$D49A`, reads TWO real shared
--- lookup tables (`$101A`/`$1030`, real palette-gradient DATA, not yet
--- decoded to an exact fade curve) and writes the result into the SAME
--- real pending-palette-write cell (`$C0AA`-`$C0AC`) OR real WRAM
--- `$D3A3`, chosen by a real `$D3A0==0x7E` mode check, then calls a
--- further real leaf (`$1142`, not traced this pass). Genuinely deeper
--- than `0x88`/`0x89` -- left deliberately unwired rather than forcing
--- an incomplete model, matching this project's own established
--- handling of `0xBC` (no constant assigned here either, same reason:
--- nothing to wire it to yet).
+-- `0xBD` ($1046) / `0xBC` ($10DC) / `0xBE` ($10A7) -- the palette-fade
+-- family. TRACED, DELIBERATELY LEFT UNWIRED 2026-08-14 (real disassembly
+-- confirmed each reads real `$D499`/`$D49A`, indexes into real palette-
+-- gradient DATA tables `$101A`/`$1030`/`$107B`/`$1091`, and writes the
+-- result into the real pending-palette-write cell `$C0AA`-`$C0AC` or
+-- WRAM `$D3A3` via a `$D3A0==0x7E` mode check, before calling a further
+-- real leaf `$1142` -- deemed "genuinely known-hard... this project
+-- doesn't simulate live palette-fade WRAM state" and left unwired).
 --
--- CORRECTED 2026-08-14, same day (whole-corpus scan, `$10A7`
--- investigation): this comment previously also named `0xBF` (`$0FE0`)
--- as a member of this same family -- WRONG, self-caught while
--- investigating a genuinely new sibling below. `0xBF`'s real, ACTUAL
--- closure (see `COLOR_PULSE_EFFECT_HANDLER_ADDRESS_BF` above) is a
--- completely unrelated, simple periodic-counter cosmetic effect with
--- no `$D499`/`$D49A` involvement at all -- the shared "BC/BD/BF" MQ
--- opcode numbering is coincidental, not evidence of a shared real
--- mechanism. A genuine THIRD sibling was found instead: `0xBE`
--- (`$10A7`, see below).
+-- **REVERSED, 2026-08-15** (direct continuation of the boss-defeat
+-- cursor-desync investigation -- `BossSequenceInterpreter`'s own
+-- shadow run reaches real cursor `0x61d8` and stops HONESTLY on `0xBD`,
+-- the immediate next real, live-confirmed boundary): the 2026-08-14
+-- assessment above was too pessimistic FOR CURSOR-TRACKING PURPOSES.
+-- `$1142` -- previously "not traced" -- is now fully disassembled and
+-- turns out to be a small, self-contained, completely real 66-tick
+-- pacing gate, no different in kind from the control-byte-`0x11`
+-- pacing this same investigation already modeled:
+--   $1142: LD A,(0xD49A) / INC A / LD (0xD49A),A / CP 0x06 / RET C
+--          ; -- $D49A (inner) counts 1..5 -> RET C (halt, no $3727)
+--          LD A,0x00 / LD (0xD49A),A       ; on the 6th call: reset inner
+--          LD A,(0xD499) / INC A / LD (0xD499),A / CP 0x0B / RET C
+--          ; -- $D499 (outer) counts 1..10 -> RET C (halt, no $3727)
+--          LD A,0x00 / LD (0xD499),A       ; on the 11th outer step: reset
+--          CALL 0x3727                      ; RELEASE: fetch next real opcode
+--          RET
+-- i.e. a genuine 6x11=66-call halt (≈66 real frames at this project's
+-- established one-`step()`-per-real-frame cadence, matching the pacing
+-- shape of every other real per-frame-gated opcode this project has
+-- modeled -- not a guess). Crucially, all THREE opcodes read ZERO real
+-- operand bytes from the script stream (each pushes/pops HL around its
+-- own WRAM computation, never dereferences it) -- only the shared real
+-- `$D499`/`$D49A` cells drive the pacing length. Live byte-dump
+-- cross-check (file offset `0x3a1d7`-`0x3a1e5`, bank 14, the exact real
+-- boss-defeat script bytes this project's own interpreter is running):
+-- `c0 bd f3 0f 55 14 00 bc f0 32 dd 04 10 14 ff` -- `0xBD` releasing
+-- resets `$D499` to 0 exactly where the VERY NEXT real opcode, `0xF3`
+-- (`PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3`, already wired -- see that
+-- opcode's own doc comment), gates on `$D499==0` -- a decisive,
+-- unplanned cross-validation that this reconstruction is correct, not
+-- coincidental.
 --
--- `0xBE` ($10A7) -- TRACED, DELIBERATELY NOT WIRED, 2026-08-14
--- (whole-corpus scan's own rank-5 blocker, 19 real scripts). Full
--- disassembly confirms a THIRD real member of this SAME known-hard
--- `$D499`/`$D49A` palette-fade family: computes an index (`((D499*2)
--- + (D49A & 1))`), reads a real shared lookup table (`$107B`), picks
--- `$D3A3` or `$C0AA` by the SAME real `$D3A0==0x7E` mode check, then
--- (a SECOND block, same opcode) computes a DIFFERENT index (`0x15 -
--- index`) gated by `BIT 0` of the just-written `$C0AB`, reads a
--- SECOND real table (`$1091`) and writes `$C0AB`/`$C0AC`, before
--- calling the SAME untraced leaf (`$1142`) as `0xBD`. Left
--- deliberately unwired for the exact same reason as `0xBC`/`0xBD`:
--- the real palette-gradient table DATA and the `$1142` leaf remain
--- undecoded, and this project doesn't simulate live palette-fade
--- WRAM state. No constant assigned (same precedent as `0xBC`/`0xBD`).
+-- What's STILL honestly not modeled: the real fade CURVE itself (which
+-- exact color the 4 lookup tables encode at each step) -- exactly the
+-- same "paced correctly, but the cosmetic write is an optional,
+-- unwired callback" shape already established for `0xFB`/`0xBF` (see
+-- `COLOR_PULSE_EFFECT_HANDLER_ADDRESS_BF`/`WAVE_OFFSET_EFFECT_HANDLER
+-- _ADDRESS_FB` above) -- this project has no renderer hook for a live
+-- palette fade yet, and doesn't need one just to track the script
+-- cursor correctly past these opcodes. See
+-- `StandardScriptHandlers.paletteFadeCycle`'s own doc comment for the
+-- Lua port.
+ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC = 0x10DC
+ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD = 0x1046
+ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BE = 0x10A7
 
 -- `0x7A`/`0x7B` ($1570/$157C, added 2026-08-14, whole-corpus scan's
 -- own next real untouched blocker after the `$0E73` neighborhood): a

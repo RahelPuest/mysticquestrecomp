@@ -171,6 +171,29 @@ function love.load()
       ") -- falling back to the normal Boot flow")
   end
 
+  -- Dev/CI-only: MYSTICQUEST_CATALOG_DEMO=1 (2026-08-15, same reasoning/
+  -- pattern as MYSTICQUEST_ROOM_EXPLORER_DEMO above -- added to
+  -- screenshot-verify CatalogExplorer.lua, the new monster/item/NPC
+  -- catalog browser) skips the real Boot->TitleScreen->Field flow and
+  -- pushes a real CatalogExplorer directly.
+  if os.getenv("MYSTICQUEST_CATALOG_DEMO") == "1" then
+    local RomLocator = require("src.import.RomLocator")
+    local RomIdentity = require("src.import.RomIdentity")
+    local RomProfiles = require("src.import.rom_profiles")
+    local CatalogExplorer = require("src.app.states.CatalogExplorer")
+    local data, pathOrReason = RomLocator.find()
+    if data then
+      local identity = RomIdentity.identify(data)
+      local profile = RomProfiles.match(identity)
+      if profile then
+        stack:push(CatalogExplorer.new(data, profile, input, overlay, stack))
+        return
+      end
+    end
+    print("MYSTICQUEST_CATALOG_DEMO: could not load a real ROM (" .. tostring(pathOrReason) ..
+      ") -- falling back to the normal Boot flow")
+  end
+
   stack:push(Boot.new(stack, input, overlay))
 end
 

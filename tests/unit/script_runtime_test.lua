@@ -43,14 +43,29 @@ Harness.test(
       onMessage = function(id) receivedMessage = id end,
     })
 
-    -- 1:tick 2:heal 3:message(4:operand) 5:skip(6:n=3) [7,8,9: poison,
-    -- skipped over] 10:tick again (the real landing spot: 7+3=10).
-    local stream = { 0x04, 0xC0, 0xFE, 42, 0x01, 3, 0x77, 0x77, 0x77, 0x04 }
+    -- REWRITTEN 2026-08-15 ("mach trotzdem, ändere den code"): opcode
+    -- 0x04 is a real per-byte text/control-code classifier ($333D), not
+    -- a simple no-operand tick -- see StandardScriptHandlers.tick's own
+    -- doc comment for the full disassembly trail. Each 0x04 here is
+    -- immediately followed by a real TERMINATOR byte (0x00), matching
+    -- the real ROM's own "empty text run" shape -- consumed instantly,
+    -- no pacing, no onTick call (that branch is dedicated, real-text-
+    -- character-only, and has its own tests in
+    -- standard_script_handlers_test.lua).
+    -- 1:tick 2:terminator 3:heal 4:message(5:operand) 6:skip(7:n=3)
+    -- [8,9,10: poison, skipped over] 11:tick again 12:terminator (the
+    -- real landing spot: 8+3=11).
+    local stream = { 0x04, 0x00, 0xC0, 0xFE, 42, 0x01, 3, 0x77, 0x77, 0x77, 0x04, 0x00 }
     runtime:run(stream, 1, 5)
 
     Harness.assertTrue(not runtime.stopped, "expected the run to complete without hitting the poison opcode")
     Harness.assertEqual(runtime.stepCount, 5)
-    Harness.assertEqual(tickCount, 2)
+    -- Real terminator branch never calls onTick (no real character
+    -- reveal happened) -- this test's own purpose (proving the whole
+    -- synthetic script runs happy-path through every registered
+    -- handler without stalling) is otherwise unaffected; 0x04's own
+    -- real text-pacing behavior has its own dedicated tests.
+    Harness.assertEqual(tickCount, 0)
     Harness.assertEqual(receivedMessage, 42)
     Harness.assertEqual(stats.curLP, stats.maxLP) -- real heal-to-max side effect
   end)

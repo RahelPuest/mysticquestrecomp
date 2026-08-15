@@ -62,6 +62,54 @@ Player.__index = Player
 -- VERIFIED (see module doc comment above): 1 px per fixed step.
 Player.PIXELS_PER_STEP = 1
 
+-- REAL, general Game Boy hardware fact (2026-08-15, direct follow-up
+-- to a user-reported spawn-position bug): a live dump of the real OAM
+-- table showed the player's own WRAM position (`$C244`/`$C245`, this
+-- module's own `x`/`y`) copies DIRECTLY into hardware OAM with no
+-- shift applied anywhere in this ROM. But real Game Boy hardware
+-- ALWAYS encodes an OAM sprite's Y/X as `(true screen top-left) + (8,
+-- 16)` -- fixed PPU silicon behavior, not ROM-specific, unavoidable on
+-- real hardware. So `self.x`/`self.y` (this project's own collision-
+-- space coordinate, matching the real ROM's WRAM value byte-for-byte)
+-- is NOT the same thing as where the sprite actually appears on a real
+-- screen -- it's 8px right / 16px down from the true rendered
+-- position. Live-verified this exact relationship at 2 independent
+-- real transitions (thirdRoom's staircase and fourthRoom's own north
+-- exit) -- see docs/reverse-engineering/rom-map.md's own dated "Real
+-- hardware OAM-vs-WRAM sprite offset" section for the full trace.
+--
+-- HONEST SCOPE: only confirmed for the PLAYER's own entity slot
+-- (`EntityStructLayout.PLAYER_SLOT_INDEX_HYPOTHESIS = 4`). A live check
+-- of the courtyard boss's own entity slot at the same moment found NO
+-- other slot populated with a real Y/X pair at all (the enemy doesn't
+-- appear to use this same 20-slot struct's position fields the way the
+-- player does, or wasn't populated yet at that exact checkpoint) --
+-- genuinely unconfirmed for enemies/NPCs, NOT assumed to share this
+-- constant. `Field.lua`/`VictorySequence.lua` apply this ONLY to the
+-- player (and the player-attached attack-swing/thrust overlays, which
+-- must move with it) -- enemy/boss/NPC draw calls are deliberately
+-- left untouched.
+--
+-- Used ONLY at the final draw call, never for collision: `self.x`/
+-- `self.y` themselves stay the real, raw WRAM-matching value
+-- everywhere else in this project (movement, `TileWalkability`
+-- .canMoveTo`, every room's own `floorTileIds`/`grid`/`blockedRects`,
+-- all of which were built and tuned against this SAME raw convention)
+-- -- changing what those represent would risk silently breaking every
+-- already-verified collision boundary in the game. Purely a rendering
+-- correction.
+Player.RENDER_OFFSET_X = -8
+Player.RENDER_OFFSET_Y = -16
+
+--- Where the player's sprite should actually be DRAWN on a real
+-- screen -- see `RENDER_OFFSET_X`/`RENDER_OFFSET_Y`'s own doc comment.
+-- `self.x`/`self.y` themselves are deliberately left untouched (still
+-- the real, raw collision-space coordinate) -- call this only at the
+-- point of drawing, never for movement/collision.
+function Player:renderPosition()
+  return self.x + Player.RENDER_OFFSET_X, self.y + Player.RENDER_OFFSET_Y
+end
+
 -- NOT the real sprite size -- deliberately a generic single-tile
 -- fallback (see `Player.new`'s `width`/`height` params), used only when
 -- no real ROM profile sprite data is available (e.g. some unit tests

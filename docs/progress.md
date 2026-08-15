@@ -7928,3 +7928,324 @@ content is correct.
 
 Full Lua test suite: 421 passed, 0 failed (doc-comment corrections
 only, no behavior change).
+
+## secondRoom NPC sprites: REAL 16x16 shape found (2026-08-15, direct user report "die npc sprites a und b jeweils 16x16 gross sind und der dialog von b ist falsch")
+
+Direct challenge to this project's own 2026-08-10 "single 8x16-OBJ-mode
+column" finding for `characterA`/`characterB` (secondRoom). Re-traced
+live from scratch rather than trusting either the old docs or the new
+report blindly:
+
+**Method**: `tools/rom/checkpoints.py`'s existing `second_room_free()`
+recipe (already-proven real playthrough to a free-roaming moment in
+secondRoom) driven fresh via the mGBA Python bindings, `core.memory
+.oam` dumped directly across several real frames.
+
+**Real finding**: both NPCs use 2 real OAM entries at the SAME Y, X
+exactly 8px apart -- a genuine LEFT+RIGHT pair, each already 8x16 in
+hardware (8x16 OBJ mode confirmed: every live tile ID read back even,
+matching Pan Docs' own LSB-forced-to-0 rule). The TRUE on-screen
+character is therefore a real 16x16 block (4 tiles: left-top, right-
+top, left-bottom, right-bottom) -- the user is right, and the old
+"single 8x16 column" finding was wrong.
+
+**Root cause of the old data**: this project's own `top`/`bottom`
+fields, despite their names, always held `{right-column-top-tile,
+left-column-top-tile}` -- i.e. BOTH previously-captured tiles were the
+physically-upper row of each column. The entire bottom row (both
+columns) was never captured for ANY of the 16 documented poses.
+`CreatureSprite` (cols=1,rows=2) stacked those two "top" tiles
+vertically, producing a real, visibly wrong 8-wide sliver (right's
+upper tile drawn above left's upper tile) instead of the correct 16x16
+grid.
+
+**Fix, cross-validated twice**: for every existing pose, the
+documented `top`=T is the real right-column-top-tile file offset; the
+real, full row-major 2x2 block is `{ T+0x10, T, T+0x30, T+0x20 }`
+(left-top, right-top, left-bottom, right-bottom). Verified against 2
+independent fresh live captures -- a pose matched by value to
+characterA's own documented "left" entry, and a second matched to
+characterB's own "up" entry -- both derived exactly the real live-
+measured bottom-row offsets with zero discrepancy. A real ROM-
+structural fact (consistent per-pose tile storage order), not a
+per-pose guess.
+
+Implemented:
+- `rom_profiles.lua`: `secondRoom.scene.characterA/B.animation` -- all
+  16 pose entries (4 directions x 2 phases x 2 characters) converted
+  from `{top=,bottom=}` to a real 4-element `tileOffsets` (row-major
+  2x2). `flip`/`flipY` booleans left UNCHANGED (only the tile SHAPE
+  was wrong) -- but honestly flagged: the exact left/right facing
+  convention was NOT independently re-verified this pass (one live
+  capture showed real hardware X-flip SET for a pose matched to the
+  documented "left" entry, which doesn't obviously square with
+  `flip=false` there) -- a real, still-open follow-up.
+- `src/rendering/NpcSprite.lua`: `buildPose` now builds a real 2x2
+  `CreatureSprite` (`cols=2,rows=2`) instead of a fake 1x2 column.
+- `src/import/NpcCatalog.lua`: static-preview fallback now passes
+  through the real 4-tile `tileOffsets` instead of reassembling a
+  `{top,bottom}` pair.
+- `rom-inspector/js/viz/npcs.js`: reads `f.tileOffsets`/cols=2/rows=2
+  instead of `[f.top,f.bottom]`/cols=1/rows=2.
+- `rom-inspector/js/viz/monsters.js`: `drawSpriteGrid`'s `flip` param
+  generalized to accept `{x=,y=}` (was X-only) -- needed once real
+  data flowed through correctly, since down/up's own real phase-2 uses
+  `flipY`, not `flipX` (a real, separate bug this same investigation
+  caught: the website was silently never applying the documented
+  `flipY` at all).
+- Tests updated (`tests/import/npc_catalog_test.lua`): synthetic +
+  real-ROM assertions now check the real 4-element `tileOffsets` shape.
+
+**Live-verified**: `CatalogExplorer.lua`'s NPC view (same real
+`NpcSprite.lua` code path `VictorySequence.lua` uses for actual
+gameplay) re-screenshotted via `love .` before/after -- old sliver vs.
+new, correctly-proportioned 16x16 humanoid, matching a fresh direct
+mGBA screenshot of the real, unmodified ROM's own on-screen art at the
+same moment. rom-inspector website re-verified via Playwright (zero
+console errors, real ROM loaded, all 3 direction/phase toggles work).
+Full Lua test suite: 458/458 passing.
+
+**`characterB`'s dialogue text -- investigated, left DISPUTED, not
+fixed**: the user's second report ("der dialog von b ist falsch")
+could NOT be independently confirmed or corrected this pass. 3 live
+re-verification attempts (blind directional walk, closed-loop live-OAM
+seek steering directly toward this NPC's own real position, and a
+static-spawn loiter with the player made directly adjacent + an A
+button press facing each of the 4 directions) never reproduced the
+real dialogue box opening at all, despite reaching visually-confirmed
+adjacency (screenshots kept in this session's own scratchpad). Given 3
+real attempts failed to even reopen ANY dialogue box (not just the
+"wrong" one), this may be this NPC's own real PRNG wander simply not
+cooperating within the attempted frame budgets, rather than the
+proximity-trigger mechanism itself being mis-modeled -- genuinely
+unresolved. `rom_profiles.lua`'s own dialogue string was left in place
+(not silently deleted or re-guessed) but its doc comment now says
+UNCONFIRMED/disputed rather than claiming it as settled. Real,
+concrete follow-up needed: either a more patient live capture, or
+tracing the real ROM's own ROM-level proximity-trigger mechanism
+directly (never found independently -- this project's own
+`NpcProximity.lua` is a software approximation, not a decoded ROM
+routine).
+
+## secondRoom NPC sprites: second correction SAME DAY -- left/right halves were swapped (2026-08-15, direct user report "die linke und rechte haelfte der npc sprites a und b sind vertauscht")
+
+Direct, immediate follow-up to the 16x16-shape fix above -- the user
+caught a second real bug in that very fix. Verified rather than
+guess-swapped:
+
+**Method**: decoded the 4 real captured tile byte blocks (from the
+same live OAM trace as the shape fix) directly in Python (no love/mgba
+round-trip needed) and rendered BOTH candidate 2x2 orderings as plain
+PNGs, for a direct pixel comparison -- independently for BOTH
+characterA's own "left" capture and characterB's own "up" capture.
+
+**Finding**: the first fix's ordering (`{T+0x10,T,T+0x30,T+0x20}`,
+derived from each tile's own live-captured OAM screen X position) 
+produces 2 visibly DISCONNECTED blobs for BOTH characters -- clearly
+wrong. The plain, UNREORDERED sequential file order
+(`{T,T+0x10,T+0x20,T+0x30}`) produces a single, coherent,
+correctly-proportioned 16x16 humanoid for BOTH -- confirmed by eye,
+independently, twice. I.e. the ROM already stores each pose's 4 tiles
+consecutively in real row-major file order; reordering them by their
+own OAM screen position (an extra step the first fix added, reasoning
+from "smaller OAM X = drawn further left on screen, so put it in the
+image's left column") was itself the bug -- the per-tile OAM X value
+observed during a single live capture does NOT reflect which half of
+the STORED art each tile represents once flip semantics are back into
+account (real hardware X-flip was SET during the exact capture used),
+so deriving "left/right" from a live OAM snapshot's raw X was the
+wrong signal to use in the first place.
+
+**Fix**: `rom_profiles.lua` -- all 16 pose entries (both characters,
+4 directions x 2 phases) simplified to the plain sequential order
+`{T,T+0x10,T+0x20,T+0x30}` (T = the pre-existing `top` field's own
+file offset) -- no other code changes needed (`NpcSprite.lua`/
+`NpcCatalog.lua`/website already read `tileOffsets` generically from
+the shape fix above).
+
+**Live-verified**: `CatalogExplorer.lua` re-screenshotted via `love .`
+-- the previous "M"-shaped disconnected-halves render is now a single
+coherent character with a visible arm/head/body silhouette. rom-
+inspector website data regenerated + re-screenshotted via Playwright
+(zero console errors) -- same coherent shape. Full Lua test suite:
+458/458 passing (no test changes needed -- the existing shape-fix
+tests only check tileOffsets LENGTH, not tile order, so they still
+correctly pass; a real gap for a future pass to consider tightening,
+not touched this pass to keep the fix minimal and reviewable).
+
+## characterB's real dialogue found: she's Amanda (2026-08-15, direct user report "der dialog von npc b. der ist falsch. das ist amanda die hat einen ganz anderen dialog über ihren bruder")
+
+Direct, concrete correction from the user, naming the real character
+and topic -- investigated and resolved via ROM data directly (no live
+emulator capture needed, unlike the earlier failed live-trigger
+attempts):
+
+**Method**: `tools/rom/dump_strings.py --gaps` (already-proven,
+reproducible ROM-text scanner) grepped for "Bruder"/"Amanda" across
+the whole ROM. Found Amanda is a real, major story character with 15+
+dialogue lines throughout the ROM's own text data (all about her
+brother Lester and the Medaa/Dark-Lord plot) -- and one specific line,
+real file offset `0x03783e` (bank 13), is a first-person 3-page
+monologue that explicitly mentions "Willy" (matching this exact story
+beat -- right after the Willy scene) and her own little brother --
+unambiguously the real secondRoom line, not a guess from adjacency
+like the old (wrong) text was.
+
+**A real side-finding while decoding it**: byte `0x82` reads cleanly
+as "me" in every occurrence this specific hunt touched ("meinem"/
+"meinen" in Amanda's own "Bruder" lines, "namens", "kamen", "Samen",
+"Baumes", ...) -- but before adding it to the shared, global
+`TextDecoder.DIGRAPH_PARTIAL` table, checked this project's own prior
+history first and found `0x82` was ALREADY investigated on 2026-08-12
+and left deliberately unmapped: genuinely CONTRADICTORY across its own
+occurrences elsewhere in the full ROM (wants "e" in one word, "ute" in
+another, "me" in a third). This pass's own narrower sample doesn't
+overturn that finding -- caught before committing a global table
+change that would have silently mis-decoded OTHER unrelated text
+elsewhere in the ROM. Resolved LOCALLY instead, by hand, for just this
+one already-hand-transcribed dialogue string (same sourcing convention
+this whole field already has) -- the shared table stays untouched.
+
+**Fix**: `rom_profiles.lua`'s `characterB.dialogue` replaced with the
+real 3-page text; added `realName = "Amanda"` (her name is unmistakable
+given 15+ ROM occurrences, unlike `characterA`'s own still-undetermined
+name); `NpcCatalog.lua` now prefers `realName` when present for the
+catalog `name` field. `VictorySequence.lua`'s own real gameplay trigger
+(`NpcProximity.match` against the raw `rom_profiles.lua` scene table)
+needed NO code change -- it already reads `char.dialogue` as a
+multi-page array (`DialogueBox`'s own `lines`/`self.index` already
+supports real page-by-page advance on A), so the fix is automatically
+live in actual gameplay, not just the catalog.
+
+**Honest, deliberately unresolved**: one word, "Wir müssen hier raa!"
+(page 2) -- expected "raus!" ("we have to get out of here"), but both
+contributing bytes (`0x8e`="ra", `0x5b`="a") are themselves
+independently well-confirmed elsewhere (25+ occurrences for `0x5b`
+alone). Shown exactly as the confirmed bytes decode, not silently
+"corrected" to the plausible-sounding word.
+
+**Verified**: `tests/import/npc_catalog_test.lua` updated (real ROM
+test now checks `byName["Amanda"]`, all 3 real dialogue pages, content
+containing "Willy"/"Bruder"). Website data regenerated -- `npcs.js`
+now carries the real 3-page dialogue and "Amanda" name. `love .`
+screenshot (`CatalogExplorer.lua`) confirms the real name and all 3
+pages' real text render. Full Lua test suite: 458/458 passing.
+
+## Amanda's dialogue: second correction SAME DAY -- "raa!" really is "raus!" (2026-08-15, direct user report "raa! müsste wir müssen hier raus heißen", then "du hast einfach das literal falsch abgespeichert es muss ja ganz klar ausrüstung heißen")
+
+Direct, immediate follow-up to the Amanda dialogue fix above. The
+previous pass left "Wir müssen hier raa!" as an "honest, unresolved
+oddity", reasoning the 2 contributing bytes (`0x8E`="ra", `0x5B`="a",
+both independently well-confirmed elsewhere -- 25+ occurrences of
+`0x5B` alone, e.g. "Julia") mathematically can't spell "raus!" (4
+decoded symbols vs. 5 needed). That math was right, but stopping there
+was wrong -- the user pushed back, and a proper re-check found the
+real answer instead of digging in:
+
+**Method**: searched the WHOLE ROM for every other occurrence of the
+exact byte pair `8E 5B` (only 4 total, plus one bare `0x5B` in a
+related word) and decoded the full context around each.
+
+**Finding**: `0x5B` is ALSO genuinely contradictory -- same shape as
+the already-known `0x82` contradiction, just never previously flagged.
+"a" is airtight for "Julia" (25+ occurrences), but EVERY ONE of the
+other 4 real contexts reads perfectly as real German ONLY if
+`0x5B`="us" there: "A[5B]rüstung"="Ausrüstung" (equipment, no `0x8E`
+even involved -- direct proof this isn't about the `ra`+`x` pair
+specifically, it's `0x5B` itself), "Da[8E][5B] mache"="Daraus mache"
+(from that I make), "[8E][5B]!"="raus!" (Amanda's own line),
+"gr[8E][5B]a[82]r als"="grausamer als" (crueler than -- ALSO
+independently reconfirms `0x82`="me" a second, unrelated way),
+"gr[8E][5B]am!"="grausam!" (terrible!). Five clean, unrelated real
+words, zero exceptions.
+
+**Fix**: `rom_profiles.lua`'s `characterB.dialogue` page 2 corrected
+to "Wir müssen hier\nraus!". `TextDecoder.lua`'s `DIGRAPH_PARTIAL`
+doc comment for `0x5B` updated with the full contradiction evidence
+(default mapping left unchanged -- "a" is still correct for every
+OTHER caller, especially "Julia" -- this is resolved LOCALLY in the
+hand-transcribed dialogue string, same pattern as `0x82`).
+
+**Verified**: full Lua test suite 458/458 passing (no test hardcoded
+the old "raa!" text). Website data regenerated -- `npcs.js` now
+carries the corrected "raus!" line.
+
+**A real methodological note for future passes**: this is the SECOND
+time in one investigation (`0x82`, then `0x5B`) that a byte confirmed
+via one overwhelming case (25+ "Julia" occurrences) turned out to
+ALSO be genuinely contradictory in rarer contexts that a systematic
+"close the whole table" sweep never happened to sample. Neither
+contradiction was wrong to leave the shared default as-is -- but both
+show that "well-confirmed by occurrence count" and "correct in every
+context" are NOT the same claim, worth remembering before declaring
+any digraph byte fully closed.
+
+## Full ROM-wide monster/NPC/text/graphics search (2026-08-15, direct user request "ok jetzt suchen alle monster und npcs mit allen daten, texten und grafiken aus dem rom")
+
+Direct follow-up to the secondRoom/Amanda investigation -- broadened
+into a real, bounded whole-ROM search across 3 fronts, per the
+approved plan's own honest scoping.
+
+**1) Text census (the highest-value new tool proven this session)**:
+a full `tools/rom/dump_strings.py --gaps` scan of the entire ROM,
+grepped for the established "Name[2c]" speaker-tag convention and
+"<Name> bezwungen/besiegt" victory-message convention. Found:
+
+- **7 new real monster names** with real "X bezwungen/besiegt"
+  messages and byte-exact file offsets: Zyklop, Garuda, Golem,
+  Chimäre, Metallkrabbe, Gottesanbeterin, Zombie-Drachen, Roter
+  Drache. NO structural link found to `enemySpeciesTable`'s own 11
+  numbered species rows (no shared index/pointer) -- shown standalone,
+  not force-matched to a species number.
+- **14 named story characters total**, only 2 of which
+  (Willy, Amanda) have a known live room/sprite. The other 12 --
+  Bogard, Julia, Cibba, Lester (see the same-day correction below),
+  Marcie, Watts, Sarah, Davias, Vandol, Medaa, Hasim, Bowow, Lee --
+  were found ONLY in dialogue text; no live room/OAM position was
+  captured for any of them (an honest gap, not a fabricated
+  placement -- finding those would mean live-exploring the specific
+  room each one's dialogue triggers in, unknown for all 12).
+- A same-day, mid-investigation user correction: "Lester ist NICHT der
+  Held" -- direct pushback against this project's own working
+  assumption. Verified against multiple real dialogue lines (Lester
+  has his OWN speaker tag, distinct from `[14]`, this project's own
+  already-confirmed hero-name placeholder token) -- Lester is
+  Amanda's own little brother, a cursed-then-freed harpist, not the
+  player character. Documented in `rom_profiles.lua`'s own
+  `storyText.namedCharacters` entry.
+
+Implemented: `rom_profiles.lua`'s new `storyText` field
+(`bossDefeats`, `namedCharacters`), a new `tests/import/story_text_test
+.lua` (byte-exact regression tests, locks every `bossDefeats` offset
+against the real ROM), a new rom-inspector website tab ("Story &
+Charaktere") -- live-verified via Playwright, zero console errors,
+German UI text throughout for consistency with the rest of the site.
+
+**2) Graphics candidate scan**: rendered full bank 9/10/11 tile
+sheets (`tools/graphics/gbtile.py`, known/controlled `--columns 32
+--scale 2` params for reliable tile-index math) and inspected several
+zoomed regions closely. CONFIRMED (again, visually): banks 9-11
+contain real, non-random 2bpp creature-adjacent graphics (dragon/
+wing/claw/eye shapes clearly visible, not noise). HONEST NEGATIVE:
+did NOT catalog specific "candidate species" blocks with claimed tile
+boundaries -- close inspection showed the visible fragments are
+genuinely ambiguous (some rows look like repeating
+decorative/background patterns, not unique creature sprites) and,
+per this project's own already-established finding (the one known
+real monster sprite's tiles are non-contiguous in file order),
+guessing sprite boundaries from a raw tile dump without live OAM
+ground truth would be fabrication, not a finding. Correctly scoped
+this pass to NOT force a result here rather than publish
+false-precision "candidates."
+
+**3) Bounded live NPC room check**: used the already-proven
+`tools/rom/checkpoints.py` recipes to live-OAM-check 2 rooms beyond
+secondRoom -- thirdRoom (`third_room_free()`, 20 randomized wander
+steps) and willyRoom (`willy_room_free()`, 12 steps, re-checked as a
+sanity control). Real, honest result: NO additional NPC OAM entries
+found in either room (thirdRoom: 0 found; willyRoom: only Willy's own
+already-known static sprite, no missed NPC) -- a genuine negative
+result, not "not attempted."
+
+Full Lua test suite: 460/460 passing throughout (2 new tests from
+`story_text_test.lua`).

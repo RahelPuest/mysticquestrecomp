@@ -14,6 +14,10 @@ const SECTIONS = [
   { id: "worldmap", icon: "🗺", label: "Weltkarte", group: "Welt" },
   { id: "tiles", icon: "◱", label: "Tile-Viewer", group: "Welt" },
   { id: "text", icon: "“”", label: "Text-Encoding", group: "Welt" },
+  { id: "monsters", icon: "👾", label: "Monster", group: "Katalog" },
+  { id: "items", icon: "🗡", label: "Items & Waffen", group: "Katalog" },
+  { id: "npcs", icon: "🧑", label: "NPCs", group: "Katalog" },
+  { id: "story", icon: "📖", label: "Story & Charaktere", group: "Katalog" },
   { id: "questions", icon: "?", label: "Offene Fragen", group: "Status" },
 ];
 
@@ -24,6 +28,10 @@ function countFor(id) {
     if (id === "rooms") return String(ROOMS.length);
     if (id === "map") return String(ROOM_MAPS.length + ROOM_CATALOG.length);
     if (id === "worldmap") return "16×16 / 8×8";
+    if (id === "monsters") return String(MONSTERS.species.length);
+    if (id === "items") return String(ITEMS.items.length + ITEMS.weapons.length);
+    if (id === "npcs") return String(NPCS.length);
+    if (id === "story") return String(STORY.bossDefeats.length + STORY.namedCharacters.length);
   } catch (e) { /* data not loaded yet */ }
   return "";
 }

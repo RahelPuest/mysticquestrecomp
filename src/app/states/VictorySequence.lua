@@ -66,41 +66,101 @@
 -- bisherigen code so das es mit einem cmd switch gewechselt werden
 -- kann... alte hardcoded logig parallel drin lassen bis wir confident
 -- sind diese entfernen zu können"): when the real environment variable
--- `MYSTICQUEST_SCRIPT_INTERPRETER=1` is set, this state ALSO builds a
--- real `ScriptRuntime` (src/scripting/ScriptRuntime.lua) and runs it,
--- once, synchronously, against the REAL boss-defeat script's own real
--- ROM bytes (`profile.scriptPointerTable`'s verified address, bank 8) --
--- a genuine, live execution of real, decoded ROM opcodes, not a
--- simulation. This is a SHADOW run: its own result is surfaced ONLY via
--- the debug overlay (`self.scriptRuntime`, read in `:draw()`) -- it
--- never touches `self.pages`, `self.phase`, or anything else this state
--- actually renders/drives. The switch defaults OFF, and even ON, the
--- existing hand-authored cutscene/room-graph machinery above stays 100%
--- unchanged and fully in control of real gameplay.
+-- `MYSTICQUEST_SCRIPT_INTERPRETER=1` is set, this state ALSO builds and
+-- drives a real `BossSequenceInterpreter` (src/scripting/
+-- BossSequenceInterpreter.lua) against the REAL boss-defeat script's own
+-- real ROM bytes -- a genuine, live execution of real, decoded ROM
+-- opcodes, not a simulation. Its own result is surfaced ONLY via the
+-- debug overlay (`self.bossSequenceInterpreter`/`self
+-- .bossSequenceTranscript`, read in `:draw()`) -- it never touches
+-- `self.pages`, `self.phase`, or anything else this state actually
+-- renders/drives. The switch defaults OFF, and even ON, the existing
+-- hand-authored cutscene/room-graph machinery above stays 100% unchanged
+-- and fully in control of real gameplay.
 --
--- HONEST SCOPE, why a shadow run and not a real swap-over yet: the
--- boss-defeat script's own real opcode list (events.md's "every opcode
--- it actually uses, decoded") originally included several this project
--- had traced to real ROM code but not yet given a Lua implementation
--- (`0x5A`, `0x08`, `0x88`, `0xBF`/`0xBC`/`0xBD`/`0xF3`, the palette-fade
--- family). UPDATED 2026-08-14 ("konsolidiere unsere Entdeckungen und
--- baue sie ein"): `0x5A`/`0x08`/`0xF3` were closed in earlier passes,
--- and `0x88`/`0xBF` were closed this session -- see `ScriptOpcodeTable
--- .lua`'s own dated entries for each. The ONLY remaining real gaps in
--- this ONE script's own opcode list are `0xBC` (`$10DC`) and `0xBD`
--- (`$1046`), both real, traced, but genuinely DEEPER members of the
--- SAME palette-fade family (real `$D499`/`$D49A`-indexed lookups into
--- two shared gradient tables, `$101A`/`$1030`, not yet decoded to an
--- exact fade curve) -- deliberately left unwired rather than a forced,
--- unverified guess, matching this project's "no silent fallbacks"
--- rule. A real, live run WILL genuinely stop the first time it reaches
--- one of those two (`ScriptRuntime:step`'s own "no silent fallbacks"
--- capture, not a crash), which is exactly the honest, current state of
--- decoding, surfaced live rather than guessed at. Once real coverage is
--- complete enough that a shadow run consistently reaches the end of a
--- real script cleanly, swapping specific rendering decisions (e.g.
--- dialogue pacing) over to be DRIVEN by the runtime, rather than just
--- observed alongside it, is the natural next step -- not done here.
+-- REWRITTEN 2026-08-15 (task "ScriptInterpreter soll wirklich treiben,
+-- nicht nur parallel beobachten" -- direct continuation of this
+-- project's own quick-wins list, item 1): the ORIGINAL version of this
+-- integration (`runScriptInterpreterShadow`, since removed) had a real,
+-- self-caught bug this rewrite fixes -- it built its `RomScriptStream`
+-- from `profile.scriptPointerTable.fileOffset` (bank 8, the STATIC
+-- table's own location), but task #86 (2026-08-14, one day after this
+-- integration first shipped) already found and documented, live, that
+-- the real ROM's own EXECUTING cursor for this exact script is NOT bank
+-- 8 -- it's bank 13 (see `BossSequenceInterpreter.lua`'s own doc
+-- comment for the full live-traced evidence). That correction was never
+-- propagated back into this file, so the old "shadow run" had been
+-- silently reading and executing the WRONG bank's bytes (bank 8's real
+-- content at CPU `$470F`, not the real boss-defeat script) for a full
+-- day of otherwise-active development before this pass caught it via a
+-- fresh, from-scratch headless probe (see `probe_boss_sequence.lua`,
+-- scratchpad -- not checked in, a one-off investigation script) that
+-- compared the old wiring's own real opcode dispatch against events.md's
+-- own documented 18-opcode list and found no overlap.
+--
+-- What changed, concretely: (1) uses `BossSequenceInterpreter`, which
+-- already has the CORRECT, live-verified bank pair (13 -> 14 on the
+-- first real CHAIN) baked in, instead of hand-rolling a `RomScriptStream
+-- .forFileOffset` against the wrong table; (2) ticks it ONCE PER REAL
+-- FRAME from `:update(dt)` (see that method's own comment below) instead
+-- of a single bounded burst at construction time -- SEE THE 2026-08-15
+-- CORRECTION BELOW for why "once per real frame" is now known to be an
+-- approximation, not a verified match to the real ROM; (3) wires a REAL
+-- `ctx.onMessage` that resolves real message IDs via
+-- `MessageTextPointer.resolveText` and records them into
+-- `self.bossSequenceTranscript` (id/text/frame), not a no-op -- so if a
+-- future ROM-decoding pass ever unblocks this run far enough to reach
+-- real dialogue, that content is captured and visible immediately,
+-- without a second integration pass.
+--
+-- CORRECTED, 2026-08-15, same day, direct continuation ("mach das",
+-- following up on "crack the real $1F35/$C5AF trigger timing, live, via
+-- mgba"): this section used to claim the run "genuinely STALLS at a
+-- real, honestly-still-OPEN mystery" (opcode `0x00`'s real release
+-- condition). A real, decisive live `mgba` trace from
+-- `courtyard_boss_defeated()` (`trace_31ad_redirect.py`/`...2.py`,
+-- scratchpad, not checked in -- watched real WRAM `$D85A`/`$D8B6:D8B7`/
+-- `$C5AF` every single real frame) proved that framing WRONG, not just
+-- imprecise, and found something more precise and more useful instead:
+--   1. The `$1F35`/`$C5AF` edge DOES fire, exactly once, and DOES
+--      redirect the persistent cursor to `$4710` (opcode `0x08` fetched
+--      at `$470F`) -- an EXACT match to `BossSequenceInterpreter`'s own
+--      `START_CPU_ADDRESS`. That specific mystery is CLOSED: this
+--      project's software already enters the boss-defeat script at
+--      exactly the real, correct address.
+--   2. Past the first real CHAIN, the REAL ROM does NOT dispatch a new
+--      opcode every real frame -- `$D85A` was observed holding the SAME
+--      value for long real stretches (10, 158, even 314 consecutive
+--      real frames) before changing. Calling `BossSequenceInterpreter
+--      :tick()` unconditionally every real LÖVE frame (what this file
+--      does) therefore races far ahead of the real ROM's own actual
+--      position once real per-frame-paced opcodes are involved (`0x04`/
+--      `0xFF`'s own textbox-typing family is the prime suspect) --
+--      this project's own software cursor silently DESYNCS from the
+--      real intended byte stream. Concrete, decisive comparison: this
+--      project's own live software run (screenshot-verified, 610 real
+--      frames) converges on cursor `0x4798`; the REAL ROM, traced over
+--      the SAME real frame range from the same real checkpoint, is
+--      actually at `0x6206` by then -- having ALSO genuinely dispatched
+--      the real, still-undecoded `0xBC`/`0xBD` palette-fade opcodes
+--      along the way (a real, LIVE, first-ever confirmation that this
+--      script's own real content actually reaches them -- previously
+--      only known to be traced to real ROM code, not confirmed to fire
+--      here). This project's software would have stopped loudly on
+--      either of those two undecoded opcodes had it stayed synced with
+--      the real byte stream -- it doesn't get that far only because it
+--      desynced earlier and is reading unrelated bytes as "opcodes".
+--   3. HONEST, NOW-OPEN QUESTION this correction surfaces (not resolved
+--      this pass): what real condition actually gates re-invocation of
+--      the real fetch-dispatch routine (`$3727`) for this script --
+--      every real frame, only while some other real per-frame counter/
+--      flag holds, or something else entirely. `BossSequenceInterpreter
+--      :tick()`'s own doc comment is updated to state this honestly.
+-- The concrete next step is therefore NOT "wait for a dialogue-swap-over
+-- opportunity that hasn't arrived yet" (the old framing) -- it's finding
+-- the real per-opcode dispatch cadence for opcodes past the first CHAIN,
+-- which is a genuinely separate, deeper investigation than this pass
+-- covers.
 
 local TextBox = require("src.rendering.TextBox")
 local Font = require("src.rendering.Font")
@@ -120,8 +180,16 @@ local NpcWander = require("src.entities.NpcWander")
 local TextDecoder = require("src.import.TextDecoder")
 local ScriptOpcodeTable = require("src.import.ScriptOpcodeTable")
 local ScriptRuntime = require("src.scripting.ScriptRuntime")
-local RomScriptStream = require("src.scripting.RomScriptStream")
+local BossSequenceInterpreter = require("src.scripting.BossSequenceInterpreter")
 local MessageTextPointer = require("src.import.MessageTextPointer")
+local Enemy = require("src.entities.Enemy")
+local KnockbackFlicker = require("src.entities.KnockbackFlicker")
+local AttackSwing = require("src.rendering.AttackSwing")
+local AttackThrust = require("src.rendering.AttackThrust")
+local CombatNoise = require("src.entities.CombatNoise")
+local CombatFormulas = require("src.entities.CombatFormulas")
+local NoiseTable = require("src.import.NoiseTable")
+local GBTile = require("src.rendering.GBTile")
 
 local VictorySequence = { opaque = true }
 VictorySequence.__index = VictorySequence
@@ -134,45 +202,155 @@ local function scriptInterpreterShadowRunEnabled()
   return os.getenv("MYSTICQUEST_SCRIPT_INTERPRETER") == "1"
 end
 
--- Bounded burst size for the one-shot shadow run below -- the real
--- boss-defeat script's own full real dialogue sequence live-traced at
--- 625 real opcode dispatches (events.md, "Opcode 0xFF wired"); this
--- leaves ample headroom while still guaranteeing the run can never hang
--- the constructor on a real script that loops far longer than expected
--- (see ScriptRuntime:run's own doc comment).
-local SCRIPT_RUNTIME_SHADOW_MAX_STEPS = 5000
-
---- Builds and runs (once, synchronously, bounded) a real `ScriptRuntime`
+--- Builds a real, live, PER-FRAME-TICKABLE `BossSequenceInterpreter`
 -- against the real boss-defeat script's own real ROM bytes -- see this
--- module's own top-of-file doc comment for the full "why a shadow run"
--- reasoning. Returns the runtime (for `:draw()`'s overlay reporting) or
--- nil if the profile doesn't have the real script-location data this
--- needs (e.g. a dev/test profile without `scriptPointerTable`).
-local function runScriptInterpreterShadow(romData, profile, stats)
-  local spt = profile.scriptPointerTable
-  if not (spt and spt.verifiedExample and profile.scriptOpcodeTable) then
+-- module's own top-of-file doc comment ("REWRITTEN 2026-08-15") for the
+-- full "why this replaced the old one-shot/wrong-bank shadow run"
+-- reasoning. Returns `interpreter, transcript` (a fresh, empty list this
+-- function's own `ctx.onMessage` appends real `{id, text, error, frame}`
+-- entries to as the live run reaches them -- exposed for `:draw()`'s
+-- overlay reporting) or `nil` if the profile doesn't have the real
+-- message-text-location data this needs (e.g. a dev/test profile
+-- without `messageTextPointer`).
+--
+-- Real `ctx` fields, and why each one is safe to wire for real here even
+-- though this run is still a shadow (never drives visible state):
+--   `stats = stats` -- the SAME real `Stats` object every other real
+--     system in this state reads/writes. Deliberately NOT a private
+--     copy: if the real, decoded `0xC0`/`0x32` (HEAL_LP/HEAL_MP) opcodes
+--     this script is confirmed to dispatch (events.md's own opcode
+--     list) ever produce a wrong-looking value, that becomes visible
+--     live (HUD, overlay) instead of silently sitting in an unobserved
+--     shadow copy -- a genuine, free cross-check of the real formula,
+--     not just a code-review guess.
+--   `flags`/`wramBitFlags`/`actorStateFlags` -- private, freshly zero-
+--     initialized shadow WRAM cells (real `$D874`/`$C3F1`/`$C4D4`) --
+--     zero-init is an honest default (see `ScriptRuntime.new`'s own doc
+--     comment for each field), not a guess at a real starting value;
+--     nothing else in this project's engine reads these specific real
+--     cells today, so keeping them private here can't desync anything.
+--   `onControlCode` -- REWRITTEN 2026-08-15 ("mach trotzdem, ändere den
+--     code", direct continuation of the "voll interpretierte Version"
+--     investigation). The PREVIOUS version of this wiring used
+--     `isTextboxDone`, decoding the real text at the live cursor via
+--     `TextDecoder.decodeString` and pacing until that many characters
+--     were "revealed" -- a working approximation, but built on top of
+--     `StandardScriptHandlers.tick`'s own then-current (and, it turned
+--     out, still wrong) model of opcode `0x04` as a simple tick. Real,
+--     decisive static disassembly of `$333D` (`tools/rom/disasm.py`,
+--     see docs/reverse-engineering/events.md's "the $38F6 table
+--     decoded" section) proved opcode `0x04` is actually a genuine
+--     PER-BYTE TEXT/CONTROL-CODE CLASSIFIER -- `StandardScriptHandlers
+--     .tick` itself is now rewritten to match (real terminator/control-
+--     code/text-character branches, see that handler's own doc
+--     comment) -- so this state no longer needs to pre-compute a whole
+--     text run's length at all; the classifier discovers the
+--     terminator organically, byte by byte, the same way the real ROM
+--     does. `onControlCode(byte)` is this integration's own hook for
+--     the real `0x10`-`0x1F` control-code family that classifier calls
+--     back with -- logs each real control byte into
+--     `self.bossSequenceTranscript` (repurposed from its old "resolved
+--     message" shape into a general "real, notable interpreter event"
+--     log) for live overlay visibility, WITHOUT modeling any of those
+--     bytes' own deeper real WRAM side effects (mode registers, name-
+--     pointer writes, cursor-position pairs) -- see events.md's own
+--     doc for exactly what's real-but-unmodeled here (the bank-2-
+--     delegated portions specifically). `isTextboxDone` is no longer
+--     wired here at all -- opcode `0x04` doesn't need it any more (see
+--     `.tick`'s own doc comment), and `0xFF`/`0xF0` are not confirmed
+--     to fire in the real, reachable portion of this specific script
+--     (events.md's own opcode list for it does NOT include them
+--     reaching a real conditional-halt state this ctx would need to
+--     answer) -- if that ever changes, `ScriptRuntime.new`'s own
+--     documented "always true" default applies, an honest stand-in,
+--     same as before.
+--   `onMessage` -- REAL, not a no-op (unlike leaving it unset, which
+--     would make a genuine `0xFE` dispatch fail loudly with "no ctx
+--     .onMessage wired"): resolves the real message ID via
+--     `MessageTextPointer.resolveText` exactly like `runMessagePipelineDemo`
+--     already proved works end to end, and records the result (success
+--     or honest failure) into `transcript` rather than displaying it --
+--     this run is still parallel/shadow, so nothing it produces is
+--     shown on screen yet (see the top-of-file doc comment). This
+--     script's own real dialogue text turned out to be embedded inline
+--     via opcode `0x04` rather than resolved through a `0xFE` dispatch
+--     (see `onControlCode`'s own doc comment above) -- kept wired
+--     anyway: it's real, decoded, correct behavior for whichever real
+--     script genuinely does use a `0xFE` dispatch, and costs nothing
+--     when unused.
+-- EXPORTED 2026-08-15 (monster/npc/item census, "baue sie in der app ein
+-- (sowohl interpreter als auch normale variante)"): was a local, now a
+-- real module function so `CatalogExplorer.lua` can reuse the EXACT
+-- same real wiring (the live-verified `onControlCode` pacing/bridge
+-- logic, see StandardScriptHandlers.tick's own doc comment) instead of
+-- duplicating it -- one real implementation, two callers.
+function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
+  if not (profile.messageTextPointer and profile.scriptOpcodeTable) then
     return nil
   end
-  local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTable)
-  local stream = RomScriptStream.forFileOffset(romData, spt.fileOffset)
-  local runtime = ScriptRuntime.new(opcodeEntries, {
+  local transcript = {}
+  local frameCounter = { n = 0 } -- boxed so the closure below can read the live count
+  -- Real, live-verified pacing state for control byte 0x11 specifically
+  -- (2026-08-15, direct continuation of the "$36D0 bridge" investigation
+  -- -- see StandardScriptHandlers.tick's own doc comment for the general
+  -- mechanism this feeds). A native mgba watchpoint on real WRAM $D853
+  -- found bit 7 SET immediately on entering this control byte's own
+  -- classify state, staying SET for exactly 8 further real frames (9
+  -- total real ticks from first entry), then CLEARING on the exact same
+  -- real frame the persistent cursor finally advances -- i.e. real
+  -- control byte 0x11 paces BEFORE its own real $36D0 bridge fires, not
+  -- an instant single-byte consume. `ticksSeen` counts consecutive real
+  -- `onControlCode(0x11)` calls (this project's own proxy for "still the
+  -- same real occurrence" -- reset whenever a DIFFERENT control byte
+  -- value is seen, since the persistent cursor only ever sits on ONE
+  -- classify target at a time).
+  local controlCodeState = { lastByte = nil, ticksSeen = 0 }
+  local CONTROL_CODE_0X11_REAL_TICKS = 9 -- live-observed, not a guess
+  local interpreter = BossSequenceInterpreter.new(romData, {
     stats = stats,
     flags = { byte = 0 },
-    -- Real WRAM $C3F1 shadow for opcodes 0xB8/0xB9 (added 2026-08-14,
-    -- "konsolidiere unsere Entdeckungen") -- a private, zero-
-    -- initialized cell, same honest default as `flags` just above (no
-    -- other real script this shadow run has actually reached needs a
-    -- specific starting value).
     wramBitFlags = { byte = 0 },
-    -- No real display state to gate on in a shadow run -- always
-    -- releases immediately (see ScriptRuntime.new's own doc comment on
-    -- `ctx.isTextboxDone`'s "clearly-flagged stand-in" honesty note),
-    -- so this run explores real CONTROL FLOW as far as decoding goes,
-    -- not real on-screen pacing.
-    isTextboxDone = function() return true end,
+    actorStateFlags = { byte = 0 },
+    onControlCode = function(byte)
+      if byte ~= controlCodeState.lastByte then
+        controlCodeState.lastByte = byte
+        controlCodeState.ticksSeen = 0
+        transcript[#transcript + 1] = {
+          kind = "controlCode",
+          byte = byte,
+          frame = frameCounter.n,
+        }
+      end
+      controlCodeState.ticksSeen = controlCodeState.ticksSeen + 1
+
+      if byte == 0x11 then
+        if controlCodeState.ticksSeen < CONTROL_CODE_0X11_REAL_TICKS then
+          return false -- still real-pacing, matches the live-observed $D853 bit-7 window
+        end
+        controlCodeState.lastByte = nil
+        return 1 -- real $36D0 bridge: 1 extra byte beyond the control byte itself
+      end
+
+      -- HONEST SCOPE: every OTHER real control code (0x10, 0x12-0x1F)
+      -- is NOT yet live-traced for its own real pacing/bridge behavior
+      -- -- defaults to the old, simple immediate single-byte consume
+      -- (0 extra bytes) rather than guessing whether it also needs this
+      -- treatment (see StandardScriptHandlers.tick's own doc comment).
+      controlCodeState.lastByte = nil
+      return 0
+    end,
+    onMessage = function(messageId)
+      local ok, textOrError = pcall(MessageTextPointer.resolveText, romData, profile.messageTextPointer, messageId)
+      transcript[#transcript + 1] = {
+        kind = "message",
+        id = messageId,
+        text = ok and textOrError or nil,
+        error = (not ok) and textOrError or nil,
+        frame = frameCounter.n,
+      }
+    end,
   })
-  runtime:run(stream, spt.verifiedExample.scriptCpuAddress, SCRIPT_RUNTIME_SHADOW_MAX_STEPS)
-  return runtime
+  return interpreter, transcript, frameCounter
 end
 
 -- Real, already-VERIFIED example message ID (see MessageTextPointer.lua
@@ -284,13 +462,18 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     self.box = TextBox.new(romData, profile, self.font, data.textbox.border)
     self.framesPerLetter = data.textbox.framesPerLetter
 
-    -- REAL ScriptInterpreter shadow run (2026-08-13, opt-in, see this
-    -- module's own top-of-file doc comment) -- a no-op unless
-    -- `MYSTICQUEST_SCRIPT_INTERPRETER=1`. `self.scriptRuntime` is only
-    -- ever READ by `:draw()`'s overlay reporting below -- nothing else
-    -- in this state consults it.
+    -- REAL ScriptInterpreter shadow run (2026-08-13, opt-in, REWRITTEN
+    -- 2026-08-15 -- see this module's own top-of-file doc comment for
+    -- the full "why" and the self-caught wrong-bank bug this replaced).
+    -- A no-op unless `MYSTICQUEST_SCRIPT_INTERPRETER=1`.
+    -- `self.bossSequenceInterpreter` is ticked once per real frame from
+    -- `:update(dt)` below (unlike the old one-shot burst); its own
+    -- `self.bossSequenceTranscript`/`self.bossSequenceFrameCounter` are
+    -- only ever READ by `:draw()`'s overlay reporting -- nothing else in
+    -- this state consults them.
     if scriptInterpreterShadowRunEnabled() then
-      self.scriptRuntime = runScriptInterpreterShadow(romData, profile, self.stats)
+      self.bossSequenceInterpreter, self.bossSequenceTranscript, self.bossSequenceFrameCounter =
+        VictorySequence.buildBossSequenceInterpreter(romData, profile, self.stats)
       -- Real pipeline proof (2026-08-13) -- see `runMessagePipelineDemo`'s
       -- own doc comment above for exactly what this does and does not
       -- claim. `:draw()` renders `self.messagePipelineDemo.text` in a
@@ -350,6 +533,75 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
         openRoom.grid = grid
         self.willyRoomDoorOpenBg = TileGridBackground.new(romData, openRoom)
         self.door = door
+      end
+    end
+
+    -- ADDED (2026-08-15, second-boss feature -- see rom_profiles.lua's
+    -- `sixthRoom.secondBoss` doc comment for the full evidence trail
+    -- and honesty caveat: an evidence-based implementation choice, NOT
+    -- a claimed ROM-confirmed trigger. CORRECTED twice same day, direct
+    -- user reports: first moved from `fourthRoom` to `fifthRoom` (the
+    -- room reached through `fourthRoom`'s own real NORTH exit), then
+    -- moved AGAIN to `sixthRoom` -- the room reached by walking WEST out
+    -- of `fourthRoom`'s own corridor, confirmed via live back-and-forth
+    -- with the user in this exact app -- see `sixthRoom.secondBoss`'s
+    -- own doc comment for the full correction history). Reuses the
+    -- exact same real entities/combat modules
+    -- Field.lua's own first-boss fight uses (Enemy/KnockbackFlicker/
+    -- AttackSwing/AttackThrust/CombatNoise/CombatFormulas) rather than
+    -- a second, parallel implementation -- and the SAME real sprite/
+    -- species ROM data (`enemySprite`/`enemyHitFlash`/`enemyDeath`),
+    -- matching the user's own "gleiche Grafik" observation.
+    -- `self.secondBossDefeated` is real, tracked state (surfaced via
+    -- `:debugState()`/the HUD) -- HONEST GAP: `sixthRoom` has no
+    -- further real exit recorded at all yet (see that room's own doc
+    -- comment), so there is currently no gate for this flag to open.
+    --
+    -- HONEST SCOPE, simplifications vs. Field.lua's own first-boss
+    -- fight: this creature does not move (Field.lua's own
+    -- `EnemyMovementInterpreter`/`Enemy.MOVEMENT_CYCLE` patrol is real
+    -- ROM-decoded behavior FOR THE FIRST BOSS specifically -- porting
+    -- it here would imply the same real per-tick AI drives this second,
+    -- unconfirmed encounter too, which this project has no evidence
+    -- for) -- it stands at `spawnX`/`spawnY` and fights on contact/
+    -- attack exactly like the first boss otherwise does.
+    if profile.graphics.sixthRoom and profile.graphics.sixthRoom.secondBoss
+        and profile.graphics.enemySprite then
+      local sb = profile.graphics.sixthRoom.secondBoss
+      local es = profile.graphics.enemySprite
+      self.secondBoss = Enemy.new(sb.spawnX, sb.spawnY)
+      self.secondBoss.width = es.cols * GBTile.TILE_W
+      self.secondBoss.height = es.rowSpacing and ((es.rows - 1) * es.rowSpacing + GBTile.TILE_H)
+        or (es.rows * GBTile.TILE_H)
+      self.secondBossSprite = CreatureSprite.fromOffsets(romData, es.tileOffsets, es.cols, es.rows, nil, es.rowSpacing)
+      local flash = profile.graphics.enemyHitFlash
+      if flash then
+        self.secondBossSpriteFlash = CreatureSprite.fromOffsets(romData, es.tileOffsets, es.cols, es.rows,
+          TileImage.paletteFromShadeIndices(flash.shadeIndices))
+        self.secondBossFlashFrames = flash.frames
+      end
+      self.secondBossFlashTimer = 0
+      local deathData = profile.graphics.enemyDeath
+      if deathData then
+        self.secondBossDeathSpriteA = CreatureSprite.fromOffsets(romData, deathData.frameA, 2, 1)
+        self.secondBossDeathSpriteB = CreatureSprite.fromOffsets(romData, deathData.frameB, 2, 1)
+      end
+      self.secondBossKnockback = KnockbackFlicker.new()
+      self.secondBossDefeated = false
+      if profile.graphics.attackSwing then
+        self.secondBossAttackSwing = AttackSwing.new(romData, profile)
+      end
+      if profile.graphics.attackThrust then
+        self.secondBossAttackThrust = AttackThrust.new(romData, profile)
+      end
+      -- Shared real combat PRNG (ROM $2B1E, see Field.lua's own
+      -- `combatNoise` doc comment) -- built here too (not shared with
+      -- Field.lua's own instance, which belongs to a different state
+      -- object entirely by the time this fight is reachable) so the
+      -- real damage formula has a genuine noise source instead of
+      -- falling back to the fixed placeholder.
+      if profile.noiseTable then
+        self.combatNoise = CombatNoise.new(NoiseTable.decode(romData, profile.noiseTable))
       end
     end
 
@@ -870,6 +1122,22 @@ function VictorySequence:matchedExit()
     self.holdTriggerState = nil
     return nil
   end
+  -- ADDED (2026-08-15, second-boss feature): a real, general capability
+  -- for "gate this exit behind some state flag" (an exit naming a real
+  -- field on `self` via `requiresFlag` simply never matches while that
+  -- field isn't true yet, same as standing outside the zone entirely --
+  -- no partial hold progress accumulates while gated), mirroring
+  -- willyRoom's own real door-after-boss pattern in general shape.
+  -- HONEST STATUS: no `exits` entry in rom_profiles.lua actually sets
+  -- `requiresFlag` right now -- `sixthRoom` (where the second boss
+  -- actually lives, see that room's own `secondBoss` doc comment) has
+  -- no further real exit recorded at all yet to gate -- so this is
+  -- real, tested infrastructure ready for whenever one is found, not
+  -- something currently wired to a live gate.
+  if exit.requiresFlag and not self[exit.requiresFlag] then
+    self.holdTriggerState = nil
+    return nil
+  end
   if not exit.holdFrames then
     return exit
   end
@@ -1007,6 +1275,24 @@ end
 function VictorySequence:update(dt)
   if self.done or not self.pages then return end
 
+  -- REAL ScriptInterpreter, ticked once per real frame (2026-08-15, see
+  -- this module's own top-of-file "REWRITTEN" doc comment) -- runs
+  -- BEFORE the `self.phase` dispatch below (deliberately unconditional
+  -- on `self.phase`, matching the real ROM's own boss-defeat script,
+  -- which is a fully separate mechanism from this state's own hand-
+  -- authored phase machine, not gated by it). A genuine per-frame
+  -- dispatch attempt, exactly matching `BossSequenceInterpreter:tick`'s
+  -- own doc comment ("meant to be called once per real game frame") --
+  -- replaces the OLD one-shot construction-time burst, which could never
+  -- pace real per-frame effects (the typewriter tick, a real conditional
+  -- halt) correctly even in principle. Still pure observation -- see
+  -- `self.bossSequenceInterpreter`'s own doc comment for why nothing
+  -- here reads its result.
+  if self.bossSequenceInterpreter and not self.bossSequenceInterpreter.done then
+    self.bossSequenceFrameCounter.n = self.bossSequenceFrameCounter.n + 1
+    self.bossSequenceInterpreter:tick()
+  end
+
   -- Dev-only escape hatch (same convention as BattleIntro.lua's SELECT
   -- skip) -- not real ROM behavior.
   if self.input and self.input:pressed("select") then
@@ -1017,14 +1303,108 @@ function VictorySequence:update(dt)
   if self.phase == "interactive" then
     local room = self.profile.graphics[self.currentRoomKey]
     local bounds = { 0, 0, ROOM_W - 16, ROOM_H - HUD_H - 16 }
+    local inSecondBossRoom = self.currentRoomKey == "sixthRoom" and self.secondBoss ~= nil
+      and not self.secondBossDefeated
     if self.player and self.roomWalk[self.currentRoomKey] then
+      local prevX, prevY = self.player.x, self.player.y
       self.player:update(dt, self.input, bounds, self.roomWalk[self.currentRoomKey])
+      -- Real "blocked against a living enemy" collision (same rule
+      -- Field.lua's own first-boss fight uses) -- only checked in
+      -- sixthRoom while its own second boss is alive, so every other
+      -- room's movement is completely unaffected.
+      if inSecondBossRoom and self.secondBoss:isAlive() and
+          self.secondBoss:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
+        self.player.x, self.player.y = prevX, prevY
+      end
       -- Real walk-cycle animation (see this state's own `playerSprite`
       -- doc comment above) -- same per-frame drive as Field.lua's own.
       if self.playerSprite then
         self.playerSprite:update(dt, self.player.moving, self.player.facing)
       end
     end
+
+    -- ADDED (2026-08-15, second-boss feature -- see rom_profiles.lua's
+    -- `sixthRoom.secondBoss` doc comment). Direct port of Field.lua's
+    -- own first-boss combat loop (contact damage + knockback, real A-
+    -- button attack with the real swing-vs-thrust choice, real per-
+    -- phase hitbox detection, real death "explosion") against this
+    -- room's own second `Enemy` instance -- see that file's own
+    -- `:update()` for the original, more heavily-commented version this
+    -- mirrors line for line. Entirely gated on `inSecondBossRoom` so it
+    -- never runs (and never even reads `self.secondBoss*` fields) in
+    -- any other room.
+    if inSecondBossRoom then
+      -- Deliberately NOT calling `self.secondBoss:updateMovement(dt)`
+      -- (unlike Field.lua's own first-boss fight) -- without a real
+      -- `movementInterpreter`, `Enemy:updateMovement` falls back to the
+      -- OLD `MOVEMENT_CYCLE` patrol step, which would make this second
+      -- boss visibly walk a real pattern that was live-derived FOR THE
+      -- FIRST boss specifically -- this project has no evidence that
+      -- pattern applies here too, so this creature stays still instead
+      -- of silently inheriting unrelated real ROM behavior.
+      if self.secondBossFlashTimer > 0 then
+        self.secondBossFlashTimer = self.secondBossFlashTimer - 1
+      end
+      if self.secondBoss:isAlive() and
+          self.secondBoss:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
+        if self.secondBoss:tickContactCooldown(dt) and not self.secondBossKnockback:isInvincible() then
+          local damage
+          if self.combatNoise then
+            damage = CombatFormulas.rollDamage(Enemy.ATK, self.stats.defense, self.combatNoise:draw())
+          else
+            damage = Enemy.CONTACT_DAMAGE
+          end
+          self.stats:damage(damage)
+          self.secondBossKnockback:trigger(
+            self.secondBoss.x + self.secondBoss.width / 2, self.secondBoss.y + self.secondBoss.height / 2,
+            self.player.x + self.player.width / 2, self.player.y + self.player.height / 2)
+        end
+      end
+      local kdx, kdy = self.secondBossKnockback:update(dt)
+      if self.secondBossKnockback:isKnockbackActive() then
+        local newX, newY = self.player.x + kdx, self.player.y + kdy
+        local canMoveTo = self.roomWalk[self.currentRoomKey]
+        if kdx ~= 0 and (not canMoveTo or canMoveTo(newX, self.player.y)) then self.player.x = newX end
+        if kdy ~= 0 and (not canMoveTo or canMoveTo(self.player.x, newY)) then self.player.y = newY end
+        self.player.x = math.max(bounds[1], math.min(bounds[3], self.player.x))
+        self.player.y = math.max(bounds[2], math.min(bounds[4], self.player.y))
+      end
+
+      if self.input and self.input:pressed("a") then
+        local attack = self.player.moving and self.secondBossAttackThrust or self.secondBossAttackSwing
+        if attack then
+          attack:trigger(self.player.facing)
+          self.secondBossAttackHasHit = false
+        end
+      end
+      if self.secondBossAttackSwing then self.secondBossAttackSwing:update(dt) end
+      if self.secondBossAttackThrust then self.secondBossAttackThrust:update(dt) end
+
+      local activeAttack = (self.secondBossAttackSwing and self.secondBossAttackSwing:isActive() and self.secondBossAttackSwing)
+        or (self.secondBossAttackThrust and self.secondBossAttackThrust:isActive() and self.secondBossAttackThrust)
+      if activeAttack and not self.secondBossAttackHasHit and self.secondBoss:isAlive() then
+        for _, box in ipairs(activeAttack:getHitboxes(self.player.x, self.player.y)) do
+          if self.secondBoss:overlaps(box.x, box.y, box.w, box.h) then
+            self.secondBossAttackHasHit = true
+            if self.secondBossSpriteFlash then
+              self.secondBossFlashTimer = self.secondBossFlashFrames
+            end
+            if self.secondBoss:hit() then
+              self.secondBoss:startDeath(self.profile)
+            end
+            break
+          end
+        end
+      end
+
+      if self.secondBoss.death and not self.secondBossDefeated then
+        self.secondBoss:updateDeath(dt)
+        if self.secondBoss:deathComplete() then
+          self.secondBossDefeated = true
+        end
+      end
+    end
+
     -- ADDED (2026-08-10, direct user report: "diese [npcs] haben
     -- animationen und bewegungspattern" -- see `updateNpcWander`'s own
     -- doc comment): a no-op for any room without animated NPCs.
@@ -1185,7 +1565,73 @@ function VictorySequence:debugState()
     x = self.player and self.player.x,
     y = self.player and self.player.y,
     page = self.pageIndex,
+    -- ADDED (2026-08-15, second-boss feature) -- nil in every room
+    -- other than sixthRoom (no `self.secondBoss` built at all when
+    -- `rom_profiles.lua`'s own `sixthRoom.secondBoss` is absent).
+    secondBossAlive = self.secondBoss and self.secondBoss:isAlive(),
+    secondBossHp = self.secondBoss and self.secondBoss.stats.curLP,
+    secondBossDefeated = self.secondBossDefeated,
   }
+end
+
+--- Draws `sixthRoom`'s own second boss (see rom_profiles.lua's
+-- `sixthRoom.secondBoss` doc comment) -- a no-op in every other room,
+-- or once it's been defeated for good. Direct port of Field.lua's own
+-- first-boss draw branch (death explosion / hit-flash / normal pose),
+-- see that state's own `:draw()` for the more heavily-commented
+-- original this mirrors.
+function VictorySequence:drawSecondBoss()
+  if self.currentRoomKey ~= "sixthRoom" or not self.secondBoss then return end
+  local boss = self.secondBoss
+  if boss.death and self.secondBossDeathSpriteA and not boss:deathComplete() then
+    -- Real death-explosion shape (see rom_profiles.lua's `enemyDeath`
+    -- doc comment) -- part offsets are relative to the creature's own
+    -- REST position; unlike Field.lua's own first boss (which reads
+    -- that from `enemySprite.screenX/screenY`, its one fixed spot),
+    -- this boss's rest position is its own `spawnX`/`spawnY` (it never
+    -- moves, see the doc comment above), used directly here instead.
+    local d = self.profile.graphics.enemyDeath
+    local sb = self.profile.graphics.sixthRoom.secondBoss
+    local elapsed = boss.death.elapsedFrames
+    local t = math.min(1, elapsed / d.totalFrames)
+    local sprite = (math.floor(elapsed / 4) % 2 == 0) and self.secondBossDeathSpriteA or self.secondBossDeathSpriteB
+    for _, part in ipairs(d.parts) do
+      sprite:draw(sb.spawnX + part.dx * t, sb.spawnY + part.dy * t)
+    end
+  elseif boss:isAlive() then
+    local flipX = boss:isFlipped()
+    if self.secondBossFlashTimer > 0 and self.secondBossSpriteFlash then
+      self.secondBossSpriteFlash:draw(boss.x, boss.y, flipX)
+    elseif self.secondBossSprite then
+      self.secondBossSprite:draw(boss.x, boss.y, flipX)
+    end
+  end
+
+  if not (self.overlay and self.overlay.visible) then return end
+  love.graphics.setColor(1, 0.3, 0.3, 1)
+  if boss:isAlive() then
+    love.graphics.rectangle("line", boss.x, boss.y, boss.width, boss.height)
+  end
+  for _, attack in ipairs({ self.secondBossAttackSwing, self.secondBossAttackThrust }) do
+    if attack then
+      love.graphics.setColor(1, 1, 0, 0.8)
+      for _, box in ipairs(attack:getHitboxes(self.player.x, self.player.y)) do
+        love.graphics.rectangle("line", box.x, box.y, box.w, box.h)
+      end
+    end
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+end
+
+--- A plain, minimal LP readout while the second-boss fight is live --
+-- deliberately NOT Field.lua's own decorated `HudBar` (real ROM HUD-bar
+-- tile art, see that file's own `hudBar` doc comment) -- an honest
+-- scope simplification for this evidence-based, non-ROM-confirmed
+-- encounter, not a claim this is how the real HUD would look during it.
+function VictorySequence:drawSecondBossHud()
+  if self.currentRoomKey ~= "sixthRoom" or not self.secondBoss or self.secondBossDefeated then return end
+  if not self.font then return end
+  self.font:print(string.format("LP %d/%d", self.stats.curLP, self.stats.maxLP), 2, ROOM_H - HUD_H + 4, { 1, 1, 1, 1 })
 end
 
 function VictorySequence:draw()
@@ -1195,9 +1641,18 @@ function VictorySequence:draw()
     local bg = self:backgroundFor(self.currentRoomKey)
     if bg then bg:draw(0, 0) end
     self:drawRoomScene(self.currentRoomKey, 0, 0)
+    self:drawSecondBoss()
     if self.playerSprite and self.player then
+      -- REVERTED (2026-08-15, same day, direct user report of shifted
+      -- collision in the FIRST boss room -- see Field.lua's own
+      -- matching revert note for the full reasoning): every room this
+      -- project already renders here was historically calibrated the
+      -- OLD, unshifted way -- applying the real OAM-vs-WRAM offset
+      -- broadly regressed at least one of them. Back to the raw
+      -- position everywhere in this file too, not just Field.lua.
       self.playerSprite:draw(self.player.x, self.player.y, self.player.facing == "right")
     end
+    self:drawSecondBossHud()
   elseif self.phase == "transitioning" then
     -- Real hardware-scroll pan (see rom_profiles.lua's `exits.
     -- transition` doc comment): the current room slides toward one
@@ -1258,7 +1713,9 @@ function VictorySequence:draw()
     -- screen Y (where the door/exit actually is), NOT the room's
     -- geometric middle -- see RoomWipeTransition.lua's own doc comment
     -- for the live `love .` screenshot comparison that found a fixed
-    -- room-center convergence rendering visibly wrong.
+    -- room-center convergence rendering visibly wrong. REVERTED the
+    -- brief render-offset use here too (2026-08-15, same revert as the
+    -- player draw calls above) -- back to the raw `self.player.y`.
     local centerY = self.player and self.player.y or (ROOM_H - HUD_H) / 2
     local bandTop, bandHeight = RoomWipeTransition.visibleBand(
       closing and "closing" or "opening", self.cutFrame, total, ROOM_H - HUD_H, centerY)
@@ -1332,25 +1789,55 @@ function VictorySequence:draw()
         string.format("{%s} -> tileSrc %#06x, bank %d",
           table.concat(info.selectors, ","), info.tileSourcePointer, info.dynamicBank))
     end
-    -- Real ScriptInterpreter shadow run (2026-08-13, see this module's
-    -- own top-of-file doc comment) -- observational only, never drives
-    -- anything drawn/played above; only present at all when
-    -- `MYSTICQUEST_SCRIPT_INTERPRETER=1`.
-    if self.scriptRuntime then
-      local rt = self.scriptRuntime
+    -- Real ScriptInterpreter shadow run (2026-08-13, REWRITTEN
+    -- 2026-08-15 -- see this module's own top-of-file doc comment) --
+    -- observational only, never drives anything drawn/played above; only
+    -- present at all when `MYSTICQUEST_SCRIPT_INTERPRETER=1`. Reports
+    -- the REAL, LIVE, per-frame state of `BossSequenceInterpreter`
+    -- (bank, cursor, ticks, and whether it's genuinely stopped/done),
+    -- not a one-shot burst summary the way the old shadow run's overlay
+    -- line did.
+    if self.bossSequenceInterpreter then
+      local bsi = self.bossSequenceInterpreter
+      local rt = bsi.runtime
       local status
       if rt.stopped then
         -- `rt.stopError` is a full Lua error string (file:line prefix
         -- included) -- just the first line is plenty for the overlay.
         local firstLine = tostring(rt.stopError):match("^[^\n]*") or tostring(rt.stopError)
-        status = string.format("stopped after %d real steps at opcode %#04x: %s",
-          rt.stepCount, rt.lastOpcode or -1, firstLine)
+        status = string.format("stopped after %d real frames, bank %d, cursor %#06x: %s",
+          self.bossSequenceFrameCounter.n, bsi.bank, bsi.cursor, firstLine)
       elseif rt.finished then
-        status = string.format("finished cleanly after %d real steps", rt.stepCount)
+        status = string.format("finished cleanly after %d real frames",
+          self.bossSequenceFrameCounter.n)
       else
-        status = string.format("%d real steps run (burst limit reached)", rt.stepCount)
+        -- The real, honest, current boundary (see the top-of-file doc
+        -- comment's "HONEST SCOPE" section): this run reaches real,
+        -- decoded content, then stalls indefinitely at opcode 0x00's own
+        -- still-unmodeled real release condition -- reported here as a
+        -- live, running frame count, not a fake "done" or "error".
+        status = string.format("running: %d real frames, bank %d%s, cursor %#06x, %d real events logged",
+          self.bossSequenceFrameCounter.n, bsi.bank, bsi.bankSwitched and " (post-CHAIN)" or "",
+          bsi.cursor, #self.bossSequenceTranscript)
       end
-      self.overlay:addLine("script interpreter (shadow run)", status)
+      self.overlay:addLine("script interpreter (live shadow run)", status)
+      -- Real opcode dispatch histogram (top 6 by count) -- lets a
+      -- developer confirm live, without re-running the standalone probe
+      -- script, that this is genuinely dispatching the real 18-opcode
+      -- family events.md documents for this script, not stuck on
+      -- garbage bytes the way the OLD wrong-bank version silently was.
+      local histogram = {}
+      for opcode, count in pairs(rt.opcodeCounts) do
+        histogram[#histogram + 1] = { opcode = opcode, count = count }
+      end
+      table.sort(histogram, function(a, b) return a.count > b.count end)
+      local parts = {}
+      for i = 1, math.min(6, #histogram) do
+        parts[#parts + 1] = string.format("%#04x x%d", histogram[i].opcode, histogram[i].count)
+      end
+      if #parts > 0 then
+        self.overlay:addLine("  opcode histogram (top 6)", table.concat(parts, ", "))
+      end
     end
     -- Real pipeline-proof demo (2026-08-13, see `runMessagePipelineDemo`'s
     -- own doc comment) -- overlay line always present when the switch is

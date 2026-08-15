@@ -7033,3 +7033,305 @@ implementation) -- see the visual confirmation above.
 Full suite: 417 passed, 0 failed (unchanged -- this feature is pure
 client-side JS reusing already-exported `ROOM_CATALOG` data, no Lua
 changes needed).
+
+## fourthRoom's real collision: no metatile source found (negative), but a real, live-discovered wall the flat tile-ID model missed (2026-08-15)
+
+Direct instruction after the second-boss west-room work: "was immernoch
+nicht stimmt ist die kollision mit den wänden im fouth room. bitte
+suche einfach einen allgemeinen kollsions mechanismus!!! anders geht es
+jetzt nicht" -- find a real, general collision mechanism, not another
+one-off patch.
+
+**Attempt 1: find fourthRoom's own real metatile+layout-stream source,
+the same way willyRoom's/unknownRoomB's were found.** Single-stepped
+the ENTIRE real thirdRoom->fourthRoom staircase transition (mgba,
+`CallTracer`-free direct PC watch this time, ~6M real instructions,
+holding UP/RIGHT/UP to reach and cross the real trigger), watching for
+`PC==0x242B` (the already-known, bank-0-fixed RLE decompressor entry
+both willyRoom and unknownRoomB's own metatile sources were found
+through). **Zero hits.** A real, decisive negative: this room's real
+load genuinely does not go through that pipeline -- consistent with
+this project's own earlier "fourthRoom has no known metatile source"
+note (see the willyRoom collision-generalization section above).
+
+**Attempt 2: rapid position-teleport BFS, found unreliable.** Tried
+directly poking `$C244`/`$C245` (Y/X) to systematically probe every
+grid cell, using `mgba`'s own `save_raw_state`/`load_raw_state` to
+reset between probes for speed. Real, reproducible finding: after a
+raw WRAM position poke (or after `load_raw_state`), held-button input
+silently has ZERO effect on position for 100+ real frames -- a real,
+reproducible limitation of driving this specific mgba-python-bindings
+setup this way, not a ROM fact. Abandoned; every real number below
+comes from a genuinely WALKED path instead (real held-button input the
+whole way, only `save_raw_state`/`load_raw_state` used to reset to the
+real landing spot between independent probes, never mid-probe).
+
+**Attempt 3: real, walked probes -- a genuine, decisive real finding.**
+Holding LEFT from the real landing spot (row 14, the bottom-most row)
+or from row 13 (one row up) moves the player NOT AT ALL for 100+ real
+frames. The EXACT SAME `LEFT` input from row 12 (one row further from
+the stairs) moves freely all the way to the real west wall (column 0).
+A companion probe (reaching row 12 at a different column via a real
+detour, then holding DOWN) found DOWN is ALSO blocked re-entering rows
+13-14 outside the landing column's own narrow range. Consistent, single
+real structure: the staircase landing is a real, narrow ALCOVE
+(columns ~14-19, matching this room's own real `135` "feature block"
+columns), not full-width open floor the way the identical-looking
+`131`/`129`/`130` tiles read everywhere else in the room.
+
+**Why the flat `floorTileIds` model can't express this**: the alcove's
+own tiles (`131`, `135`) are the EXACT SAME tile IDs already marked
+floor everywhere else in the room -- a tile-ID-keyed set is structurally
+incapable of saying "floor here, wall there" for the same ID. Added a
+new, general, reusable escape hatch instead of another special case:
+`TileWalkability.build` now accepts an optional `room.blockedRects`
+list (`{rowMin, rowMax, colMin, colMax}`, 0-based native-tile
+rectangles) checked on top of the existing tile-ID floor lookup -- real,
+live-movement-discovered exceptions where the flat classification is
+known wrong, usable by any room, not just fourthRoom. Wired in for
+fourthRoom: `{ rowMin=13, rowMax=15, colMin=0, colMax=14 }`.
+
+**A real, live-caught off-by-one in the first version of the fix**:
+initially used `colMax=13`. A `love .` screenshot test
+(`MYSTICQUEST_SCRIPT=left@10-120` from the real landing spot) showed
+the player moving from x=120 to x=112 before stopping -- one real,
+wrong 8px step, not the real ROM's own "zero movement" result. Root
+cause: the player's 16px (2-native-tile) footprint moving from column
+15 to column 14 only touches columns 14-15, and column 14 was still
+real floor under `colMax=13`, so the footprint check passed for that
+one step. `colMax=14` closes the gap -- re-verified live, matches the
+real ROM's own "completely still" result exactly. Also added 3 new
+headless unit tests (`tests/unit/tile_walkability_test.lua`) locking in
+both the general mechanism and this specific off-by-one class of bug
+so it can't silently regress.
+
+**Also required, for consistency**: `fourthRoom`'s own west exit into
+`sixthRoom` (added earlier this same session) had `yMax=110` -- inside
+the row range this fix now correctly blocks for `LEFT`. Narrowed to
+`yMax=96` (the real, confirmed-open row 12 boundary) so the exit stays
+reachable under the corrected collision instead of silently requiring
+the player to stand somewhere they can no longer walk to.
+
+**Honest scope**: this is a real, live-verified fix for the SPECIFIC
+divergence found (the staircase-landing alcove), not a claim that
+fourthRoom's entire collision is now byte-perfect against the real ROM
+-- a full per-cell sweep (all 320 real grid cells) was not completed
+this pass (the rapid teleport-BFS approach that would have made that
+tractable turned out unreliable, see Attempt 2 above); a genuinely
+exhaustive real-walked BFS remains a well-scoped, bounded follow-up if
+further discrepancies are ever reported. Full Lua test suite: 435/435
+passing (3 new). Live `love .` re-verification of the fix itself
+succeeded once (catching and fixing the off-by-one); further live
+re-confirmation of the corrected build was blocked this session by an
+unrelated environment issue (the interactive display went idle/locked
+partway through, `love .` launches hung waiting for a display surface,
+confirmed via `ioreg`'s own `HIDIdleTime` showing 30+ real minutes of
+inactivity) -- not a code issue, a session/display-state one.
+
+## Real hardware OAM-vs-WRAM sprite offset: a genuine, partially-applied rendering bug (2026-08-15)
+
+Direct follow-up to a user report on the just-fixed fourthRoom collision:
+"der charakter spwned ein tile zu südlich und ein halbes tile nach
+rechts verschoben" (the character spawns one tile too far south, half
+a tile too far right) for the thirdRoom->fourthRoom staircase landing.
+
+**Re-verified the landing coordinate itself first, since the user
+insisted it was still wrong and explicitly asked for a deterministic
+value, not a guess.** A fresh, careful mgba re-trace (single-frame
+logging through the real cut, then 600 frames of zero input) confirms
+`$C244`/`$C245` genuinely settles at (Y=112,X=120) and never changes
+again -- the raw WRAM coordinate itself was never wrong.
+
+**The real bug was one level downstream: how that raw value gets USED.**
+Dumped the real hardware OAM table (`$FE00`+) at this exact moment:
+sprite 8/9 (the player, 8x16 mode) read Y=112/X=120 -- IDENTICAL to
+WRAM, a direct unshifted copy (independently matches this project's
+own earlier `$C244`/`$C245`->OAM finding, task #75). But real Game Boy
+hardware ALWAYS interprets OAM sprite entries as `(true top-left) +
+(8, 16)` -- fixed PPU silicon behavior, not a ROM-specific convention.
+Since this ROM copies WRAM straight into OAM with no adjustment, WRAM
+itself must already carry that +8/+16 baked in -- meaning the TRUE
+visible position on a real Game Boy is `(120-8, 112-16) = (112, 96)`,
+not `(120, 112)`. This project has always drawn the player sprite
+directly at the raw WRAM value with no correction.
+
+**Cross-checked against the user's own live observation**: their
+eyeballed estimate ("~1 tile south, ~half a tile right") is the right
+DIRECTION, just a less precise magnitude than the real, measured (1
+tile right, 2 tiles down) -- expected for a quick visual read on a
+144px-tall window.
+
+**Applied and live-verified for fourthRoom specifically**: changed
+`thirdRoom.exits[1].landingX/Y` from (120,112) to (112,96) directly.
+Independently cross-validated: (112,96) lands the player's own
+top-left corner EXACTLY on this room's real `135` feature-block tile
+(the same tile independently hypothesized elsewhere as the real
+staircase graphic) -- also matching an earlier, separate user report
+("der player sollte auf der trepp pawnen"). Screenshot-confirmed to
+look visibly better. Full test suite unaffected (435/435).
+
+**Direct follow-up, "did you fix this everywhere?" -- checked, and the
+honest answer is no, deliberately.** Cross-checked a SECOND real
+landing spot (fourthRoom's own north exit into fifthRoom, WRAM/OAM
+both (Y=32,X=136), live-confirmed via the same direct OAM dump
+technique) -- same unshifted OAM=WRAM pattern is present there too.
+BUT applying the identical `(-8,-16)` correction there would land the
+player's top-left corner on tile `151` -- a real, already-live-verified
+NON-floor border tile per `fifthRoom.floorTileIds`. Blindly reapplying
+the same numeric fix would silently break already-tested, working
+collision in that room.
+
+**Root cause of the contradiction, understood**: changing `landingX`/
+`landingY` directly conflates two things that should be separate --
+the COLLISION-space coordinate (`player.x`/`player.y`, consumed by
+`TileWalkability`/`canMoveTo` against each room's own `floorTileIds`/
+`grid`, all of which were captured and tuned using the SAME raw,
+uncorrected WRAM convention throughout this whole project) and the
+RENDER-space coordinate (where the sprite should actually be drawn on
+screen to match real hardware). The fourthRoom fix happened to be safe
+only because that whole area is uniformly floor-classified regardless
+of the exact sub-tile position -- not because the approach was
+generally correct.
+
+**The real, general, correctly-scoped fix (not yet implemented)**: apply
+the `(-8, -16)` offset ONLY at the final sprite-draw call (e.g.
+`PlayerSprite:draw`), leaving `player.x`/`player.y` itself, and every
+`landingX`/`landingY` value, completely untouched -- preserving 100%
+collision-space consistency with all of this project's existing,
+tested floor/wall data everywhere, while fixing the VISUAL position
+uniformly across every room at once. This would also apply, in
+principle, to every other sprite this project tracks by raw WRAM-style
+position (enemies, NPCs) -- genuinely out of scope to verify/apply this
+pass. Deliberately NOT implemented broadly this session -- flagged
+here as a real, well-scoped, moderately risky follow-up (touches
+core rendering, needs re-verification against existing screenshots)
+rather than pushed through unverified. `fourthRoom`'s own landing stays
+fixed via the direct coordinate edit (safe, live-verified, narrow
+blast radius) until the general fix lands.
+
+## The real, general OAM-vs-WRAM fix: implemented (2026-08-15, same day, "mach mal den gesamt fix")
+
+Direct follow-up to the section above. Implemented the general,
+correctly-scoped fix instead of leaving it as a flagged follow-up:
+
+- `Player.lua`: new `Player.RENDER_OFFSET_X = -8`, `RENDER_OFFSET_Y =
+  -16` constants (the real, hardware-verified Game Boy OAM convention)
+  and a new `Player:renderPosition()` method returning `self.x +
+  RENDER_OFFSET_X, self.y + RENDER_OFFSET_Y` -- `self.x`/`self.y`
+  themselves are NEVER mutated by this, staying the real, raw,
+  ROM-matching collision-space value everywhere else.
+- Every real player sprite draw call across `Field.lua`,
+  `VictorySequence.lua` (3 separate phase-branch draws), and
+  `BattleIntro.lua` now calls `:renderPosition()` and draws at the
+  corrected coordinate instead of the raw one. The attack-swing/thrust
+  overlays (`Field.lua`) draw at the SAME corrected coordinate so they
+  stay visually attached to the player. `RoomWipeTransition`'s own
+  real convergence-point Y (`VictorySequence.lua`'s `centerY`) also
+  switched to the render-space value, since it's an on-screen anchor,
+  not a collision one.
+- `fourthRoom`'s own `landingX`/`landingY` reverted back to the real,
+  raw ROM value (120,112) -- the earlier direct-coordinate "fix" is
+  superseded by this general mechanism and would have double-applied
+  the offset if left in place.
+- Every collision-space consumer (`TileWalkability.canMoveTo`,
+  `ZoneMatch`, `HoldTrigger`, every room's own `floorTileIds`/`grid`/
+  `blockedRects`, all attack `getHitboxes()` calls) is completely
+  untouched -- still reads `self.player.x`/`self.player.y` raw, exactly
+  as before this whole investigation started. Zero collision regression
+  risk by construction, not just by testing.
+
+**Deliberately still scoped to the PLAYER only.** A live OAM/WRAM
+cross-check at the courtyard boss's own real checkpoint found the
+enemy does NOT appear to populate the same 20-slot entity struct's
+Y/X fields the way the player does (every OTHER slot read `Y=0,X=248`
+at that exact moment) -- genuinely inconclusive, not "confirmed same
+bug," so enemy/boss/NPC draw calls were NOT touched. Extending this
+fix to those would need its own independent live verification, not
+an assumption that the player's own finding generalizes.
+
+New headless unit test (`tests/unit/player_test.lua`) locks in both
+the correct offset arithmetic and that `renderPosition()` never
+mutates `self.x`/`self.y`. Live-verified via `love .` screenshots:
+fourthRoom's staircase landing renders pixel-identical to the earlier
+direct-coordinate fix (same visual result, now via the general
+mechanism), and a spot-check of secondRoom's own free-roam spawn shows
+no visual regression (player cleanly on the floor, not clipped).
+Full test suite: 436/436.
+
+## Quick win: second boss fight was unreachable end-to-end (2026-08-15)
+
+Direct follow-up to the earlier "quick wins" list: verifying the second
+boss fight (walk in, attack, defeat) after this session's collision/
+position work turned up a real, reproducible bug -- a scripted walk
+from the room's real landing spot (144,80) toward the boss (spawnX=64)
+stalled at x=128, 64px short, never reaching attack range.
+
+Root cause: `sixthRoom.floorTileIds` classified tiles `145`/`146` as
+non-floor ("gate/pillar decoration", a pure visual guess from an
+earlier pass, never live-tested since this room has no real ROM
+gameplay trigger to test against). Re-examining this room's own real
+captured `grid`: `145`/`146` form a wide, clean checkerboard
+alternation (rows 5-14, cols 14-17) -- structurally IDENTICAL to the
+alternation pattern of this room's own two ALREADY-confirmed real
+floor pairs (`129`/`130`, `133`/`134`), just a third floor texture.
+The remaining 7 real "gate/pillar" tiles do NOT share this signature
+(either a solid non-alternating strip, or too sparse to reason about)
+and stay non-floor. Added `145`/`146` to `floorTileIds` on this
+structural basis.
+
+Live-verified before and after: before the fix, `secondBossHp` stayed
+at 31 (untouched) after a scripted walk+12-attack sequence. After,
+`secondBossDefeated=true`/`secondBossHp=0` on the same script,
+screenshot confirms the boss sprite is gone (death sequence completed).
+Full test suite: 436/436, unaffected (this room has no existing
+collision tests to regress).
+
+## Self-caught regression: the general OAM render-offset fix reverted (2026-08-15, same day)
+
+Direct user report right after asking to just launch the app: "im
+ersten bossraum sscheint diese verschoben zu sein (vielleicht der
+spwan offset den wir gefunden hatten der da nicht anwendbar ist?)" --
+collision looks shifted in the FIRST boss room (startRoom, `Field.lua`),
+and correctly guessed the cause.
+
+The user's guess was right. The general `Player:renderPosition()` fix
+(previous section) was applied to every player draw call across
+`Field.lua`, `BattleIntro.lua`, and all of `VictorySequence.lua` on
+the theory that the underlying OAM fact (WRAM copies unshifted into
+OAM, real hardware always renders `(WRAM value) - (8,16)`) is a
+universal Game Boy PPU fact and therefore safe everywhere. That
+reasoning is correct about the HARDWARE, but wrong about THIS
+PROJECT's own code: `startRoom`'s own sprite positions and collision
+data were historically captured and cross-checked via direct
+screenshot comparison against the RAW, unshifted `player.x/y` --
+i.e. this room's own calibration already implicitly bakes in "no
+offset." Applying the real hardware offset on top of an already-
+self-consistent-but-differently-conventioned room shifts the sprite
+away from where it was actually verified to look right -- a real
+regression, confirmed the moment the app was actually played instead
+of spot-checked via a couple of screenshots.
+
+**Reverted completely**: every player draw call in `Field.lua`,
+`BattleIntro.lua`, and `VictorySequence.lua` is back to the raw
+`self.player.x`/`self.player.y`, matching this project's original,
+consistent convention everywhere. `Player.RENDER_OFFSET_X`/`_Y` and
+`Player:renderPosition()` are left in `Player.lua`, unused by any
+draw call -- the underlying hardware fact is still real and still
+documented, it's just not safe to wire in broadly without individually
+re-verifying every single room's own historical calibration first (a
+real, much larger undertaking than this session budgeted for).
+`thirdRoom`'s own `fourthRoom` landing is back to the real, raw ROM
+value (120,112) too -- the original visual complaint about that one
+spot is therefore also back to its pre-investigation state, not fixed,
+honestly reverted rather than left half-applied. Full test suite:
+436/436 (the `renderPosition()` unit test still passes -- the METHOD
+is still correct, it's just unused now).
+
+**Lesson, recorded plainly**: a real, hardware-verified fact is not
+automatically safe to apply broadly to an already-large, already-
+tested codebase -- this project's own earlier draft of this exact
+finding said as much ("several of those rooms have extensive existing
+screenshot verification history that a blind, unverified global shift
+could silently break") and then didn't fully heed its own warning. A
+couple of spot-check screenshots are not the same rigor as actually
+playing the app -- the regression was caught the moment the user did.

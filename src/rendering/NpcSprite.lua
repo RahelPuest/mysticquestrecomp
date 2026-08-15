@@ -8,11 +8,16 @@
 -- own UP animation was never confirmed -- were directly observed
 -- animating in all four.
 --
--- Real, single-column 8x16-OBJ-mode sprites (ONE tile stacked top over
--- bottom, not a 2x2 block like Willy/the player) -- see
--- rom_profiles.lua's `secondRoom.scene.characterA/B.animation` doc
--- comment for the live OAM trace that found this (this project
--- previously, wrongly, modeled them as 2x2).
+-- CORRECTED (2026-08-15, direct user report "die npc sprites a und b
+-- jeweils 16x16 gross sind"): a fresh live OAM re-trace found these are
+-- REAL 16x16 (2x2-tile) sprites -- 2 real OAM entries at the SAME Y, X
+-- 8px apart (a genuine LEFT+RIGHT pair, each already 8x16 in hardware
+-- 8x16-OBJ-mode), not the single 8x16-OBJ-mode column this project
+-- previously, wrongly, modeled them as (that earlier claim only ever
+-- captured the upper-row tile of each column, silently dropping the
+-- entire lower row). See rom_profiles.lua's `secondRoom.scene
+-- .characterA/B.animation` doc comment for the full live-trace
+-- evidence and the formula that recovered the missing tiles.
 
 local CreatureSprite = require("src.rendering.CreatureSprite")
 local FixedStep = require("src.core.FixedStep")
@@ -22,9 +27,14 @@ NpcSprite.__index = NpcSprite
 
 local DIRECTIONS = { "down", "up", "left", "right" }
 
+--- `def.tileOffsets`: the real 4-tile, row-major 2x2 block (see
+-- rom_profiles.lua's own doc comment) -- {top-left, top-right,
+-- bottom-left, bottom-right}, matching `TileImage.buildSheet`'s own
+-- row-major layout convention exactly (the SAME one Willy/the player
+-- already use for their own 2x2 sprites).
 local function buildPose(romData, def, palette)
   return {
-    sprite = CreatureSprite.fromOffsets(romData, { def.top, def.bottom }, 1, 2, palette),
+    sprite = CreatureSprite.fromOffsets(romData, def.tileOffsets, 2, 2, palette),
     flip = def.flip,
     flipY = def.flipY,
   }

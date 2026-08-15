@@ -7767,3 +7767,1132 @@ Real mGBA tooling throughout, same methodology as every trace this
 session. No Lua behavior changed (doc-comment resolution, appended to
 the retraction above rather than overwriting it). Full Lua test suite:
 421/421 passing.
+
+## Second boss investigation (2026-08-15)
+
+Direct user reports across two sessions: "das ist wieder ein raum mit
+der selben struktur wie der boss raum, es gibt da einen ziemlich
+identischen bossfight" / "der zweite boss hat zumindest die gleiche
+grafik wie der erste" -- "versuche das zu entschlüsseln und zu
+implementieren".
+
+**How ANY boss/creature gets spawned (now fully understood).** Real
+script opcode `0xFE` ("display message [messageID]") resolves
+`messageID` through the already-known message-settings table
+(`profile.messageTextPointer`'s own base/stride, 24-byte records, base
+file `0x10739`) to a real record; a SEPARATE real bank-4 routine (file
+`0x101d1`) reads that record's own byte at offset+5 as a creature-
+species parameter and calls the real, general entity-allocate routine
+(`$0A74`, bank 9's own jump-table entry 4 at `$4239`/file `0x24239`)
+with it. The first boss's own real record is messageID 16 (live-traced:
+`$D438`/`$D439` resolves to it the instant the real courtyard encounter
+starts), species byte `0x16` (22).
+
+**Static census.** A full scan of ALL 1357 real message-settings
+records found exactly 5 (indices 3, 5, 10, 16, 18) sharing BOTH that
+exact species byte AND the same wider record structure (bytes 6-9 =
+`70/71, 2, 64, 16/24`) -- a real, non-coincidental family; 5 records out
+of 1357 sharing this exact structure by chance is astronomically
+unlikely.
+
+**Shadow-run.** A full shadow-run of ALL 1357 real scripts (this
+project's own `ScriptRuntime`, same method as
+`scripts/scan_all_scripts.lua`) through the current opcode coverage
+found exactly 3 real scripts (indices 533, 1092, 1240) that actually
+trigger one of those 4 sibling records (18, 3, 3 respectively) via
+opcode `0xFE` -- confirming real, reachable game content uses this same
+creature species more than once, not just idle table data.
+
+**Honest remaining gap.** Which (if any) of those 3 real scripts is the
+one tied to a specific room -- and what actually triggers each of them
+(most likely an NPC/actor-slot script-index field this project has not
+yet decoded) -- was not found despite real, substantial further
+digging (static CALL-address search for callers of scripts 533/1092/
+1240 turned up nothing). The `secondBoss` feature is therefore this
+project's own EVIDENCE-BASED IMPLEMENTATION CHOICE, not a claimed
+decoded ROM fact.
+
+### Room placement: three corrections, tracked live with the user
+
+1. First placed in `fourthRoom` (the room immediately after the
+   staircase) -- based on the real, independently-found structural fact
+   that `fourthRoom` shares its own real tile-source pointer (`$40B0`)
+   with `startRoom`, where the first boss fight happens.
+2. Direct user correction: "das monster ist im falschen raum! der
+   kampf findet nicht im raum nach der treppe statt sondern im raum
+   danach!!!" -- moved to `fifthRoom`, the room reached through
+   `fourthRoom`'s own real, live-traced NORTH exit.
+3. Direct user correction (same day): "das ist doch immernoch der
+   falsche raum!!! es ist im raum der so ausseiht wie der start raum
+   wo auch der erste bossfight statt findet!!!". Showing the ORIGINAL
+   `fourthRoom` screenshot for comparison (since `fourthRoom`, not
+   `fifthRoom`, is the one that structurally/visually resembles
+   `startRoom`) was explicitly rejected by the user ("Nein, anderer
+   Look / anderer Ort"). Follow-up live back-and-forth (normal
+   keyboard play in this exact LÖVE app, not the F8 room-browser, not
+   the original ROM) established the room is reached by walking WEST
+   out of `fourthRoom`'s own corridor, at a Y position that is
+   somewhere in the middle of the room's own vertical range (not all
+   the way at the top). This matches `sixthRoom` -- a room this
+   project had already fully captured (real tile grid + real
+   `tileOffsets`) in an EARLIER session, then explicitly retracted as
+   an exit target on 2026-08-14 after determining the real ROM itself
+   never "cuts" there (see that date's own "gamemap absolute prio"
+   entries above) -- it's really one continuous scrolling canvas with
+   `fourthRoom`, which this project's renderer has no camera-scroll
+   support for.
+
+**Resolution (2026-08-15, direct instruction: "du sollst doch bitte
+einfach die bugs erstmal fixen").** Rather than leave `sixthRoom`'s
+real, already-decoded tile content sitting unused, `fourthRoom.exits`
+gained a second entry back, pointing at `sixthRoom`, framed explicitly
+as an ENGINEERING CHOICE (not a reversal of the 2026-08-14 finding):
+the ROM fact stays "one continuous canvas, no real cut" but this
+project's own engine has no other way to expose that real content
+without building full scroll-camera support first (a separate, much
+bigger feature). `secondBoss` moved from `fifthRoom` to `sixthRoom` to
+match. Live-verified end to end
+(`MYSTICQUEST_VICTORY_START_ROOM=fourthRoom
+MYSTICQUEST_SCRIPT="up@10-30,left@31-490"`): player walks north then
+west, the exit fires after the real ~220-frame hold, lands at
+`sixthRoom` (144,80), and the second boss (same real sprite/species
+data as the courtyard boss) is visible and reachable there.
+
+**Honest caveat, recorded rather than smoothed over**: `sixthRoom`'s
+own real captured tileset is the willyRoom/secondRoom/thirdRoom
+checkerboard-courtyard family, NOT `startRoom`'s tileset -- the user's
+"sieht aus wie der Start-Raum" description does not literally match
+this room's real captured art (that visual match structurally belongs
+to `fourthRoom` itself, which the user rejected as the right room).
+The WEST-DIRECTION fact was confirmed three separate, concrete times
+in live play, so it governs the final placement; the visual-similarity
+description may simply have been an imprecise recollection. Mid-
+investigation the user also raised a further alternative hypothesis
+worth recording rather than silently dropping: "vielleicht ist das
+auch kein einzelner raum sondern der erste nochmal nur das skript
+führt was anderes aus" (maybe it isn't a separate room at all, just
+`startRoom` again with a different script running) -- genuinely
+possible in the real ROM's own terms (this project has not ruled it
+out), but not distinguishable from the current evidence without
+further live ROM tracing; left as a real, explicitly open question
+rather than resolved either way.
+
+### fourthRoom collision/spawn re-check (same user report)
+
+The same bug report also claimed "die collison im fourthroom komplett
+kaputt" and "die postion des players wenn er den raum betritt ist
+falsch... der player sollte auf der trepp pawnen". A fresh, dedicated
+re-check this session (four-direction bounded-movement sweep from the
+real landing spot, `MYSTICQUEST_SCRIPT` holds of 60-260 frames each,
+plus pixel-level screenshot inspection) found the SAME result as an
+earlier pass: movement is bounded and consistent everywhere (UP -> y=
+32, DOWN -> already at the y=112 bound, LEFT -> x=0, RIGHT -> x=128,
+matching the room's own already-documented real wall positions) --
+no reproducible "completely broken" collision was found. The real
+landing spot (120,112) remains a decisively LIVE-VERIFIED ROM fact
+(direct `mgba` trace of the actual thirdRoom->fourthRoom staircase
+cut, cross-checked independently via `TileLandingPosition`'s own
+tile->pixel formula) -- not changed. A pixel-level look at the landing
+screenshot shows the player's own top edge sitting one native tile row
+below the room's real `135` 2x2 feature block (a real, live-confirmed
+floor tile, visually reads as an architectural block that could
+plausibly be the "Treppe" the user meant) -- genuinely consistent with
+"just arrived at the top of the stairs," though this project has no
+live trigger that reads an explicit ROM position to confirm that
+reading either way. Recorded honestly as unresolved rather than
+guessing a coordinate change against solid, independently cross-
+checked live evidence.
+
+## 2026-08-15: task #1 ("ScriptInterpreter soll wirklich treiben, nicht nur parallel beobachten") -- self-caught wrong-bank bug in VictorySequence's own shadow run, replaced with a real, live, per-frame `BossSequenceInterpreter`
+
+Direct continuation of a fresh "next quick wins for the project itself"
+request. Chosen target: make the already-decoded `ScriptRuntime`
+machinery actually DRIVE something real, instead of remaining a one-shot
+construction-time "shadow run" nobody ever re-derived after task #86
+corrected the real bank assumption it depended on.
+
+**A real, self-caught bug, found before writing any new code.**
+`VictorySequence.lua`'s existing `runScriptInterpreterShadow` (shipped
+2026-08-13, task #71) built its `RomScriptStream` from
+`profile.scriptPointerTable.fileOffset` -- `0x20F11`, i.e. bank 8 (the
+STATIC pointer table's own location in the ROM). But task #86
+(2026-08-14, one day later) had already found, via a direct live `mgba`
+trace, that the real ROM's own EXECUTING cursor for this exact script
+starts in bank **13**, not bank 8 -- `BossSequenceInterpreter.lua`
+(also written 2026-08-14) already encodes this correction. Nobody had
+gone back and updated `VictorySequence.lua`'s own separate, earlier
+integration to match -- it kept silently reading and executing bank 8's
+unrelated bytes at CPU `$470F` for a full day-plus of otherwise-active
+development, never producing a real, meaningful opcode trace, and
+nobody noticed because its own overlay line only ever reported a step
+count, never the actual bank or a resulting opcode histogram.
+
+Found via a from-scratch headless probe
+(`probe_boss_sequence.lua`, scratchpad, not checked in): built a real
+`BossSequenceInterpreter` with a real `ctx.onMessage` wired to
+`MessageTextPointer.resolveText`, ticked it 200,000 times, and logged
+the resulting opcode histogram. Result: real, decoded opcodes DO fire
+(`0x01`, `0x02` CHAIN into bank 14, `0x04`, `0x06`, `0x08` x3, `0x10`,
+`0x11`, `0x14`, `0x23`, `0x29`, `0x2D`, `0x3A`, `0x3C`, `0x42`, `0xC4`,
+`0xC9`, `0xD4`, `0xD9` x2, `0xDC`, `0xE0`, `0xE3`, `0xF0` x15, `0xF4`,
+`0xF8`, `0xFF` x5) -- then the run settles, PERMANENTLY, into opcode
+`0x00` (199,953 of the 200,000 total dispatches) and never recovers.
+
+**Why it stalls there, and why that's honest, not a new bug.**
+`StandardScriptHandlers.queueGate`'s own doc comment (written during
+task #86, 2026-08-14) already documents this precisely: opcode `0x00`'s
+real "queue empty" halt, for this ONE script, is not released the
+normal way (`ScriptContinuationQueue`) -- the real ROM's own release
+comes from a SEPARATE mechanism, a periodic `$1F35` selector-`0x13`
+edge-detector (cached at real WRAM `$C5AF`) that only fires once the
+boss's own entity slot has genuinely finished despawning, which then
+redirects the persistent cursor via `$24A7`->`$31AD` (task #85's own
+cross-actor dispatch). This project's own investigation into WHEN that
+edge-detector actually fires is itself still an open question (see
+task #86's retraction: "why does `$31AD` only succeed once, ~200,000
+steps in [real CPU instructions, not opcode dispatches]"). A headless
+probe driving THIS project's own `ctx` (no live actor/entity despawn
+model exists) has no way to ever satisfy that condition -- it isn't a
+missing opcode handler, it's a missing, still-not-fully-understood
+EXTERNAL trigger, and the interpreter's own "no silent fallbacks" rule
+means it correctly refuses to guess at it rather than fabricating a
+release.
+
+**The fix, concretely.** `VictorySequence.lua`'s integration was
+rewritten around `BossSequenceInterpreter` directly (removing the
+duplicate, wrong-bank `runScriptInterpreterShadow`):
+  - Ticked ONCE PER REAL FRAME from `:update(dt)`, unconditionally on
+    `self.phase` (matching the real ROM's own boss-defeat script, a
+    fully separate mechanism from this state's hand-authored phase
+    machine) -- not a bounded one-shot burst at construction time,
+    which could never pace real per-frame effects correctly even in
+    principle.
+  - Real `ctx.stats = self.stats` (the SAME live object every other
+    real system in this state reads/writes -- a free, ongoing cross-
+    check: if the real `0xC0`/`0x32` HEAL_LP/HEAL_MP opcodes this
+    script eventually dispatches produce a wrong-looking value, it's
+    immediately visible in the live HUD, not buried in an unobserved
+    shadow copy).
+  - Real `ctx.onMessage` resolving via `MessageTextPointer`, recording
+    into `self.bossSequenceTranscript` -- ready to surface real content
+    the moment a future pass unblocks the `0x00` wait.
+  - Debug overlay rewritten to report LIVE, per-frame state (bank,
+    cursor, running/stopped/finished, opcode histogram top-6, real
+    message count) instead of a one-shot summary.
+
+**Live cross-check.** An actual `love .` run (`MYSTICQUEST_VICTORY_DEMO=1
+MYSTICQUEST_SCRIPT_INTERPRETER=1`), left running for 610 real frames,
+converged on cursor `0x4798`, bank 14 -- the EXACT SAME final cursor the
+independent, from-scratch headless probe reached after 200,000 ticks.
+Same determinism, same real ROM bytes, two independent harnesses. The
+existing hand-authored dialogue (`self.pages`) rendered completely
+unchanged in both switch-on and switch-off screenshots -- zero visual
+regression, confirming the "still parallel, still shadow" design goal.
+
+**Tests.** 2 new regression tests in
+`tests/unit/boss_sequence_interpreter_test.lua`: one locks in the real,
+live-observed early-opcode set (a wrong-bank stream would produce none
+of these) plus the real bank-14 CHAIN landing; the other explicitly
+asserts the CURRENT honest stall on opcode `0x00` (deliberately written
+to itself start FAILING, as a welcome signal, the day the real
+`$1F35`/`$C5AF` trigger condition is finally found and this run starts
+progressing further). 437/437 total tests pass.
+
+**Honest scope, what this is NOT.** Not a real dialogue swap-over --
+the hand-authored `self.pages` stays 100% authoritative for what's
+actually shown. Not a fix for the `$1F35`/`$C5AF` timing mystery itself
+-- that remains a real, open, separate reverse-engineering question.
+What this IS: a real bug fix (the wrong bank), a genuine architectural
+upgrade (live per-frame driving instead of an inert burst, matching how
+the real ROM is actually interpreted), and a precisely narrowed next
+step -- crack the real `$1F35`/`$C5AF` trigger timing, live, via mgba,
+then wire the dialogue swap-over this infrastructure is now ready for.
+
+## 2026-08-15, same day: CORRECTION to the entry above -- the real ROM does NOT stall on opcode 0x00 at all; this project's own per-frame ticking desyncs from the real cursor well before that point
+
+Direct continuation ("mach das", following the previous entry's own
+"next concrete step: find the real $1F35/$C5AF edge-detector's own
+trigger TIMING, live, via mgba"). Built a real, decisive live trace
+(`trace_31ad_redirect.py`/`...2.py`, scratchpad, not checked in): from
+`checkpoints.courtyard_boss_defeated()`, ran the real ROM forward one
+real frame at a time, watching WRAM `$D85A` (current opcode),
+`$D8B6`/`$D8B7` (persistent cursor), `$C5AF` (the edge-detector's own
+cache byte), `$C3F0`/`$C3FE`/`$C3FF` (actor/context record), and `$02AB`
+(player facing) every single frame.
+
+**Part 1 result: the specific mystery from the previous entry is
+CLOSED.** The real `$1F35` selector-`0x13` edge fires exactly once
+(real frame 3890 in this trace), and the redirect lands the persistent
+cursor at exactly `$4710` (opcode `0x08` fetched at `$470F`) -- a
+byte-for-byte match to `BossSequenceInterpreter.lua`'s own
+`START_CPU_ADDRESS`. This is a genuine, live, first-ever confirmation
+that this project's software enters the boss-defeat script at exactly
+the right real address, via exactly the mechanism task #86 already
+described. The very next few real dispatches also match this project's
+own already-known trace exactly: opcode `0x08` at `$470F` -> jumps to
+`$472a` on its own real "list exhausted" leaf (matching
+`BossSequenceInterpreter.lua`'s own hardcoded
+`FLAG_LIST_EXHAUSTED_TARGETS["13:0x4712"] = 0x472a` exactly), then a
+real CHAIN (opcode `0x02`) lands at `$61b3` -- consistent with
+`POST_CHAIN_BANK = 14` (`14*0x4000 + (0x61b3-0x4000) = 0x3A1B3`, a real,
+in-range bank-14 file offset).
+
+**Part 2, the real, decisive, NEW finding.** Watching MUCH further
+(4000 total real frames from the checkpoint) found something this
+project had not previously checked: `$D85A` does NOT change every real
+frame past the CHAIN -- it was observed holding the exact same value
+for long, genuine real-frame stretches (10, 158, even 314 consecutive
+real frames) before advancing to the next real opcode. The real
+sequence dispatched, in order, past the CHAIN: `0x08, 0xf8, 0xdc, 0xf0,
+0xff` (matches this project's own already-decoded set), then `0x04`
+(the typewriter tick) repeatedly, with real multi-frame gaps between
+changes, then `0xc0` (HEAL_LP), then -- for the first time, LIVE,
+CONFIRMED to genuinely fire in this real script -- **`0xbd`** and
+**`0xf3`** and **`0xbc`**, the exact 2 real opcodes (`0xBC`/`0xBD`) this
+project's own `ScriptOpcodeTable.lua` has flagged, since task #86, as
+the ONLY remaining genuinely-undecoded members of this script's own
+opcode list. Then more `0xf0`/`0xff`/`0xdd`/`0x04`, finally settling at
+cursor `0x6206`, opcode `0xff`, for the rest of the trace (2927+ further
+real frames with zero change).
+
+**Why this matters, concretely.** This project's own live software (via
+`VictorySequence.lua`'s new per-frame `BossSequenceInterpreter` wiring,
+same session, earlier entry) ticks the interpreter EXACTLY ONCE per
+real LÖVE frame, unconditionally. Since the real ROM demonstrably does
+NOT re-dispatch a new opcode every real frame past this point, that
+per-frame cadence is racing far ahead of the real ROM's own actual
+position in the byte stream. This project's own software, over the
+SAME real frame count (610), converges on cursor `0x4798`; the REAL
+ROM, over the identical real frame range from the identical real
+checkpoint, is at `0x6206` -- two completely different cursor values.
+Because the real, correct path genuinely includes the still-undecoded
+`0xBC`/`0xBD` (which this project's own `ScriptInterpreter:step` would
+loudly refuse to execute, per its "no silent fallbacks" rule), this
+project's software provably is NOT following the real byte stream by
+that point -- it desynced earlier, landed on a DIFFERENT, unrelated
+cursor that happens to look like valid opcodes for a while (explaining
+the earlier entry's "stalls on opcode 0x00" observation -- a real,
+reproducible artifact of THIS project's own software taking a wrong
+turn, not a faithful reproduction of a real ROM mystery).
+
+**Genuinely still open, honestly, after this pass:** what real condition
+gates re-invocation of the real fetch-dispatch routine (`$3727`) for
+this script once per-frame-paced opcodes are involved -- every real
+frame, only while some counter/flag holds, or something else. Not
+resolved this pass; `BossSequenceInterpreter:tick`'s own doc comment
+and `VictorySequence.lua`'s top-of-file doc comment are both updated to
+state this honestly rather than repeat the now-disproven "matches how
+the real ROM is driven" claim. This is also, as a genuine side effect,
+the first LIVE, real confirmation (not just static disassembly) that
+opcodes `0xBC`/`0xBD` actually fire during a real playthrough of this
+script -- reinforcing (not weakening) the priority of finally decoding
+their own real fade-curve formula (`$101A`/`$1030`).
+
+## 2026-08-15, same day, continued: found and fixed a real bug in StandardScriptHandlers.tick() -- opcode 0x04 shares 0xFF's own real 5-frame pacing gate, not "always advances immediately"
+
+Direct continuation ("ja mach das", following the previous correction's
+own "genuinely still open... what real condition gates re-invocation of
+$3727"). Built a native `mgba` WRITE WATCHPOINT (`tools/rom/watcher.py`,
+already-existing project infrastructure) on WRAM `$D85A` -- catching
+every real write, not just polled value changes, with `core
+.frame_counter` (a genuine hardware-driven counter) read at each hit.
+
+**Result: extremely clean, decisive.** Past the first real CHAIN,
+`$D85A = 0x04` is written REPEATEDLY from PC `$36DB` (a site INSIDE
+opcode `0x04`'s own real handler, not the main fetch loop `$3727`/
+`$3728`), at an exact, consistent real 5-frame interval across dozens of
+consecutive observations (real `frame_counter` 4087, 4092, 4097, 4102,
+4107, 4112, ... every single delta exactly `+5`). The TOTAL real
+duration before the persistent cursor actually advances past this
+opcode is genuinely variable (one real occurrence self-rearmed for
+~191 real frames before releasing; a later occurrence in the same
+script released after just 9 real frames) -- consistent with a real,
+per-CHARACTER typewriter reveal whose length depends on how much text
+is being shown at that point, not a fixed count.
+
+This directly matches this project's own ALREADY-established
+understanding, previously undead-ended: `StandardScriptHandlers
+.textboxWait`'s own doc comment already said "the real ROM's own
+sub-opcode 1 hands off to the identical typewriter mechanism" as opcode
+`0x04` -- i.e. the two opcodes were already known to share the same
+real underlying reveal state. What was WRONG, and is now fixed: `.tick`
+'s own Lua implementation (`StandardScriptHandlers.tick`) never
+actually modeled that shared pacing -- it just called `onTick()` and
+advanced the cursor immediately on every single dispatch, contradicting
+its own doc comment's outdated claim ("~110 real re-invocations...
+always immediately followed by more script bytes, the interpreter does
+NOT block waiting on it") -- a real, self-caught documentation AND
+implementation error, now corrected together. `.tick(onTick, isDone)`
+is rewritten to share `.textboxWait`'s exact pacing+gating shape
+(`FRAMES_PER_TICK = 5`, per-cursor state, gated by the same `isDone`).
+`ScriptRuntime.lua`'s registration updated to pass the already-computed
+`isDone` local. 2 existing unit tests updated to match the corrected,
+real behavior (both were asserting the OLD, now-known-wrong "always
+advances immediately" shape); a third (`ScriptRuntime`'s own synthetic
+happy-path test) updated for the same reason. 437/437 tests pass.
+
+**Honest, decisive scope note on what this DOES and does NOT fix**:
+this is a real, standalone correctness fix to the general opcode
+decoding (any future caller supplying a REAL `isTextboxDone` now gets
+correct pacing) -- but `BossSequenceInterpreter`'s own `ctx
+.isTextboxDone` is STILL hardcoded `function() return true end`, an
+ALREADY-DELIBERATE simplification dating back to this shadow run's
+original 2026-08-13 design ("no real display state to gate on in a
+shadow run"). With `isDone()` unconditionally true, `0x04` still
+releases on its very first dispatch every time -- so THIS SPECIFIC
+integration's own desync from the real ROM (documented in the previous
+entry) is UNCHANGED by this fix. On reflection, this reframes the
+earlier "genuinely still open" question usefully: the desync isn't a
+separate, crackable mystery -- it's the direct, expected consequence of
+an ALREADY-HONEST, ALREADY-NAMED limitation (no real per-character
+count is threaded through this project's engine anywhere), which this
+project will not fake a value for. Left as an honest, named limitation
+rather than pursued further with a guess.
+
+## 2026-08-15, same day, continued: "voll interpretierte Version" pass 1 -- real inline-text-based isTextboxDone built and tested; a genuine, SEPARATE cursor-consumption bug found (not yet located)
+
+Direct continuation of the "fully interpreted version" priority list.
+Item 1 ("wire a real isTextboxDone"): found, via a direct byte
+comparison, that the boss-defeat script's real dialogue text is
+embedded INLINE in the script stream at the persistent cursor's own
+position (NOT resolved via a messageID lookup -- opcode `0xFE` never
+fires in the live-traced window) -- `TextDecoder.decodeString` at the
+live cursor's own file offset (bank 14, `$61e6` -> file `0x3A1E6`)
+decodes to EXACTLY this project's own already-hand-verified
+`STORY_PAGE_OFFSETS[1]` text, byte for byte. Built a general
+`isTextboxDone`/`onTick` pair in `VictorySequence.lua`'s
+`buildBossSequenceInterpreter` that decodes the real text AT the live
+cursor on first tick and paces using its real character count.
+
+First version ALSO gated final release on the same real player-input
+gesture ("a"/"start") the hand-authored cutscene path already uses --
+reasonable-looking, but DISPROVEN the moment it was tested: a live
+`mgba` trace with ZERO real button presses fed to the emulator at any
+point still shows the real ROM auto-advancing past multiple real
+text-reveal-then-release cycles on its own (80-frame and 50-frame real
+gaps between one box's release and the next box's first tick, no input
+anywhere in that window). Removed the input gate -- `isTextboxDone` is
+now purely the real character-count check, matching the directly
+observed auto-advance behavior.
+
+**Tested live, twice** (once with simulated repeated real "A" presses
+over 6020 real frames, once with zero input over 2413 real frames):
+**both converge on the exact same cursor, `0x4798`, stuck on opcode
+`0x00`** -- the IDENTICAL final resting point the ORIGINAL, un-paced
+"always true" `isTextboxDone` reached before any of today's fixes. This
+is a real, decisive, and somewhat humbling result: it disproves the
+working hypothesis that the pacing bug was the (or a) cause of the
+desync from the real ROM's own path (which reaches `0x6206` over a
+comparable real frame range, per the earlier entry). `0x4798` is a
+genuine, stable, reproducible attractor independent of how correctly
+`0x04`/`0xFF`'s own pacing is modeled -- meaning a DIFFERENT, still
+unidentified real cursor-consumption mismatch exists somewhere between
+the CHAIN landing (`$61b3`) and this point, most likely a real
+operand-byte-count error in some OTHER opcode's Lua handler. NOT found
+this pass -- would need its own dedicated live cursor-by-cursor
+diff against the real ROM (same watchpoint methodology used throughout
+today), a genuinely separate, open task. 437/437 tests still pass
+(no regression -- this whole investigation only touched the shadow
+run's own ctx wiring, never anything the hand-authored `self.pages`
+path uses).
+
+## 2026-08-15, same day, continued: ROOT CAUSE of the 0x4798 desync located -- opcode 0x04's real handler ($333D) is a genuine, non-trivial per-byte text-classify + jump-table dispatcher, not a simple no-operand tick
+
+Direct continuation ("mach was du für richtig hältst"). Built a headless
+probe (`probe_full_sequence.lua`, scratchpad) replicating
+`buildBossSequenceInterpreter`'s exact current ctx wiring, logging every
+cursor CHANGE (not just a final histogram). Found the EXACT divergence
+tick: cursor `0x61d6` -> `0x472e` (tick 95 -> 96) -- a huge backward
+jump landing right next to the original bank-13 CHAIN site.
+
+**Traced to source.** `StandardScriptHandlers.chain` (opcode `0x02`)
+unconditionally `queue:push(true, afterByte2)` on every real CHAIN --
+confirmed real ROM behavior (`$36DF`), not a bug. The one real CHAIN
+this script makes (bank 13 -> 14) pushes exactly one stale "resume at
+bank 13" entry. This project's own opcode `0x00` handler
+(`queueGate`) pops the FIRST available queue entry and, since
+`shouldRedirect` is true, redirects the persistent cursor there --
+exactly matching the observed jump. This project's software has no
+`ctx.isQueueBlocked` wired for this run, so `queueGate`'s own real
+halt-#1 gate (`$D874` bit 0) is skipped entirely, meaning the FIRST
+opcode `0x00` this run ever reaches unconditionally drains that stale
+entry. The real ROM's own live-traced `$D85A` sequence, by contrast,
+NEVER shows opcode `0x00` dispatched anywhere in this exact window --
+proving the real ROM's own cursor never actually reads byte `0x00` as
+an opcode here at all.
+
+**Real root cause, disassembled directly (`tools/rom/disasm.py`,
+static, no live trace needed for this part): opcode `0x04`'s real
+handler ($333D, `ScriptOpcodeTable.TICK_HANDLER_ADDRESS`) is NOT the
+"no operand bytes, immediately advances" routine this project's
+`StandardScriptHandlers.tick` has always modeled it as** (a claim that
+turns out to trace back to an ASSUMPTION, never actually verified
+against the real bytes at this address until now). Real disassembly:
+
+```
+$333D  LD A,(HL)         ; reads the byte RIGHT AFTER the opcode --
+                          ; this is a real per-byte TEXT CLASSIFIER,
+                          ; not a fetch-next-opcode step
+$333E  CP $99 / JP NC,$3480     ; A >= 0x99 -> one real branch
+$3343  CP $20 / JR C,$3356      ; A <  0x20 -> a SHORT inline branch
+$3347  CP $70 / JP C,$34A4      ; 0x20 <= A < 0x70 -> another branch
+$334C  CP $80 / JP C,$3480      ; 0x70 <= A < 0x80 -> same as >=0x99
+$3351  SUB $10 / JP $34A4       ; 0x80 <= A < 0x99 -> same as 0x20-0x6F (offset)
+```
+
+The `A < 0x20` branch (`$3356`) is itself real and decisive: `AND A`
+tests whether the byte is exactly `0x00` -- if so, `INC HL` (skip the
+terminator) then `CALL $3727` (the REAL main opcode-fetch routine,
+called RECURSIVELY from inside opcode `0x04`'s own handler, not
+returning to a shared top-level loop) -- i.e. **byte `0x00`, when
+encountered here, is a real INLINE TEXT TERMINATOR meaning "this
+embedded text run is done, go fetch the next real script opcode" -- a
+completely different real meaning than opcode `0x00`'s own OWN
+top-level `QUEUE_GATE` semantics**, which only apply when `0x00` is
+fetched as a genuine top-level opcode, never when consumed here as text
+data. Any other byte value (`0x00 < A < 0x20`) computes
+`(A - 0x10) * 2` as an index into a real jump table at `$38F6`,
+jumping to whatever real control-code handler lives there -- this is
+almost certainly the SAME real control-byte family `TextDecoder.lua`'s
+own digraph/control-byte table already handles at the STATIC-text-blob
+level (e.g. the still-undecoded `[0x14]`-style name-insertion tag this
+project's own `VictorySequence.lua` doc comments have flagged for a
+long time) -- now found to ALSO be reachable live, at runtime, through
+this exact script-interpreter opcode.
+
+**Honest, decisive scope conclusion**: this is real, substantial,
+NOT-yet-decoded ROM logic -- a genuine per-byte text/control-code
+classify-and-dispatch mechanism (branches at `$3356`/`$3480`/`$34A4`,
+a real jump table at `$38F6` with an unknown number of real entries),
+not a quick Lua fix. It directly supersedes and subsumes what the
+original "fully interpreted version" list called out separately as
+items 2 (opcode `0xBC`/`0xBD`, likely reached FROM one of these jump-
+table entries) and 4 (the `[0x14]` name-insertion byte, very likely
+ONE of these same jump-table entries) -- both are almost certainly
+part of this SAME real dispatch table, not separate mechanisms. Fully
+resolving the `0x4798` desync requires decoding this table properly
+(a real, bounded, well-scoped reverse-engineering task: trace `$38F6`'s
+own real entry count and what each entry does) rather than patching
+`StandardScriptHandlers.tick` with a further guess. NOT attempted this
+pass -- flagged as the concrete, precisely-located next step. 437/437
+tests still pass; zero change to any shipped behavior (this was pure
+investigation, no code changed since the last correction).
+
+## 2026-08-15, same day, continued: the $38F6 table decoded -- it's the SAME real "multi-line textbox driver" this project's own earlier 0xFF-sub-table investigation already found, just never connected to opcode 0x04
+
+Direct continuation ("geh die nächste Tabelle an"). Disassembled all 20
+table slots at `$38F6` (`tools/rom/disasm.py`, static): real, valid
+entries only exist for indices 0-15 (script control-byte values
+`0x10`-`0x1F`, matching `$333D`'s own `SUB $10` before the table
+lookup) -- indices 16+ read as garbage/out-of-range addresses,
+confirming the real table is exactly 16 slots. 4 of the 16 (`0x16`-
+`0x19`) are genuine, structured `0x0000` (unused/reserved) entries, the
+same "deliberate reserved block" signature this project has already
+seen elsewhere (`scriptPointerTable`'s own doc comment).
+
+**The big reframing find**: disassembling the 12 real targets shows
+this table is NOT a new, unrelated mechanism -- it's the SAME real
+system this project's own MUCH EARLIER investigation (see this file's
+own "0xFF sub-table, finished" section above, several sessions ago)
+already fully disassembled and documented, just never connected to
+opcode `0x04`'s own dispatch:
+
+- **`$36D0`** (the shared "continue" call several table entries end
+  with) is disassembled here for the first time and is EXACTLY the
+  self-rearm mechanism this session's own live watchpoint trace found
+  writing WRAM `$D85A` from PC `$36DB`: `INC HL / cache HL into
+  $D8B6/$D8B7 (the persistent script cursor) / LD A,0x04 / LD
+  ($D85A),A / RET` -- i.e. `$36D0` is the literal, real "advance the
+  cursor by one real position and re-arm opcode `0x04` for another
+  real tick" primitive. `$36DB`'s own address (found live) is exactly
+  the `LD ($D85A),A` instruction inside this exact function -- a
+  precise, byte-for-byte match between today's live evidence and this
+  static disassembly.
+- **Byte `0x10`** (`$34E7`): `LD A,6 / LD ($D84A),A / ...` -- sets the
+  SAME real mode register (`$D84A=6`) this project's own earlier 0xFF
+  sub-table work already found for its own sub-opcode 0 ("sets mode
+  register `$D84A=6`... hands off to the typewriter via `$36D0`").
+- **Byte `0x11`** (`$34F4`): tests WRAM `$D853` bit 7 -- the EXACT same
+  real cell/bit the earlier investigation already identified as "the
+  real release point that resumes the underlying script" (0xFF
+  sub-table's own sub-opcode 8).
+- **Byte `0x12`** (`$3502`): calls `$1ED1` (bank-2 wrapper) then
+  conditionally `CALL $3C74` with `B=4` -- `$3C74` is this project's
+  own ALREADY-documented "reschedule sub-dispatch" primitive
+  (`LD A,B / LD ($D86B),A / LD A,0xFF / LD ($D85A),A / RET`) -- i.e.
+  byte `0x12` is a real BRIDGE that reschedules the interpreter into
+  the 0xFF sub-table's own sub-opcode 4 (`$350F`, already documented:
+  "conditional halt via a bank-2 call, tests `C==0`").
+- **Byte `0x13`** (`$351A`): a real, substantial 164-byte block copy
+  (`$D4A7`->`$D56E` via `$2B49`) plus a `$C0A0`->`$D862` copy -- NOT
+  previously documented; a real, distinct operation (plausibly a
+  textbox/tilemap snapshot), not yet further characterized.
+- **Bytes `0x14`/`0x15`** (`$357D`/`$3582`) -- **the real NAME-
+  INSERTION mechanism**, genuinely new (not previously connected to
+  anything): each sets `HL` to one of TWO real, DIFFERENT WRAM
+  addresses (`$D79D` for `0x14`, `$D7A2` for `0x15` -- plausibly the
+  real hero-name and heroine-name save slots, or two different stored-
+  string slots), stores that pointer into `$D8AB`/`$D8AA`, then
+  bridges into the 0xFF sub-table via `$3C74` with `B=1` (sub-opcode 1,
+  the real "5-tick pacing gate + 4-direction cursor dispatcher" core
+  routine). This is very likely the real mechanism behind the
+  long-flagged, never-decoded `[0x14]`-style speaker-tag/name-insertion
+  control byte `VictorySequence.lua`'s own doc comments have referenced
+  since early in this project (e.g. the Willy-exchange "speaker tags"
+  note) -- HYPOTHESIS on the exact real string source (`$D79D`/`$D7A2`
+  themselves not yet traced to NameEntry.lua's own real save format),
+  but the STRUCTURE (two name slots, both routed through the same real
+  cursor-dispatch machinery) is now real, disassembled fact.
+- **Byte `0x1A`** (`$35B0`, `NEWLINE_BYTE` -- already INDEPENDENTLY
+  confirmed by `TextDecoder.lua`'s own, completely separate
+  reverse-engineering): a real, decisive CROSS-VALIDATION that this
+  table is correctly understood -- two independently-derived findings
+  (one from static text-corpus analysis, one from live opcode tracing)
+  agree exactly on this one byte.
+- **Byte `0x1B`** (`$35C1` -> `$3648`, disassembled here): sets up the
+  REAL `$D8B2`-`$D8B5` cursor position-pair WRAM cells (reads a base
+  position from `$D4A9`/`$D4AA`, decrements both bytes, stores as
+  `$D8B2`-`$D8B5`) -- **the exact same real WRAM cells** the earlier
+  0xFF-sub-table work already found "sub-opcode 1's own `$0x3648`
+  helper" populating. Also sets `$D853=0x1E` (matching that earlier
+  work's own noted "sub-opcode 1's own `0x1E`" value) and bridges into
+  0xFF sub-opcode 2 (the real line-clear/blank routine) via `$3C74`
+  `B=2`.
+- **Bytes `0x1C`-`0x1F`** (`$35C6`/`$35CD`/`$35D4`/`$35DD`) -- **these
+  are LITERALLY the exact same real code** (file `0x35C6`-`0x35E3`)
+  the earlier 0xFF-sub-table investigation already fully disassembled
+  and named "a real up/down/left/right cursor-delta dispatcher" (each
+  `CALL $3C92` then one of `INC E/DEC C`, `DEC E/INC C`, `DEC D×2/
+  INC B×2`, `INC D×2/DEC B×2`) -- confirming these 4 script control
+  bytes are real, literal "move the text cursor up/down/left/right"
+  codes, now confirmed reachable both via the 0xFF sub-table AND
+  directly as embedded script bytes through opcode `0x04`'s own
+  classifier.
+
+**Honest, decisive conclusion**: opcode `0x04` (`$333D`) and opcode
+`0xFF`'s own sub-table (`$38E6`) are NOT two separate mechanisms --
+they are two ENTRY POINTS into ONE unified real "multi-line textbox
+driver" state machine, cross-wired via `$3C74`'s own shared reschedule
+primitive and a shared set of real WRAM cells (`$D84A`, `$D853`,
+`$D862`, `$D86B`, `$D8AA`-`$D8AB`, `$D8B2`-`$D8B5`, plus the persistent
+cursor `$D8B6`-`$D8B7`). This single finding directly resolves the
+"what does the `$38F6` table do" question AND retroactively explains
+why `StandardScriptHandlers.tick`'s own "no operand bytes, immediately
+advances" model was wrong from the start: opcode `0x04` was never a
+simple primary-table opcode in the same sense as the other ~186 this
+project has already wired -- it's an entry point into this SAME
+already-mostly-disassembled secondary system `textboxWait`'s own doc
+comment already honestly flags as "does NOT reproduce the real ROM's
+own byte-exact `$D86B` sub-opcode state machine... reproduces that
+OUTER, confirmed behavior directly" instead.
+
+**Real, well-scoped remaining work** (NOT attempted this pass -- a
+genuine, substantial Lua-porting task, not a quick fix, and rushing it
+risks guessing at the exact byte-consumption/state-transition rules):
+build a byte-exact Lua port of this unified system (opcode `0x04`'s own
+16-entry control-code table + the already-documented 11-entry `0xFF`
+sub-table + the shared WRAM cells listed above), replacing
+`StandardScriptHandlers.tick`/`.textboxWait`/`.startTextboxWait`'s
+current "outer behavior approximation" models. Once done, this would
+be the concrete infrastructure needed to correctly drive the real
+`0x4798`-region content (and, per this and the earlier session's own
+finding, the still-undecoded `0xBC`/`0xBD` opcodes and the name-
+insertion mechanism are now understood to very likely NOT be separate
+blockers at all -- `0xBC`/`0xBD` reads, in this new light, like it
+could plausibly be reached from a DIFFERENT real table entry this pass
+didn't need to visit, or a genuinely separate real family; not
+re-confirmed either way this pass).
+
+No code changed this pass (pure disassembly/documentation, matching
+this project's own "characterize before implementing" discipline for a
+mechanism this size) -- 437/437 tests unaffected.
+
+## 2026-08-15, same day, continued: real code change shipped -- opcode 0x04 is now a genuine byte-exact classifier; precisely narrowed down the ONE remaining gap (the real $36D0 "re-enter classifier" bridge)
+
+Direct continuation ("mach trotzdem. ändere den code"). `StandardScriptHandlers.tick` rewritten from scratch to match `$333D`'s real disassembly: reads the byte at the current cursor and branches on real terminator (`0x00`, immediate advance)/real control code (`0x10`-`0x1F`, calls `ctx.onControlCode(byte)`, immediate advance)/real printable text character (`TextDecoder.decodeByte`-recognized, paced at the real 5-frame cadence) -- failing loudly (no silent guess) on anything else. `ScriptRuntime.lua`'s registration and `VictorySequence.lua`'s `buildBossSequenceInterpreter` updated to match (the old `isTextboxDone`/pre-computed-text-length machinery is gone -- the classifier now discovers the terminator organically, byte by byte, the same way the real ROM does). 5 unit tests rewritten/added covering the 3 real branches plus the failure case; 439/439 tests pass.
+
+**Re-ran the headless cursor-trajectory probe.** Real, measurable
+improvement: the software's cursor now correctly tracks the real ROM's
+own byte-for-byte trajectory through `$61b2`-`$61d4` (previously
+verified against the real mgba trace), AND now correctly classifies
+control byte `0x11` (encountered at real cursor `$61d5`) as a real
+control code via `ctx.onControlCode` instead of misdispatching it as a
+garbage top-level `ACTOR_ACTION` opcode -- a genuine fidelity
+improvement, not a no-op change.
+
+**But the same final cursor, `0x4798`, is still reached.** Precisely
+narrowed down why, this time: byte `0x11`'s own real handler (`$34F4`)
+is CONDITIONAL --
+```
+$34F4  CALL $30A5
+       LD A,($D853) / AND $80 / POP HL
+       RET NZ                    ; real WRAM $D853 bit 7 SET -> halt here (real, unmodeled)
+       CALL $36D0                ; bit 7 CLEAR -> bridge onward
+       RET
+```
+`$36D0` (already disassembled this session, see the earlier "$38F6
+table decoded" entry) does `INC HL / cache into $D8B6:$D8B7 / LD
+A,0x04 / LD ($D85A),A / RET` -- i.e. on the real ROM's "proceed" path,
+control byte `0x11` doesn't just consume itself and fall through to a
+normal top-level opcode fetch (what this project's new handler does) --
+it ALSO advances the cursor ONE MORE real byte AND explicitly re-enters
+the `0x04` classifier at that new position, rather than treating
+whatever byte sits there as a generic top-level opcode. This project's
+software, lacking real `$D853` bit 7 state (and not yet modeling this
+per-control-code `$36D0` re-entry at all), advances only by the control
+byte itself and lets the normal interpreter loop fetch whatever's next
+(`0x00` at `$61d6`) as a genuine top-level opcode -- triggering the
+exact same stale-CHAIN-queue redirect this session's earlier entry
+documented, landing at the same `0x4798`.
+
+**Honest, precisely-scoped remaining work**: model the real `$36D0`
+"consume one more byte, re-enter the classifier" bridge for the real
+control codes that use it (at minimum `0x10`/`0x11`/`0x1A`, confirmed
+via this session's own disassembly; `0x1A`'s own call to `$36D0` is
+UNCONDITIONAL, the other two are gated on real WRAM state this project
+does not track). Not attempted further this pass -- doing so honestly
+for the conditional cases needs either a live trace of `$D853`'s real
+value at this exact point, or an explicitly-flagged, documented default
+(matching this project's own `ctx.isActorReady`-style "safe default"
+convention) -- a deliberate stopping point rather than a rushed guess.
+This is now a MUCH more narrowly-scoped, concrete task than "decode an
+unknown mechanism": the mechanism is fully understood; only this one
+specific bridging behavior remains to be wired in. 439/439 tests pass;
+zero regression to the hand-authored, currently-authoritative
+`self.pages` dialogue (live-verified via `love .` screenshot, switch on
+and off, unchanged).
+
+## 2026-08-15, same day, continued further: the $36D0 bridge gap is CLOSED -- the cursor desync mystery is fully, decisively resolved
+
+Direct continuation ("mach in der reinfolge die sinnvoll ist" -> closing
+the one remaining gap the previous entry precisely scoped). Live-traced
+real WRAM `$D853` bit 7 with a native mGBA write-watchpoint
+(`trace_d853.py`, scratchpad) alongside the persistent cursor
+(`$D8B6:$D8B7`) across the real control-byte-`0x11` occurrence at
+`$61d5`. Decisive result: bit 7 is SET one real frame after entering the
+`0x11` classify state, stays SET for 8 MORE real frames (9 real frames
+total from entry -- matching the same real per-tick pacing cadence
+already confirmed for printable text characters), then CLEARS on
+exactly the same real frame the persistent cursor advances from `$61d5`
+to `$61d6` -- i.e. `$D853` bit 7 is a real "this control code is still
+pacing" flag, and `$34F4`'s `RET NZ` genuinely halts (re-dispatching
+next frame) for exactly those 9 real frames before falling through to
+the real `$36D0` bridge on frame 9.
+
+**Code change**: extended `ctx.onControlCode`'s contract in
+`StandardScriptHandlers.tick` to support both pacing and the real
+`$36D0` extra-byte bridge: returning a NUMBER now means "done -- consume
+1 real control byte plus this many EXTRA real bytes" (the classifier
+re-enters at `cursor + 1 + extraBytes`, exactly matching `$36D0`'s own
+`INC HL` before re-entering `$333D`); returning `false`/`nil` means
+"still real-pacing, not done yet" (re-dispatch next tick, matching
+`$34F4`'s own `RET NZ` halt). The old "no `onControlCode` supplied at
+all" default (immediate single-byte consume) is unchanged and still
+documented as the historical, unverified-per-code fallback.
+`VictorySequence.lua`'s `buildBossSequenceInterpreter` now wires the
+real, live-confirmed behavior for control byte `0x11` specifically: a
+`CONTROL_CODE_0X11_REAL_TICKS = 9` constant (live-observed, not a
+guess), pacing via `return false` for 9 ticks, then `return 1` (the one
+real extra byte `$36D0` consumes). All other control codes still use
+the old, honestly-labeled-as-unverified-per-code `return 0` default.
+
+**Re-ran the headless cursor-trajectory probe** (`probe_full_sequence3.lua`,
+scratchpad) with the fix wired in. Full, decisive resolution: the
+interpreter's cursor now tracks the real ROM's own trajectory
+byte-for-byte all the way to `bank=14 cursor=0x61d8`, correctly
+dispatching real opcode `0xC0` (HEAL_LP) -- an EXACT match to the real,
+live-traced ROM sequence at that same point -- and then HONESTLY,
+CORRECTLY STOPS: `runtime.stopped=true`, with the real stop reason
+naming opcode `0xbd` (real ROM handler `$1046`) as having no registered
+Lua implementation. This is the CORRECT, expected outcome, not a new
+gap: `0xBC`/`0xBD` (the palette-fade family) has been a known,
+documented, genuinely-undecoded gap since long before this pass -- the
+interpreter now correctly, honestly reaches that REAL boundary instead
+of silently wandering off to the wrong cursor (`0x4798`), which is
+exactly what "fully interpreted, not guessed" was asking for.
+
+This closes out the entire `0x4798` desync investigation arc that ran
+across this whole day's sequence of entries (wrong-bank fix -> 5-frame
+pacing discovery -> disproven input-gate hypothesis -> the `$38F6`
+table decode -> the real classifier rewrite -> this bridge fix). A new
+regression test locks in the resolved trajectory
+(`tests/unit/boss_sequence_interpreter_test.lua`, "WITH the real 0x11
+pacing+bridge wired..."), directly replicating
+`buildBossSequenceInterpreter`'s exact `onControlCode` logic and
+asserting the cursor reaches `0x61d8`/bank 14, opcode `0xC0` dispatched
+at least once, and the stop reason names `0xbd`. 442/442 tests pass.
+
+**What's left, now clearly scoped and reachable rather than mysterious**:
+opcode `0xBC`/`0xBD` (the palette-fade family) is a real, live-confirmed
+NEXT boundary for whoever decodes it -- no longer blocked behind an
+unrelated cursor-tracking bug. The real name-insertion mechanism
+(control bytes `0x14`/`0x15`, WRAM `$D79D`/`$D7A2`) is structurally
+understood (see the "$38F6 table decoded" entry) but its real string
+source has not yet been traced to `NameEntry.lua`'s own save format.
+Bridging this interpreter into the visible phase machine (i.e. an
+actual on-screen swap-over from the hand-authored `self.pages` dialogue
+to the live-interpreted one) has not been started -- this pass stayed
+scoped to proving byte-exact cursor fidelity, not wiring it to the
+renderer.
+
+## 2026-08-15, same day, further continuation: 0xBC/0xBD/0xBE wired -- REVERSES the "genuinely known-hard" 2026-08-14 call; a NEW, precisely-located gap found one opcode later (0xF3's own unmodeled $1ED7 selector-0x10 side effect)
+
+Direct continuation ("Interpreter->Phasenmaschine-Brücke bauen" -- the
+first concrete step toward a visible bridge is closing the `0xBD` wall
+the previous entry correctly, honestly reached). Fresh disassembly
+(`tools/rom/disasm.py`) of the shared leaf `$1142` (previously "not
+traced") found it's a small, fully real, deterministic 6x11=66-tick
+pacing gate on WRAM `$D499`/`$D49A` -- structurally the SAME KIND of
+mechanism as the already-modeled control-byte-`0x11` pacing, not a
+"genuinely known-hard... needs live palette-fade WRAM simulation" dead
+end as the 2026-08-14 assessment concluded. All 3 opcodes (`0xBC`/`0xBD`/
+`0xBE`) read ZERO real operand bytes from the script stream -- only the
+shared pacing counters matter for CURSOR tracking; the real fade
+CURVE itself (4 lookup tables, still undecoded) stays an optional,
+unwired callback, same "paced correctly, cosmetic write left open"
+precedent as `0xFB`/`0xBF`.
+
+**Shipped**: `ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE`,
+`StandardScriptHandlers.paletteFadeCycle` (real `nil`-halt/`cursor`-
+release contract, shared `{inner, outer}` state across all 3 real
+opcodes since they share the real WRAM cells), `ScriptRuntime.lua`
+registration (`ctx.onPaletteFadeStep`, optional observer). 6 new unit
+tests (66-call halt/release cycle, `onStep` counter-pair sequence,
+shared-state-across-opcodes, required-argument guard). Since
+`BossSequenceInterpreter.new` already delegates its `ctx` straight into
+`ScriptRuntime.new`, this is automatically live in `VictorySequence
+.lua`'s own production wiring with no changes needed there.
+
+**Re-ran the headless cursor probe.** Real, measurable, decisive
+progress: the interpreter now dispatches `0xBD` all 66 real times
+(paced, matching the live-traced real cadence exactly), then continues
+into real opcode `0xF3` (`PEEK_TWO_BYTE_GATE`, already wired) -- genuine
+forward movement past the previous day's own honest stopping point.
+
+**But a NEW, real, precisely-identified gap surfaces immediately after**:
+fresh disassembly of `0xF3`'s own real handler (`$11CE`) shows it
+unconditionally calls a real `$1ED7` selector-table dispatch (selector
+`0x10`) on EVERY invocation (gated or not) BEFORE checking its own real
+`$D499==0` release condition -- a real side effect this project's
+existing `StandardScriptHandlers.peekTwoByteGate` (wired since
+2026-08-13, task #86) does not model at all, only exposing the peeked
+bytes via an optional `onPeek` observer. Without that real side effect,
+the two peeked bytes (`0x0f`/`0x55` at this exact real cursor) get
+dispatched as literal top-level opcodes once the default gate clears,
+diverging onto an unrelated-but-already-wired real opcode chain that
+eventually pops the SAME stale CHAIN "resume" entry the whole day's
+investigation started from -- converging back on the familiar `0x4798`
+landing spot. A DIFFERENT real root cause than the original mystery
+(not a regression in today's fix -- a NEW real boundary this exact fix
+was needed to even reach in the first place). Confirmed via the
+regression test's own opcode-count assertions (`0xBD` dispatched
+exactly 66 times, `0xF3` exactly once, final cursor `0x4798`/bank 14,
+`runtime.stopped == false` -- i.e. it never hits a genuinely undecoded
+opcode; every opcode on the divergent path is one this project already
+has a Lua implementation for, which is exactly why it "successfully"
+runs to a wrong place instead of failing loudly).
+
+**Honest, precisely-scoped remaining work**: disassemble the real
+`$1ED7` selector `0x10` target (this project has extensively mapped
+much of `$1ED7`'s own selector family already, see rom-map.md's
+"Consolidated reference" section -- selector `0x10` specifically has
+not been traced) to determine whether/how it needs modeling for the
+interpreter to correctly continue past `0xF3` toward the real literal
+text at `0x61e5`. Not attempted this pass -- a genuinely new, separately-
+scoped investigation, not a quick continuation of the palette-fade fix.
+446/446 tests pass; the 1 test that broke from wiring `0xBC`/`0xBD`/
+`0xBE` (which had asserted the OLD "honestly stops on 0xBD" behavior)
+was updated to assert the new, real, further-but-still-not-complete
+trajectory instead of being loosened or deleted.
+
+## 2026-08-15, same day, further continuation: $1ED7 selector 0x10 disassembled -- a real, richer, multi-phase $D499-driven state machine than expected; a documented, NOT-YET-wired finding
+
+Direct continuation of the previous entry's own "honest, precisely-
+scoped remaining work" (user confirmed: "$1ED7 Selector 0x10
+disassemblieren"). `$1ED7`'s own real dispatch shape was already known
+("byte-for-byte identical to the already-known `$1F35`/`$1F06` family",
+see rom-map.md's "Consolidated reference" \#5) -- confirmed via
+`$02B70`'s own already-documented "table[A] via `$02B63`, `JP` to it"
+convention, cross-validated against the ALREADY-KNOWN selector `0x07`
+-> `$50AC` (the real damage formula) mapping to prove the table base
+(`$4000`, bank 1, 2-byte entries) before trusting a NEW result.
+
+**Selector `0x10`'s own real target, `$414C`**, is itself ANOTHER
+`$D499`-indexed jump table (via the SAME already-documented `$2B70`
+shape this project previously found behind opcode `0xBA`/`$0EB2`),
+table base `$4158`. This means the real ROM re-uses `$D499` as a
+GENERAL PHASE COUNTER across (at least) THREE real, cooperating
+mechanisms: the palette-fade opcode family (`0xBC`/`0xBD`/`0xBE`,
+already wired), opcode `0xF3`'s own `PEEK_TWO_BYTE_GATE` release
+condition, AND this newly-found `$4158` sub-dispatch -- a real, unified
+"screen fade + wait" state machine, richer than any single piece
+suggested on its own.
+
+**Disassembled the first 2 real phase handlers** (index = current
+`$D499` value at call time):
+- **Index 0** (`$41CA`, the case fired the FIRST time selector `0x10`
+  runs after `0xBD` resets `$D499` to 0): trivial -- `$D49A=0`,
+  `$D499++`, `RET`. No script-stream bytes touched, no branch on
+  unknown state. But this MEANS `0xF3`'s own caller-side release check
+  (`$D499==0`, immediately after this call returns) now sees `$D499==1`
+  -- **the real ROM genuinely halts here** (matches `RET NZ`), contrary
+  to this project's own `.peekTwoByteGate` default (unwired
+  `isPeekGateClear`, which lets it through immediately) -- this is the
+  concrete root cause of the divergence the previous entry found.
+- **Index 1** (`$4477`, fired on the NEXT real tick once `$D499==1`):
+  checks the REAL, ALREADY-MODELED dual gate `$C8E0`/`$CEE8` (the SAME
+  gate this project's own `0xFC`/`0xFD`/`0xE8`-`0xEB` opcodes already
+  use, see `DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS`'s own doc comment)
+  -- only increments `$D499` to 2 once BOTH cells read 0; otherwise
+  returns without incrementing (real halt continues, re-dispatching
+  index 1 again next tick).
+
+**Not traced further this pass**: indices 2+ (table index 2 happens to
+resolve to `$4387`, a real, ALREADY-DOCUMENTED "load room N" 3-byte
+`JP` instruction elsewhere in this project's own room-transition work
+-- plausibly a genuine further phase of this same fade/wait sequence,
+or a coincidental table-region overlap; not disambiguated), how many
+real phases total exist, and whether `$C8E0`/`$CEE8` would ever
+actually clear during a live boss-defeat run (no live mgba trace of
+this exact real moment exists yet). **Honest assessment**: this is a
+real, richer, multi-step state machine than "one more opcode to wire"
+-- tractable in principle (the pieces found so far are all small and
+clean, and 2 of the 3 real WRAM dependencies -- `$D499`/`$D49A` and
+`$C8E0`/`$CEE8` -- are already modeled elsewhere in this project), but
+genuinely larger in scope than this pass's own budget. Documented, not
+wired -- no code change this specific continuation (characterize
+before implementing, matching this project's own established
+discipline for a mechanism this size). 446/446 tests unaffected.
+
+## 2026-08-15, same day, further continuation: the real $1ED7 selector-0x10 gate WIRED (0xF3 now paces correctly, verified) -- but reveals a THIRD, deeper layer: one of phase 2/4's own untraced sub-calls likely also advances the real script cursor
+
+Direct continuation (user confirmed: "weiter vertiefen"). Wired
+`StandardScriptHandlers.paletteFadeCompletionGate` -- a real, precise
+Lua port of the full 6-phase state machine the previous entry
+disassembled (phase 0 unconditional, phases 1/3 gated on the real
+`$C8E0`/`$CEE8` dual gate via the ALREADY-modeled `ctx
+.isTriggerEventGateClear`, phases 2/4 unconditional with their own
+real-but-unmodeled side effects, phase 5 the terminal reset+release) --
+wired specifically for opcode `0xF3`'s own registration in
+`ScriptRuntime.lua` (`0xF4`'s own selector, `0x0F`, stays on the old,
+honest generic default -- its real sequence is untraced). 5 new unit
+tests (the isolated gate's own 6-call completion sequence, the
+`onPhase` observer sequence, dual-gate halting/re-checking behavior at
+phases 1 and 3, a required-argument guard, and an integration test
+through `.peekTwoByteGate` itself). 451/451 tests pass.
+
+**Re-ran the headless probe.** Real, measurable, VERIFIED correctness:
+opcode `0xF3` now genuinely takes 6 real ticks to release (confirmed
+via `opcodeCounts[0xF3] == 6`, up from 1) -- an exact match to the
+disassembled 6-phase sequence, not a guess.
+
+**But the final landing cursor is UNCHANGED: still `0x4798`.** Traced
+the exact byte-by-byte sequence right after `0xF3` finally releases:
+cursor advances one byte at a time through `0x61da` (`0x0f`), `0x61db`
+(`0x55`), `0x61dc` (`0x14`), `0x61dd` (`0x00`) -- FOUR single-byte
+"opcodes" in a row, each apparently a real, already-registered handler
+that "succeeds" with zero extra bytes -- before the byte at `0x61dd`
+(`0x00`, `QUEUE_GATE` as a top-level opcode) triggers the SAME "pop a
+stale CHAIN resume entry" redirect the whole day's original mystery
+started from, landing at `0x472e`-ish and finally `0x4798` again.
+
+**Root-caused, precisely**: `0xF3`'s own release mechanism
+(`.peekTwoByteGate`'s `return cursor`, matching the real `$3727` fetch
+of `HL` unchanged since the 2-byte peek nets zero HL movement) is
+STILL structurally correct -- confirmed byte-for-byte against the real
+disassembly a second time. The 4 single-byte "opcodes" dispatching
+cleanly with no error strongly suggests this project's software is
+reading bytes `0x0f`/`0x55`/`0x14`/`0x00` as 4 SEPARATE top-level
+opcodes when the real ROM does NOT -- i.e. the real persistent script
+cursor is off by some amount starting right after `0xF3` releases.
+Since `0xF3`'s own peek/release logic doesn't touch the real cursor
+beyond what's modeled, the most likely real cause is that ONE of phase
+2's or phase 4's own untraced sub-calls (`$26DC`/`$04A4` for phase 2;
+`$0375`/`$44A5`/`$28C2`/`$289B`/`$28AA`/`$2EF7` for phase 4 -- several
+already partially known from OTHER investigations, e.g. `$26DC` is the
+already-documented real transition-dispatch entry, `$28C2`/`$289B` are
+the already-known actor-readiness helpers) ALSO calls the real `$3727`
+fetch-and-dispatch primitive internally (a real, additional opcode
+step this project's `paletteFadeCompletionGate` doesn't model at all,
+since those 2 phases are currently pure "unconditional advance, no
+side effect" stubs).
+
+**Honest assessment, three layers deep now**: this is no longer "one
+more opcode" or even "one more small state machine" -- it's a genuine,
+open-ended sub-investigation (up to 8 untraced real routines, several
+calling further into bank-2-delegated code this project has
+historically deferred, see `StandardScriptHandlers.tick`'s own "HONEST
+SCOPE" note on `$3c92`/`$3736`/`$3c7e`). Documented precisely rather
+than guessed at; not attempted further this pass. 451/451 tests pass,
+zero regressions -- the palette-fade family and `0xF3`'s own pacing are
+both real, correct, verified improvements even though the ultimate
+goal (reaching the real literal text) is not yet reached.
+
+## 2026-08-15, same day, task #126 CLOSED: the real root cause was much simpler than the "3 layers deep" sub-call theory above -- `0xF3`'s own real instruction is 5 bytes, not a net-zero 2-byte peek
+
+Direct continuation (user: "ok dann 126", then "Weiter -- Phase-
+Zuordnung + Lua-Fix bauen"). The previous entry's hypothesis (one of
+phase 2/4's own untraced sub-calls internally re-enters `$3727`) turned
+out to be a red herring -- a broad exploratory trace DID find 6 new
+real addresses that call `$3727` in the same frame window (`$1163`,
+`$11a7`, `$11de`, `$2882`, `$2818`, `$283f`, `$32e2`), but cross-
+referencing each hit's real `HL` cursor value against the known
+dialogue-script range (`0x4700`-`0x6400`) showed most of them belong to
+OTHER, concurrent/unrelated script activity happening in the same real
+frames (e.g. one had `HL=0x736a`, far outside any dialogue script) --
+not sub-calls of the palette-fade gate at all. `$D499` itself was also
+re-confirmed as a general, shared phase/step counter reused by
+multiple unrelated concurrent mechanisms, not something reliably
+attributable to "the current gate's own phase" without knowing which
+mechanism is currently driving it -- an earlier working assumption in
+this sub-thread that doesn't hold up.
+
+**Re-traced cleanly from `courtyard_boss_defeated()`** (before any
+frame-skip) with a full single-step trace (`core.step()` + direct
+`cpu.pc` checks -- confirmed ~1.6M steps/sec, so tens of millions of
+real instructions across thousands of frames traces in seconds; the
+earlier fear that this would be "too slow" was unfounded) plus a
+direct read of the REAL ROM BYTES at the confirmed real cursor
+`0x61d8` (bank 14, file offset `0x3a1d8`): `bd f3 0f 55 14 00 bc f0
+...`. This is decisive, unambiguous ground truth: opcode `0xBD` at
+`0x61d8`, then opcode `0xF3` at `0x61d9`, followed by 4 real bytes
+(`0f 55 14 00`) that the real ROM consumes ENTIRELY as part of `0xF3`'s
+own single instruction -- landing correctly on `0xBC` at `0x61de`, 5
+bytes past `0xF3`'s own opcode byte. Confirmed via disassembly of two
+real trampoline routines: `$1163` (`0xBD`'s own real release: `LD A,0`
+/ `LD ($D499),A` / `CALL $3727` / `RET`) and `$11de` (`0xF3`'s own real
+release: a conditional check then `CALL $3727` / `RET`), the latter
+firing exactly once cursor `0x61de` is reached -- i.e. **`0xF3`'s real
+total instruction length is 5 bytes** (1 opcode + 2 peeked bytes + 2
+further, previously-unmodeled bytes it also silently consumes on
+release), not the old "net-zero 2-byte peek" model.
+
+**Fix shipped.** `StandardScriptHandlers.peekTwoByteGate` gained a new
+`extraBytesOnRelease` parameter (default `0`, preserving old behavior
+for every other caller): on gate-clear, if nonzero, it now fetches
+(and discards) exactly that many further real bytes past the 2 peeked
+ones before returning the advanced cursor, matching the real ROM's own
+byte-for-byte consumption. `ScriptRuntime.lua` wires
+`extraBytesOnRelease = 2` specifically for opcode `0xF3`'s own
+registration (`0xF4` is left unchanged at the default `0`, since it is
+NOT confirmed to share `0xF3`'s exact release sequence -- a real,
+explicitly-flagged open question, not assumed).
+
+**Verified, decisively.** With the fix wired, the interpreter no
+longer diverges at `0x61de` into the 2 leftover bytes as fake
+top-level opcodes -- it continues tracking the real ROM cursor
+byte-for-byte straight through `0xBC` at `0x61de` and beyond, past the
+OLD `0x4798` desync entirely (that landing spot no longer occurs at
+all), reaching real cursor `0x61f9` (file offset `0x3a1f9`, confirmed
+against the same raw ROM read: real byte `0xed`) before honestly
+stopping on real opcode `0xed` (real ROM handler `$0e77`), which has
+no registered Lua implementation. This is exactly the outcome that
+proves the fix correct: the run goes FURTHER than ever before and
+stops on a real, honestly-undecoded boundary, not a guessed one.
+Updated `tests/unit/boss_sequence_interpreter_test.lua`'s own
+regression test (previously written to expect the OLD, now-superseded
+`0x4798` convergence as "the honest current stopping point") to assert
+the new, further, correct trajectory instead -- the same established
+pattern this project follows whenever a real fix makes an existing
+test's assertions stale rather than wrong. 460/460 tests pass, zero
+regressions.
+
+**SELF-CORRECTION, same day, direct follow-up ("weiter"):** this
+entry originally called `0xed`/`$0e77` "genuinely new" and proposed
+disassembling it as the next step. That was WRONG -- a check of
+`ScriptOpcodeTable.lua`'s own existing doc comments (its `0xEC`/`0xED`/
+`0xEE` section, dated 2026-08-14) shows this exact opcode was already
+fully disassembled in an earlier session and is a CONFIRMED THIRD
+SIBLING of the already-known-hard `$02AB` family (alongside `0x80`/
+`$15A4` and `0xEC`/`0xEE`): `$0e77` is a 3-byte trampoline
+(`CALL $24f9 / RET`) that switches to WRAM `$C3F0`'s dynamic bank,
+dereferences the already-mapped `$C3FE`/`$C3FF` cross-actor pointer
+(task #85), dereferences one further level, then calls `$02AB` (itself
+fully understood: a masked read of the player entity's own real
+facing-direction byte) -- but the byte staged into `$C3F0`/`$C3FE`/
+`$C3FF` for a given real scene is genuinely DATA-DEPENDENT, and this
+project has no live player-entity WRAM simulation to compute it with.
+`ScriptOpcodeTable.lua`'s own doc comment explicitly states this
+family is "EXPECTED to remain at the top of the scan's own blocker
+ranking permanently, not a sign of unfinished work" -- i.e. this is
+not a fresh mystery, it's the project's own already-known, deliberate
+edge of what can currently be wired.
+
+**Task #126 is CLOSED**, and this correction sharpens what closing it
+actually means: the `0xF3` 5-byte-release fix makes the interpreter
+track the real ROM losslessly all the way to the project's own
+existing, documented, PERMANENT ceiling for this family of opcodes
+(`0xEC`/`0xED`/`0xEE`, the `$02AB`/live-player-entity-simulation
+blocker) -- not to some new, still-open boundary. There is no
+"disassemble `$0e77` next" follow-up; that work is already done and
+already recorded. Real further progress on the interpreter would
+require either building live player-entity WRAM simulation (a
+substantial, separate undertaking) or encountering this script's own
+DIFFERENT, still-genuinely-unexplored opcodes elsewhere in its stream.
+
+## 2026-08-15, task #126 consolidation: fixed a real, stale website classification bug found while wiring the fix into the app + website (direct user request "konsolidieren, dokumentieren und in die app (interpretierte variante) und die website einbauen")
+
+**Website (`rom-inspector/`)**: `export_data.lua`'s `KNOWN_HARD` table
+(the curated list behind the "known-hard" amber badge, distinct from
+plain red "undecoded") was found to be STALE in two real, concrete
+ways while consolidating this session's work:
+1. `0x10DC`/`0x1046` (opcodes `0xBC`/`0xBD`) still carried their old
+   "not yet decoded to an exact fade curve" notes from BEFORE task
+   #125 wired the whole palette-fade family (2026-08-15, same day,
+   earlier). Since `status` is computed before `note` is attached, this
+   was cosmetically harmless (both correctly showed `status=
+   "decoded"`) but ACTIVELY MISLEADING: the website's own opcode-detail
+   panel would have shown a "decoded" badge next to a note claiming
+   "not yet decoded" -- a real, visible self-contradiction. Removed.
+2. `0xEC`/`0xED`/`0xEE` (`$0E73`/`$0E77`/`$0E7B`) and `0xBA` (`$0EB2`)
+   -- ALL FOUR already fully traced and documented as deliberately
+   left unwired back on 2026-08-14 (`ScriptOpcodeTable.lua`'s own doc
+   comments, the `$02AB` family and the `$1ED7`-dependent entity-
+   lifecycle case respectively) -- were NEVER added to `KNOWN_HARD` in
+   the first place. The website was showing all 4 as plain
+   "undecoded" (implying genuinely open/unexplored, red badge)
+   instead of "known-hard" (traced, deliberately deferred, real
+   reason given, amber badge) -- found directly BECAUSE this session's
+   own `0xF3` fix made `BossSequenceInterpreter` reach `0xED` as its
+   real new stopping point, which prompted double-checking its website
+   status and finding the gap. Added all 4 with real, accurate notes
+   drawn straight from `ScriptOpcodeTable.lua`'s own doc comments.
+   Verified live via Playwright: legend moved from "known-hard (0)" to
+   "known-hard (4)" / "undecoded (17)" to "undecoded (13)" (matching
+   the sidebar's own opcode-count badge, also re-verified: "17 offen"
+   -> "13 offen"); clicked opcode `0xED`'s cell directly and confirmed
+   its detail panel shows the correct amber `KNOWN-HARD` badge and the
+   new, accurate note text, screenshot-captured.
+
+**App (`CatalogExplorer.lua`, "interpretierte Variante")**: the SAME
+real code path (`VictorySequence.buildBossSequenceInterpreter` ->
+`ScriptRuntime.lua` -> the just-fixed `StandardScriptHandlers
+.peekTwoByteGate`) already benefits from the `0xF3` fix automatically
+-- no code change was needed for the fix itself to reach the app. Two
+things WERE added/verified this pass:
+- A new `CatalogExplorer:debugState()` (matching `Field`'s/
+  `VictorySequence`'s own established convention) exposing
+  `category`/`mode`/`entryIndex`/`bossCursor`/`bossBank`/
+  `bossStopped` -- lets `MYSTICQUEST_WAIT_FOR` drive this dev browser
+  automatically instead of guessing a fixed frame count (this dev
+  browser had none before).
+- Live, scripted `love .` verification (`MYSTICQUEST_CATALOG_DEMO=1`,
+  scripted D-pad presses to select the boss-linked species (group 5,
+  real rows 20-23 -- found the group index by decoding
+  `EnemySpeciesTable.groupBySpecies` directly, since
+  `BOSS_LINKED_SPECIES_ROW`'s own 0-based/1-based conversion isn't
+  obvious from the code alone), START to enter interpreter mode, then
+  `MYSTICQUEST_WAIT_FOR=bossStopped=true`): the real, live interpreter
+  mode reaches `bank=14 cursor=0x61f9` -- the EXACT expected new
+  stopping point, confirmed identically to the headless Lua trace,
+  running through the real, unmodified production code path (not a
+  separate/duplicated implementation).
+
+462/462 tests pass throughout (the `debugState()` addition is
+observation-only, no behavior change). No further Lua/JS logic changes
+were needed beyond the `KNOWN_HARD` table fix and the new
+`debugState()` -- everything else was already correctly wired by the
+`0xF3` fix itself; this pass's real work was catching and fixing the
+ONE place documentation had silently drifted (the website's known-hard
+classification) and proving, not assuming, that the app's interpreted
+variant reflects the fix live.

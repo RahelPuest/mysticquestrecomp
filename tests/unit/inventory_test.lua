@@ -94,7 +94,19 @@ Harness.testIfAvailable(
     Harness.assertEqual(#inv.spells, 0)
 
     -- Grant a real spell from the catalog -- files under spells, not items.
-    local firstSpellName = inv.spellCatalog[1].name
+    -- NOTE (2026-08-15, item/spell table extended -- see ItemTable.lua's
+    -- own doc comment): `spellCatalog[1].name` is now the real, live-
+    -- decoded "Lebe" -- which genuinely, honestly COLLIDES with
+    -- `itemCatalog[1].name` (also "Lebe", a different real ROM record
+    -- that happens to decode to the same shortened name). `addItem`
+    -- checks `itemCatalog` first (see its own doc comment), so granting
+    -- that exact name would resolve against the ALREADY-held item, not
+    -- a distinct spell -- a real, honest ambiguity in the ROM's own
+    -- data, not a bug in this test or in `addItem`. Uses
+    -- `spellCatalog[2]` ("S-Lebe") instead, a real spell name with no
+    -- such collision, to keep testing what this test actually intends
+    -- (a DISTINCT item + spell round-trip).
+    local firstSpellName = inv.spellCatalog[2].name
     Harness.assertTrue(inv:addItem(firstSpellName))
     Harness.assertTrue(inv:has(firstSpellName))
     Harness.assertEqual(#inv.items, 1)

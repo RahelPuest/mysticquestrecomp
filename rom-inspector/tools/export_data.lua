@@ -27,6 +27,10 @@ local RomScriptStream = require("src.scripting.RomScriptStream")
 local ScriptRuntime = require("src.scripting.ScriptRuntime")
 local RoomFloorLayout = require("src.import.RoomFloorLayout")
 local MapTable = require("src.import.MapTable")
+local EnemySpeciesTable = require("src.import.EnemySpeciesTable")
+local ItemTable = require("src.import.ItemTable")
+local WeaponTable = require("src.import.WeaponTable")
+local NpcCatalog = require("src.import.NpcCatalog")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -246,8 +250,38 @@ local KNOWN_HARD = {
   -- which this project DOES already track (Player.lua's `self.facing`)
   -- -- 0x80 is now a real, registered handler and correctly falls out
   -- as `status = "decoded"` below without needing this entry at all.
-  [0x10DC] = "Real arithmetic on WRAM $D499/$D49A -- part of the palette/fade-counter family shared with 0xFB/0xBF/0xBD. Not yet decoded to an exact fade curve.",
-  [0x1046] = "Third member of the same palette-fade family as 0xBC/0xFB -- reads two real shared gradient lookup tables ($101A/$1030) and writes the result into the pending-palette-write cell or WRAM $D3A3, then calls a further untraced leaf ($1142).",
+  --
+  -- REMOVED 2026-08-15 (task #126 consolidation, "konsolidieren,
+  -- dokumentieren und in die app/website einbauen"): 0x10DC (0xBC) and
+  -- 0x1046 (0xBD) used to live here ("Not yet decoded to an exact fade
+  -- curve" / "reads two real shared gradient lookup tables... then
+  -- calls a further untraced leaf") -- both stale. `0xBC`/`0xBD`/`0xBE`
+  -- (the whole palette-fade family, `$10DC`/`$1046`/`$10A7`) were fully
+  -- disassembled and WIRED 2026-08-15 (`StandardScriptHandlers
+  -- .paletteFadeCycle`, task #125) -- they now correctly fall out as
+  -- `status = "decoded"` below without needing an entry here. Leaving
+  -- the stale notes in would have been actively misleading: a
+  -- "decoded" opcode showing a note that says "not yet decoded" is a
+  -- real, visible self-contradiction on the website, not a harmless
+  -- leftover.
+  --
+  -- ADDED 2026-08-15 (same consolidation pass): `0xEC`/`0xED`/`0xEE`
+  -- (`$0E73`/`$0E77`/`$0E7B`) and `0xBA` (`$0EB2`) were ALREADY fully
+  -- traced and deliberately left unwired back on 2026-08-14 (see
+  -- `ScriptOpcodeTable.lua`'s own doc comments at each address for the
+  -- complete disassembly this summarizes) but were NEVER added here --
+  -- so the website was showing them as plain "undecoded" (implying
+  -- genuinely open/unexplored) instead of "known-hard" (traced,
+  -- deliberately deferred, with a real reason). Found and fixed while
+  -- consolidating task #126 (the real `0xF3` 5-byte-release fix, which
+  -- made `BossSequenceInterpreter` progress far enough to land
+  -- EXACTLY on `0xED`/`$0E77` as its new honest stopping point --
+  -- direct, concrete confirmation this family is real and reachable,
+  -- not a hypothetical).
+  [0x0E73] = "Third confirmed sibling of the known-hard $02AB family (with 0x80/0xEC/0xEE): dereferences the task-#85 cross-actor pointer ($C3FE/$C3FF) one further level (+0), then calls $02AB (a masked read of the player's own real facing byte -- itself fully understood). Left unwired because WHICH bank/pointer gets staged into $C3F0/$C3FE/$C3FF for a given real scene is genuinely DATA-DEPENDENT, and this project has no live player-entity WRAM simulation to compute it with -- expected to remain known-hard permanently, not a sign of unfinished work.",
+  [0x0E77] = "Second confirmed sibling of the known-hard $02AB family (offset +1 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above. Directly confirmed reachable 2026-08-15: BossSequenceInterpreter's own real boss-defeat script lands here as its new, further, honest stopping point once the 0xF3 5-byte-release fix (task #126) is wired.",
+  [0x0E7B] = "Fourth confirmed sibling of the known-hard $02AB family (offset +2 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above.",
+  [0x0EB2] = "A real, fully-traced $D499-driven 2-step entity-lifecycle state machine (step0 allocates a real entity slot via the already-known $0A74 primitive, calls $2F03; step1 calls $2ED3 -- real halt if not ready -- else despawns the slot via $0AE3). Both $2F03/$2ED3 resolve to real cases of the already-mapped $1ED7 bank-1 dispatcher. Genuinely known-hard NOT because the mechanism is opaque (it's real, traced, decodable ROM code) but because fully resolving \"ready\" needs the $52CD sub-table's own untraced targets AND a live entity/OAM lifecycle simulation this project doesn't have.",
 }
 
 local opcodes = {}
@@ -592,5 +626,164 @@ writeJs("text-decoder.js", "TEXT_DECODER", {
   umlauts = umlauts,
   digraphs = digraphs,
 }, "Real TextDecoder.lua tables -- see that file's own doc comment for how each byte was cross-checked against live-decoded ROM text.")
+
+----------------------------------------------------------------------
+-- 11. Monster catalog (EnemySpeciesTable -- 11 real species, ATK
+-- VERIFIED, defCandidate1/2 real but not confirmed as a consumed
+-- stat -- see combat.md's dated 2026-08-15 entries). Only ONE species
+-- has a known real sprite location (the tutorial "gate creature");
+-- the rest are honestly flagged as "graphic unknown", not guessed.
+----------------------------------------------------------------------
+local function bytesToArray(raw)
+  local out = {}
+  for i = 1, #raw do out[i] = raw:byte(i) end
+  return out
+end
+
+do
+  local rows = EnemySpeciesTable.decode(romData, profile.enemySpeciesTable)
+  local species = EnemySpeciesTable.groupBySpecies(rows)
+  local monsters = {}
+  local KNOWN_SPRITE_ROW = profile.enemySpeciesTable.verifiedExample
+    and profile.enemySpeciesTable.verifiedExample.rowIndex
+  for i, s in ipairs(species) do
+    monsters[i] = {
+      speciesIndex = i - 1,
+      firstRowIndex = s.firstRowIndex,
+      rowCount = s.count,
+      flagVariant = s.row.flagVariant,
+      atk = s.row.atk,
+      defCandidate1 = s.row.defCandidate1,
+      defCandidate2 = s.row.defCandidate2,
+      rawBytes = bytesToArray(s.row.raw),
+      -- true only for the one species this project has actually
+      -- fought and captured a real live sprite location for (see
+      -- rom_profiles.lua's own `enemySprite` field) -- every other
+      -- species honestly has no known graphic yet.
+      knownSprite = (KNOWN_SPRITE_ROW ~= nil) and (s.firstRowIndex - 1 <= KNOWN_SPRITE_ROW)
+        and (KNOWN_SPRITE_ROW < s.firstRowIndex - 1 + s.count) or false,
+    }
+  end
+  local es = profile.graphics and profile.graphics.enemySprite
+  writeJs("monsters.js", "MONSTERS", {
+    species = monsters,
+    knownSprite = es and {
+      tileOffsets = es.tileOffsets,
+      cols = es.cols,
+      rows = es.rows,
+      screenX = es.screenX,
+      screenY = es.screenY,
+      -- ADDED 2026-08-15 (direct follow-up, "sprites mit
+      -- animationsphasen"): the real hardware X-flip toggle IS this
+      -- creature's own real 2nd animation "frame" (a horizontal
+      -- mirror of the SAME tiles, not a second drawn frame -- see
+      -- rom_profiles.lua's own `enemySprite.flipXTogglesPerStep` doc
+      -- comment for the full live OAM trace). Exposed explicitly so
+      -- the website/CatalogExplorer can show BOTH real poses instead
+      -- of just the un-flipped one.
+      flipXTogglesPerStep = es.flipXTogglesPerStep or false,
+    } or nil,
+  }, "Real enemySpeciesTable rows (EnemySpeciesTable.lua), grouped into 11 distinct species. " ..
+     "ATK is VERIFIED (live register match); defCandidate1/2 are real bytes with NO confirmed " ..
+     "consumer found after 4 independent leads (see combat.md's 2026-08-15 entries) -- shown " ..
+     "as raw data, not claimed to be a working DEF stat. Only 1 of 11 species has a known real " ..
+     "sprite (found via live OAM tracing during actual combat) -- honestly flagged per-species; " ..
+     "that one real sprite's own 2-pose animation (X-flip toggle) is included under knownSprite.")
+end
+
+----------------------------------------------------------------------
+-- 12. Item/spell + weapon/armor catalog (ItemTable.lua/WeaponTable.lua
+-- -- both table boundaries substantially extended 2026-08-15, see
+-- rom_profiles.lua's own dated doc comments).
+----------------------------------------------------------------------
+do
+  local itemRecords = ItemTable.decode(romData, profile.itemTable)
+  local items = {}
+  for i, r in ipairs(itemRecords) do
+    items[i] = {
+      index = r.index,
+      name = r.name,
+      categoryByte = r.categoryByte,
+      id = r.id,
+      namePrefixByte = r.namePrefixByte,
+      isSpell = r.index >= profile.itemTable.categoryBoundaryRecord,
+    }
+  end
+
+  local weaponRecords = WeaponTable.decode(romData, profile.weaponTable)
+  local weapons = {}
+  for i, r in ipairs(weaponRecords) do
+    weapons[i] = {
+      index = r.index,
+      name = r.name,
+      categoryByte = r.categoryByte,
+      statBytes = bytesToArray(r.statBytes),
+    }
+  end
+
+  -- Catalog plan Phase 2 (2026-08-15, direct user request "Items in
+  -- mehr auswählbare Kategorien unterteilen"): real categoryByte
+  -- groupings, for the website's category filter pills -- see
+  -- ItemTable.lua's/WeaponTable.lua's own `groupByCategory` doc
+  -- comments for exactly what `sizeClass` does and does not claim.
+  -- Only the summary (categoryByte/count/sizeClass) is exported here,
+  -- not the nested record lists -- the flat `items`/`weapons` arrays
+  -- above already carry the full records, and each row's own
+  -- `categoryByte` is enough for the website to filter client-side
+  -- without duplicating the data.
+  local itemCategories = {}
+  for i, g in ipairs(ItemTable.groupByCategory(itemRecords)) do
+    itemCategories[i] = { categoryByte = g.categoryByte, count = g.count, sizeClass = g.sizeClass }
+  end
+  local weaponCategories = {}
+  for i, g in ipairs(WeaponTable.groupByCategory(weaponRecords)) do
+    weaponCategories[i] = { categoryByte = g.categoryByte, count = g.count, sizeClass = g.sizeClass }
+  end
+
+  writeJs("items.js", "ITEMS", {
+    items = items,
+    weapons = weapons,
+    categoryBoundaryRecord = profile.itemTable.categoryBoundaryRecord,
+    itemCategories = itemCategories,
+    weaponCategories = weaponCategories,
+  }, "Real item/spell table (ItemTable.lua) and weapon/armor table (WeaponTable.lua). Names " ..
+     "decode cleanly for most records (2026-08-15: found spell records need a 2nd real name " ..
+     "offset, see ItemTable.lua's own doc comment) -- records with name=\"\" genuinely don't " ..
+     "decode at either known offset, shown honestly rather than guessed. Stat bytes beyond the " ..
+     "name are real but NOT interpreted (raw only). itemCategories/weaponCategories (2026-08-15, " ..
+     "catalog plan Phase 2) group the real records by their real categoryByte -- sizeClass is a " ..
+     "plain size threshold (>=5 records), NOT a claimed real slot name (e.g. weapon/armor/helm) -- " ..
+     "see WeaponTable.lua's own doc comment for why that's still unconfirmed.")
+end
+
+----------------------------------------------------------------------
+-- 13. NPC catalog (NpcCatalog.lua) -- NOT a static ROM table (see that
+-- module's own doc comment for why "complete" here means "every NPC
+-- this project has actually found," not "every NPC in the ROM").
+----------------------------------------------------------------------
+writeJs("npcs.js", "NPCS", NpcCatalog.build(profile),
+  "Real NPCs this project has found and placed, read from rom_profiles.lua's own verified " ..
+  "scene data (NpcCatalog.lua). No static ROM table backs NPC placement in this game -- each " ..
+  "entry was found individually via live OAM tracing + per-room dialogue testing, not decoded " ..
+  "from a table this exporter could walk mechanically.")
+
+----------------------------------------------------------------------
+-- 14. Story text census (rom_profiles.lua's new `storyText`, 2026-08-15,
+-- direct user request "suchen alle monster und npcs mit allen daten,
+-- texten und grafiken aus dem rom") -- real monster defeat messages
+-- and named story characters, found via tools/rom/dump_strings.py's
+-- already-proven text scanner (the same method that found Amanda's
+-- own real secondRoom dialogue), NOT decoded from a table -- see
+-- rom_profiles.lua's own doc comment for the full honesty scope.
+----------------------------------------------------------------------
+if profile.storyText then
+  writeJs("story.js", "STORY", profile.storyText,
+    "Real ROM-wide text census: monster \"<Name> bezwungen/besiegt\" victory messages and " ..
+    "named story characters, found via a targeted tools/rom/dump_strings.py scan. Only Willy " ..
+    "and Amanda have a known live room/sprite (positionKnown=true) -- every other name was " ..
+    "found in dialogue text only, with NO live position ever captured for it " ..
+    "(positionKnown=false, honestly labeled, not omitted). bossDefeats has NO confirmed link " ..
+    "to enemySpeciesTable's own 11 numbered species rows -- shown standalone, not force-matched.")
+end
 
 io.stderr:write("done.\n")

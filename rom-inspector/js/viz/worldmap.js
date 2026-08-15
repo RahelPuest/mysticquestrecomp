@@ -116,6 +116,23 @@ function tileToOffscreenCanvas(decoded) {
   return c;
 }
 
+// Google-Maps-style pan/zoom (2026-08-15, direct user request: "eine
+// map naviagation wie bei google maps"). Replaces the old discrete
+// zoom-slider + native-scrollbar approach: the whole map is rendered
+// ONCE, at a fixed, generously-high pixel-per-tile resolution (so
+// zooming in stays reasonably crisp), into the canvas -- actual pan/
+// zoom is then a pure CSS `transform: translate(...) scale(...)` on
+// that already-rendered canvas, applied every pointer-move/wheel tick
+// with zero redraw cost (the expensive part -- decoding hundreds of
+// real ROM tiles into pixels -- happens exactly once per source
+// switch, same as before). `transform-origin: 0 0` keeps the pan/zoom
+// math simple (world-space (0,0) is always the map's own top-left
+// corner, matching `tx`/`ty` directly). Mouse (drag + wheel, zoom
+// anchored under the cursor, matching Google Maps' own feel) and
+// touch (single-finger drag, two-finger pinch-to-zoom) are unified via
+// the Pointer Events API rather than separate mouse/touch listeners.
+const WorldmapView = { scale: 1, tx: 0, ty: 0, minScale: 0.15, maxScale: 8 };
+
 function render_worldmap(main) {
   main.innerHTML = `
     <h1 class="page-title">Weltkarte</h1>
@@ -133,9 +150,7 @@ function render_worldmap(main) {
         <option value="bank5">${WORLDMAP_SOURCES.bank5.label}</option>
         <option value="bank6">${WORLDMAP_SOURCES.bank6.label}</option>
       </select>
-      <label style="font-size:12px; color:var(--text-dim);">Zoom
-        <input type="range" id="worldmapZoom" min="1" max="3" value="1" style="vertical-align:middle;">
-      </label>
+      <button id="worldmapFit" type="button">Ansicht zurücksetzen</button>
       <label style="font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="worldmapGrid" checked> Raum-Grenzen einzeichnen
       </label>
@@ -146,21 +161,25 @@ function render_worldmap(main) {
           <option value="group">an (nur Gruppe -- sauberere Zonen)</option>
         </select>
       </label>
+      <span style="font-size:12px; color:var(--text-dim);">Ziehen zum Verschieben, Mausrad/Pinch zum Zoomen, Klick für Rauminfo.</span>
     </div>
 
     <div id="worldmapNote" style="font-size:12px; color:var(--text-dim); margin:4px 0; max-width:900px;"></div>
-    <div id="worldmapCanvasHost" style="overflow:auto; max-height:75vh; border:1px solid var(--border, #333);">
-      <canvas id="worldmapCanvas" width="10" height="10"></canvas>
+    <div id="worldmapViewport" style="position:relative; overflow:hidden; width:100%; height:75vh;
+        border:1px solid var(--border, #333); cursor:grab; touch-action:none; background:#1a1e14;">
+      <canvas id="worldmapCanvas" width="10" height="10"
+        style="position:absolute; top:0; left:0; transform-origin:0 0; image-rendering:pixelated;"></canvas>
     </div>
     <div id="worldmapHoverInfo" style="font-size:12px; margin-top:6px;"></div>
   `;
 
   updateRomBanner(document.getElementById("worldmapRomBanner"));
   const sourceSelect = document.getElementById("worldmapSource");
-  sourceSelect.addEventListener("change", drawWorld);
-  document.getElementById("worldmapZoom").addEventListener("input", drawWorld);
+  sourceSelect.addEventListener("change", () => { drawWorld(); fitToViewport(); });
+  document.getElementById("worldmapFit").addEventListener("click", fitToViewport);
   document.getElementById("worldmapGrid").addEventListener("change", drawWorld);
   document.getElementById("worldmapOverlayMode").addEventListener("change", drawWorld);
+  wirePanZoom();
   onSectionUnload(RomBytes.onChange(() => { updateRomBanner(document.getElementById("worldmapRomBanner")); drawWorld(); }));
 
   function roomsForSource(key) {
@@ -183,7 +202,6 @@ function render_worldmap(main) {
       "für die genauen Zahlen), <strong>nicht per Live-Gameplay bestätigt</strong>. Reihenfolge: Record-" +
       "Index N &rarr; Zeile " + "&lfloor;N/" + stride + "&rfloor;, Spalte N mod " + stride + ".";
 
-    const zoom = parseInt(document.getElementById("worldmapZoom").value, 10) || 1;
     const showGrid = document.getElementById("worldmapGrid").checked;
     const overlayMode = document.getElementById("worldmapOverlayMode").value; // "off" | "pair" | "group"
     const showActorAction = overlayMode !== "off";
@@ -197,7 +215,12 @@ function render_worldmap(main) {
         `Tile-Zuordnung -- gleiche Farbe kann echte, zusammenhängende Spielgebiete markieren.`;
     }
     const roomW = rooms[0].cols, roomH = rooms[0].rows;
-    const tilePx = 8 * zoom;
+    // Fixed, generously-high base resolution -- see this file's own
+    // "Google-Maps-style pan/zoom" doc comment above: actual zoom is a
+    // CSS transform on the already-rendered canvas, not a redraw, so
+    // this only needs to be high enough to stay reasonably crisp at
+    // the max CSS scale (`WorldmapView.maxScale`).
+    const tilePx = 16;
     const canvas = document.getElementById("worldmapCanvas");
     canvas.width = stride * roomW * tilePx;
     canvas.height = gridRows * roomH * tilePx;
@@ -256,22 +279,153 @@ function render_worldmap(main) {
     if (!RomBytes.isLoaded()) {
       info.textContent = "Keine ROM geladen -- oben rechts „ROM laden…“, um echte Pixel zu sehen (Grid-Struktur ist trotzdem sichtbar).";
     } else {
-      info.textContent = "Maus über einen Raum bewegen für seinen Record-Index + Gitter-Position.";
+      info.textContent = "Auf einen Raum klicken/tippen für seinen Record-Index + Gitter-Position.";
     }
-    canvas.onmousemove = (ev) => {
+    // CLICK (not hover -- see this file's own "Google-Maps-style pan/
+    // zoom" doc comment: hover doesn't exist on touch, and a click is
+    // also what `wirePanZoom`'s own drag-vs-click distinction already
+    // produces for free) shows the room info, persistent until the
+    // next click, instead of vanishing the moment the mouse leaves.
+    canvas.onWorldmapClick = (clientX, clientY) => {
       const rect = canvas.getBoundingClientRect();
-      const px = (ev.clientX - rect.left) * (canvas.width / rect.width);
-      const py = (ev.clientY - rect.top) * (canvas.height / rect.height);
+      const px = (clientX - rect.left) * (canvas.width / rect.width);
+      const py = (clientY - rect.top) * (canvas.height / rect.height);
       const roomCol = Math.floor(px / (roomW * tilePx));
       const roomRow = Math.floor(py / (roomH * tilePx));
-      if (roomRow < 0 || roomCol < 0 || roomCol >= stride) return;
+      if (roomRow < 0 || roomCol < 0 || roomCol >= stride || roomRow >= gridRows) return;
       const i = roomRow * stride + roomCol;
       if (i < 0 || i >= rooms.length) return;
       const aa = rooms[i].actorAction;
       const aaLabel = aa ? ` &middot; Actor-Action group=${aa.group} action=0x${aa.action.toString(16).padStart(2, "0")}` : "";
-      info.innerHTML = `${key}-record-${String(i).padStart(3, "0")} &middot; Gitter-Position (Zeile ${roomRow}, Spalte ${roomCol})${aaLabel}`;
+      info.innerHTML = `<strong>${key}-record-${String(i).padStart(3, "0")}</strong> &middot; Gitter-Position (Zeile ${roomRow}, Spalte ${roomCol})${aaLabel}`;
     };
   }
 
   drawWorld();
+  fitToViewport();
+}
+
+//// Pan/zoom mechanics -- pure view-state math, no ROM/room knowledge. ////
+
+function applyTransform() {
+  const canvas = document.getElementById("worldmapCanvas");
+  if (!canvas) return;
+  canvas.style.transform = `translate(${WorldmapView.tx}px, ${WorldmapView.ty}px) scale(${WorldmapView.scale})`;
+}
+
+// Real "zoom to fit" -- centers the whole map in the viewport at
+// whatever scale makes it fit entirely (capped at 1:1 so a small
+// bank6 map doesn't get blown up blurry on first load), matching
+// Google Maps' own "reset view" affordance.
+function fitToViewport() {
+  const viewport = document.getElementById("worldmapViewport");
+  const canvas = document.getElementById("worldmapCanvas");
+  if (!viewport || !canvas || !canvas.width || !canvas.height) return;
+  const vw = viewport.clientWidth, vh = viewport.clientHeight;
+  const scale = Math.min(vw / canvas.width, vh / canvas.height, 1);
+  WorldmapView.scale = Math.max(WorldmapView.minScale, scale);
+  WorldmapView.tx = (vw - canvas.width * WorldmapView.scale) / 2;
+  WorldmapView.ty = (vh - canvas.height * WorldmapView.scale) / 2;
+  applyTransform();
+}
+
+// Zoom by `factor`, keeping the world-space point currently under
+// (`anchorX`,`anchorY`) -- viewport-relative pixel coords -- fixed on
+// screen, exactly like Google Maps' own scroll-to-zoom / pinch feel.
+function zoomAt(factor, anchorX, anchorY) {
+  const v = WorldmapView;
+  const newScale = Math.min(v.maxScale, Math.max(v.minScale, v.scale * factor));
+  const worldX = (anchorX - v.tx) / v.scale;
+  const worldY = (anchorY - v.ty) / v.scale;
+  v.tx = anchorX - worldX * newScale;
+  v.ty = anchorY - worldY * newScale;
+  v.scale = newScale;
+  applyTransform();
+}
+
+// Pointer Events unify mouse + touch: a single active pointer drags
+// (pan); a second simultaneous pointer switches to pinch-zoom (scale
+// from the change in inter-pointer distance, anchored at their
+// midpoint) -- real two-finger pinch, not just single-finger pan on
+// touch devices. A pointer that moved less than a few px total between
+// down and up counts as a real "click" (room info), not a drag --
+// otherwise every intentional room click would also nudge the pan by a
+// stray sub-pixel amount and never register as a click at all.
+function wirePanZoom() {
+  const viewport = document.getElementById("worldmapViewport");
+  const canvas = document.getElementById("worldmapCanvas");
+  if (!viewport || !canvas) return;
+  const pointers = new Map(); // pointerId -> {x, y}
+  let dragMoved = 0;
+  let pinchStartDist = null;
+  let pinchStartScale = null;
+
+  function midpoint() {
+    const pts = [...pointers.values()];
+    return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+  }
+  function dist() {
+    const pts = [...pointers.values()];
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+
+  viewport.addEventListener("pointerdown", (ev) => {
+    viewport.setPointerCapture(ev.pointerId);
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    dragMoved = 0;
+    if (pointers.size === 2) {
+      pinchStartDist = dist();
+      pinchStartScale = WorldmapView.scale;
+    }
+    viewport.style.cursor = "grabbing";
+  });
+
+  viewport.addEventListener("pointermove", (ev) => {
+    if (!pointers.has(ev.pointerId)) return;
+    const prev = pointers.get(ev.pointerId);
+    const dx = ev.clientX - prev.x, dy = ev.clientY - prev.y;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    dragMoved += Math.abs(dx) + Math.abs(dy);
+
+    if (pointers.size === 2 && pinchStartDist) {
+      const d = dist();
+      const rect = viewport.getBoundingClientRect();
+      const mid = midpoint();
+      const factor = (d / pinchStartDist) * (pinchStartScale / WorldmapView.scale);
+      zoomAt(factor, mid.x - rect.left, mid.y - rect.top);
+    } else if (pointers.size === 1) {
+      WorldmapView.tx += dx;
+      WorldmapView.ty += dy;
+      applyTransform();
+    }
+  });
+
+  function endPointer(ev) {
+    if (!pointers.has(ev.pointerId)) return;
+    const wasSingleClick = pointers.size === 1 && dragMoved < 6;
+    pointers.delete(ev.pointerId);
+    pinchStartDist = null;
+    viewport.style.cursor = "grab";
+    if (wasSingleClick && canvas.onWorldmapClick) {
+      canvas.onWorldmapClick(ev.clientX, ev.clientY);
+    }
+  }
+  viewport.addEventListener("pointerup", endPointer);
+  viewport.addEventListener("pointercancel", endPointer);
+
+  // Scroll-wheel zoom, anchored under the cursor -- the desktop
+  // equivalent of pinch, same `zoomAt` helper either way.
+  viewport.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+    zoomAt(factor, ev.clientX - rect.left, ev.clientY - rect.top);
+  }, { passive: false });
+
+  // Keep the current view sane (re-fit) if the browser window itself
+  // is resized -- otherwise a fit computed for the old viewport size
+  // can leave the map oddly off-center.
+  window.addEventListener("resize", () => {
+    if (document.getElementById("worldmapViewport")) fitToViewport();
+  });
 }

@@ -15,6 +15,26 @@
 -- independently, for the one enemy species this project has actually
 -- fought (row `0x10d18`, `atk=8`).
 --
+-- BOUNDARY RE-CONFIRMED, GRAPHICS INVESTIGATED, 2026-08-15 (monster/
+-- npc/item census): a fresh static scan (row-by-row byte pattern past
+-- file `0x10df0`) confirms the table genuinely ends at exactly 46
+-- rows -- row 46 breaks the established per-row shape completely
+-- (real, different content starts there, not more species data).
+-- Sprite graphics: only ONE of the 11 real species has a known real
+-- tile location (`rom_profiles.lua`'s `enemySprite`, found via live
+-- OAM tracing during the one species this project has actually
+-- fought). Checked the ROM bytes immediately surrounding that known
+-- sprite block (bank 11, file `0x2FE00`-`0x2FFDF`) for a plausible
+-- per-species index/pointer table (the same shape as this project's
+-- own room/script pointer tables) -- found none; the surrounding
+-- bytes are themselves raw 2bpp tile data, not a table. Honest
+-- conclusion: the other 10 species' own real sprite locations are NOT
+-- found by a nearby-table lookup -- each would need the same kind of
+-- live OAM trace already done for the one known species (fighting
+-- that specific creature and capturing its real live tile IDs), which
+-- needs that creature to actually be reachable/spawnable in this
+-- project's own known content first. Not attempted further this pass.
+--
 -- Real, per-row field map (0-based byte offset within each 8-byte
 -- row, NOT the dispatcher's own `DE`-relative offsets used in the
 -- docs above -- `DE = rowFileOffset + 1`, so `row[+1] == DE[+0]`
@@ -30,10 +50,34 @@
 --   +4 (DE+3) VERIFIED real ATK -- exposed as `.atk`
 --   +5 (DE+4) DEF CANDIDATE #1 -- real, species-varying, NOT confirmed
 --             live (nothing in the traced `$50AC` path reads it)
---   +6 (DE+5) DEF CANDIDATE #2 -- same honesty caveat as #1; this is
---             the dispatcher's own `C` register, confirmed read but
---             its real consumer was never found ($50AC ignores C)
---   +7        constant `0x00` in every real row observed
+--   +6 (DE+5) DEF CANDIDATE #2 -- real, species-varying, exposed as
+--             `.defCandidate2`. CORRECTED 2026-08-15 (direct re-
+--             disassembly of the `$4466`/`0xC9` dispatcher, file
+--             `0x10466`): a PREVIOUS pass claimed this byte is the
+--             dispatcher's own `C` register, "confirmed read but its
+--             real consumer was never found" -- that claim was itself
+--             off by one byte. The real disassembly is unambiguous:
+--             `LD HL,0x0006 / ADD HL,DE / LD C,(HL)` -- `C = *(DE+6)`,
+--             which is `+7` (the constant-`0x00` padding byte below),
+--             NOT `+6`/DE+5. `+6`/DE+5 (this field) is NEVER read by
+--             this dispatcher at all. `C`'s own real destination WAS
+--             confirmed this pass too, closing the old "never found"
+--             gap: `$0256` (called right after B/C load) is a real
+--             `$1ED7` selector `0x07` dispatch -- the SAME selector
+--             `0x07` -> `$50AC` mapping this project independently
+--             re-verified while decoding selector `0x10` (see
+--             `ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3`'s
+--             own doc comment) -- so `C` genuinely reaches the real,
+--             fully-decoded `$50AC` formula (`CombatFormulas.lua`)
+--             untouched, which simply never reads it (`base = ATK -
+--             DEF + 1`, DEF from real WRAM `$D6C3`, not from `C`). A
+--             real, now airtight dead end for THIS specific field via
+--             THIS specific path.
+--   +7        constant `0x00` in every real row observed -- this is
+--             what the dispatcher's own `C` register ACTUALLY reads
+--             (see the correction above), always 0, explaining why a
+--             previous pass found "$50AC ignores C": C is a boring
+--             constant here, not a silently-dropped stat.
 --
 -- 2026-08-12 follow-up (direct instruction "Gegner-DEF-Formel +
 -- Bestiary"): chased the ONE previously-unexplored lead for where a

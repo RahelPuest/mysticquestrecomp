@@ -291,6 +291,22 @@ as a real control byte, distinct from the "digraph vs. control opcode"
 open question below, for a future pass that wants to trace/implement
 numeric-value substitution specifically.
 
+**STRENGTHENED (2026-08-15)**: the original finding above was a single
+live-VRAM observation, never independently cross-checked. Found a real
+static ROM string this pass (file `0xBE10`) that decodes cleanly to
+`"LP   [F6]   MP   [F6]Naechster Level"` — a real status-menu screen
+("Kraft"/"Reife"/"Wille" stat labels precede it, "Naechster Level" =
+"Next Level" follows) — an independent confirmation from real ROM text
+data, not a live screen read. A second, unrelated real occurrence also
+found in the name-entry keyboard's own static layout string, right
+before the digit row. Cross-checked against `rom_profiles.lua`'s own
+`font.extraGlyphs` formula: the predicted real font tile (file
+`0x22F60`) decodes to a plain diagonal line, not a punctuation glyph —
+ruling out "unassigned printable character" as an alternative reading.
+The WHAT is now solidly evidenced (2 independent real ROM occurrences
++ a negative glyph-shape control); the HOW (which real CPU code reads
+it and performs the substitution) remains genuinely untraced.
+
 **Four more real leads, each backed by only ONE occurrence so far — NOT
 promoted, recorded as hypotheses per this project's 2-independent-
 confirmations rule** (see `TextDecoder.lua`'s own doc comment for the

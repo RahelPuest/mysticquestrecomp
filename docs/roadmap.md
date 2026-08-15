@@ -111,6 +111,163 @@ bake unconfirmed mechanisms into production interpreter behavior.
 
 Full Lua test suite: 240 (2026-08-08) -> 327 today.
 
+**2026-08-15 refresh**: Bank 7's own "Templated" room format (64 more
+rooms, encodingMode=1) is fully CRACKED for both tile content and
+per-metatile collision (base-template RLE + per-record diff-overlay
+scheme, 566/566 real diff positions valid, live-verified via real
+screenshots) -- 384 total decodable rooms now, up from 320. Its
+per-record door-data bytes show a real, clean 8-value statistical
+structure but stay honestly undecoded (no live bank-7 gameplay exists
+to confirm byte-to-direction meaning). A second boss encounter (direct
+user request, matching the first boss's own real sprite/species data
+and a real, non-coincidental species-byte match found via a full
+1357-record static census) was implemented as an evidence-based, NOT
+ROM-confirmed, feature -- see `docs/reverse-engineering/events.md`'s
+own "Second boss investigation" section for the complete trail,
+including three live room-placement corrections working through
+`fourthRoom` -> `fifthRoom` -> `sixthRoom` before landing on the room
+reached by walking west out of `fourthRoom`'s own corridor.
+`sixthRoom` itself was real, already-captured ROM tile data that a
+2026-08-14 pass had retracted as an exit target (the real ROM never
+"cuts" there, it's one continuous scrolling canvas) -- re-wired back in
+as an honestly-labeled engineering choice once the user confirmed live
+that reaching it matters more than strict ROM-transition fidelity,
+pending real scroll-camera support as the more complete future fix.
+
+**Same-day follow-up, direct user demand ("suche einfach einen
+allgemeinen kollisions mechanismus")**: a dedicated hunt for
+fourthRoom's own real metatile+layout-stream source came back a
+genuine, decisive negative (single-stepped the entire real staircase
+transition, 6M+ instructions, zero hits on the known RLE-decompressor
+entry point) -- this room's real load simply doesn't use that
+pipeline. Fell back to real, live-walked mgba probing instead and found
+a real, position-specific wall (a narrow staircase alcove) that a flat,
+tile-ID-keyed `floorTileIds` set structurally cannot express. Added a
+new, general, reusable mechanism instead of another one-off:
+`TileWalkability.build` now accepts an optional `room.blockedRects`
+list -- real, live-discovered rectangular exceptions layered on top of
+the tile-ID check, usable by any room. Caught and fixed a real
+off-by-one in the first version via a live `love .` screenshot before
+shipping (see `docs/reverse-engineering/rom-map.md`'s own dated
+section for the full trace). 3 new headless tests, 435/435 total.
+
+**Same-day follow-up #2**: re-verifying the staircase landing position
+(direct user report it still looked wrong) led to a genuinely new,
+general finding: this project has always drawn the player sprite at
+the raw WRAM position with no adjustment, but a live dump of the real
+hardware OAM table shows that value is already pre-offset by the
+standard Game Boy `(+8, +16)` sprite convention -- the true rendered
+position is 1 tile left / 2 tiles up from what this project has always
+shown. First fixed by editing the one reported landing coordinate
+directly; caught the same pass (checking a second landing spot) that
+this conflates collision-space with render-space and would break other
+rooms' already-tuned floor data if reapplied blindly elsewhere.
+
+**Same-day follow-up #3, direct instruction ("mach mal den gesamt
+fix")**: implemented a general fix -- `Player.lua`'s new
+`RENDER_OFFSET_X`/`RENDER_OFFSET_Y` + `:renderPosition()`, applied at
+the final sprite-draw call across every state that draws the player.
+Spot-checked via a couple of `love .` screenshots (fourthRoom's
+landing, secondRoom's free-roam spawn) and looked fine.
+
+**Same-day follow-up #4, self-caught regression, direct user report
+after actually playing the app**: "im ersten bossraum sscheint diese
+verschoben zu sein" -- the general fix broke `startRoom`'s own
+rendering (`Field.lua`), whose sprite positions/collision were
+historically calibrated the OLD, unshifted way -- a couple of
+screenshot spot-checks aren't the same rigor as real play, and this
+regression only surfaced once the user actually launched and looked.
+**Fully reverted**: every player draw call in `Field.lua`,
+`BattleIntro.lua`, `VictorySequence.lua` back to the raw
+`self.player.x/y`; `fourthRoom`'s own landing back to the real raw ROM
+value (120,112) -- the underlying hardware fact stays real and
+documented in `Player.lua`, just not applied anywhere, since safely
+wiring it in would need re-verifying every single room's own
+historical calibration individually, a real, much larger undertaking.
+436/436 tests (the now-unused `renderPosition()` method's own unit
+test still passes). See `rom-map.md`'s own dated sections ("Real
+hardware OAM-vs-WRAM sprite offset", its "implemented" follow-up, and
+the "self-caught regression... reverted" section) for the full trail.
+
+**2026-08-15, Same-day follow-up #5** ("mach mal 1" from a fresh
+project-quick-wins list -- "wire the ScriptInterpreter to actually
+DRIVE gameplay, not just shadow-run"): rewired `VictorySequence.lua`'s
+whole `MYSTICQUEST_SCRIPT_INTERPRETER=1` integration around
+`BossSequenceInterpreter` (`src/scripting/BossSequenceInterpreter.lua`),
+ticked ONCE PER REAL FRAME from `:update(dt)` instead of a one-shot
+construction-time burst -- matching how the real ROM's own interpreter
+is actually driven. Found and fixed a real, self-caught bug in the
+process: the OLD integration (`runScriptInterpreterShadow`, since
+removed) built its `RomScriptStream` from
+`profile.scriptPointerTable.fileOffset` (bank 8, the STATIC pointer
+table's own location) -- but task #86 (2026-08-14, one day earlier) had
+already found and documented, live, that the real ROM's own EXECUTING
+cursor for this exact script is bank 13 (switching to 14 on the first
+real CHAIN), not bank 8. That correction was never propagated back into
+this file, so the OLD "shadow run" had been silently executing the
+WRONG bank's bytes -- confirmed via a fresh, from-scratch headless probe
+(`probe_boss_sequence.lua`, scratchpad) that found zero overlap with
+events.md's own documented opcode list for this script.
+The new, live, per-frame run is CORRECTLY banked, wires a REAL
+`ctx.onMessage` (resolves via `MessageTextPointer`, same formula
+`runMessagePipelineDemo` already proved), and reaches real, decoded ROM
+content (confirmed identically by both the headless probe AND a live,
+in-app `love .` run converging on the exact same real cursor, `0x4798`,
+bank 14). This is NOT a full swap-over -- the hand-authored `self.pages`
+dialogue stays 100% authoritative and visually unchanged (live-verified
+via screenshot, both switch-on and switch-off) -- but it IS the
+concrete, correctly-banked, per-frame infrastructure the eventual
+swap-over needs, and a genuine bug fix in its own right. 2 new
+regression tests added (`tests/unit/boss_sequence_interpreter_test.lua`);
+437/437 tests pass.
+
+**Same-day CORRECTION** (direct continuation, "mach das", following the
+"find the real `$1F35`/`$C5AF` trigger condition, live, via mgba" step
+above): a real, decisive live `mgba` trace (`courtyard_boss_defeated()`
+checkpoint, watching `$D85A`/cursor/`$C5AF` every real frame) found the
+original write-up above was WRONG about where this run actually stalls.
+The `$1F35`/`$C5AF` edge DOES fire exactly once and DOES land the
+cursor at the real, correct `$470F` entry point -- that specific
+mystery is CLOSED. But the REAL ROM does NOT dispatch a new opcode
+every real frame past the first CHAIN (`$D85A` was observed holding for
+10-314 consecutive real frames at a stretch) -- so this project's own
+per-frame `:tick()` cadence races ahead and silently DESYNCS from the
+real byte stream well before reaching opcode `0x00` at all. Live proof:
+over the identical real frame range from the identical checkpoint, the
+REAL ROM reaches cursor `0x6206` (having genuinely dispatched the real,
+still-undecoded `0xBC`/`0xBD` palette-fade opcodes along the way -- the
+first live confirmation these actually fire in this script) while this
+project's own software is stuck at the unrelated cursor `0x4798`. The
+"stalls on opcode 0x00" symptom is this project's own software artifact
+from that desync, not a faithful reproduction of a real ROM mystery.
+`BossSequenceInterpreter:tick`'s own doc comment, `VictorySequence.lua`'s
+top-of-file doc comment, and the regression tests are all corrected to
+state this honestly.
+
+**Same-day, FOUND AND FIXED** ("ja mach das", continuing straight from
+the correction above): a native `mgba` write-watchpoint on WRAM `$D85A`
+found the answer -- opcode `0x04` (the typewriter tick) self-reschedules
+from its own real handler (`PC $36DB`) at an exact, clean, real 5-FRAME
+interval (dozens of consecutive observations, every delta exactly +5),
+sharing opcode `0xFF`'s own already-known real pacing gate exactly (this
+project's own `StandardScriptHandlers.textboxWait` doc comment already
+said the two share "the identical typewriter mechanism" -- now proven
+true in practice, not just structurally). `StandardScriptHandlers.tick`
+'s own Lua implementation was WRONG (claimed "always advances
+immediately," contradicted by this evidence) -- rewritten to share
+`.textboxWait`'s exact pacing+gating shape. 3 tests updated to match;
+437/437 pass. HONEST, decisive scope note: `BossSequenceInterpreter`'s
+own `ctx.isTextboxDone` is STILL a deliberate, ALREADY-DOCUMENTED
+"always true" stand-in (2026-08-13's own original design, "no real
+display state to gate on in a shadow run") -- so this fix, while a real
+and valuable standalone correctness improvement, does NOT change this
+specific shadow run's own desync from the real ROM. That desync is now
+understood NOT as a separate, crackable mystery, but as the direct,
+expected consequence of that already-honest limitation (genuinely
+modeling it would need a real per-character count this project has
+nowhere to source without guessing) -- left as a named limitation, not
+pursued further.
+
 **2026-08-14 refresh** (consolidation pass after several further
 sessions: task #82's opcode families, #83's deep-family tracing, #84's
 first real interpreter->rendering proof, #85's cross-actor dispatch
@@ -147,7 +304,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 |---|---|---|---|
 | P0 | **3 — Map/room extraction** | 🟢 pipeline GENERALIZED (2026-08-12); **8 real, walkable rooms now wired (2026-08-13)**, up from 6 | willyRoom/secondRoom/thirdRoom/fourthRoom/fifthRoom/sixthRoom, plus the 2 unrelated dev-only `unknownRoomA` clusters. Remaining work is "extract/wire more real rooms with this proven pipeline," not "prove the pipeline works." |
 | P0 | **NEW — World scope / content pipeline** | 🟢 384 real, decodable rooms (2026-08-14, up from 320); 2 more real ones found live and wired this session (`fifthRoom`, `sixthRoom`, 2026-08-13) | A real, general "decode any room" capability exists; actually WIRING a new room as walkable content is now a well-practiced, real, repeatable process (tile-offset search + floor classification + `HoldTrigger`-based exit), demonstrated twice more this session. Bank 7's own "Templated" encoding is now CRACKED for tile content AND collision (2026-08-14, base-template + per-record diff, see rom-map.md) -- 64 more decodable, collision-aware rooms, live-verified via real screenshots. Its door-data bytes show a real, clean statistical structure (per-record 4-byte prefix: 8-value alphabet, zero outliers) but stay honestly undecoded -- no live bank-7 gameplay exists to confirm byte-to-direction meaning. Connectivity/spawn position are still KNOWN to be script-driven, not table-driven (see the "general room/map system" investigation). |
-| P1 | **7 — Script/event system** | 🟢 **186/256 real opcode values covered (2026-08-14, true count)**, whole-corpus scan `clean` at 871/1357, the longest-standing known-hard opcode (`0x80`) finally closed | 6+ census rounds plus a new whole-corpus scan tool (shadow-runs all 1357 real scripts, not just one) found and wired most of the actor-flag/queued-action/trigger-event/actorSlotPosition/actorAction-family opcodes; a `ScriptRuntime`/`RomScriptStream` pair actually RUNS real, decoded scripts against live ROM bytes (behind `MYSTICQUEST_SCRIPT_INTERPRETER=1`, reported via the debug overlay), and (2026-08-13/14, task #84) has driven its first real, VISIBLE output. Still parallel to, not replacing, `Field.lua`'s hand-authored `FIELD_EVENTS`/`VictorySequence` room-graph — 186/256 is closing in on 3/4 but the remaining ~50 addresses are mostly non-trivial control flow (the cross-actor `$C3F0` dispatch mechanism, task #85's own subject), not a quick follow-up. |
+| P1 | **7 — Script/event system** | 🟢 **187/256 real opcode values covered**, whole-corpus scan `clean` at 871/1357, the longest-standing known-hard opcode (`0x80`) finally closed. **2026-08-15**: the boss-defeat script now runs LIVE, per-frame, correctly-banked (`BossSequenceInterpreter`, bank 13→14) instead of a one-shot burst against the wrong bank (a real, self-caught bug fixed the same pass) | 6+ census rounds plus a new whole-corpus scan tool (shadow-runs all 1357 real scripts, not just one) found and wired most of the actor-flag/queued-action/trigger-event/actorSlotPosition/actorAction-family opcodes; a `ScriptRuntime` actually RUNS real, decoded scripts against live ROM bytes (behind `MYSTICQUEST_SCRIPT_INTERPRETER=1`, reported via the debug overlay), and (2026-08-13/14, task #84) has driven its first real, VISIBLE output. Still parallel to, not replacing, `Field.lua`'s hand-authored `FIELD_EVENTS`/`VictorySequence` room-graph — 187/256 is closing in on 3/4 but the remaining ~50 addresses are mostly non-trivial control flow (the cross-actor `$C3F0` dispatch mechanism, task #85's own subject). The `$1F35`/`$C5AF` edge-detector's own trigger CLOSED (2026-08-15, live-traced -- fires once, lands the cursor at the real, correct entry point). The concrete remaining blocker for a real dialogue swap-over is now narrowly identified as something ELSE: this project's own per-frame `:tick()` cadence desyncs from the real ROM's own (not-yet-found) per-opcode dispatch rate once per-frame-paced opcodes are reached (see "Same-day follow-up #5" + its correction above) -- not a wide "opcode coverage" gap; opcode coverage was even confirmed sufficient (the real script genuinely reaches the still-undecoded `0xBC`/`0xBD`, live-confirmed for the first time). |
 | P1 | **9 — Combat (remainder)** | 🟡 partial, real progress 2026-08-12 | Close to done, high player-facing impact — real per-species ATK now fully extracted (11 species), DEF still genuinely open (one more lead chased and ruled out, see combat.md) — real, honest, bounded remaining scope. |
 | P1 | **NEW — Bestiary (multiple enemy types)** | 🟡 real stat DATA now available (2026-08-12), still exactly 1 SPAWNABLE enemy | `EnemySpeciesTable.lua` has real ATK for all 11 real species — ready for wiring once P0's room work surfaces a real spawn trigger for any of the other 10 (this project does not fabricate a species-to-room mapping without ROM evidence). |
 | P2 | **6 — Text/dialogue (remainder)** | 🟢 digraph table effectively closed (2026-08-12): 30 → 91 confirmed entries, ~66% real-region coverage, full sentences now decode end to end | Needed for every new dialogue P0 content brings in; not a hard blocker today. Remaining gap is wiring the now-solid decoder into actual gameplay text (still hand-authored `FIELD_EVENTS`/`VictorySequence` strings today), not more decoding work. |
@@ -788,6 +945,401 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       (regenerates the auto part) plus update the relevant hand-curated
       file by hand where needed. Tracked as an ongoing task in the live
       tracker (see task list) rather than a single completed item.
+
+- [~] **"Voll interpretierte Version" (task list, 2026-08-15).**
+      5-item priority list toward a real dialogue swap-over for the
+      boss-defeat sequence: (1) real `isTextboxDone` — DONE, see
+      `events.md`'s own dated entry: found the real dialogue text is
+      embedded inline in the script stream (not messageID-resolved),
+      built a real character-count pacer, disproved a plausible-looking
+      player-input gate with direct live evidence, removed it. Tested
+      live twice (with and without simulated input) — **both converge
+      on the exact same cursor (`0x4798`, stuck on opcode `0x00`) the
+      ORIGINAL unpaced version reached**, proving the pacing bug was
+      NOT the cause of the desync from the real ROM's own path — a
+      genuinely separate, still-unlocated cursor-consumption bug exists
+      somewhere between the CHAIN landing and this point. (2) decode
+      opcodes `0xBC`/`0xBD` — not started (real ROM confirmed to reach
+      them; this project's software doesn't get that far yet). (3)
+      bridge interpreter → phase machine, (4) name-insertion control
+      byte, (5) TextDecoder digraph gaps — not started.
+
+      **Same-day continuation, root cause of the `0x4798` desync FOUND**
+      (static disassembly, `tools/rom/disasm.py`): opcode `0x04`'s real
+      handler (`$333D`) is NOT the "no operand bytes" tick this project
+      always modeled it as — it's a genuine per-byte TEXT CLASSIFIER
+      that reads the byte right after itself and dispatches via real
+      thresholds (`$3356`/`$3480`/`$34A4`) into a real jump table at
+      `$38F6`. Byte `0x00` inside this classifier means "text run done,
+      recursively re-fetch the next real opcode" — a DIFFERENT real
+      meaning than opcode `0x00`'s own top-level `QUEUE_GATE` semantics.
+      This project's software, lacking this model, reads a stray `0x00`
+      byte as a genuine top-level opcode dispatch instead, which then
+      pops a real, legitimately-queued-but-stale CHAIN "resume" entry
+      (opcode `0x02`'s own real, confirmed `$36DF` push) and redirects
+      the cursor back near the original bank-13 CHAIN site — exactly
+      matching `0x4798`. This single finding directly SUPERSEDES the
+      original list's items 2 (`0xBC`/`0xBD`) and 4 (name-insertion
+      `[0x14]` byte) — both are almost certainly entries in this SAME
+      real `$38F6` jump table, not separate mechanisms. Real, substantial,
+      well-scoped next step: decode `$38F6`'s own real entry table. Not
+      attempted this pass (a genuine new reverse-engineering task, not a
+      quick fix) — precisely located and documented instead of guessed
+      at. 437/437 tests pass throughout every step of this whole
+      investigation; zero regression to the hand-authored, currently-
+      authoritative `self.pages` dialogue.
+
+      **Same-day continuation, `$38F6` decoded**: all 16 real table
+      slots disassembled (`tools/rom/disasm.py`) — the BIG reframing
+      find is that this is NOT a new mechanism at all: it's the SAME
+      real "multi-line textbox driver" this project's own much earlier
+      "0xFF sub-table" investigation (see events.md, several sessions
+      ago) already disassembled in full, just never connected to opcode
+      `0x04`'s own dispatch. `$36D0` (the shared "continue" call several
+      table entries reach) is exactly the self-rearm site this session's
+      own live watchpoint trace already found at `$36DB`. Bytes `0x14`/
+      `0x15` are the real NAME-INSERTION mechanism (two distinct real
+      WRAM string-pointer slots) — very likely the mechanism behind the
+      long-flagged, never-decoded `[0x14]`-style speaker tag. Bytes
+      `0x1C`-`0x1F` are LITERALLY the same real code the earlier 0xFF
+      sub-table work already named a "cursor-delta dispatcher" (real up/
+      down/left/right text-cursor moves). Byte `0x1A` matches
+      `TextDecoder.lua`'s own, completely independently-derived
+      `NEWLINE_BYTE = 0x1A` exactly — a decisive cross-validation from
+      two unrelated investigation paths. New HYPOTHESIS-status doc
+      comments added to `TextDecoder.lua` for the whole `0x10`-`0x1F`
+      family (informational only, not wired into the decode path).
+      **Honest, well-scoped remaining work**: build a byte-exact Lua
+      port of this UNIFIED system (opcode `0x04`'s 16-entry table + the
+      already-documented `0xFF` 11-entry sub-table + their shared real
+      WRAM cells), replacing the current "outer behavior approximation"
+      `StandardScriptHandlers.tick`/`.textboxWait`/`.startTextboxWait`
+      use — a genuine, substantial, multi-session undertaking, not
+      attempted this pass. No code changed this pass (pure disassembly/
+      documentation); 437/437 tests unaffected.
+
+      **Same-day continuation, real code change shipped**: `opcode 0x04`
+      rewritten as a genuine byte-exact classifier
+      (`StandardScriptHandlers.tick`), matching `$333D`'s real
+      disassembly exactly (terminator/control-code/text-character
+      branches). The one remaining gap was precisely narrowed to the
+      real `$36D0` "consume one more byte, re-enter the classifier"
+      bridge, gated on real WRAM `$D853` bit 7 for control byte `0x11`.
+
+      **Same-day continuation, the desync mystery is FULLY, DECISIVELY
+      RESOLVED**: a live mGBA write-watchpoint trace of `$D853` bit 7
+      found the exact real timing (SET on entry, stays set for 9 real
+      frames total, clears exactly when the real cursor advances) —
+      confirmed the flag is a real "still pacing" signal, not a guess.
+      `ctx.onControlCode`'s contract extended to support both pacing
+      (return `false`/`nil`) and the real extra-byte bridge (return a
+      number of extra real bytes to consume); `VictorySequence.lua`
+      wires the real, live-confirmed `CONTROL_CODE_0X11_REAL_TICKS = 9`
+      behavior for control byte `0x11`. Re-ran the headless cursor probe:
+      the interpreter's cursor now tracks the real ROM byte-for-byte all
+      the way to `bank=14 cursor=0x61d8`, correctly dispatching real
+      opcode `0xC0` (HEAL_LP, an exact match to the live-traced ROM),
+      then HONESTLY stops on the real, already-known-undecoded opcode
+      `0xBD` — the correct, expected boundary, not a new mystery. Item
+      (1) of the 5-item list is DONE; the desync that blocked it for the
+      whole day is closed. Items (2) `0xBC`/`0xBD` and (4) name-insertion
+      are now clearly scoped, reachable next steps (no longer blocked by
+      an unrelated cursor bug); (3) interpreter→phase-machine bridging
+      and (5) TextDecoder digraph gaps remain not started. New
+      regression test locks in the resolved trajectory
+      (`boss_sequence_interpreter_test.lua`); 442/442 tests pass.
+
+      **Same-day continuation, "Interpreter->Phasenmaschine-Brücke
+      bauen"**: reversed the 2026-08-14 "genuinely known-hard" call on
+      opcodes `0xBC`/`0xBD`/`0xBE` (palette-fade family) -- fresh
+      disassembly of their shared leaf `$1142` found a small, fully
+      real, deterministic 6x11=66-tick pacing gate (same kind of
+      mechanism as the already-modeled control-byte-`0x11` pacing, not
+      a dead end). All 3 wired (`StandardScriptHandlers.paletteFadeCycle`,
+      `ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE`,
+      `ScriptRuntime.lua` registration) -- the interpreter now correctly
+      dispatches `0xBD` all 66 real times and continues into real opcode
+      `0xF3`, genuine forward progress past the previous entry's own
+      honest stopping point. **But a NEW, real, precisely-identified gap
+      surfaces immediately after**: `0xF3`'s own real handler
+      unconditionally calls a real `$1ED7` selector-`0x10` dispatch this
+      project's existing `.peekTwoByteGate` doesn't model, causing the
+      two peeked bytes to misdispatch as top-level opcodes and converge
+      back on the SAME historical `0x4798` landing spot via a DIFFERENT
+      root cause than before. Not yet reaching the real literal text at
+      `0x61e5`. Honest, well-scoped next step: disassemble `$1ED7`
+      selector `0x10`. 446/446 tests pass (regression test updated to
+      assert the new, real, further-but-incomplete trajectory).
+
+      **Same-day continuation**: `$1ED7` selector `0x10` disassembled
+      and WIRED (`StandardScriptHandlers.paletteFadeCompletionGate`,
+      a real 6-phase state machine gated on the already-modeled
+      `$C8E0`/`$CEE8` dual gate) -- opcode `0xF3` now genuinely paces
+      for 6 real ticks (verified) instead of releasing instantly. Still
+      converges on the same `0x4798` landing spot, though -- traced the
+      exact divergence to 4 single-byte "opcodes" dispatching cleanly
+      right after `0xF3` releases, strongly suggesting one of the
+      state machine's own 2 untraced sub-calls (phase 2/4, several
+      routines into bank-2-delegated code) ALSO advances the real
+      script cursor internally, which this pass's model doesn't
+      account for. Three layers deep now -- an open-ended sub-
+      investigation, not attempted further this pass. 451/451 tests
+      pass, zero regressions; real, verified, standalone progress
+      (both new mechanisms are individually correct and tested) even
+      though the ultimate goal isn't reached yet.
+
+      **Same-day continuation, task #126 CLOSED**: the "3 layers deep"
+      sub-call theory above was a red herring -- a fresh live mGBA
+      single-step trace (native breakpoints found silently
+      non-functional and abandoned in favor of direct `cpu.pc`
+      checking after every `core.step()`; ~1.6M steps/sec, so a
+      multi-thousand-frame full trace runs in seconds) plus a direct
+      read of the real ROM bytes at cursor `0x61d8` (bank 14, file
+      offset `0x3a1d8`: `bd f3 0f 55 14 00 bc f0 ...`) proved the real
+      root cause is much simpler: **`0xF3`'s real total instruction is
+      5 bytes**, not a net-zero 2-byte peek -- it consumes 2 further
+      real bytes on release beyond the 2 peeked ones (confirmed via
+      disassembly of its real release trampoline at `$11de`). Fixed by
+      adding an `extraBytesOnRelease` parameter to `.peekTwoByteGate`
+      (default `0`, so `0xF4` is unaffected), wired to `2` for `0xF3`
+      specifically. Verified decisively: the interpreter now tracks the
+      real ROM cursor byte-for-byte straight through `0xBC` at `0x61de`
+      and beyond, past the OLD `0x4798` desync entirely (gone for
+      good), reaching real cursor `0x61f9` before honestly stopping on
+      real opcode `0xed` (real ROM handler `$0e77`) -- the run going
+      FURTHER and hitting a real, honest boundary is exactly the proof
+      the fix is correct. 460/460 tests pass, zero regressions (the
+      pre-existing regression test's own stale `0x4798`-convergence
+      expectation was updated to the new, further, correct trajectory).
+
+      **SELF-CORRECTION, same day ("weiter"):** this entry originally
+      called `0xed`/`$0e77` "genuinely new" and proposed disassembling
+      it next -- WRONG. `ScriptOpcodeTable.lua`'s own existing doc
+      comments (2026-08-14) already fully disassembled it as the THIRD
+      confirmed sibling of the already-known-hard `$02AB` family
+      (alongside `0x80` and `0xEC`/`0xEE`): it dereferences the
+      task-#85 cross-actor pointer then calls `$02AB` (a masked read of
+      the player entity's own facing byte, itself fully understood),
+      but the WRAM content staged for that dereference is genuinely
+      DATA-DEPENDENT and this project has no live player-entity WRAM
+      simulation to compute it -- explicitly documented as "EXPECTED to
+      remain ... permanently, not a sign of unfinished work". So the
+      `0xF3` fix's real, correct outcome is that the interpreter now
+      tracks the real ROM losslessly all the way to the project's own
+      pre-existing, permanent ceiling for this opcode family -- there
+      is no further "disassemble `$0e77`" step; that's already done.
+      Real further progress here needs either live player-entity WRAM
+      simulation (a substantial separate undertaking) or this script
+      hitting a genuinely different, still-unexplored opcode elsewhere.
+
+      **Consolidation pass, same day ("konsolidieren, dokumentieren und
+      in die app (interpretierte variante) und die website
+      einbauen")**: found and fixed a real, stale website bug while
+      wiring the fix in -- `export_data.lua`'s curated `KNOWN_HARD`
+      table never got the 4 addresses (`0xEC`/`0xED`/`0xEE`/`0xBA`)
+      this project itself already documented as "traced, deliberately
+      unwired" back on 2026-08-14, so the website showed them as plain
+      "undecoded" (implying unexplored) instead of the accurate
+      "known-hard" (traced, deliberately deferred, real reason given).
+      Also removed 2 stale notes on `0xBC`/`0xBD` left over from before
+      task #125 wired them (a "decoded" badge next to a "not yet
+      decoded" note is a real, visible self-contradiction). Fixed;
+      Playwright-verified live (sidebar "17 offen" -> "13 offen",
+      legend "known-hard 0->4", opcode `0xED`'s own detail panel shows
+      the correct badge+note). App side (`CatalogExplorer.lua`,
+      "interpretierte Variante") needed no code change for the fix
+      itself (same real `VictorySequence.buildBossSequenceInterpreter`
+      -> `ScriptRuntime.lua` path) -- added a `debugState()` (matching
+      `Field`/`VictorySequence` convention, none existed before) and
+      confirmed live via a scripted `love .` run + `MYSTICQUEST_WAIT_FOR`:
+      the real interpreter mode reaches `bank=14 cursor=0x61f9`,
+      identical to the headless trace, through the unmodified
+      production code path. 462/462 tests pass.
+
+- [~] **NEW -- Monster/NPC/Item catalog (2026-08-15, direct user request
+      "versuche mal alle monster, npcs und items zu extrahieren").**
+      Real, honestly-scoped extraction across all 3 categories, since
+      they turned out to be mechanically very different in what's
+      actually extractable: **Monster** -- `enemySpeciesTable`
+      boundary re-confirmed (46 rows/11 species, no more real data
+      past it); only 1 of 11 species has a known real sprite (no
+      per-species sprite index table found near it, checked and
+      documented as a real negative). **Items/weapons** -- both real
+      tables turned out to extend FAR past their previously-documented
+      boundaries (`itemTable` 20->59 records, `weaponTable` 20->48),
+      found via the same "does a real name decode here" scan method
+      already proven on `enemySpeciesTable`; also found spell records
+      need a second real name offset (`ItemTable.lua`'s own doc
+      comment) -- a genuine, decisive extension, not just re-
+      documentation. **NPCs** -- confirmed (again) there's no static
+      placement table; `NpcCatalog.lua` normalizes the 3 already-known
+      NPCs (Willy, secondRoom x2) from `rom_profiles.lua`'s own
+      verified scene data instead of duplicating it.
+      **Website**: 3 new rom-inspector tabs (Monster/Items &amp; Waffen/
+      NPCs), each honest about what's known vs. not (e.g. "Sprite
+      unbekannt" badges for the 10 monster species without a known
+      graphic) -- `export_data.lua` extended, live-verified via
+      Playwright (all 3 tabs render, zero console errors).
+      **App**: new `CatalogExplorer.lua` dev browser
+      (`MYSTICQUEST_CATALOG_DEMO=1`, same pattern as `RoomExplorer
+      .lua`'s own F8 shortcut) -- a "normal" mode showing the static
+      catalog data, and a real "interpreter" mode that runs the
+      already-built `BossSequenceInterpreter` live (via
+      `VictorySequence.buildBossSequenceInterpreter`, exported so both
+      callers share one real implementation) for the ONE monster this
+      project has a real script for, honestly saying "kein echtes
+      Skript bekannt" for every other entry rather than fabricating
+      output. A live `love .` test caught and fixed a real crash (a
+      field-access bug reading `m.atk` instead of `m.row.atk` on the
+      grouped species records) and a real text-overlap/overflow bug
+      (LÖVE's default font is far too large for the native 160x144 GB
+      canvas at 1x scale -- fixed with an explicit small print scale)
+      -- neither would have been caught by unit tests alone, both
+      confirmed fixed via re-screenshotting. 458/458 tests pass.
+      **Honest remaining scope**: 10 of 11 monster species and all
+      items/weapons have no known graphic or real script -- finding
+      more would need either new live OAM-tracing sessions (monsters)
+      or discovering a real trigger/spawn mechanism this project
+      hasn't found (items); NOT attempted further this pass, per the
+      same "characterize, don't fabricate" discipline as everywhere
+      else in this project.
+
+      **Follow-up, Phase 1 (2026-08-15, direct instruction "bitte alle
+      monster und npcs suchen und ... sprites mit animationsphasen ...
+      und die items ... in auswählbare kategorien unterteilen")**:
+      `NpcCatalog.lua`/`export_data.lua`/the website's Monster+NPC tabs
+      now expose the FULL real per-direction/per-phase animation data
+      (not just the resting pose) -- monster's real hardware X-flip
+      toggle and secondRoom NPCs' real 4-direction/2-phase walk cycle
+      are both selectable (Pose A/B pill-tabs; direction+phase
+      pill-tabs), same real primitives (`NpcSprite.lua`) actual
+      gameplay uses. `CatalogExplorer.lua`'s own NPC/monster views
+      wired to the same real animation (A button cycles NPC facing,
+      monster pose auto-toggles on a dev-browser timer). Along the way,
+      caught and fixed a real, silent website bug: `drawSpriteGrid`
+      only ever applied X-flip, never the real `flipY` down/up's own
+      phase-2 frame uses -- generalized to a real `{x=,y=}` flip
+      descriptor.
+
+      **Follow-up, real bug found + fixed (2026-08-15, direct user
+      report "die npc sprites a und b jeweils 16x16 gross sind und der
+      dialog von b ist falsch", live re-verified via a fresh mGBA OAM
+      trace, NOT taken on faith either way)**: secondRoom's
+      `characterA`/`characterB` are real 16x16 (2x2-tile, 4-tile)
+      sprites -- this project's own 2026-08-10 "single 8x16-OBJ-mode
+      column" finding was wrong (it only ever captured the physically-
+      upper tile of each of the 2 real side-by-side OAM entries,
+      silently dropping the entire bottom row). Real fix, cross-
+      validated against 2 independent fresh live captures with zero
+      discrepancy: `rom_profiles.lua`'s animation table now stores a
+      real 4-tile row-major 2x2 block per pose; `NpcSprite.lua`/
+      `NpcCatalog.lua`/the website updated to match; live-verified via
+      both `love .` (`CatalogExplorer.lua`, same real `NpcSprite.lua`
+      code path `VictorySequence.lua` uses for actual gameplay) and
+      Playwright -- a correctly-proportioned 16x16 humanoid now
+      renders, matching a fresh direct mGBA screenshot of the real,
+      unmodified ROM. Full detail (including the exact formula and its
+      cross-validation) in `docs/progress.md`'s own dated entry.
+      `characterB`'s dialogue text, by contrast, could NOT be
+      independently confirmed or corrected this pass -- 3 real live
+      re-verification attempts never reproduced the real dialogue box
+      opening at all, despite reaching visually-confirmed adjacency to
+      the NPC; left in `rom_profiles.lua` but doc-flagged UNCONFIRMED/
+      disputed rather than silently kept as settled (task #137).
+      458/458 tests pass throughout both follow-ups.
+
+      **Second correction, SAME DAY (direct user report "die linke und
+      rechte haelfte der npc sprites a und b sind vertauscht")**: the
+      16x16 fix above's own tile ORDER was itself wrong -- reordering
+      the 4 real tiles by their live-captured OAM screen X position
+      (reasoning "smaller X = drawn further left, so put it in the
+      image's left column") produced 2 visibly disconnected blobs, not
+      a character. Verified directly (decoded the same captured tile
+      bytes in plain Python, rendered both candidate orderings as
+      PNGs, compared by eye) rather than guess-swapped: the ROM simply
+      stores each pose's 4 tiles consecutively in real row-major file
+      order already (`{T,T+0x10,T+0x20,T+0x30}`) -- no OAM-position
+      reordering needed at all; that extra step was the bug. Fixed in
+      `rom_profiles.lua` (both characters, all 16 poses); re-verified
+      via both `love .` and Playwright -- a single coherent
+      16x16 humanoid now renders. 458/458 tests pass.
+
+      **`characterB`'s dialogue -- RESOLVED (direct user follow-up
+      "das ist amanda die hat einen ganz anderen dialog ueber ihren
+      bruder")**: found the real line via a targeted `dump_strings.py`
+      text search (no live capture needed) -- she's Amanda, a real
+      major story character, and the real secondRoom line is a
+      first-person 3-page monologue mentioning Willy and her own
+      little brother (real file offset `0x03783e`). Fixed in
+      `rom_profiles.lua` (real 3-page `dialogue` + `realName =
+      "Amanda"`); `VictorySequence.lua`'s real gameplay trigger needed
+      no code change (already supports multi-page dialogue). One word
+      stays an honest, unresolved oddity ("raa!" where "raus!" was
+      expected) rather than silently guessed. A real side-finding
+      while decoding it (byte `0x82`) was checked against this
+      project's own prior "genuinely contradictory" finding for that
+      byte and deliberately NOT force-added to the shared digraph
+      table -- resolved locally for just this one string instead.
+      458/458 tests pass.
+
+      **Second correction, SAME DAY (direct user pushback "raa! müsste
+      ... raus heißen" then "es muss ja ganz klar ausrüstung
+      heißen")**: the "raa!" reading above was itself wrong -- a
+      whole-ROM search for the same 2-byte pattern found `0x5B` is
+      ALSO genuinely contradictory (same shape as the already-known
+      `0x82`, just never flagged before): "a" is airtight for "Julia"
+      (25+ occurrences) but 5 OTHER real words -- "Ausrüstung",
+      "Daraus", "raus!" (this line), "grausamer", "grausam!" -- all
+      need "us" instead. Fixed in `rom_profiles.lua` (locally, the
+      shared default stays "a"); full evidence in `TextDecoder.lua`'s
+      own updated doc comment and `progress.md`. 458/458 tests pass.
+      Task #137 closed.
+
+      **Full ROM-wide search, same investigation thread (direct user
+      request "suchen alle monster und npcs mit allen daten, texten
+      und grafiken aus dem rom")**: a whole-ROM text census
+      (`tools/rom/dump_strings.py`) found 7 new real monster names
+      (Zyklop/Garuda/Golem/Chimäre/Metallkrabbe/Gottesanbeterin/
+      Zombie-Drachen/Roter Drache, each with a real "bezwungen/
+      besiegt" message + byte offset) and 14 named story characters
+      total (only Willy/Amanda have a known live position; the other
+      12 are text-only, honestly flagged) -- new `rom_profiles.lua`
+      `storyText` field, new website tab ("Story &amp; Charaktere"),
+      new regression test. Along the way, a direct user correction
+      ("Lester ist NICHT der Held") was verified against real dialogue
+      and confirmed: Lester is Amanda's own brother, not the hero.
+      Graphics candidate scan (banks 9-11) re-confirmed real creature
+      art exists but honestly did NOT catalog specific "candidate
+      species" -- boundaries are too ambiguous without live OAM ground
+      truth to avoid fabricating precision. Bounded live NPC check
+      (thirdRoom, willyRoom re-check) found 0 additional NPCs -- a
+      real, honest negative result. 460/460 tests pass.
+
+      **Catalog plan Phase 2 CLOSED (2026-08-15, direct user request
+      "Katalog-Plan fortsetzen" -> "Items in mehr auswählbare
+      Kategorien unterteilen")**: real `categoryByte` grouping for
+      both `ItemTable.lua` (6 groups: `0`/`64`/`65`/`66`/`67`/`128`,
+      counts 22/13/4/3/1/16) and `WeaponTable.lua` (13 groups, incl. 3
+      real material/elemental TIER PROGRESSIONS with &ge;5 records
+      each -- `160`/`161`/`162`, counts 9/7/9, e.g. Bronze&rarr;
+      Eisen&rarr;Silber&rarr;Gold&rarr;...) -- new `groupByCategory`
+      function on both modules, honestly `sizeClass`-labeled
+      (`"group"`/`"single"`, a plain size threshold, NOT a claimed
+      real slot name like weapon/armor/helm -- that's still
+      unconfirmed, see task #128). New locked-in regression tests on
+      the exact real counts (462/462 total). Wired into BOTH real UIs:
+      the rom-inspector website's Items-&amp;-Waffen tab gets real,
+      clickable categoryByte filter pills (Playwright-verified: filter
+      narrows 59&rarr;13 rows for `categoryByte=64`, weapon tier
+      `162`&rarr;9 correct rows, zero console errors); `CatalogExplorer
+      .lua` gets a real B-button categoryByte cycle for items/weapons
+      (`love .` screenshot-verified live: both the item-category and
+      2-deep weapon-category cycles land on the exact expected real
+      categoryByte/name/count). Phase 1 (full animation data) turned
+      out to already be complete from an earlier pass this same day
+      (task #133) -- verified present in `NpcCatalog.lua`,
+      `export_data.lua`, both website viz files, AND `CatalogExplorer
+      .lua` before starting Phase 2, avoiding duplicate work.
 
 ## Superseded by this file
 

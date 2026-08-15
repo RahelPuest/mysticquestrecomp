@@ -81,8 +81,39 @@ ScriptRuntime.__index = ScriptRuntime
 --                             typewriterCommand/queueGate's own real
 --                             WRAM-FIFO side effects.
 --   ctx.onMessage(id)       -- opcode 0xFE.
---   ctx.onTick()            -- opcode 0x04, and the real per-tick pacing
---                             callback inside 0xF0/0xFF.
+--   ctx.onTick()            -- the real per-CHARACTER pacing callback,
+--                             fired once per real 5-frame tick while
+--                             opcode 0x04 reveals a real text byte, and
+--                             also inside 0xF0/0xFF's own pacing.
+--   ctx.onControlCode(byte) -- opcode 0x04's OWN real control-code
+--                             family (2026-08-15, see StandardScriptHandlers
+--                             .tick's own doc comment): fires with the
+--                             real, raw control byte (0x10-0x1F) every
+--                             real tick while the text-reveal classifier
+--                             is sitting on one instead of a printable
+--                             character. REVISED same day (live mgba
+--                             trace of real WRAM $D853 bit 7): return a
+--                             NUMBER (0 or more) once real processing is
+--                             done -- "consume 1 real control byte plus
+--                             this many EXTRA real bytes" (some real
+--                             control codes bridge through the already-
+--                             documented `$36D0` primitive, which
+--                             advances the cursor ONE MORE byte beyond
+--                             the control byte itself) -- or return
+--                             `false`/`nil` to signal "still real-
+--                             pacing, not done yet" (a real halt,
+--                             re-dispatched next tick, exactly like the
+--                             classifier's own text-character pacing).
+--                             Optional -- a caller that doesn't supply
+--                             this at all keeps the OLD, simpler
+--                             "immediate single-byte consume" behavior,
+--                             an honest default for any real control
+--                             code this project hasn't live-traced the
+--                             exact pacing/bridge behavior of yet -- see
+--                             that handler's own "HONEST SCOPE" note for
+--                             what's NOT modeled even for the traced
+--                             ones (the deeper bank-2-delegated WRAM
+--                             side effects).
 --   ctx.isTextboxDone()     -- the real release condition for 0xF0/0xFF
 --                             -- required in spirit if either is ever
 --                             reached; defaults to an always-true stub
@@ -462,6 +493,34 @@ ScriptRuntime.__index = ScriptRuntime
 --                             where it lands (see `BossSequenceInterpreter`
 --                             for the one scene this project has that
 --                             knowledge for).
+--   ctx.onPaletteFadeCompletionPhase(phase) -- opcode `0xF3` (WIRED
+--                             2026-08-15, replacing the old generic
+--                             `ctx.isPeekGateClear` default) -- optional
+--                             observer for the real `$1ED7` selector-
+--                             `0x10` 6-phase state machine that gates
+--                             `0xF3`'s own real release -- see
+--                             `StandardScriptHandlers
+--                             .paletteFadeCompletionGate`'s own doc
+--                             comment. `0xF3` also reuses
+--                             `ctx.isTriggerEventGateClear` directly for
+--                             its own 2 real dual-gate phases (same real
+--                             `$C8E0`/`$CEE8` cells as `0xFC`/`0xFD`/
+--                             `0xE8`-`0xEB`).
+--   ctx.onPaletteFadeStep(outer, inner) -- opcodes `0xBC`/`0xBD`/`0xBE`
+--                             (real, genuine conditional-halt family --
+--                             WIRED 2026-08-15, reversing the 2026-08-14
+--                             "deliberately unwired" call once the
+--                             shared real pacing leaf `$1142` was fully
+--                             disassembled) -- optional observer, fires
+--                             on EVERY real call (halting or releasing)
+--                             with the current real `$D499`/`$D49A`
+--                             counter pair -- see `StandardScriptHandlers
+--                             .paletteFadeCycle`'s own doc comment for
+--                             the full real 6x11=66-tick pacing gate
+--                             this models. All 3 opcodes share ONE
+--                             private `{inner, outer}` state table
+--                             (real WRAM `$D499`/`$D49A` are genuinely
+--                             shared across all 3 real handlers).
 function ScriptRuntime.new(opcodeEntries, ctx)
   ctx = ctx or {}
   local self = setmetatable({
@@ -623,8 +682,15 @@ function ScriptRuntime:registerStandardHandlers()
     interp:registerHandler(ScriptOpcodeTable.FIXED_WRAM_BIT_SET_SKIP_COMMAND_HANDLER_ADDRESS_A6,
       StandardScriptHandlers.fixedWramBitSetSkipCommand(ctx.actorStateFlags, 6))
   end
+  -- REWRITTEN 2026-08-15 (real disassembly of $333D, see
+  -- StandardScriptHandlers.tick's own doc comment for the full
+  -- evidence): `0x04` is a real per-byte text/control-code classifier,
+  -- not a simple tick -- `ctx.onControlCode(byte)` is this project's
+  -- own hook for the real 0x10-0x1F control-code family (see that
+  -- handler's own doc comment for what's modeled and what's an
+  -- honestly-named gap).
   interp:registerHandler(ScriptOpcodeTable.TICK_HANDLER_ADDRESS,
-    StandardScriptHandlers.tick(ctx.onTick))
+    StandardScriptHandlers.tick(ctx.onTick, ctx.onControlCode))
   interp:registerHandler(ScriptOpcodeTable.START_TEXTBOX_WAIT_HANDLER_ADDRESS,
     StandardScriptHandlers.startTextboxWait(ctx.onTick, isDone))
   interp:registerHandler(ScriptOpcodeTable.SUBTABLE_DISPATCH_HANDLER_ADDRESS,
@@ -687,6 +753,24 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.waveOffsetEffect(ctx.onWaveOffsetUpdate))
   interp:registerHandler(ScriptOpcodeTable.COLOR_PULSE_EFFECT_HANDLER_ADDRESS_BF,
     StandardScriptHandlers.colorPulseEffect(ctx.onColorPulseDim, ctx.onColorPulseBright))
+  -- `0xBC`/`0xBD`/`0xBE` (WIRED 2026-08-15, reversing the 2026-08-14
+  -- "deliberately unwired" call -- see `ScriptOpcodeTable.lua`'s own
+  -- `PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE` doc comment for the full
+  -- disassembly of the shared real `$1142` pacing leaf this models).
+  -- Unlike `0xFB`/`0xBF` just above, this family GENUINELY HALTS (see
+  -- `StandardScriptHandlers.paletteFadeCycle`'s own doc comment) -- all
+  -- 3 real opcodes share ONE private `sharedPaletteFadeState` table
+  -- (the real WRAM `$D499`/`$D49A` cells they all read/write ARE
+  -- genuinely shared across these 3 specific handlers, unlike `0xFB`/
+  -- `0xBF`'s own unrelated, per-handler-private use of the same cell
+  -- number).
+  local sharedPaletteFadeState = {}
+  interp:registerHandler(ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC,
+    StandardScriptHandlers.paletteFadeCycle(sharedPaletteFadeState, ctx.onPaletteFadeStep))
+  interp:registerHandler(ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD,
+    StandardScriptHandlers.paletteFadeCycle(sharedPaletteFadeState, ctx.onPaletteFadeStep))
+  interp:registerHandler(ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BE,
+    StandardScriptHandlers.paletteFadeCycle(sharedPaletteFadeState, ctx.onPaletteFadeStep))
   -- `0x88`/`0x89` (added 2026-08-14, "konsolidiere unsere Entdeckungen"
   -- -- both real, live-confirmed boss-defeat script opcodes): fixed
   -- per-opcode constant, unconditional, `onWrite` is a genuinely
@@ -956,11 +1040,32 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.twoByteCommand(ctx.onTwoByteCommandC9))
   interp:registerHandler(ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CA,
     StandardScriptHandlers.twoByteCommand(ctx.onTwoByteCommandCA))
-  -- `0xF3`/`0xF4` (added 2026-08-13, task #86): share the SAME real
-  -- `$D499` gate this project's own `isPeekGateClear` models -- see
-  -- `StandardScriptHandlers.peekTwoByteGate`'s own doc comment.
+  -- `0xF3` (WIRED 2026-08-15, replacing the old generic
+  -- `ctx.isPeekGateClear` default with the REAL, fully-disassembled
+  -- release condition -- `$1ED7` selector `0x10`'s own 6-phase `$D499`
+  -- state machine, see `ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER
+  -- _ADDRESS_F3`'s own doc comment). Reuses `ctx.isTriggerEventGateClear`
+  -- directly for the 2 real dual-gate phases (the SAME real `$C8E0`/
+  -- `$CEE8` cells `0xFC`/`0xFD`/`0xE8`-`0xEB` already model) -- a fresh
+  -- private `{phase=0}` state table per registration (this real
+  -- mechanism is genuinely per-occurrence, unlike the palette-fade
+  -- family's own shared-across-occurrences state).
+  -- `extraBytesOnRelease=2` (task #126, 2026-08-15): a live mGBA
+  -- execution-address trace found 0xF3's own real total instruction
+  -- length is 5 bytes (2 peeked + 2 MORE, real bytes `14 00` right
+  -- after the peek, both silently consumed by `$1ED7` selector-0x10's
+  -- own internal work, never re-entering the top-level dispatch) --
+  -- see `.peekTwoByteGate`'s own doc comment for the full byte-exact
+  -- evidence. This is what RESOLVES the long-standing `0x4798` desync.
   interp:registerHandler(ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3,
-    StandardScriptHandlers.peekTwoByteGate(ctx.onPeekTwoByteGate, ctx.isPeekGateClear))
+    StandardScriptHandlers.peekTwoByteGate(ctx.onPeekTwoByteGate,
+      StandardScriptHandlers.paletteFadeCompletionGate({}, ctx.isTriggerEventGateClear, ctx.onPaletteFadeCompletionPhase),
+      2))
+  -- `0xF4` (added 2026-08-13, task #86): real selector `0x0F` (not
+  -- `0x10`) remains untraced -- keeps the old, honestly-unwired
+  -- `ctx.isPeekGateClear` generic default (see
+  -- `StandardScriptHandlers.peekTwoByteGate`'s own doc comment) rather
+  -- than guessing it shares `0xF3`'s own real sequence.
   interp:registerHandler(ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F4,
     StandardScriptHandlers.peekTwoByteGate(ctx.onPeekTwoByteGate, ctx.isPeekGateClear))
 

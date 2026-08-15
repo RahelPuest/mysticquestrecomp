@@ -100,6 +100,13 @@ DIGRAPH_PARTIAL = {
     0x56: "el", 0x57: " m", 0x61: " n", 0x62: "nn", 0x66: "! ",
     0x67: "ef", 0x68: "mi", 0x6F: " B", 0x81: " a", 0x85: "di",
     0x8A: "eh", 0x8B: "ns", 0x8C: "ha",
+    # NOTE (2026-08-15): 0x82 was checked again while hunting
+    # secondRoom's real "Amanda" dialogue and reads cleanly as "me" in
+    # every occurrence that hunt touched -- but see TextDecoder.lua's
+    # own DIGRAPH_PARTIAL doc comment: this byte was ALREADY found
+    # genuinely CONTRADICTORY elsewhere in the full ROM (2026-08-12),
+    # and this pass's narrower sample doesn't overturn that. Left
+    # unmapped here on purpose, kept in sync with TextDecoder.lua.
 }
 
 

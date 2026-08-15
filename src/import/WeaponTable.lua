@@ -53,4 +53,52 @@ function WeaponTable.decode(romData, weaponTable)
   return records
 end
 
+--- Groups already-decoded `records` (from `WeaponTable.decode`) by
+-- their real `categoryByte`, in ascending categoryByte order -- same
+-- shape/intent as `EnemySpeciesTable.groupBySpecies`/
+-- `ItemTable.groupByCategory`.
+--
+-- FOUND, 2026-08-15 (catalog plan Phase 2, direct user request "Items
+-- in mehr auswählbare Kategorien unterteilen"): grouping the real,
+-- live-decoded 48-record weapon/equipment table by `categoryByte`
+-- produces 13 real, non-overlapping groups. Three of them (`160`,
+-- `161`, `162`; 9/7/9 records) show a clear, real, human-readable
+-- material/elemental TIER PROGRESSION when read in ROM order (e.g.
+-- `162`: Bronze/Eisen/Silber/Gold/Flamme/Eis/Drache/Samurai/Opal) --
+-- strongly suggestive of 3 real equipment SLOTS (weapon/armor/helm or
+-- similar), but the exact real slot each byte value corresponds to is
+-- NOT confirmed (no live equip-slot cross-check has been done -- see
+-- `docs/roadmap.md` task #128, "Trace $5BA7 (attack-side equip
+-- lookup)", still pending) -- so this function groups by the real
+-- byte only, it does not name or claim a specific slot. The remaining
+-- 10 categoryByte values are small groups (1-3 records each) --
+-- individual, named pieces of equipment (e.g. `165`: Axt/Streit/Zeus)
+-- rather than a tier ladder.
+--
+-- `sizeClass` is a plain, honest, SIZE-only label (`"group"` for
+-- categoryByte values shared by >=5 records, `"single"` otherwise),
+-- same convention as `ItemTable.groupByCategory` -- see its own doc
+-- comment for why this stays size-only rather than naming a slot.
+function WeaponTable.groupByCategory(records)
+  local groups = {}
+  local order = {}
+  for _, r in ipairs(records) do
+    if not groups[r.categoryByte] then
+      groups[r.categoryByte] = { categoryByte = r.categoryByte, count = 0, records = {} }
+      order[#order + 1] = r.categoryByte
+    end
+    local g = groups[r.categoryByte]
+    g.count = g.count + 1
+    g.records[g.count] = r
+  end
+  table.sort(order)
+  local result = {}
+  for i, categoryByte in ipairs(order) do
+    local g = groups[categoryByte]
+    g.sizeClass = (g.count >= 5) and "group" or "single"
+    result[i] = g
+  end
+  return result
+end
+
 return WeaponTable

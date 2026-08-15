@@ -1459,8 +1459,9 @@ const OPCODES = [
   },
   {
     "handler": 3762,
+    "note": "A real, fully-traced $D499-driven 2-step entity-lifecycle state machine (step0 allocates a real entity slot via the already-known $0A74 primitive, calls $2F03; step1 calls $2ED3 -- real halt if not ready -- else despawns the slot via $0AE3). Both $2F03/$2ED3 resolve to real cases of the already-mapped $1ED7 bank-1 dispatcher. Genuinely known-hard NOT because the mechanism is opaque (it's real, traced, decodable ROM code) but because fully resolving \"ready\" needs the $52CD sub-table's own untraced targets AND a live entity/OAM lifecycle simulation this project doesn't have.",
     "opcode": 186,
-    "status": "undecoded"
+    "status": "known-hard"
   },
   {
     "handler": 16140,
@@ -1472,20 +1473,27 @@ const OPCODES = [
   },
   {
     "handler": 4316,
-    "note": "Real arithmetic on WRAM $D499/$D49A -- part of the palette/fade-counter family shared with 0xFB/0xBF/0xBD. Not yet decoded to an exact fade curve.",
+    "names": [
+      "PALETTE_FADE_HANDLER_ADDRESS_BC"
+    ],
     "opcode": 188,
-    "status": "known-hard"
+    "status": "decoded"
   },
   {
     "handler": 4166,
-    "note": "Third member of the same palette-fade family as 0xBC/0xFB -- reads two real shared gradient lookup tables ($101A/$1030) and writes the result into the pending-palette-write cell or WRAM $D3A3, then calls a further untraced leaf ($1142).",
+    "names": [
+      "PALETTE_FADE_HANDLER_ADDRESS_BD"
+    ],
     "opcode": 189,
-    "status": "known-hard"
+    "status": "decoded"
   },
   {
     "handler": 4263,
+    "names": [
+      "PALETTE_FADE_HANDLER_ADDRESS_BE"
+    ],
     "opcode": 190,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 4064,
@@ -1843,18 +1851,21 @@ const OPCODES = [
   },
   {
     "handler": 3699,
+    "note": "Third confirmed sibling of the known-hard $02AB family (with 0x80/0xEC/0xEE): dereferences the task-#85 cross-actor pointer ($C3FE/$C3FF) one further level (+0), then calls $02AB (a masked read of the player's own real facing byte -- itself fully understood). Left unwired because WHICH bank/pointer gets staged into $C3F0/$C3FE/$C3FF for a given real scene is genuinely DATA-DEPENDENT, and this project has no live player-entity WRAM simulation to compute it with -- expected to remain known-hard permanently, not a sign of unfinished work.",
     "opcode": 236,
-    "status": "undecoded"
+    "status": "known-hard"
   },
   {
     "handler": 3703,
+    "note": "Second confirmed sibling of the known-hard $02AB family (offset +1 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above. Directly confirmed reachable 2026-08-15: BossSequenceInterpreter's own real boss-defeat script lands here as its new, further, honest stopping point once the 0xF3 5-byte-release fix (task #126) is wired.",
     "opcode": 237,
-    "status": "undecoded"
+    "status": "known-hard"
   },
   {
     "handler": 3707,
+    "note": "Fourth confirmed sibling of the known-hard $02AB family (offset +2 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above.",
     "opcode": 238,
-    "status": "undecoded"
+    "status": "known-hard"
   },
   {
     "handler": 3711,

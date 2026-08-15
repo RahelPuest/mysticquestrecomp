@@ -85,35 +85,46 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "fourthRoom: RETRACTED -- the second exit into sixthRoom was never real (2026-08-14)",
+  "fourthRoom: RE-ADDED -- the west exit into sixthRoom is back, as an honest engineering choice (2026-08-15)",
   romData ~= nil,
   "no development ROM found",
   function()
-    -- This test used to assert `#fourth.exits == 2` and a real, live-
-    -- traced west exit into `sixthRoom` (holdFrames=220). A dedicated
-    -- re-investigation ("die gesammte gamemap entschlüsseln, absolute
-    -- prio") found 3 independent, converging pieces of real evidence
-    -- that this was never a genuine "cut" transition: the documented
-    -- trigger never fires even after 3000+ frames of holding (the real
-    -- corridor is bigger than originally captured, with a second real
-    -- wall further west); the original "confirmation" evidence
-    -- (dynamicBank $C3F0=6) is non-discriminating (already true from
-    -- the moment fourthRoom itself is entered); and the real $1E9F/
-    -- $1EB6 scroll-reveal mechanism -- the SAME real ROM address
-    -- already proven for secondRoom's own continuation of willyRoom --
-    -- fires during this exact corridor walk, with real captured tile
-    -- data matching fourthRoom's own vocabulary. See rom_profiles.lua's
-    -- own "RETRACTED"/"CORRECTED" doc comments for the complete trail.
-    -- `sixthRoom`'s own table (tileOffsets etc.) is kept as real,
-    -- cross-validated ROM data -- only the exit pointing at it as a
-    -- separate room is removed.
+    -- History: this test used to assert `#fourth.exits == 1` after the
+    -- 2026-08-14 retraction (see the RETRACTED evidence trail this test
+    -- used to carry, now moved to rom_profiles.lua's own "RETRACTED-
+    -- THEN-RECONSIDERED" doc comment on this exact exit). The underlying
+    -- ROM finding is UNCHANGED: the real corridor genuinely just keeps
+    -- scrolling as one continuous canvas, it never "cuts" here. What
+    -- changed 2026-08-15 (direct user bug report: "dann sollte wenn der
+    -- spieler dem weg nach westen folgt eun neuer raum da sein... bau
+    -- das ein") is that this project's own no-camera-scroll engine has
+    -- no other way to expose `sixthRoom`'s real, already-decoded tile
+    -- content, so the exit is back as a deliberate, honestly-labeled
+    -- stand-in -- see rom_profiles.lua's own doc comment for the full
+    -- reasoning.
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local fourth = profile.graphics.fourthRoom
-    Harness.assertTrue(fourth.exits ~= nil and #fourth.exits == 1,
-      "expected fourthRoom to have exactly 1 real exit now (north->fifthRoom only)")
+    Harness.assertTrue(fourth.exits ~= nil and #fourth.exits == 2,
+      "expected fourthRoom to have 2 exits again (north->fifthRoom, west->sixthRoom)")
+    local west
     for _, exit in ipairs(fourth.exits) do
-      Harness.assertTrue(exit.targetRoom ~= "sixthRoom",
-        "sixthRoom should no longer be a real exit target")
+      if exit.targetRoom == "sixthRoom" then west = exit end
     end
+    Harness.assertTrue(west ~= nil, "expected a real exit targeting sixthRoom")
+    Harness.assertEqual(west.holdFrames, 220)
+    Harness.assertEqual(west.holdDirection, "left")
+  end
+)
+
+Harness.testIfAvailable(
+  "sixthRoom: hosts the second-boss encounter (moved here 2026-08-15, see doc comment for the correction history)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local sixth = profile.graphics.sixthRoom
+    Harness.assertTrue(sixth.secondBoss ~= nil, "expected sixthRoom.secondBoss to exist")
+    Harness.assertTrue(sixth.floorTileIds[sixth.grid[math.floor(sixth.secondBoss.spawnY / 8) + 1][math.floor(sixth.secondBoss.spawnX / 8) + 1]],
+      "expected secondBoss's own spawn position to sit on real floor")
   end
 )

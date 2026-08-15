@@ -352,32 +352,120 @@ Harness.test("StandardScriptHandlers.runListSearch: fails loudly with no matchBy
   Harness.assertTrue(not ok2)
 end)
 
-Harness.test("StandardScriptHandlers.tick: real typewriter reveal-tick opcode (0x04, ROM $333D) consumes no operand bytes and calls back", function()
+-- CORRECTED (2026-08-15, live mgba watchpoint trace on WRAM $D85A --
+-- see StandardScriptHandlers.tick's own doc comment for the full
+-- evidence): the real ROM does NOT dispatch this opcode once then
+-- immediately continue -- it self-reschedules for many real frames at
+-- a real, live-confirmed 5-frame pace (identical to `.textboxWait`'s
+-- own already-known cadence), gated by the SAME `isDone` concept, not
+-- "always advances immediately." These 2 tests are rewritten to match
+-- (and are now structurally identical to the `.textboxWait` tests just
+-- below, since the two opcodes share the same real mechanism).
+-- REWRITTEN 2026-08-15 ("mach trotzdem, ändere den code"): opcode
+-- `0x04` is a real per-byte text/control-code classifier ($333D), not
+-- a simple tick gated by an external `isDone` -- see
+-- `StandardScriptHandlers.tick`'s own doc comment for the full
+-- disassembly trail. These tests cover the 3 real, distinct branches
+-- plus the "no silent guess" failure case.
+
+Harness.test("StandardScriptHandlers.tick: real TERMINATOR byte (0x00) advances immediately, no pacing", function()
+  local tick = ScriptOpcodeTable.TICK_HANDLER_ADDRESS
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x04] = tick }))
+  interp:registerHandler(tick, StandardScriptHandlers.tick())
+
+  local stream = { 0x04, 0x00 }
+  local nextCursor, opcode, kind = interp:step(stream, 1)
+  Harness.assertEqual(opcode, 0x04)
+  Harness.assertEqual(kind, "handled")
+  Harness.assertEqual(nextCursor, 3) -- real ROM: INC HL skips the terminator too
+end)
+
+Harness.test("StandardScriptHandlers.tick: real CONTROL CODE (0x10-0x1F) with no onControlCode advances immediately by exactly 1 byte", function()
+  local tick = ScriptOpcodeTable.TICK_HANDLER_ADDRESS
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x04] = tick }))
+  interp:registerHandler(tick, StandardScriptHandlers.tick())
+
+  local stream = { 0x04, 0x14 } -- 0x14: the real name-insertion control byte
+  local nextCursor = interp:step(stream, 1)
+  Harness.assertEqual(nextCursor, 3) -- consumes exactly the 1 real control byte
+end)
+
+Harness.test("StandardScriptHandlers.tick: real CONTROL CODE releasing with 0 extra bytes advances by exactly 1 byte", function()
+  local tick = ScriptOpcodeTable.TICK_HANDLER_ADDRESS
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x04] = tick }))
+  local seen = nil
+  interp:registerHandler(tick, StandardScriptHandlers.tick(nil, function(byte) seen = byte; return 0 end))
+
+  local stream = { 0x04, 0x14 }
+  local nextCursor = interp:step(stream, 1)
+  Harness.assertEqual(seen, 0x14)
+  Harness.assertEqual(nextCursor, 3)
+end)
+
+-- REAL, live-verified refinement (2026-08-15, mgba watchpoint trace of
+-- WRAM $D853 bit 7): at least control byte 0x11 genuinely PACES before
+-- its own real $36D0 bridge fires, consuming 1 EXTRA real byte beyond
+-- the control byte itself -- see VictorySequence.lua's own
+-- `buildBossSequenceInterpreter` for the real, live-timed wiring this
+-- generalizes.
+Harness.test("StandardScriptHandlers.tick: real CONTROL CODE can halt (return false/nil) then release with extra bytes consumed", function()
+  local tick = ScriptOpcodeTable.TICK_HANDLER_ADDRESS
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x04] = tick }))
+  local calls = 0
+  interp:registerHandler(tick, StandardScriptHandlers.tick(nil, function(_byte)
+    calls = calls + 1
+    if calls < 3 then
+      return false -- still real-pacing
+    end
+    return 1 -- release: 1 extra real byte via the real $36D0 bridge
+  end))
+
+  local stream = { 0x04, 0x11, 0x00 } -- the control byte's own real $36D0 bridge consumes the byte after it too
+  local cursor, _, kind = interp:step(stream, 1)
+  Harness.assertEqual(kind, "halted")
+  Harness.assertEqual(cursor, 1)
+  cursor, _, kind = interp:step(stream, cursor)
+  Harness.assertEqual(kind, "halted")
+  local nextCursor
+  nextCursor, _, kind = interp:step(stream, cursor)
+  Harness.assertEqual(kind, "handled")
+  Harness.assertEqual(calls, 3)
+  Harness.assertEqual(nextCursor, 4) -- 1 (control byte) + 1 (extra, real $36D0 bridge) past afterOpcode
+end)
+
+Harness.test("StandardScriptHandlers.tick: real TEXT CHARACTER paces at the real 5-frame cadence, then advances by exactly 1 byte", function()
   local tick = ScriptOpcodeTable.TICK_HANDLER_ADDRESS
   local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x04] = tick }))
   local ticks = 0
   interp:registerHandler(tick, StandardScriptHandlers.tick(function() ticks = ticks + 1 end))
 
-  -- Real ROM shape: fires repeatedly (~110 times in the real boss-
-  -- defeat script's own dialogue reveal) with the interpreter never
-  -- blocking on it -- unlike opcode 0x00's real conditional halt.
-  local stream = { 0x04, 0x04, 0x04, 0xFE }
+  -- 0xFF = TextDecoder.SPACE_BYTE, a real, recognized printable byte.
+  local stream = { 0x04, 0xFF }
   local cursor = 1
-  for _ = 1, 3 do
-    cursor = interp:step(stream, cursor)
+  local kind
+  for i = 1, 5 do
+    local nextCursor, _, k = interp:step(stream, cursor)
+    cursor, kind = nextCursor, k
+    if i < 5 then
+      Harness.assertEqual(kind, "halted")
+      Harness.assertEqual(cursor, 1) -- real halt: cursor doesn't move while pacing
+    end
   end
-  Harness.assertEqual(ticks, 3)
-  Harness.assertEqual(cursor, 4) -- lands exactly on the real 0xFE, not consumed as an operand
-  Harness.assertEqual(stream[cursor], 0xFE)
+  -- Real, live-confirmed 5-frame pacing gate (frame_counter deltas of
+  -- exactly 5 across dozens of consecutive real observations).
+  Harness.assertEqual(kind, "handled")
+  Harness.assertEqual(cursor, 3) -- released: advances past the 1 real text byte
+  Harness.assertEqual(ticks, 1) -- one real onTick call for this one real character
 end)
 
-Harness.test("StandardScriptHandlers.tick: onTick is optional (no callback still advances the cursor)", function()
+Harness.test("StandardScriptHandlers.tick: fails loudly on a real byte that's neither terminator, control code, nor recognized text (no silent guess)", function()
   local tick = ScriptOpcodeTable.TICK_HANDLER_ADDRESS
   local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x04] = tick }))
   interp:registerHandler(tick, StandardScriptHandlers.tick())
 
-  local nextCursor = interp:step({ 0x04 }, 1)
-  Harness.assertEqual(nextCursor, 2)
+  local stream = { 0x04, 0x09 } -- 0x09: not 0x00, not 0x10-0x1F, not TextDecoder-recognized
+  local ok = pcall(function() interp:step(stream, 1) end)
+  Harness.assertTrue(not ok)
 end)
 
 Harness.test("StandardScriptHandlers.textboxWait: halts (real ROM sub-opcode 1/3/4 family) until isDone() says the box is revealed", function()
@@ -1261,6 +1349,154 @@ Harness.test("StandardScriptHandlers.colorPulseEffect: both callbacks are option
 
   local cursor = interp:step({ 0xBF }, 1)
   Harness.assertEqual(cursor, 2)
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCycle: real opcode 0xBD ($1046) genuinely halts for 65 real calls (the $1142 6x11 pacing gate), then releases on the 66th with zero extra bytes consumed", function()
+  local addr = ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xBD] = addr }))
+  interp:registerHandler(addr, StandardScriptHandlers.paletteFadeCycle({}, nil))
+
+  local stream = {}
+  for _ = 1, 66 do stream[#stream + 1] = 0xBD end
+  local cursor = 1
+  for i = 1, 65 do
+    local nextCursor, opcode, kind = interp:step(stream, cursor)
+    Harness.assertEqual(kind, "halted")
+    Harness.assertEqual(nextCursor, cursor) -- real RET C: no $3727, same opcode re-dispatches
+    cursor = nextCursor
+  end
+  local nextCursor, opcode, kind = interp:step(stream, cursor)
+  Harness.assertEqual(kind, "handled")
+  Harness.assertEqual(nextCursor, cursor + 1) -- the 66th call: real $3727, zero operand bytes of its own
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCycle: onStep fires every real call with the correct (outer, inner) counter pair", function()
+  local addr = ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xBD] = addr }))
+  local seen = {}
+  interp:registerHandler(addr, StandardScriptHandlers.paletteFadeCycle({},
+    function(outer, inner) seen[#seen + 1] = { outer, inner } end))
+
+  local stream = {}
+  for _ = 1, 13 do stream[#stream + 1] = 0xBD end
+  local cursor = 1
+  for _ = 1, 13 do
+    cursor = interp:step(stream, cursor)
+  end
+  -- Real $D49A (inner) is read/reported BEFORE this call's own increment
+  -- -- calls 1-6 report inner 0-5 (outer 0), the 6th call's own
+  -- increment then rolls inner back to 0 and bumps outer to 1 for the
+  -- 7th call onward.
+  local expected = {
+    { 0, 0 }, { 0, 1 }, { 0, 2 }, { 0, 3 }, { 0, 4 }, { 0, 5 },
+    { 1, 0 }, { 1, 1 }, { 1, 2 }, { 1, 3 }, { 1, 4 }, { 1, 5 },
+    { 2, 0 },
+  }
+  Harness.assertEqual(#seen, #expected)
+  for i = 1, #expected do
+    Harness.assertEqual(seen[i][1], expected[i][1])
+    Harness.assertEqual(seen[i][2], expected[i][2])
+  end
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCycle: 0xBD and 0xBC share ONE real pacing counter (real WRAM $D499/$D49A) when given the same shared state table", function()
+  local addrBD = ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD
+  local addrBC = ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xBD] = addrBD, [0xBC] = addrBC }))
+  local sharedState = {}
+  interp:registerHandler(addrBD, StandardScriptHandlers.paletteFadeCycle(sharedState, nil))
+  interp:registerHandler(addrBC, StandardScriptHandlers.paletteFadeCycle(sharedState, nil))
+
+  -- 3 real calls to 0xBD (inner: 0->1->2->3), then switch to 0xBC --
+  -- the shared counter must CONTINUE from 3, not reset, since both
+  -- opcodes read/write the SAME real WRAM cells.
+  local stream = { 0xBD, 0xBD, 0xBD, 0xBC, 0xBC, 0xBC }
+  local cursor = 1
+  for i = 1, 3 do
+    local nextCursor, _, kind = interp:step(stream, cursor)
+    Harness.assertEqual(kind, "halted")
+    cursor = nextCursor
+  end
+  Harness.assertEqual(sharedState.inner, 3)
+  for i = 1, 3 do
+    local nextCursor, _, kind = interp:step(stream, cursor)
+    Harness.assertEqual(kind, "halted")
+    cursor = nextCursor
+  end
+  Harness.assertEqual(sharedState.inner, 6 % 6) -- 6 real calls total: inner wrapped once (6th call resets it to 0)
+  Harness.assertEqual(sharedState.outer, 1) -- and bumped outer to 1
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCycle: fails loudly without a state table", function()
+  Harness.assertTrue(not pcall(StandardScriptHandlers.paletteFadeCycle, nil, nil))
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCompletionGate: with the real dual gate defaulting to always-clear, completes the whole real 6-phase sequence in exactly 6 calls", function()
+  local gate = StandardScriptHandlers.paletteFadeCompletionGate({}, nil, nil)
+  for _ = 1, 5 do
+    Harness.assertEqual(gate(), false)
+  end
+  Harness.assertEqual(gate(), true) -- the 6th call: phase 5's own unconditional reset+release
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCompletionGate: onPhase reports the real phase sequence 0,1,2,3,4,5", function()
+  local seen = {}
+  local gate = StandardScriptHandlers.paletteFadeCompletionGate({}, nil, function(phase) seen[#seen + 1] = phase end)
+  for _ = 1, 6 do gate() end
+  local expected = { 0, 1, 2, 3, 4, 5 }
+  Harness.assertEqual(#seen, #expected)
+  for i = 1, #expected do
+    Harness.assertEqual(seen[i], expected[i])
+  end
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCompletionGate: real dual-gate phases (1 and 3) genuinely halt while the gate is closed, and re-check it on every call", function()
+  local gateOpen = false
+  local checkCalls = 0
+  local gate = StandardScriptHandlers.paletteFadeCompletionGate({}, function()
+    checkCalls = checkCalls + 1
+    return gateOpen
+  end, nil)
+  Harness.assertEqual(gate(), false) -- phase 0 -> 1, unconditional
+  -- phase 1: real dual gate closed -- halts here as long as it stays closed.
+  for _ = 1, 5 do
+    Harness.assertEqual(gate(), false)
+  end
+  Harness.assertTrue(checkCalls >= 5)
+  gateOpen = true -- real dual gate clears
+  Harness.assertEqual(gate(), false) -- phase 1 -> 2, now that the gate is clear
+  Harness.assertEqual(gate(), false) -- phase 2 -> 3, unconditional
+  gateOpen = false -- real dual gate closes again for phase 3's own check
+  for _ = 1, 3 do
+    Harness.assertEqual(gate(), false) -- phase 3 halts again
+  end
+  gateOpen = true
+  Harness.assertEqual(gate(), false) -- phase 3 -> 4
+  Harness.assertEqual(gate(), false) -- phase 4 -> 5, unconditional
+  Harness.assertEqual(gate(), true)  -- phase 5 -> 0, real release
+end)
+
+Harness.test("StandardScriptHandlers.paletteFadeCompletionGate: fails loudly without a state table", function()
+  Harness.assertTrue(not pcall(StandardScriptHandlers.paletteFadeCompletionGate, nil, nil, nil))
+end)
+
+Harness.test("StandardScriptHandlers.peekTwoByteGate + paletteFadeCompletionGate: real opcode 0xF3 halts for the whole real 6-tick sequence (default dual gate), then releases without consuming the peeked bytes", function()
+  local addr = ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xF3] = addr }))
+  interp:registerHandler(addr, StandardScriptHandlers.peekTwoByteGate(nil,
+    StandardScriptHandlers.paletteFadeCompletionGate({}, nil, nil)))
+
+  local stream = { 0xF3, 0x0f, 0x55 }
+  local cursor = 1
+  for i = 1, 5 do
+    local nextCursor, _, kind = interp:step(stream, cursor)
+    Harness.assertEqual(kind, "halted")
+    Harness.assertEqual(nextCursor, cursor)
+    cursor = nextCursor
+  end
+  local nextCursor, _, kind = interp:step(stream, cursor)
+  Harness.assertEqual(kind, "handled")
+  Harness.assertEqual(nextCursor, 2) -- released at afterOpcode -- byte1 (0x0f) becomes the next real fetch
 end)
 
 Harness.test("StandardScriptHandlers.playerEntityTypeWrite: real opcodes 0x88/0x89 each fire their own fixed constant and consume exactly one real (unused) padding byte", function()

@@ -43,6 +43,46 @@
 -- WIRED (2026-08-10): `defense` below is the real, live-captured
 -- `$D6C3` value this formula needs as its DEF operand -- see this
 -- field's own doc comment just above `Stats.new`.
+--
+-- FOUND, 2026-08-15 (direct user prompt: "es gibt beim spieler
+-- verschiedene rüstungen und waffen... das muss auch einen einfluss
+-- haben" -- a correct, well-founded challenge to this module's own
+-- previous "flat, no equipment influence" framing): `$D6C0`/`$D6C2`
+-- (the two "equipment-bonus" inputs feeding `defense` above) are NOT
+-- flat constants -- they come from a REAL, live-traced, table-driven
+-- lookup. Native mGBA write-watchpoints (see `tools/rom/watcher.py`)
+-- from real cartridge power-on found the exact real site (bank 2, ROM
+-- `0xAE42`-`0xAE67`, well BEFORE hero/heroine name entry even starts):
+--   1. copies 6 real "class/kit slot" index bytes from a fixed ROM
+--      table (`0x6F1A`/file `0xAF1A`: `01 27 AF 11 B0 1C`) into WRAM
+--      `$D6E9`-`$D6EE`
+--   2. for each of those 6 index bytes (masked `AND 0x7F`, 1-based),
+--      indexes into a SECOND real ROM table (`0x6200`/file `0xA200`,
+--      16-byte stride, real helper `$768C` computing `base + 1 +
+--      (index-1)*16` -- the `+1` is real, confirmed by re-matching
+--      against live capture after an initial off-by-one misread) and
+--      reads that record's own byte `+1`
+--   3. writes the 6 results to `$D6BF`-`$D6C4` in order
+-- Live-verified byte-exact against the SAME watchpoint trace: index
+-- `0x27` (`D6C0`) and index `0x11` (`D6C2`) both resolve to real
+-- record byte `+1` = `2` -- an EXACT match to the value this module's
+-- own `DEFAULT_DEFENSE` below already uses, confirming (not changing)
+-- today's constant, but replacing "flat, unexplained" with "real,
+-- table-driven, now understood down to the exact ROM bytes."
+--
+-- HONEST, NARROWER SCOPE than "equipment now fully modeled": this
+-- specific site runs exactly ONCE, unconditionally, before any player
+-- choice (not gated on hero/heroine selection, not re-run on menu
+-- equip changes in this trace) -- i.e. it's real evidence of a genuine
+-- "class/kit template" system, not yet proof that swapping gear MID-
+-- GAME live-recomputes these values. `$5BA7` (the SEPARATE, still-
+-- untraced attack-side lookup -- see `attack` in the formula above)
+-- is the more likely candidate for a live, CURRENT-weapon-reactive
+-- bonus, since attack and defense clearly use two different real
+-- mechanisms here -- not traced this pass. See docs/reverse-
+-- engineering/combat.md's own dated entry for the full writeup and
+-- the concrete next steps (`$5BA7`'s own disassembly; a live trace of
+-- an actual in-game equip-change).
 
 local Stats = {}
 Stats.__index = Stats

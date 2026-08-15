@@ -33,7 +33,7 @@ Harness.testIfAvailable(
     local report = RomIdentity.identify(romData)
     local profile = RomProfiles.match(report)
     local records = ItemTable.decode(romData, profile.itemTable)
-    Harness.assertEqual(#records, 20)
+    Harness.assertEqual(#records, 59) -- extended 2026-08-15, see rom_profiles.lua's own doc comment
 
     -- Cross-check against docs/reverse-engineering/text.md's documented
     -- item list (first 8 slots -- consumable items).
@@ -53,6 +53,110 @@ Harness.testIfAvailable(
       "first spell record's id should restart the per-category counter at 1")
     Harness.assertEqual(records[profile.itemTable.categoryBoundaryRecord].id, 0,
       "last item record's id is the documented 0 boundary marker")
+  end
+)
+
+Harness.testIfAvailable(
+  "ItemTable.decode: real spell records (8-19) decode via the offset-1 fallback, found 2026-08-15",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local records = ItemTable.decode(romData, profile.itemTable)
+
+    -- Real, live-verified spell names (see ItemTable.lua's own doc
+    -- comment for the full disassembly trail) -- byte 0 of each of
+    -- these records is a real, still-unexplained prefix byte, not
+    -- part of the name, which is why the primary offset-0 decode
+    -- comes back empty and the offset-1 fallback is needed.
+    local expectedSpellNames = {
+      [9] = "Lebe", [10] = "S-Lebe", [11] = "Magi", [12] = "S-Magi",
+      [13] = "Elixier", [14] = "Salbe", [15] = "Auge", [16] = "Bewege",
+      [17] = "Spruch", [18] = "Allheil", [19] = "Stille", [20] = "Schlaf",
+    }
+    for recordIndex1Based, name in pairs(expectedSpellNames) do
+      Harness.assertEqual(records[recordIndex1Based].name, name,
+        "record " .. (recordIndex1Based - 1) .. " spell name")
+      Harness.assertTrue(records[recordIndex1Based].namePrefixByte ~= nil,
+        "record " .. (recordIndex1Based - 1) .. " should report a real namePrefixByte")
+    end
+
+    -- Real, further elemental spells found past the previous 20-record
+    -- boundary (also offset-1 decoded).
+    Harness.assertEqual(records[23].name, "Flamme")
+    Harness.assertEqual(records[24].name, "Lava")
+    Harness.assertEqual(records[25].name, "Eis")
+    Harness.assertEqual(records[26].name, "Frost")
+    Harness.assertEqual(records[27].name, "Blitz")
+    Harness.assertEqual(records[28].name, "Donner")
+
+    -- Real, further consumable/treasure items found past the old
+    -- boundary (offset-0 this time, same shape as records 0-7).
+    Harness.assertEqual(records[29].name, "Bonbon")
+    Harness.assertEqual(records[52].name, "Rubin")
+    Harness.assertEqual(records[55].name, "Diamant")
+  end
+)
+
+Harness.testIfAvailable(
+  "ItemTable.decode: a record that decodes at neither known offset honestly reports an empty name, not a guess",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local records = ItemTable.decode(romData, profile.itemTable)
+    -- Real, live-confirmed unresolved gap (see rom_profiles.lua's own
+    -- doc comment) -- record 33 (0-based) decodes empty at BOTH offset
+    -- 0 and offset 1, so ItemTable.decode must NOT fabricate a name
+    -- for it (unlike record 20, which decodes non-empty-but-garbled at
+    -- offset 1 -- honestly returned as-is, not further filtered, since
+    -- this project doesn't judge "looks like a real word" -- only
+    -- "did a recognized byte sequence decode at all").
+    Harness.assertEqual(records[34].name, "")
+    Harness.assertEqual(records[34].namePrefixByte, nil)
+  end
+)
+
+Harness.testIfAvailable(
+  "ItemTable.groupByCategory: real categoryByte groups from the ROM (catalog plan Phase 2, 2026-08-15)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local records = ItemTable.decode(romData, profile.itemTable)
+    local groups = ItemTable.groupByCategory(records)
+
+    -- Real, live-decoded counts (see ItemTable.lua's own
+    -- `groupByCategory` doc comment) -- locks in the exact grouping so
+    -- a future table-boundary extension shows up as a clear, honest
+    -- test failure instead of silently drifting.
+    local expected = {
+      [0] = 22, [64] = 13, [65] = 4, [66] = 3, [67] = 1, [128] = 16,
+    }
+    local totalRecords = 0
+    for _, g in ipairs(groups) do
+      Harness.assertEqual(g.count, expected[g.categoryByte],
+        "categoryByte " .. g.categoryByte .. " count")
+      Harness.assertEqual(#g.records, g.count)
+      totalRecords = totalRecords + g.count
+    end
+    Harness.assertEqual(#groups, 6)
+    Harness.assertEqual(totalRecords, #records, "every real record must land in exactly one group")
+
+    -- sizeClass is a plain size threshold (>=5), not a claimed real
+    -- category name -- see the doc comment for why.
+    Harness.assertEqual(groups[1].sizeClass, "group") -- categoryByte 0, count 22
+    Harness.assertEqual(groups[3].sizeClass, "single") -- categoryByte 65, count 4
+    Harness.assertEqual(groups[5].sizeClass, "single") -- categoryByte 67, count 1
+    Harness.assertEqual(groups[6].sizeClass, "group") -- categoryByte 128, count 16
+
+    -- Groups come back sorted ascending by the real categoryByte.
+    for i = 2, #groups do
+      Harness.assertTrue(groups[i].categoryByte > groups[i - 1].categoryByte)
+    end
   end
 )
 

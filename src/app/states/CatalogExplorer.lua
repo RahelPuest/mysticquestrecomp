@@ -1,0 +1,449 @@
+-- DEV-ONLY content browser for the monster/NPC/item catalog this
+-- project has extracted (2026-08-15, direct user request "versuche
+-- mal alle monster, npcs und items zu extrahieren... baue sie in der
+-- app ein (sowohl interpreter als auch normale variante)") -- same
+-- "F-key dev shortcut, real ROM-verified content, honestly-scoped"
+-- pattern as `RoomExplorer.lua` (F8). `MYSTICQUEST_CATALOG_DEMO=1`
+-- (see `main.lua`) pushes this directly, skipping the normal
+-- Boot->Title->Field flow, for fast iteration/screenshot
+-- verification -- exactly the same reasoning as
+-- `MYSTICQUEST_ROOM_EXPLORER_DEMO`/`MYSTICQUEST_VICTORY_DEMO`.
+--
+-- Two real content modes, cycled with START:
+--   "normal": renders the already-decoded STATIC data straight from
+--     the Lua catalog modules (`EnemySpeciesTable`/`ItemTable`/
+--     `WeaponTable`/`NpcCatalog`) -- names/stats/positions, no script
+--     interpreter involved. The same real data the new rom-inspector
+--     website tabs show, just inside the actual LÖVE app.
+--   "interpreter": for the ONE entry this project has a real, decoded
+--     SCRIPT for (the boss-defeat sequence, tied to the one known-
+--     species monster, species index 4 -- see `EnemySpeciesTable
+--     .lua`'s own `verifiedExample`), runs the real
+--     `BossSequenceInterpreter` live via `VictorySequence
+--     .buildBossSequenceInterpreter` (the SAME exported function
+--     `VictorySequence.lua`'s own `MYSTICQUEST_SCRIPT_INTERPRETER=1`
+--     overlay uses -- one real implementation, two callers, not a
+--     duplicate) and shows its own real, current dispatch state.
+--   Every OTHER catalog entry has NO real script this project has
+--     found -- interpreter mode honestly says so (see `NpcCatalog
+--     .lua`'s own doc comment for exactly why NPCs in particular have
+--     no static placement table at all, let alone a script) instead
+--     of fabricating an output.
+--
+-- Sprite previews: real, live-decoded tile data is drawn for the ONE
+-- monster and the 3 NPCs that have a known real tile location. Every
+-- other entry (10 of 11 monsters, all items/weapons) has no known
+-- graphic and is shown as text only.
+--
+-- Animation (2026-08-15, direct user request "die sprites mit
+-- animationsphasen"): the monster sprite alternates its real hardware
+-- X-flip (`flipXTogglesPerStep`, see rom_profiles.lua's own doc
+-- comment) on a fixed dev-browser timer -- the real ROM toggles this
+-- per MOVEMENT STEP, not per wall-clock second, so this is an honest,
+-- deliberate simplification for a static preview, not a claim of the
+-- exact real cadence. characterA/B (secondRoom) reuse `NpcSprite.lua`
+-- UNCHANGED -- the SAME real, production 4-direction/2-phase module
+-- `Field.lua` drives for actual gameplay (real `framesPerPhase`
+-- timing, real `flipY` handling for down/up's phase-2 mirror) -- one
+-- real implementation, two callers, not a reduced reimplementation.
+-- Direction is cycled with the A button (see `update`); phase advances
+-- on its own real timer. Willy has no known real animation data (see
+-- `NpcCatalog.lua`'s own doc comment) and keeps the static resting
+-- pose via plain `CreatureSprite.fromOffsets`.
+--
+-- Item/weapon categories (2026-08-15, catalog plan Phase 2, direct
+-- user request "Items in mehr auswählbare Kategorien unterteilen"):
+-- the B button cycles a real `categoryByte` filter for the items/
+-- weapons lists (`ItemTable.groupByCategory`/`WeaponTable
+-- .groupByCategory` -- the SAME real grouping the rom-inspector
+-- website's category pills use). "Alle" (filter 0, the default)
+-- matches this browser's OLD unfiltered behavior exactly; each
+-- further B press narrows to one real categoryByte group, in
+-- ascending order. See those modules' own doc comments for what the
+-- real groupings are (and are NOT confirmed to mean).
+
+local EnemySpeciesTable = require("src.import.EnemySpeciesTable")
+local ItemTable = require("src.import.ItemTable")
+local WeaponTable = require("src.import.WeaponTable")
+local NpcCatalog = require("src.import.NpcCatalog")
+local CreatureSprite = require("src.rendering.CreatureSprite")
+local NpcSprite = require("src.rendering.NpcSprite")
+local Stats = require("src.entities.Stats")
+
+local NPC_DIRECTIONS = { "down", "up", "left", "right" }
+
+local CatalogExplorer = {}
+CatalogExplorer.__index = CatalogExplorer
+
+local CATEGORIES = { "monsters", "items", "weapons", "npcs" }
+local CATEGORY_LABELS = {
+  monsters = "Monster", items = "Items", weapons = "Waffen", npcs = "NPCs",
+}
+
+-- The one real species this project has actually fought (see
+-- EnemySpeciesTable.lua's own doc comment) -- the ONLY monster entry
+-- "interpreter" mode has real content for.
+local BOSS_LINKED_SPECIES_ROW = nil -- filled in .new() from profile.enemySpeciesTable.verifiedExample
+
+function CatalogExplorer.new(romData, profile, input, overlay, stack)
+  local self = setmetatable({
+    romData = romData,
+    profile = profile,
+    input = input,
+    overlay = overlay,
+    stack = stack,
+    categoryIndex = 1,
+    entryIndex = 1,
+    mode = "normal", -- "normal" | "interpreter"
+  }, CatalogExplorer)
+
+  local rows = EnemySpeciesTable.decode(romData, profile.enemySpeciesTable)
+  self.monsters = EnemySpeciesTable.groupBySpecies(rows)
+  self.items = ItemTable.decode(romData, profile.itemTable)
+  self.weapons = WeaponTable.decode(romData, profile.weaponTable)
+  self.npcs = NpcCatalog.build(profile)
+
+  -- Catalog plan Phase 2 (2026-08-15, direct user request "Items in
+  -- mehr auswählbare Kategorien unterteilen"): real categoryByte
+  -- groups (see ItemTable.lua's/WeaponTable.lua's own
+  -- `groupByCategory` doc comments -- the SAME real grouping the
+  -- rom-inspector website's category pills use, one real
+  -- implementation, two callers). `itemCategoryFilter`/
+  -- `weaponCategoryFilter` are 0 ("alle", the default, matching this
+  -- browser's OLD unfiltered behavior exactly) or a 1-based index into
+  -- the respective `*Categories` array -- cycled with B (see
+  -- `:update()`).
+  self.itemCategories = ItemTable.groupByCategory(self.items)
+  self.weaponCategories = WeaponTable.groupByCategory(self.weapons)
+  self.itemCategoryFilter = 0
+  self.weaponCategoryFilter = 0
+
+  if profile.enemySpeciesTable.verifiedExample then
+    BOSS_LINKED_SPECIES_ROW = profile.enemySpeciesTable.verifiedExample.rowIndex
+  end
+
+  -- Real, live-verified sprite for the one known monster species (see
+  -- rom_profiles.lua's own `graphics.enemySprite`) -- exact same
+  -- primitive/parameters `Field.lua` uses.
+  local es = profile.graphics and profile.graphics.enemySprite
+  if es then
+    self.monsterSprite = CreatureSprite.fromOffsets(romData, es.tileOffsets, es.cols, es.rows, nil, es.rowSpacing)
+    self.monsterFlipXTogglesPerStep = es.flipXTogglesPerStep or false
+  end
+  self.monsterFlipTimer = 0
+  self.monsterFlipState = false
+
+  -- Real per-NPC sprites: an animated `NpcSprite` (real production
+  -- module, see this file's own top-of-file doc comment) for any NPC
+  -- with real `animation` data, a static `CreatureSprite` resting pose
+  -- otherwise (Willy -- no known real animation). `willy`'s own real
+  -- `tileOffsets` is a 2x2 block (cols=2,rows=2).
+  self.npcSprites = {}
+  self.npcFacing = {}
+  for i, npc in ipairs(self.npcs) do
+    if npc.animation then
+      self.npcSprites[i] = NpcSprite.new(romData, npc.animation)
+      self.npcFacing[i] = "down"
+    elseif npc.tileOffsets then
+      -- NOTE: Willy's own real OBP1 palette select (see NpcCatalog's
+      -- own `palette` field) is NOT wired here -- an honest, minor
+      -- simplification for this dev browser (renders with the default
+      -- palette instead), not a claim it's OBP0 in the real ROM.
+      self.npcSprites[i] = CreatureSprite.fromOffsets(romData, npc.tileOffsets, 2, 2)
+    end
+  end
+
+  -- A private, dev-only Stats instance -- the real interpreter mode
+  -- needs SOME real Stats object for its own ctx (see VictorySequence
+  -- .buildBossSequenceInterpreter's own doc comment: it's deliberately
+  -- NOT a private copy there because it's wired into real gameplay;
+  -- here, this browser has no real gameplay HP/MP to affect, so a
+  -- fresh, disposable instance is the honest choice).
+  self.devStats = Stats.new()
+
+  return self
+end
+
+--- Lazily builds (once) the real interpreter for the boss-linked
+-- monster entry -- mirrors `VictorySequence.lua`'s own production
+-- wiring exactly (same exported function, same real
+-- `CONTROL_CODE_0X11_REAL_TICKS`-paced `onControlCode`), just without
+-- a `VictorySequence` instance around it.
+function CatalogExplorer:_ensureBossInterpreter()
+  if self.bossInterpreter then return end
+  local VictorySequence = require("src.app.states.VictorySequence")
+  self.bossInterpreter, self.bossTranscript = VictorySequence.buildBossSequenceInterpreter(
+    self.romData, self.profile, self.devStats)
+end
+
+--- Real categoryByte filter, catalog plan Phase 2 (2026-08-15, direct
+-- user request "Items in mehr auswählbare Kategorien unterteilen"):
+-- `filter == 0` returns `allRecords` unfiltered (this browser's OLD
+-- default behavior, unchanged); `filter > 0` indexes into `categories`
+-- (1-based, ascending-`categoryByte` order -- the SAME real grouping
+-- `ItemTable.groupByCategory`/`WeaponTable.groupByCategory` produce,
+-- also used by the rom-inspector website's category pills) and
+-- returns only that real group's records.
+function CatalogExplorer:_filteredList(allRecords, categories, filter)
+  if filter == 0 then return allRecords end
+  local group = categories[filter]
+  return group and group.records or allRecords
+end
+
+--- Plain, love.*-free debug snapshot (2026-08-15, task #126
+-- consolidation) -- same convention as `Field:debugState`/
+-- `VictorySequence:debugState`, lets `MYSTICQUEST_WAIT_FOR`/
+-- `MYSTICQUEST_STATE_LOG` (see main.lua's own doc comments) drive and
+-- verify this browser's real "interpreter" mode automatically instead
+-- of guessing a fixed frame count. `bossStopped`/`bossCursor` are nil
+-- until `mode == "interpreter"` has actually ticked the real boss
+-- interpreter at least once (see `_ensureBossInterpreter`).
+function CatalogExplorer:debugState()
+  return {
+    category = CATEGORIES[self.categoryIndex],
+    mode = self.mode,
+    entryIndex = self.entryIndex,
+    bossCursor = self.bossInterpreter and self.bossInterpreter.cursor,
+    bossBank = self.bossInterpreter and self.bossInterpreter.bank,
+    bossStopped = self.bossInterpreter and self.bossInterpreter.runtime.stopped,
+  }
+end
+
+function CatalogExplorer:_currentList()
+  local category = CATEGORIES[self.categoryIndex]
+  if category == "items" then
+    return self:_filteredList(self.items, self.itemCategories, self.itemCategoryFilter)
+  elseif category == "weapons" then
+    return self:_filteredList(self.weapons, self.weaponCategories, self.weaponCategoryFilter)
+  end
+  return self[category]
+end
+
+function CatalogExplorer:keypressed(key)
+  if key == "f8" and self.stack then
+    self.stack:pop()
+  end
+end
+
+function CatalogExplorer:update(dt)
+  if self.stack and self.input:pressed("select") then
+    self.stack:pop()
+    return
+  end
+  if self.input:pressed("left") then
+    self.categoryIndex = (self.categoryIndex - 2) % #CATEGORIES + 1
+    self.entryIndex = 1
+  elseif self.input:pressed("right") then
+    self.categoryIndex = self.categoryIndex % #CATEGORIES + 1
+    self.entryIndex = 1
+  end
+
+  -- B: cycle the real categoryByte filter for items/weapons (catalog
+  -- plan Phase 2, see `_filteredList`'s own doc comment) -- 0 ("Alle")
+  -- then each real group in ascending categoryByte order, then back
+  -- to 0. Resets entryIndex since the filtered list's own length
+  -- changes underneath it.
+  local currentCategory = CATEGORIES[self.categoryIndex]
+  if currentCategory == "items" and self.input:pressed("b") then
+    self.itemCategoryFilter = (self.itemCategoryFilter + 1) % (#self.itemCategories + 1)
+    self.entryIndex = 1
+  elseif currentCategory == "weapons" and self.input:pressed("b") then
+    self.weaponCategoryFilter = (self.weaponCategoryFilter + 1) % (#self.weaponCategories + 1)
+    self.entryIndex = 1
+  end
+
+  local list = self:_currentList()
+  local n = list and #list or 0
+  if n > 0 then
+    if self.input:pressed("up") then
+      self.entryIndex = (self.entryIndex - 2) % n + 1
+    elseif self.input:pressed("down") then
+      self.entryIndex = self.entryIndex % n + 1
+    end
+  end
+  if self.input:pressed("start") then
+    self.mode = (self.mode == "normal") and "interpreter" or "normal"
+  end
+
+  -- A: cycle the current NPC's facing direction (only meaningful for
+  -- an animated `NpcSprite` -- Willy's static sprite ignores it).
+  if CATEGORIES[self.categoryIndex] == "npcs" and self.input:pressed("a") then
+    local i = self.entryIndex
+    if self.npcFacing[i] then
+      local pos = 1
+      for j, d in ipairs(NPC_DIRECTIONS) do
+        if d == self.npcFacing[i] then pos = j end
+      end
+      self.npcFacing[i] = NPC_DIRECTIONS[pos % #NPC_DIRECTIONS + 1]
+    end
+  end
+
+  -- Advance whichever sprite is actually on screen this frame, real
+  -- timing (`NpcSprite`'s own `framesPerPhase`; the monster's fixed
+  -- dev-browser flip timer -- see this file's own top-of-file doc
+  -- comment for why the monster can't reuse a real per-step cadence
+  -- here).
+  if CATEGORIES[self.categoryIndex] == "npcs" then
+    local sprite = self.npcSprites[self.entryIndex]
+    if sprite and sprite.update and self.npcFacing[self.entryIndex] then
+      sprite:update(dt, true, self.npcFacing[self.entryIndex])
+    end
+  elseif CATEGORIES[self.categoryIndex] == "monsters" and self.monsterFlipXTogglesPerStep then
+    self.monsterFlipTimer = self.monsterFlipTimer + dt
+    if self.monsterFlipTimer >= 0.5 then
+      self.monsterFlipTimer = self.monsterFlipTimer - 0.5
+      self.monsterFlipState = not self.monsterFlipState
+    end
+  end
+
+  if self.mode == "interpreter" and CATEGORIES[self.categoryIndex] == "monsters"
+      and self.monsters[self.entryIndex] and self.monsters[self.entryIndex].firstRowIndex - 1 <= (BOSS_LINKED_SPECIES_ROW or -1)
+      and (BOSS_LINKED_SPECIES_ROW or -1) < self.monsters[self.entryIndex].firstRowIndex - 1 + self.monsters[self.entryIndex].count then
+    self:_ensureBossInterpreter()
+    if self.bossInterpreter and not self.bossInterpreter.done then
+      self.bossInterpreter:tick()
+    end
+  end
+end
+
+-- This state draws on the real, native 160x144 GB canvas (`main.lua`
+-- calls `stack:draw()` INSIDE `renderer:renderTo(...)`, unlike the F1
+-- debug overlay -- see `src/debug/Overlay.lua`'s own `lineH=12`
+-- convention, which only works because IT draws AFTER the canvas is
+-- already scaled up to real window size). LÖVE's default font is far
+-- too large for that resolution at native scale (found live, 2026-08-15
+-- -- a first version of this screen had overlapping/overflowing text,
+-- caught by an actual `love .` screenshot, not just "should be fine"
+-- code review) -- printed at a small explicit scale instead, matching
+-- this project's own established GB-canvas-safe text sizing.
+local TEXT_SCALE = 0.45
+local LINE_DY = 6
+
+local function printLines(lines, x, y, dy)
+  dy = dy or LINE_DY
+  for i, line in ipairs(lines) do
+    love.graphics.print(line, x, y + (i - 1) * dy, 0, TEXT_SCALE, TEXT_SCALE)
+  end
+end
+
+function CatalogExplorer:_drawMonster()
+  local m = self.monsters[self.entryIndex]
+  if not m then return end
+  local isBossLinked = BOSS_LINKED_SPECIES_ROW and (m.firstRowIndex - 1 <= BOSS_LINKED_SPECIES_ROW)
+    and (BOSS_LINKED_SPECIES_ROW < m.firstRowIndex - 1 + m.count)
+
+  if isBossLinked and self.monsterSprite then
+    self.monsterSprite:draw(60, 20, self.monsterFlipState)
+  end
+
+  love.graphics.setColor(1, 1, 1, 1)
+  local lines = {
+    string.format("Spezies %d/%d (Zeilen %d-%d)", self.entryIndex, #self.monsters,
+      m.firstRowIndex, m.firstRowIndex + m.count - 1),
+    string.format("ATK=%d (VERIFIED)", m.row.atk),
+    string.format("defCandidate1=%d defCandidate2=%d", m.row.defCandidate1, m.row.defCandidate2),
+    "(defCandidate: real, kein Konsument gefunden)",
+    string.format("flagVariant=%d", m.row.flagVariant),
+    isBossLinked and "Sprite: BEKANNT (live OAM-getraced)" or "Sprite: unbekannt",
+  }
+  if isBossLinked and self.monsterFlipXTogglesPerStep then
+    lines[#lines + 1] = string.format("Pose: %s (echtes HW-X-Flip, Takt vereinfacht)",
+      self.monsterFlipState and "B (gespiegelt)" or "A")
+  end
+  if self.mode == "interpreter" then
+    if isBossLinked and self.bossInterpreter then
+      lines[#lines + 1] = string.format("[Interpreter] bank=%d cursor=%#06x",
+        self.bossInterpreter.bank, self.bossInterpreter.cursor)
+      lines[#lines + 1] = self.bossInterpreter.runtime.stopped
+        and ("gestoppt: " .. tostring(self.bossInterpreter.runtime.stopError):match("^[^\n]*"))
+        or "läuft..."
+    else
+      lines[#lines + 1] = "[Interpreter] kein echtes Skript für diese Spezies bekannt"
+    end
+  end
+  printLines(lines, 4, 78)
+end
+
+--- `list` here is already the real, CURRENTLY FILTERED list (see
+-- `_currentList`/`_filteredList` -- catalog plan Phase 2); `filter`/
+-- `categories` are passed separately just to render the real
+-- "Kategorie X/Y (Filter: ...)" header line honestly.
+function CatalogExplorer:_drawItemLike(list, label, filter, categories)
+  local r = list[self.entryIndex]
+  local filterLabel = (filter == 0) and "Alle"
+    or (categories[filter] and string.format("Byte %d (%s)", categories[filter].categoryByte, categories[filter].sizeClass) or "?")
+  if not r then
+    -- Real, honest empty state -- can genuinely happen if a filtered
+    -- group's own real entryIndex desyncs (shouldn't, given B resets
+    -- it, but no fabricated placeholder either way).
+    printLines({ string.format("%s: 0 Einträge (Filter: %s)", label, filterLabel) }, 4, 40)
+    return
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+  local lines = {
+    string.format("%s %d/%d (Filter: %s) -- B: Kategorie", label, self.entryIndex, #list, filterLabel),
+    string.format("Name: %s", r.name ~= "" and r.name or "(unaufgelöst)"),
+    string.format("Kategorie-Byte: %d", r.categoryByte),
+  }
+  if r.id then lines[#lines + 1] = string.format("ID: %d", r.id) end
+  if self.mode == "interpreter" then
+    lines[#lines + 1] = "[Interpreter] kein echtes Skript für Items/Waffen bekannt"
+  end
+  printLines(lines, 4, 40)
+end
+
+function CatalogExplorer:_drawNpc()
+  local n = self.npcs[self.entryIndex]
+  if not n then return end
+  local sprite = self.npcSprites[self.entryIndex]
+  if sprite then
+    sprite:draw(60, 20)
+  end
+  love.graphics.setColor(1, 1, 1, 1)
+  local lines = {
+    string.format("NPC %d/%d: %s (%s)", self.entryIndex, #self.npcs, n.name, n.room),
+    string.format("screen (%d, %d)", n.screenX, n.screenY),
+  }
+  if n.animation then
+    lines[#lines + 1] = string.format("Animation: %s, Phase %d (%d Frames/Phase) -- A: Richtung",
+      self.npcFacing[self.entryIndex] or "?", sprite and sprite.phase or 0, n.framesPerPhase or 0)
+  else
+    lines[#lines + 1] = "Keine echte Animation bekannt (nur Ruhepose)"
+  end
+  if n.dialogue then
+    for _, line in ipairs(n.dialogue) do
+      lines[#lines + 1] = line
+    end
+  else
+    lines[#lines + 1] = "(kein einzelner Dialogtext hinterlegt)"
+  end
+  if self.mode == "interpreter" then
+    lines[#lines + 1] = "[Interpreter] keine echte NPC-Tabelle -- kein Skript-Konzept anwendbar"
+  end
+  printLines(lines, 4, 78)
+end
+
+function CatalogExplorer:draw()
+  love.graphics.clear(0.05, 0.05, 0.08, 1)
+  love.graphics.setColor(1, 1, 0.6, 1)
+  local category = CATEGORIES[self.categoryIndex]
+  love.graphics.print(string.format("[%s] Modus: %s", CATEGORY_LABELS[category], self.mode), 4, 4, 0, TEXT_SCALE, TEXT_SCALE)
+
+  love.graphics.setColor(1, 1, 1, 1)
+  if category == "monsters" then
+    self:_drawMonster()
+  elseif category == "items" then
+    self:_drawItemLike(self:_currentList(), "Item", self.itemCategoryFilter, self.itemCategories)
+  elseif category == "weapons" then
+    self:_drawItemLike(self:_currentList(), "Waffe", self.weaponCategoryFilter, self.weaponCategories)
+  elseif category == "npcs" then
+    self:_drawNpc()
+  end
+
+  love.graphics.setColor(0, 0, 0, 0.7)
+  love.graphics.rectangle("fill", 0, 134, 160, 10)
+  love.graphics.setColor(1, 1, 0.6, 1)
+  love.graphics.print("L/R Kategorie, U/D Eintrag, A Richtung/B Item-Kat., START Modus, SEL/F8 Exit", 2, 136, 0, TEXT_SCALE, TEXT_SCALE)
+end
+
+return CatalogExplorer

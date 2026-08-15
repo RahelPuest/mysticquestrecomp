@@ -1254,7 +1254,9 @@ const ROOM_MAPS = [
       "131": true,
       "132": true,
       "133": true,
-      "134": true
+      "134": true,
+      "145": true,
+      "146": true
     },
     "grid": [
       [

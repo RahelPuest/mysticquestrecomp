@@ -1373,70 +1373,153 @@ RomProfiles.PROFILES = {
           characterA = {
             screenX = 128, screenY = 58,
             dialogue = { "Der Monsterein-\ngang f\195\188hrt nach\ndrau\195\159en." },
-            -- CORRECTED (2026-08-12, direct user report from actual
-            -- play: "die npc sprites sind noch off... vielleicht ein
-            -- off by 1 error beim sprite indexing" -- confirmed via a
-            -- direct screenshot of this project's own rendering,
-            -- showing this NPC's shape visibly broken/shifted relative
-            -- to `characterB`'s own correctly-rendered one): the
-            -- down/up phase-2 poses used to swap `top`/`bottom` (same 2
-            -- real tile offsets, reordered) AND set `flip=true` (real
-            -- X-flip). That combination cannot be what the real
-            -- hardware did: this is a real, VERIFIED 8x16-OBJ-mode
-            -- sprite (see this module's own `NpcSprite.lua` doc
-            -- comment), and Pan Docs' own real 8x16-mode Y-flip
-            -- behavior is "swap which of the pair renders on top, AND
-            -- mirror each tile's own rows" -- the old data only ever
-            -- did the "swap which renders on top" half (by reordering
-            -- the `top`/`bottom` FIELDS in this project's own data
-            -- model, not a real pixel operation) and layered an
-            -- unrelated X-flip on top instead of the real per-tile
-            -- row-mirror -- consistent with the original capture
-            -- misreading which real OAM attribute bit (5, X-flip vs 6,
-            -- Y-flip) phase 2 actually had set. Fixed to the real
-            -- hardware operation directly: SAME `top`/`bottom` as phase
-            -- 1 (not reordered), `flipY = true` (a real vertical
-            -- mirror, now that `NpcSprite.lua`/`CreatureSprite.lua`
-            -- both support it -- see those files' own doc comments).
-            -- left/right phase 2 are UNCHANGED -- those already use two
-            -- genuinely DIFFERENT real captured tile offsets (a true
-            -- second drawn frame, not a flip-based reconstruction), so
-            -- this specific bug never applied to them.
+            -- CORRECTED FOR REAL (2026-08-15, direct user report from
+            -- actual play: "die npc sprites a und b jeweils 16x16 gross
+            -- sind"): this whole `animation` table (and the 2026-08-12
+            -- "CORRECTED" comment that used to sit here) was built on a
+            -- WRONG model -- "a single 8x16-OBJ-mode column, 2 real OAM
+            -- entries stacked top+bottom" (see the superseded 2026-08-10
+            -- progress.md entry). A fresh live OAM re-trace this pass
+            -- (`second_room_free()` checkpoint, `core.memory.oam`
+            -- dumped directly) found the REAL shape: 2 OAM entries at
+            -- the SAME Y, X exactly 8px apart -- a real LEFT+RIGHT pair,
+            -- each already 8x16 in hardware (8x16 OBJ mode IS real and
+            -- confirmed -- tile IDs always even, per Pan Docs' own
+            -- LSB-forced-to-0 rule), so the TRUE on-screen character is
+            -- a 16x16 block using 4 real tiles, not 2.
+            --
+            -- SECOND CORRECTION, same day (direct user report "die
+            -- linke und rechte haelfte der npc sprites a und b sind
+            -- vertauscht"): a first attempt at this fix reordered the 4
+            -- tiles by their OWN live-captured OAM screen X position
+            -- (`{ T+0x10, T, T+0x30, T+0x20 }`) -- WRONG, confirmed by
+            -- directly decoding the 4 real captured tile byte blocks and
+            -- rendering both candidate orderings pixel-for-pixel: that
+            -- "OAM-position" ordering produces 2 visibly DISCONNECTED
+            -- blobs (not a character), while the plain, UNREORDERED
+            -- sequential order -- `{ T, T+0x10, T+0x20, T+0x30 }` -- (T
+            -- = the pre-existing `top` field's own file offset) renders
+            -- a single, coherent, correctly-proportioned 16x16 humanoid,
+            -- confirmed independently for BOTH characterA's own "left"
+            -- capture AND characterB's own "up" capture. I.e. the ROM
+            -- simply stores each pose's 4 tiles consecutively in real
+            -- row-major file order already -- no OAM-position-based
+            -- reordering was ever needed; that extra step was the bug.
+            -- `flip`/`flipY` booleans are UNCHANGED from before this fix
+            -- (only the TILE ORDER was wrong) -- but HONESTLY FLAGGED:
+            -- the exact left-vs-right facing/flip semantics were NOT
+            -- independently re-verified this pass (a live capture
+            -- matched by VALUE to this "left" entry showed real hardware
+            -- X-flip SET, which doesn't obviously square with
+            -- `flip=false` here) -- a real, still-open follow-up (see
+            -- roadmap.md), not silently claimed correct.
             animation = {
               framesPerPhase = 10, -- real captured runs varied 6-21f; a reasonable single cadence, not individually reproduced per-run
-              down  = { { top = 0x25100, bottom = 0x25110, flip = false },
-                        { top = 0x25100, bottom = 0x25110, flipY = true } },
-              up    = { { top = 0x25140, bottom = 0x25150, flip = false },
-                        { top = 0x25140, bottom = 0x25150, flipY = true } },
-              left  = { { top = 0x25180, bottom = 0x25190, flip = false },
-                        { top = 0x251c0, bottom = 0x251d0, flip = false } },
-              right = { { top = 0x25190, bottom = 0x25180, flip = true },
-                        { top = 0x251d0, bottom = 0x251c0, flip = true } },
+              down  = { { tileOffsets = { 0x25100, 0x25110, 0x25120, 0x25130 }, flip = false },
+                        { tileOffsets = { 0x25100, 0x25110, 0x25120, 0x25130 }, flipY = true } },
+              up    = { { tileOffsets = { 0x25140, 0x25150, 0x25160, 0x25170 }, flip = false },
+                        { tileOffsets = { 0x25140, 0x25150, 0x25160, 0x25170 }, flipY = true } },
+              left  = { { tileOffsets = { 0x25180, 0x25190, 0x251a0, 0x251b0 }, flip = false },
+                        { tileOffsets = { 0x251c0, 0x251d0, 0x251e0, 0x251f0 }, flip = false } },
+              right = { { tileOffsets = { 0x25180, 0x25190, 0x251a0, 0x251b0 }, flip = true },
+                        { tileOffsets = { 0x251c0, 0x251d0, 0x251e0, 0x251f0 }, flip = true } },
             },
           },
           characterB = {
             screenX = 80, screenY = 58,
-            -- Real ROM text, file offset 0x378CC (bank 13, immediately
-            -- after characterA's own box above) -- see this table's own
-            -- doc comment above `characterA` for the full find.
-            dialogue = { "Hallo!Willkommen\nin Toppel!" },
+            -- RESOLVED (2026-08-15, direct user report "die npc sprites
+            -- a und b jeweils 16x16..." then a direct follow-up "der
+            -- dialog von b ist falsch. das ist amanda die hat einen
+            -- ganz anderen dialog ueber ihren bruder"): the PREVIOUS
+            -- text here (`"Hallo!Willkommen\nin Toppel!"`, file offset
+            -- 0x378CC) was found via simple ROM-adjacency to
+            -- characterA's own box on 2026-08-10 -- WRONG, confirmed
+            -- both by 3 failed live re-verification attempts (blind
+            -- walk, closed-loop OAM-seek, static loiter+A-press, none
+            -- ever reproduced the box) AND, decisively, by the user
+            -- directly naming the real character and topic. Found the
+            -- REAL line via a targeted `dump_strings.py --gaps` scan
+            -- for "Bruder"/"Amanda" (NOT a live capture -- this text is
+            -- read directly from ROM data, no emulator needed once the
+            -- byte-decode formula is known): real file offset
+            -- `0x03783e` (bank 13), a genuine first-person 3-page
+            -- Amanda monologue that explicitly mentions Willy (matching
+            -- this exact story beat, right after the Willy scene) and
+            -- her own little brother -- unmistakably the right line,
+            -- not a guess. Decoded via `TextDecoder`'s own byte-exact
+            -- formula EXCEPT two bytes, `0x82` and `0x5B`, both
+            -- resolved LOCALLY by hand for "meinem"/"meinen"/"raus"
+            -- here (NOT added to the shared global digraph table --
+            -- checked first in both cases).
+            --
+            -- SECOND CORRECTION, same day (direct user report "raa!
+            -- müsste wir müssen hier raus heißen", then, once shown the
+            -- byte-count math looked airtight, "du hast einfach das
+            -- literal falsch abgespeichert es muss ja ganz klar
+            -- ausrüstung heißen" -- pointing straight at a fresh
+            -- cross-check that had turned up "Aarüstung" as PART of
+            -- confirming this): a first pass left "raa!" as an "honest,
+            -- unresolved oddity", reasoning that its 2 bytes (`0x8E`
+            -- ="ra", `0x5B`="a", both independently well-confirmed
+            -- elsewhere) mathematically can't spell "raus!" (4 decoded
+            -- symbols vs. 5 needed). That reasoning was right about the
+            -- MATH but wrong to stop there -- searching the WHOLE ROM
+            -- for every other occurrence of the exact byte pair `8E 5B`
+            -- (only 4 total) found `0x5B` is ALSO genuinely
+            -- contradictory (same shape as `0x82`, just never
+            -- previously flagged): the "a" reading is airtight for
+            -- "Julia" (25+ occurrences), but EVERY ONE of the other 4
+            -- `8E 5B` contexts -- "Ausrüstung" (equipment, `A[5B]r...`,
+            -- no `0x8E` even involved), "Daraus mache" (from that I
+            -- make), "grausamer als" (crueler than -- ALSO
+            -- independently reconfirms `0x82`="me"), "grausam!"
+            -- (terrible!) -- reads perfectly, cleanly, as real German
+            -- ONLY if `0x5B`="us" there, not "a". `0x5B` stays "a" in
+            -- the SHARED global table (still correct for "Julia" and
+            -- everything else that already uses it) -- see
+            -- TextDecoder.lua's own updated `DIGRAPH_PARTIAL` doc
+            -- comment for the full 5-word evidence trail -- but THIS
+            -- hand-transcribed string reads it locally as "us",
+            -- exactly like `0x82` already does two words later.
+            realName = "Amanda", -- her name is unmistakable and appears
+            -- 15+ times throughout this ROM's own real story text (see
+            -- dump_strings.py's own scan output) -- confident enough to
+            -- surface as a real name, unlike `characterA`'s own still-
+            -- undetermined one.
+            dialogue = {
+              "Amanda: Das mit\nWilly tut mir\nleid.",
+              "Wir müssen hier\nraus!", -- see doc comment above: 0x5B locally reads "us" here, not the shared table's "a"
+              "Ich möchte nach\nHause zu meinem\nkleinen Bruder.",
+            },
             -- Real tile set is `characterA`'s own `+0x20` (see this
             -- table's own doc comment) -- confirmed independently from
             -- this NPC's own live OAM capture, not assumed from the
             -- shift alone.
-            -- Same real correction as `characterA`'s own doc comment
-            -- above (SAME down/up bug, same fix -- real `flipY`, not a
-            -- top/bottom field swap + X-flip).
+            -- SAME real shape fix as `characterA`'s own doc comment
+            -- above (2026-08-15, twice-corrected same day): real 4-tile
+            -- `tileOffsets`, plain sequential file order `{T,T+0x10,
+            -- T+0x20,T+0x30}` (NOT an OAM-position-reordered variant --
+            -- that first attempt was the bug the 2nd correction fixed).
+            -- This character's own "up" pose (T=0x25540) is the SECOND
+            -- of the 2 fresh live captures that cross-validated this
+            -- exact tile SET (real measured tiles: right-top=0x25540,
+            -- left-top=0x25550, right-bottom=0x25560, left-
+            -- bottom=0x25570 -- exact match to `{T,T+0x10,T+0x20,
+            -- T+0x30}`, zero discrepancy) -- and independently re-
+            -- confirmed the correct ORDER by direct pixel rendering:
+            -- decoding these 4 real tiles and assembling them in this
+            -- sequential order (not OAM-position order) produces a
+            -- single, coherent 16x16 humanoid silhouette.
             animation = {
               framesPerPhase = 10,
-              down  = { { top = 0x25500, bottom = 0x25510, flip = false },
-                        { top = 0x25500, bottom = 0x25510, flipY = true } },
-              up    = { { top = 0x25540, bottom = 0x25550, flip = false },
-                        { top = 0x25540, bottom = 0x25550, flipY = true } },
-              left  = { { top = 0x25580, bottom = 0x25590, flip = false },
-                        { top = 0x255c0, bottom = 0x255d0, flip = false } },
-              right = { { top = 0x25590, bottom = 0x25580, flip = true },
-                        { top = 0x255d0, bottom = 0x255c0, flip = true } },
+              down  = { { tileOffsets = { 0x25500, 0x25510, 0x25520, 0x25530 }, flip = false },
+                        { tileOffsets = { 0x25500, 0x25510, 0x25520, 0x25530 }, flipY = true } },
+              up    = { { tileOffsets = { 0x25540, 0x25550, 0x25560, 0x25570 }, flip = false },
+                        { tileOffsets = { 0x25540, 0x25550, 0x25560, 0x25570 }, flipY = true } },
+              left  = { { tileOffsets = { 0x25580, 0x25590, 0x255a0, 0x255b0 }, flip = false },
+                        { tileOffsets = { 0x255c0, 0x255d0, 0x255e0, 0x255f0 }, flip = false } },
+              right = { { tileOffsets = { 0x25580, 0x25590, 0x255a0, 0x255b0 }, flip = true },
+                        { tileOffsets = { 0x255c0, 0x255d0, 0x255e0, 0x255f0 }, flip = true } },
             },
           },
         },
@@ -1612,6 +1695,26 @@ RomProfiles.PROFILES = {
             -- sequencing detail, not a bug), then confirmed the position
             -- stabilized at exactly (120,112) for 60+ further frames
             -- with zero input.
+            --
+            -- REAL HARDWARE OFFSET FOUND, 2026-08-15 (direct user
+            -- report: "der charakter spwned ein tile zu südlich und ein
+            -- halbes tile nach rechts verschoben") -- see Player.lua's
+            -- own `RENDER_OFFSET_X`/`RENDER_OFFSET_Y` doc comment for
+            -- the full real-hardware OAM trace. Direct, blunt user
+            -- pushback (twice) against BOTH ways this was tried so far:
+            -- editing this value directly (breaks the general "landingX/
+            -- landingY is always the real raw WRAM value, collision-
+            -- space, same convention in every room" invariant every
+            -- other room in this file relies on), and applying the real
+            -- offset as a general per-draw-call render correction
+            -- (regressed `startRoom`'s own rendering, cause not yet
+            -- root-caused -- see Player.lua's own doc comment for
+            -- exactly where that investigation currently stands). This
+            -- value is deliberately back to the real, raw, ROM-verified
+            -- WRAM value (120,112) -- collision-space, untouched,
+            -- consistent with every other room's own `landingX`/
+            -- `landingY` -- while the render-side fix is properly
+            -- finished (see Player.lua).
             landingX = 120, landingY = 112,
           },
         },
@@ -1758,6 +1861,70 @@ RomProfiles.PROFILES = {
           {131,131,131,131,131,131,131,131,131,131,131,131,129,130,129,130,129,130,128,128},
           {131,131,131,131,131,131,131,131,131,131,131,131,131,131,131,131,131,131,128,128},
         },
+        -- ADDED (2026-08-15, direct user demand: "die kollision mit den
+        -- wänden im fourthroom [ist kaputt]... suche einfach einen
+        -- allgemeinen kollisions mechanismus!!!"). A dedicated real
+        -- metatile-source hunt for this room came back a genuine,
+        -- decisive NEGATIVE first (single-stepped the ENTIRE real
+        -- thirdRoom->fourthRoom staircase cut, 6M+ real instructions,
+        -- watching for PC==0x242B -- the same real RLE-decompressor
+        -- entry point willyRoom/unknownRoomB's own metatile tables were
+        -- found through -- zero hits; this room's real load genuinely
+        -- does not go through that pipeline, matching `rom-map.md`'s
+        -- own earlier "fourthRoom has no known metatile source" note).
+        --
+        -- Fell back to the SAME rigor willyRoom's own collision got
+        -- (real, live-movement-verified ground truth), but via direct
+        -- probing instead of a decoded table: `mgba`, real held-button
+        -- input from the real landing spot, `save_raw_state`/
+        -- `load_raw_state` to reset between probes (NOT position
+        -- teleporting -- a raw $C244/$C245 WRAM poke was tried FIRST
+        -- and found unreliable, real movement silently no-ops for 100+
+        -- frames afterward in this environment; a real, reproducible
+        -- mgba-python-bindings limitation, not a ROM fact, so every
+        -- number below comes from a genuinely WALKED real path).
+        --
+        -- Real, decisive, twice-reproduced finding: holding LEFT from
+        -- the real landing spot (row 14, the bottom-most row) OR from
+        -- row 13 (one row up) moves the player NOT AT ALL for 100+ real
+        -- frames -- a real wall, west of column 14 specifically. The
+        -- EXACT SAME LEFT input from row 12 (one row further from the
+        -- stairs) moves freely all the way to the real west wall
+        -- (column 0). A companion probe (UP from row 12 at a smaller X,
+        -- reached via a real detour) found DOWN is ALSO blocked at that
+        -- same column range, re-entering rows 13-14 -- consistent with
+        -- one coherent real structure, not two unrelated glitches: the
+        -- staircase landing is a real, narrow ALCOVE (columns ~14-19
+        -- only, matching this room's own real `135` feature-block
+        -- columns), not full-width open floor the way the identical-
+        -- looking `131`/`129`/`130` tiles read everywhere else in this
+        -- room. `floorTileIds` above cannot express this (same tile IDs
+        -- appear both inside and outside the real alcove) -- exactly
+        -- the class of bug `TileWalkability.build`'s new, general
+        -- `blockedRects` escape hatch exists for (see that module's own
+        -- doc comment). Columns 14-19 are deliberately NOT listed here
+        -- (already correctly handled: 14-17 read real floor per the
+        -- existing tile IDs, 18-19 are the room's own already-known
+        -- solid `128` wall) -- only the real, newly-discovered west
+        -- alcove wall (columns 0-13, rows 13-15 -- row 15 included for
+        -- footprint-math consistency with row 14's own anchor checks,
+        -- even though no player anchor can independently rest there)
+        -- needs an explicit override.
+        -- CORRECTED (2026-08-15, same pass, direct live re-check after
+        -- the first live screenshot verification): `colMax` was
+        -- initially 13 -- off by one. The real evidence is "holding
+        -- LEFT from the landing spot (column 15) moves NOT AT ALL",
+        -- but a 2-wide player footprint moving from column 15 to 14
+        -- only touches columns 14-15 -- with `colMax=13`, column 14
+        -- stayed real floor, so the footprint check still passed and
+        -- the player took one real, wrong 8px step before stopping
+        -- (caught live: `MYSTICQUEST_SCRIPT=left@10-120` landed at
+        -- x=112, not the real ROM's own x=120). `colMax=14` blocks
+        -- that first step too, matching the real, live-observed "zero
+        -- movement, 100+ frames" result exactly.
+        blockedRects = {
+          { rowMin = 13, rowMax = 15, colMin = 0, colMax = 14 },
+        },
         -- Real, LIVE-TRACED exit (2026-08-12, "fourthRoom systematisch
         -- flutfüllen") -- see `fifthRoom`'s own doc comment for the
         -- full evidence trail.
@@ -1903,13 +2070,64 @@ RomProfiles.PROFILES = {
             landingX = 136, landingY = 32,
             holdFrames = 64, holdDirection = "down",
           },
-          -- RETRACTED (2026-08-14, "die gesammte gamemap entschlüsseln,
-          -- absolute prio" -- direct continuation, user follow-up "1"):
-          -- a second exit USED to be recorded here (west, holding LEFT
-          -- from the same corridor into a room named `sixthRoom`,
-          -- holdFrames=220). A dedicated re-investigation this pass
-          -- found THREE independent, converging real pieces of evidence
-          -- that it was never a real "cut" transition at all:
+          {
+          -- RE-ADDED (2026-08-15, direct user bug report: "dann sollte
+          -- wenn der spieler dem weg nach westen folgt eun neuer raum
+          -- da sein... bau das ein" -- build it in). History: this exit
+          -- was RETRACTED on 2026-08-14 (see the evidence trail kept
+          -- below) after live re-tracing found the real ROM corridor
+          -- keeps scrolling as ONE continuous `fourthRoom` canvas rather
+          -- than cutting to a genuinely separate room -- that structural
+          -- finding still stands, unchanged. What's different now: this
+          -- project's own renderer has NO camera-scroll implementation
+          -- (`Field.lua`'s own doc comment, unchanged this pass -- a
+          -- real, separate, much bigger feature) and, independently,
+          -- the user directly confirmed (three separate, insistent
+          -- corrections, live-walked together) that walking west from
+          -- here in THIS APP is expected to lead somewhere, not dead-
+          -- end at x=0. Rather than leave `sixthRoom`'s own real,
+          -- already-captured tile grid (see its own doc comment) sitting
+          -- unused, this exit exposes it as a static "cut" screen --
+          -- exactly the same pragmatic choice this project already made
+          -- for willyRoom/secondRoom/thirdRoom (also literally one
+          -- scrolling ROM canvas, also exposed here as separate static
+          -- rooms joined by cuts). HONEST STATUS: the ROM itself never
+          -- "cuts" here -- this is a deliberate ENGINEERING CHOICE to
+          -- make real, already-decoded ROM tile content reachable
+          -- within this project's own no-scroll engine, not a claimed
+          -- ROM transition fact (contrast with the `down` exit above,
+          -- which IS a live-confirmed real cut). `holdFrames=220`
+          -- reuses the original real-measured value from BEFORE the
+          -- 2026-08-14 retraction (the corridor genuinely does pause
+          -- around there, see finding 1 below -- a real, measured
+          -- number, just not a "cut" trigger in the actual ROM). The
+          -- zone deliberately excludes the extreme top/bottom of the
+          -- room (`yMin=40`, short of the north exit's own `yMin=32`;
+          -- direct match to the user's own live-tested correction "ja
+          -- aber auch noch nicht ganz nach oben", yes but also not all
+          -- the way at the top).
+          --
+          -- CORRECTED (2026-08-15, same pass as this room's own new
+          -- `blockedRects` collision fix): `yMax` used to be 110 --
+          -- REQUIRED to shrink to 96 now that real, live-verified
+          -- collision blocks LEFT entirely below row 12 (y>=104, see
+          -- `blockedRects`'s own doc comment above) -- the old zone
+          -- silently relied on a west edge (y=104-110) the corrected,
+          -- real collision no longer lets the player reach by holding
+          -- LEFT at all, which would have made this exit unreachable
+          -- from part of its own declared trigger zone.
+          zone = { xMin = 0, xMax = 16, yMin = 40, yMax = 96 },
+          transition = { type = "cut" },
+          targetRoom = "sixthRoom",
+          landingX = 144, landingY = 80,
+          holdFrames = 220, holdDirection = "left",
+          },
+          -- RETRACTED-THEN-RECONSIDERED (2026-08-14 investigation, kept
+          -- verbatim for the record -- still an accurate account of what
+          -- the real ROM itself does, just no longer read as "so don't
+          -- build this"): a dedicated re-investigation found THREE
+          -- independent, converging real pieces of evidence that this
+          -- was never a real "cut" transition in the ROM:
           --   1. Live re-tested the documented holdFrames=220 trigger
           --      with much longer, more careful holds (up to 3000+
           --      frames, continuous AND intermittent-tapped) -- it never
@@ -1945,21 +2163,16 @@ RomProfiles.PROFILES = {
           --      confirmed thirdRoom->fourthRoom and fourthRoom->
           --      fifthRoom entries -- a fourth, independent corroboration.
           --
-          -- Conclusion: "sixthRoom" is real further columns of
-          -- `fourthRoom`'s own single continuous room space (the same
+          -- Conclusion, still true: "sixthRoom" is real further columns
+          -- of `fourthRoom`'s own single continuous room space (the same
           -- "one room, several screens" pattern as `willyRoom`/
-          -- `secondRoom`), not a genuinely separate room -- there is no
-          -- real cut to reproduce here. The `sixthRoom` table below is
-          -- KEPT (its own `tileOffsets` are real, independently cross-
-          -- validated ROM data, still useful reference), but this exit
-          -- is removed rather than left pointing at a target that was
-          -- never real. The 160 real captured tile-pairs from this
-          -- pass's own full-corridor scan are a real, concrete
-          -- foundation for properly extending `fourthRoom.grid` itself
-          -- westward -- not done this pass (needs the real per-event
-          -- SCX value, not captured this round, to place each captured
-          -- tile at its correct WORLD position rather than just a
-          -- native BG column) -- a well-scoped, bounded follow-up.
+          -- `secondRoom`), not a genuinely separate room in the ROM's
+          -- own terms. The 160 real captured tile-pairs from that pass's
+          -- own full-corridor scan remain a real, concrete foundation
+          -- for properly extending `fourthRoom.grid` itself westward
+          -- with genuine scroll support, whenever that larger feature
+          -- gets built -- this exit is the smaller, honestly-labeled
+          -- stand-in until then.
         },
       },
       -- Real room found LIVE (2026-08-12, "fourthRoom systematisch
@@ -2044,6 +2257,19 @@ RomProfiles.PROFILES = {
           {130,166,169,170,169,170,169,170,169,170,172,169,172,169,172,169,172,169,174,139},
           {167,168,171,168,171,168,171,168,171,168,168,173,168,173,168,173,168,173,168,175},
         },
+        -- RETRACTED (2026-08-15, direct user report: "das ist doch
+        -- immernoch der falsche raum!!! es ist im raum der so ausseiht
+        -- wie der start raum wo auch der erste bossfight statt
+        -- findet!!!", then, after live back-and-forth confirmed this
+        -- was reached by walking WEST out of `fourthRoom`'s own
+        -- corridor (normal live play, this LÖVE app, not the debug
+        -- room browser): a `secondBoss` entry USED to live here. Moved
+        -- to `sixthRoom` -- see that room's own doc comment for the
+        -- full history (both the original species-byte evidence trail
+        -- and this correction) -- since the room the user kept
+        -- describing is reached going west, not north. `fifthRoom`
+        -- itself is real (the north exit is a genuine, live-traced ROM
+        -- transition) but apparently is NOT where this encounter lives.
       },
       -- Real room found LIVE (2026-08-13, direct user bug report: "im
       -- raum nach der treppe müsste ich nach westen weiter gehen
@@ -2079,11 +2305,39 @@ RomProfiles.PROFILES = {
       -- `willyRoom` -- fires here too, with real captured tile data
       -- matching `fourthRoom`'s own vocabulary). This table's own real,
       -- independently-verified `tileOffsets` are KEPT (genuine,
-      -- cross-validated ROM data, still useful), but "sixthRoom" is
-      -- NOT a real, separately-reachable room -- `fourthRoom.exits` no
-      -- longer points here.
+      -- cross-validated ROM data, still useful) -- the ROM's own
+      -- structure genuinely never cuts here.
+      --
+      -- RE-WIRED (2026-08-15, direct user bug report -- see
+      -- `fourthRoom.exits`'s own "RE-ADDED" doc comment for the full
+      -- reasoning): `fourthRoom.exits` points here again, as an
+      -- honestly-labeled ENGINEERING CHOICE rather than a reversal of
+      -- the finding above -- the ROM fact (one continuous scrolling
+      -- canvas, not a cut) stays correct; what changed is that this
+      -- project's own no-camera-scroll engine has no other way to make
+      -- this real, already-decoded tile content reachable at all, and
+      -- the user directly, repeatedly confirmed (live, walking this
+      -- exact app) that something should be here when going west.
+      --
+      -- Also now hosts the second-boss encounter (see `secondBoss`
+      -- below) -- moved here from `fifthRoom` per the user's THIRD
+      -- correction on this same feature: "das ist doch immernoch der
+      -- falsche raum!!! es ist im raum der so ausseiht wie der start
+      -- raum", then confirmed via live back-and-forth to be reached by
+      -- walking west out of `fourthRoom`, not north. HONEST CAVEAT: this
+      -- room's own real tileset is the willyRoom/secondRoom/thirdRoom
+      -- checkerboard-courtyard family (see `tileOffsets` above), NOT
+      -- `startRoom`'s tileset (that visual match belongs to `fourthRoom`
+      -- itself, structurally, via the shared `$40B0` pointer) -- the
+      -- user's own "sieht aus wie der Start-Raum" description does not
+      -- literally match this room's real captured art. Recorded here
+      -- rather than silently smoothed over: the WEST-DIRECTION fact was
+      -- confirmed three separate times, directly and concretely, so it
+      -- governs the placement; the visual-similarity description may
+      -- simply have been an imprecise recollection.
       sixthRoom = {
-        status = "VERIFIED (tile data only -- NOT a real, separately-reachable room, see doc comment above)",
+        status = "VERIFIED (real tile/collision data; wired in 2026-08-15 as a real static room reachable " ..
+          "west of fourthRoom -- see doc comment above for the honest 'engineering choice, not a ROM cut' caveat)",
         romRoomSelectors = { 2, 3, 4, 5, 6 },
         cols = 20,
         rows = 16,
@@ -2115,12 +2369,33 @@ RomProfiles.PROFILES = {
         -- not independently re-tested a second time in THIS room, on
         -- the strength of being the exact same real ROM tile IDs from
         -- the exact same shared tileset. `128` (the real solid `0xFF`
-        -- pattern) and the 9 new gate/pillar tiles stay non-floor,
-        -- matching the real screenshot (a real gate structure -- dark
-        -- vertical bars, brick pillars -- around an open, walkable
-        -- gravel-textured courtyard).
+        -- pattern) stays non-floor.
+        --
+        -- CORRECTED (2026-08-15, direct follow-up while verifying the
+        -- second-boss fight end to end): `145`/`146` were originally
+        -- ALSO left non-floor, grouped in with the other 7 "gate/
+        -- pillar" tiles on a pure visual guess ("dark vertical bars,
+        -- brick pillars"). That guess turns out wrong on this room's
+        -- own real captured `grid` data (see below): `145`/`146` form
+        -- a wide, clean CHECKERBOARD alternation (rows 5-14, cols
+        -- 14-17) -- structurally IDENTICAL to the alternation pattern
+        -- of the two ALREADY-confirmed real floor pairs in this exact
+        -- room (`129`/`130` and `133`/`134`), just a third floor
+        -- texture variant, not a decoration. The real, remaining 7
+        -- "gate/pillar" tiles (`136`/`137`/`142`-`144`/`150`) do NOT
+        -- share this signature (`136`/`137` are a solid, non-
+        -- alternating 2-column vertical strip; `142`-`144`/`150` each
+        -- appear only once or twice, too sparse to reason about either
+        -- way) -- those stay non-floor, unchanged. Concretely surfaced
+        -- by a real, reproducible symptom this fixes: with `145`/`146`
+        -- classified as wall, the second boss (placed at the room's
+        -- own real open courtyard, `spawnX=64`) was UNREACHABLE by
+        -- walking left from the room's own real landing spot
+        -- (`landingX=144`) -- blocked by this exact strip, live-caught
+        -- via `MYSTICQUEST_SCRIPT=left@10-90` stalling at x=128 instead
+        -- of reaching the boss.
         floorTileIds = { [129] = true, [130] = true, [131] = true, [132] = true,
-          [133] = true, [134] = true },
+          [133] = true, [134] = true, [145] = true, [146] = true },
         -- Real VRAM tilemap capture at the settled position (mgba,
         -- background map 0, rows 0-15/cols 0-19).
         grid = {
@@ -2140,6 +2415,27 @@ RomProfiles.PROFILES = {
           {131,131,131,131,131,131,131,131,131,131,131,131,131,131,146,145,146,145,133,134},
           {131,131,131,131,131,131,131,131,131,131,131,131,129,130,133,134,129,130,133,134},
           {131,131,131,131,131,131,131,131,131,131,131,131,131,131,150,130,131,131,150,130},
+        },
+        -- Second boss encounter -- see this table's own top-of-entry doc
+        -- comment ("Also now hosts the second-boss encounter...") for
+        -- the full placement history and the honest room-identity
+        -- caveat. Underlying species-byte/structural evidence trail is
+        -- otherwise UNCHANGED from the original investigation (still
+        -- documented in full in `docs/reverse-engineering/events.md`'s
+        -- "second boss investigation" section) -- only the room this
+        -- project chooses to place it in moved.
+        --
+        -- `spawnX`/`spawnY` sit inside this room's own real, live-tested
+        -- `floorTileIds` checkerboard (129-134, the open courtyard area
+        -- away from the gate/pillar structure along the room's own left
+        -- edge) -- NOT a decoded ROM position (no live trigger was ever
+        -- found to read a real position from, same honest limit as the
+        -- original `fifthRoom` placement had).
+        secondBoss = {
+          status = "IMPLEMENTATION CHOICE, evidence-based (species-byte + structural-family match to the " ..
+            "real first-boss record; room placement itself matches the user's own live-confirmed 'west of " ..
+            "fourthRoom' report, not an independently ROM-confirmed spawn trigger for this specific room)",
+          spawnX = 64, spawnY = 80,
         },
       },
       -- Real player + "Willy" sprites standing in the room above, found
@@ -3851,13 +4147,28 @@ RomProfiles.PROFILES = {
     -- width, and the per-category ID byte are confirmed; the remaining
     -- stat bytes are not decoded). `src/import/ItemTable.lua` is the
     -- generic decoder.
+    -- EXTENDED, 2026-08-15 (monster/npc/item census): a fresh static
+    -- scan (name-decode success/failure per record, same method
+    -- already used to find the enemySpeciesTable's own real boundary)
+    -- found real, clean content well past the previously-documented
+    -- 20 records -- real German item names through at least record
+    -- 58 ("Bonbon"/"Schlüssel"/"Knochen"/"Bronze"/"Träne"/"Öl"/
+    -- "Kristall"/"Rubin"/"Smaragd"/"Saphir"/"Diamant"/"Gold"/"Zähne"),
+    -- interspersed with several records that don't cleanly decode at
+    -- either known name offset (real, unresolved gaps -- `ItemTable
+    -- .decode` now returns `name=""` for those rather than guessing,
+    -- see that module's own doc comment). `recordCount` extended to
+    -- 59 to include this real content; records beyond that returned
+    -- only short, non-word fragments in this pass's own scan and were
+    -- NOT included (a genuine further boundary, not chased down this
+    -- pass).
     itemTable = {
       status = "PARTIALLY VERIFIED",
       fileOffset = 0x9DE5,
       bank = 2,
       recordLength = 16,
       nameLength = 8, -- 0x00-padded
-      recordCount = 20, -- confirmed decoded this far; table may extend further
+      recordCount = 59, -- extended 2026-08-15, see doc comment above
       -- Byte 15 (0-based) is a per-category item ID that resets to 0 at
       -- the boundary between consumable items (records 0-7) and spells
       -- (records 8-19) -- see rom-map.md for the exact evidence.
@@ -3869,6 +4180,16 @@ RomProfiles.PROFILES = {
     -- the record's 16-byte width are confirmed via a live UI cross-check
     -- against the in-game menu's equipped-weapon readout ("Breit"); the
     -- stat bytes and the table's true start/end boundaries are not).
+    --
+    -- EXTENDED, 2026-08-15 (monster/npc/item census): the same static
+    -- name-decode scan found real, clean weapon/armor names through
+    -- record 47 ("Bronze"/"Eisen"/"Silber"/"Gold"/"Flamme"/"Drache"/
+    -- "Ägis"/"Opal"/"Samurai"/"Excali"[bur]/"Zeus"/"Lanze", real
+    -- material-tier armor sets and named unique weapons) -- previous
+    -- `recordCount=20` was cutting off more than half the real table.
+    -- Record 48 onward returned only short fragments, not real words,
+    -- in this pass's own scan -- a genuine further boundary, not
+    -- chased down.
     weaponTable = {
       status = "PARTIALLY VERIFIED",
       -- Scanned window, not a confirmed exact table start/end -- see
@@ -3881,7 +4202,97 @@ RomProfiles.PROFILES = {
       recordLength = 16,
       nameOffset = 6, -- name starts 6 bytes into each record, not 0
       nameLength = 8,
-      recordCount = 20,
+      recordCount = 48, -- extended 2026-08-15, see doc comment above
+    },
+
+    -- NEW (2026-08-15, direct user request "suchen alle monster und
+    -- npcs mit allen daten, texten und grafiken aus dem rom"): a real
+    -- ROM-wide TEXT census, found via `tools/rom/dump_strings.py`'s
+    -- already-proven decoder (the same tool/method that found
+    -- Amanda's own real secondRoom dialogue) -- NOT a live OAM/room
+    -- capture, since these are plain decodable ROM strings. Every
+    -- `fileOffset` here is a real, directly-verifiable location (open
+    -- the ROM at that byte and re-run `TextDecoder.decodeString` to
+    -- reproduce it).
+    --
+    -- HONEST SCOPE: this is a census of NAMES AND TEXT this project
+    -- can decode, not a census of confirmed live positions/sprites.
+    -- Exactly 2 of the named characters below (Willy, Amanda) have a
+    -- known real room/sprite (see `graphics.willyScene`/`secondRoom`
+    -- above) -- every other name was found ONLY in dialogue text, with
+    -- NO live room, OAM sprite, or WRAM position ever captured for it.
+    -- Finding those would mean live-exploring the specific room each
+    -- character's own dialogue is triggered in (this project doesn't
+    -- know which of the ~384 catalogued rooms that is for any of
+    -- them) -- real, substantial future work, not attempted this pass.
+    -- Similarly, `bossDefeats` below are real monster NAMES with real
+    -- "<Name> bezwungen/besiegt" messages, but this pass found NO
+    -- structural link (shared index, pointer, adjacent table) between
+    -- any of these name strings and `enemySpeciesTable`'s own 11
+    -- numbered species rows -- they're real, but NOT mapped to a
+    -- specific stat row; presented standalone, not force-matched.
+    storyText = {
+      -- Real "<Monster> bezwungen/besiegt" victory messages -- each
+      -- independently found and byte-verified via a targeted
+      -- `dump_strings.py --gaps --min-ratio 0.4` sweep for these exact
+      -- phrases. `species` intentionally omitted (see doc comment
+      -- above: no real link to `enemySpeciesTable` found).
+      bossDefeats = {
+        { name = "Zyklop",          message = "Zyklop bezwungen",         fileOffset = 0x0351EC, bank = 13 },
+        { name = "Garuda",          message = "Garuda bezwungen",         fileOffset = 0x035227, bank = 13 },
+        { name = "Golem",           message = "Golem bezwungen",          fileOffset = 0x035280, bank = 13 },
+        { name = "Chimäre",         message = "Chimäre bezwungen",        fileOffset = 0x035415, bank = 13 },
+        { name = "Metallkrabbe",    message = "Metallkrabbe\nbezwungen",   fileOffset = 0x03A088, bank = 14 },
+        { name = "Gottesanbeterin", message = "Gottesanbeterin\nbezwungen",fileOffset = 0x03A0C2, bank = 14 },
+        { name = "Zombie-Drachen",  message = "Zombie-Drachen\nbesiegt",   fileOffset = 0x034D8B, bank = 13 },
+        { name = "Roter Drache",    message = "Roten Drachen\nbesiegt",    fileOffset = 0x034DB2, bank = 13 },
+      },
+      -- Real named characters, found via the established "Name[2c]"
+      -- speaker-tag convention (same convention `characterA`/`B`'s own
+      -- dialogue already uses) across the whole ROM's decoded text.
+      -- `occurrences`: how many times this exact name precedes a
+      -- `[2c]` (colon) byte -- a rough real signal of story
+      -- importance, not a precise line count. `role`: a short, plainly
+      -- evidenced summary from the surrounding real dialogue (cited
+      -- inline), not invented backstory. `positionKnown = false` for
+      -- everyone except Willy/Amanda -- an honest, explicit flag, not
+      -- an omission.
+      -- `role`: a short, German summary (matching this website's own
+      -- display language) directly evidenced by the surrounding real
+      -- dialogue -- quoted ROM text stays verbatim, the rest is a
+      -- plain paraphrase, not invented backstory.
+      namedCharacters = {
+        { name = "Bogard", occurrences = 16, positionKnown = false,
+          role = "Mentor-Figur -- gibt dem Held Excalibur, schickt ihn zu Cibba nach Wendel" },
+        { name = "Julia", occurrences = 14, positionKnown = false,
+          role = "Hauptgegnerin -- wird König von Glaive, erlangt die Macht des Mana" },
+        { name = "Cibba", occurrences = 13, positionKnown = false,
+          role = "wiederkehrender Verbündeter -- reist per Luftschiff, pflegt den verletzten Dodo" },
+        { name = "Amanda", occurrences = 10, positionKnown = true, room = "secondRoom",
+          role = "Lesters große Schwester -- siehe graphics.secondRoom.scene.characterB oben" },
+        { name = "Lester", occurrences = 9, positionKnown = false,
+          role = "Amandas kleiner Bruder, ein Harfenspieler -- von Davias verflucht, später befreit (\"Lester wird von Davias Fluch erlöst\") -- siehe combat.md für die eigene Korrektur zum direkten Nutzerhinweis, der dieses Projekts frühere falsche Lesart \"Lester = der Held\" zuerst aufdeckte" },
+        { name = "Marcie", occurrences = 5, positionKnown = false,
+          role = "\"Ich bin Marcie\" -- namentlich vorgestellt, kein weiterer Kontext diesen Durchlauf dekodiert" },
+        { name = "Watts", occurrences = 4, positionKnown = false,
+          role = "\"Daraus mache ich eine nützliche Ausrüstung\" -- ein Ausrüstungsschmied" },
+        { name = "Sarah", occurrences = 3, positionKnown = false,
+          role = "überbringt eine Nachricht über jemanden Verletzten/Bewegungsunfähigen, erwähnt einen Jungen und einen echten \"[14]\"=Heldenname-Verweis" },
+        { name = "Davias", occurrences = 3, positionKnown = false,
+          role = "Antagonist -- verwandelt Menschen in Tiere, verfluchte Lester" },
+        { name = "Vandol", occurrences = 8, positionKnown = false,
+          role = "uralter Bösewicht, nur als Hintergrundgeschichte erwähnt (\"Vor langer Zeit mißbrauchte Vandol die Mana-Macht\") -- kein Live-Dialogauslöser gefunden, evtl. reine Rückblende, keine platzierte NPC" },
+        { name = "Medaa", occurrences = 2, positionKnown = false,
+          role = "der Fluch/das Monster, in das Amanda sich verwandelt -- evtl. gar keine platzierbare NPC (ein Story-Ereignis, keine Figur)" },
+        { name = "Hasim", occurrences = 1, positionKnown = false,
+          role = "einmal namentlich erwähnt, kein weiterer Kontext diesen Durchlauf dekodiert" },
+        { name = "Bowow", occurrences = 1, positionKnown = false,
+          role = "\"Doktor Bowows Haus\" -- ein Arzt, behandelt den verletzten Dodo" },
+        { name = "Lee", occurrences = 1, positionKnown = false,
+          role = "\"Herrn Lee vorbehalten\" -- ein Zimmer bei Kett's ist für ihn reserviert" },
+        { name = "Willy", occurrences = 1, positionKnown = true, room = "willyRoom",
+          role = "siehe graphics.willyScene oben -- die eine bereits vollständig implementierte NPC" },
+      },
     },
   },
 }

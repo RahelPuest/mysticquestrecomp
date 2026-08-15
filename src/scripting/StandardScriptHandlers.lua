@@ -9,6 +9,14 @@
 -- Pure Lua, no love.* calls -- headlessly testable.
 
 local ScriptInterpreter = require("src.scripting.ScriptInterpreter")
+-- Real, decoded per-byte text/control-code classification (opcode
+-- 0x04's own real handler, see `.tick`'s own doc comment below) reuses
+-- the SAME real byte->character rules `TextDecoder.lua` already
+-- independently reverse-engineered from the static text corpus --
+-- one project-wide source of truth for "what does this byte mean as
+-- text", not a second, separately-guessed copy. `TextDecoder.lua` has
+-- no dependency back on this module (verified -- no circularity).
+local TextDecoder = require("src.import.TextDecoder")
 -- LuaJIT's own `bit` library, NOT the `|`/`&`/`<<`/`~` infix bitwise
 -- operators (Lua 5.3+ syntax) -- CORRECTED 2026-08-13, direct
 -- consequence of "einen interpreter start bitte": this file's own
@@ -237,33 +245,142 @@ function StandardScriptHandlers.wramBitCommand(flags, bitIndex, setBit, onLeaf)
   end
 end
 
---- Real "typewriter reveal tick" handler (opcode `0x04`, ROM `$333D`,
--- see events.md's "The real boss-defeat script" section): no operand
--- bytes -- confirmed live, ~110 real re-invocations during the boss-
--- defeat script's own dialogue reveal, always immediately followed by
--- more script bytes (the interpreter does NOT block waiting on it,
--- unlike the real `0x00` conditional-halt opcode). HONEST SCOPE: the
--- real ROM handler's OWN internal logic (character-class dispatch
--- against a separate, dedicated typewriter cursor -- see rom-map.md's
--- own "NOT reached via the general fetch loop" note) is a DIFFERENT
--- real mechanism layered on the same dispatch plumbing, not itself
--- reimplemented here -- this project's already-real, already-working
--- typewriter reveal lives in `DialogueBox.lua`. Exactly mirrors this
--- module's own `.message()` shape: the interpreter's job is only to
--- not desync the cursor and to call back, not to render.
-function StandardScriptHandlers.tick(onTick)
-  return function(_stream, cursor)
-    if onTick then
-      onTick()
-    end
-    return cursor
-  end
-end
-
 -- Real $36C2 pacing gate: one real game frame per tick, releases every
 -- 5th one -- matches this project's own already-VERIFIED 5-frames-per-
--- letter typewriter cadence.
+-- letter typewriter cadence. Declared here (moved up from just above
+-- `.textboxWait` 2026-08-15) since `.tick` now needs it too -- both
+-- share the exact same real pacing constant.
 local FRAMES_PER_TICK = 5
+
+--- Real "text/control-code classifier" handler (opcode `0x04`, ROM
+-- `$333D`) -- see docs/reverse-engineering/events.md's "the $38F6
+-- table decoded" section (2026-08-15) for the full disassembly trail
+-- this implements.
+--
+-- REWRITTEN 2026-08-15, direct continuation ("mach trotzdem, ändere
+-- den code"): every previous version of this handler (including the
+-- immediately-preceding 5-frame-pacing fix) modeled opcode `0x04` as a
+-- SIMPLE tick with no real per-byte semantics -- real, decisive
+-- disassembly (`tools/rom/disasm.py`, no guessing) proved that's wrong
+-- at a deeper level than just timing: `$333D` is a genuine PER-BYTE
+-- TEXT/CONTROL-CODE CLASSIFIER. `LD A,(HL)` reads the byte at the
+-- CURRENT cursor (NOT `(HL+)` -- this fetch does not itself advance
+-- the cursor) and dispatches via real threshold comparisons:
+--   `A == 0x00` (`TERMINATOR_BYTE`) -- real ROM: `INC HL / CALL $3727
+--     / RET` -- skips the terminator and RECURSIVELY re-dispatches the
+--     next real opcode within the same real instant. This project's
+--     interpreter model can't recurse inside one handler call -- the
+--     next real opcode dispatches on the FOLLOWING tick instead, one
+--     real frame later than true hardware -- a small, honestly-
+--     documented timing simplification that does NOT affect cursor
+--     position (still consumes exactly the terminator byte).
+--   `0x10 <= A <= 0x1F` -- a real CONTROL CODE, dispatched through the
+--     real jump table at `$38F6` (bytes `0x16`-`0x19` are real,
+--     confirmed-unused/reserved slots) -- see events.md for what each
+--     of the 12 real, populated entries does (mode switches, name
+--     insertion, cursor moves, bridges into the ALREADY-documented
+--     "0xFF sub-table" system). `onControlCode(byte)` is the caller's
+--     own hook for whatever real per-code behavior it wants to model --
+--     see `ScriptRuntime.lua`'s own doc comment for what this project
+--     currently does with it. HONEST SCOPE: the real jump table's own
+--     targets mostly bridge into the "0xFF sub-table" via the real
+--     `$3C74` reschedule primitive, or delegate into still-unfollowed
+--     bank-2 code (several call sites go through the same `$30A5`-
+--     family bank-2 wrappers this project has already found elsewhere
+--     but never disassembled across the bank switch) -- this handler
+--     consumes exactly the 1 real control byte and calls back; it does
+--     NOT reproduce the deeper WRAM side effects (mode registers,
+--     cursor-position pairs, name-pointer writes) those real targets
+--     perform, since faithfully doing so would require the not-yet-done
+--     bank-2 trace. A real, bounded, honestly-named gap, not a silent
+--     guess.
+--   anything else -- a real, printable TEXT CHARACTER (must be
+--     `TextDecoder.decodeByte`-recognized -- fails loudly, no silent
+--     guess, if it isn't). Paced at the real, live-confirmed 5-real-
+--     frame cadence (`FRAMES_PER_TICK`, matching `.textboxWait`'s own
+--     already-documented cadence -- both opcodes share the identical
+--     real typewriter mechanism, per that handler's own doc comment),
+--     calling `onTick` once per real pacing tick, then consuming
+--     exactly this ONE byte once released (the classifier re-enters for
+--     the NEXT byte on the interpreter's next real dispatch, naturally
+--     discovering the terminator/control codes/more text as it goes --
+--     no pre-computed text length needed, unlike this handler's own
+--     immediately-preceding version).
+-- Per-occurrence pacing state, same reasoning as `.textboxWait`'s own
+-- doc comment (a shared closure counter would misalign two separate
+-- real uses of this opcode) -- keyed by the CURRENT byte's own cursor
+-- position (not a whole text run), since each real byte gets its own
+-- real 5-frame pacing cycle.
+function StandardScriptHandlers.tick(onTick, onControlCode)
+  local states = {}
+  return function(stream, cursor)
+    local byte = stream[cursor]
+    assert(byte ~= nil, string.format(
+      "StandardScriptHandlers.tick: cursor %s out of stream bounds while classifying a real text/control byte",
+      tostring(cursor)))
+
+    if byte == TextDecoder.TERMINATOR_BYTE then
+      states[cursor] = nil
+      return cursor + 1
+    end
+
+    if byte >= 0x10 and byte <= 0x1F then
+      -- REAL, live-confirmed refinement (2026-08-15, direct follow-up:
+      -- a live mgba trace of WRAM $D853 bit 7 -- the SAME real "pacing
+      -- timer active" flag the text-character branch's own 5-frame
+      -- cadence already relies on -- found it SET immediately on
+      -- entering AT LEAST control byte 0x11's own classify state, and
+      -- CLEARED only once real several real frames later, exactly when
+      -- the real cursor finally advances past it. I.e. NOT every real
+      -- control code is an instant, single-byte consume -- at least
+      -- some genuinely pace first, THEN (via the real $36D0 bridge
+      -- already disassembled) advance by MORE than 1 real byte. Real
+      -- `onControlCode(byte)` contract, extended to express this:
+      -- returning a NUMBER (0 or more) means "done -- consume 1 real
+      -- control byte plus this many EXTRA real bytes" (0x11's own real
+      -- $36D0 bridge needs 1 extra, matching its own real "INC HL"
+      -- beyond the control byte itself); returning `false`/`nil` means
+      -- "still real-pacing, not done yet" -- a real halt, re-dispatched
+      -- next tick, same shape as the text-character branch below. A
+      -- caller that doesn't supply `onControlCode` at all keeps the
+      -- OLD, simpler "immediate single-byte consume" behavior (matches
+      -- every real control code this project hasn't live-traced the
+      -- exact pacing/bridge behavior of yet -- an honest default, not a
+      -- guess at behavior for those).
+      if not onControlCode then
+        states[cursor] = nil
+        return cursor + 1
+      end
+      local extraBytes = onControlCode(byte)
+      if extraBytes then
+        states[cursor] = nil
+        return cursor + 1 + extraBytes
+      end
+      return nil
+    end
+
+    assert(TextDecoder.decodeByte(byte) ~= nil, string.format(
+      "StandardScriptHandlers.tick: real byte %#04x at the current text-reveal cursor is neither the real " ..
+      "terminator (0x00), a real control code (0x10-0x1F), nor a TextDecoder-recognized printable character " ..
+      "-- refusing to guess (see docs/reverse-engineering/events.md's \"the $38F6 table decoded\" section)",
+      byte))
+
+    local remaining = states[cursor]
+    if remaining == nil or remaining <= 0 then
+      remaining = FRAMES_PER_TICK
+      if onTick then
+        onTick()
+      end
+    end
+    remaining = remaining - 1
+    if remaining <= 0 then
+      states[cursor] = nil
+      return cursor + 1
+    end
+    states[cursor] = remaining
+    return nil
+  end
+end
 
 --- Real "0xF0 -> hands off into 0xFF's own sub-opcode 3" wrapper
 -- (opcode `0xF0`, ROM `$3C04`, see `ScriptOpcodeTable
@@ -1157,17 +1274,62 @@ end
 -- "a genuinely CONTINUOUS real hardware scroll... not a real, single
 -- ROM-authored constant") -- a real, different mechanism, left open
 -- rather than forced into this same live-trace method.
-function StandardScriptHandlers.peekTwoByteGate(onPeek, isGateClear)
+-- `extraBytesOnRelease` (default 0): CORRECTED 2026-08-15 (direct user
+-- request "suchen alle... quick wins" -> task #126, "trace $1ED7
+-- selector-0x10 phase 2/4 sub-calls for missing $3727"). A live mGBA
+-- trace (single-step, real execution-address tracking from
+-- `courtyard_boss_defeated()` through the real black-wipe/fade) found
+-- the ACTUAL real bytes at the exact real cursor this project's own
+-- BossSequenceInterpreter test already locks in (`0x61d8`, bank 14):
+-- `bd f3 0f 55 14 00 bc f0 ...`. I.e. opcode `0xF3`'s own real total
+-- instruction length is **5 bytes**, not the 1-byte-net-zero this
+-- function previously modeled: `0f`/`55` are the already-known 2
+-- peeked bytes, but `14`/`00` are ALSO real, silently-consumed bytes
+-- -- confirmed by directly reading real `$3727` return addresses via
+-- an execution-address trace: 0xF3's own real completion trampoline
+-- (`$11de`, a real `CALL $3727` epilogue, distinct from opcode
+-- `0xBD`'s own completion at `$1163`) fires ONLY once cursor `0x61de`
+-- (5 bytes past 0xF3's own opcode byte) is reached -- `0x61da`-`0x61dd`
+-- (the `0f 55 14 00` bytes) never individually re-enter `$3727`, so
+-- they're consumed by `$1ED7` selector-0x10's own internal HL
+-- increments (real phase 2/4 work), not the top-level dispatch loop --
+-- exactly matching this project's own prior hypothesis ("one of phase
+-- 2/4's own untraced sub-calls also advances the real cursor"), now
+-- confirmed with byte-exact evidence instead of suspected. WHY 2 more
+-- bytes get consumed (`0x14` is the already-confirmed hero-name token,
+-- `0x00` a plausible terminator -- suggestively a real "flash the
+-- hero's name" effect tied to this completion, but NOT independently
+-- confirmed this pass) is left honestly UNMODELED -- only the real
+-- BYTE COUNT is fixed here, not fabricated semantics for what those 2
+-- bytes mean. Deliberately a NEW OPTIONAL parameter, not a change to
+-- this function's own default behavior -- opcode `0xF4` also calls
+-- `.peekTwoByteGate` but via the generic `ctx.isPeekGateClear` default
+-- (explicitly NOT assumed to share `0xF3`'s own real sequence, per
+-- this function's own existing doc comment above), so it keeps
+-- `extraBytesOnRelease=0` unless independently proven otherwise.
+function StandardScriptHandlers.peekTwoByteGate(onPeek, isGateClear, extraBytesOnRelease)
+  extraBytesOnRelease = extraBytesOnRelease or 0
   return function(stream, cursor)
     local byte1, afterByte1 = ScriptInterpreter.fetch(stream, cursor)
-    local byte2 = ScriptInterpreter.fetch(stream, afterByte1)
+    local byte2, afterByte2 = ScriptInterpreter.fetch(stream, afterByte1)
     if onPeek then
       onPeek(byte1, byte2)
     end
     if isGateClear and not isGateClear() then
       return nil -- real halt: $D499 still nonzero, retry (re-peeks same bytes)
     end
-    return cursor -- gate clear: continue from the SAME position (bytes NOT consumed)
+    if extraBytesOnRelease == 0 then
+      return cursor -- gate clear: continue from the SAME position (bytes NOT consumed)
+    end
+    -- gate clear AND this opcode's own real release consumes further
+    -- bytes beyond the 2 peeked ones (see doc comment above) -- fetch
+    -- (and discard) exactly that many more, real ROM byte-for-byte.
+    local after = afterByte2
+    for _ = 1, extraBytesOnRelease do
+      local _, next_ = ScriptInterpreter.fetch(stream, after)
+      after = next_
+    end
+    return after
   end
 end
 
@@ -1570,6 +1732,123 @@ function StandardScriptHandlers.colorPulseEffect(onDim, onBright)
       end
     end
   end)
+end
+
+--- Real opcode `0xBC`/`0xBD`/`0xBE` handler family (`$10DC`/`$1046`/
+-- `$10A7`, the "palette-fade" family -- SEE `ScriptOpcodeTable.lua`'s
+-- own `PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE` doc comment for the full
+-- disassembly trail, including the 2026-08-14 "deliberately unwired"
+-- decision and its 2026-08-15 REVERSAL). Unlike `.periodicWramEffect`
+-- (used by `0xFB`/`0xBF`, which never halt -- they call the real
+-- `$3727` fetch unconditionally every single time and only vary a
+-- COSMETIC counter), this family shares a real, genuine CONDITIONAL
+-- HALT: the shared real leaf `$1142` only calls `$3727` once every 66
+-- real calls (a 6-count inner cycle nested inside an 11-count outer
+-- cycle -- see the disassembly in `ScriptOpcodeTable.lua`), returning
+-- WITHOUT `$3727` (a real halt, re-dispatching the SAME opcode next
+-- real tick) every other time -- so this needs the `nil`-halt / return-
+-- cursor-release contract (matching `.tick`/`.textboxWait`), not
+-- `.periodicWramEffect`'s always-continue shape.
+--
+-- `sharedState`: a private `{inner=0, outer=0}` table -- REQUIRED to be
+-- the SAME table across all 3 real opcode registrations (`0xBC`/`0xBD`/
+-- `0xBE` all read/write the SAME real WRAM cells `$D499`/`$D49A`, so a
+-- private-but-shared Lua table is the honest equivalent, same "zero-
+-- init is an honest default" convention as every other private shadow
+-- WRAM cell in this project -- see `ScriptRuntime.new`'s own doc
+-- comment). Consumes ZERO real operand bytes on release (confirmed via
+-- disassembly: HL is only pushed/popped around each opcode's own WRAM
+-- computation, never dereferenced) -- release returns `cursor`
+-- unchanged, exactly matching the real ROM's own `CALL $3727 / RET`
+-- with no operand read first.
+-- `onStep(outer, inner)`: optional observer, fired on EVERY real call
+-- (including the release call) with the CURRENT pre-increment counter
+-- pair -- lets a future caller drive an actual on-screen palette fade
+-- without this project guessing the real fade curve (the 4 real lookup
+-- tables `$101A`/`$1030`/`$107B`/`$1091` themselves stay undecoded, see
+-- `ScriptOpcodeTable.lua`'s own doc comment) -- same "paced correctly,
+-- cosmetic write left as an optional callback" precedent as
+-- `.waveOffsetEffect`/`.colorPulseEffect` above.
+function StandardScriptHandlers.paletteFadeCycle(sharedState, onStep)
+  assert(type(sharedState) == "table", "paletteFadeCycle requires a shared state table")
+  sharedState.inner = sharedState.inner or 0
+  sharedState.outer = sharedState.outer or 0
+  return function(stream, cursor)
+    if onStep then
+      onStep(sharedState.outer, sharedState.inner)
+    end
+    sharedState.inner = sharedState.inner + 1
+    if sharedState.inner < 6 then
+      return nil -- real RET C at $1149: inner cycle still counting, halt
+    end
+    sharedState.inner = 0
+    sharedState.outer = sharedState.outer + 1
+    if sharedState.outer < 11 then
+      return nil -- real RET C at $1158: outer cycle still counting, halt
+    end
+    sharedState.outer = 0
+    -- real CALL $3727: fetch the next real opcode. Zero operand bytes
+    -- consumed by this opcode itself, so the cursor is unchanged.
+    return cursor
+  end
+end
+
+--- Real opcode `0xF3`'s own true release condition -- `$1ED7` selector
+-- `0x10`'s real 6-phase `$D499` state machine (see
+-- `ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3`'s own doc
+-- comment for the full disassembly of all 6 phases and why none of
+-- them can affect the real script cursor). Returns a real `isGateClear`
+-- -shaped predicate (no arguments, boolean result) suitable for
+-- `.peekTwoByteGate`'s own `isGateClear` parameter -- advances the
+-- real phase counter by exactly one step per call (matching the real
+-- ROM's own per-tick `$1ED7` dispatch), returning `true` only once the
+-- whole real sequence completes (matching the real `$D499` wrap back
+-- to 0 on phase 5's own unconditional reset).
+--
+-- `state`: a private `{phase=0}` table, fresh per real `0xF3`
+-- occurrence (deliberately NOT the same table as `.paletteFadeCycle`'s
+-- own `sharedState` -- both real mechanisms happen to reuse the SAME
+-- WRAM byte `$D499`, but for DIFFERENT, sequenced, non-overlapping
+-- real purposes, same "one shared hardware cell, several private Lua
+-- shadow counters" precedent as `0xFB`/`0xBF`).
+-- `isDualGateClear`: the real `$C8E0`/`$CEE8` dual gate phases 1 and 3
+-- both check -- pass `ctx.isTriggerEventGateClear` directly (the SAME
+-- real WRAM cells `0xFC`/`0xFD`/`0xE8`-`0xEB` already model); optional,
+-- defaults to "always clear" like every other real consumer of this
+-- gate in this project.
+-- `onPhase(phase)`: optional observer, fires on EVERY real call
+-- (including repeated halts) with the CURRENT phase number (0-5) --
+-- lets a future caller drive phase 2/4's own real (currently
+-- unmodeled) transition/OAM side effects without this project
+-- guessing them.
+function StandardScriptHandlers.paletteFadeCompletionGate(state, isDualGateClear, onPhase)
+  assert(type(state) == "table", "paletteFadeCompletionGate requires a state table")
+  state.phase = state.phase or 0
+  return function()
+    if onPhase then
+      onPhase(state.phase)
+    end
+    if state.phase == 0 then
+      state.phase = 1 -- real $41CA: unconditional advance
+      return false
+    elseif state.phase == 1 or state.phase == 3 then
+      -- real $4477: gated on the real $C8E0/$CEE8 dual gate
+      if isDualGateClear and not isDualGateClear() then
+        return false
+      end
+      state.phase = state.phase + 1
+      return false
+    elseif state.phase == 2 then
+      state.phase = 3 -- real $4387: unconditional advance (real $26DC/$04A4 work, unmodeled)
+      return false
+    elseif state.phase == 4 then
+      state.phase = 5 -- real $43EE: unconditional advance (real OAM work, unmodeled)
+      return false
+    else -- state.phase == 5
+      state.phase = 0 -- real $448C: unconditional reset -- $D499==0 again, real release
+      return true
+    end
+  end
 end
 
 --- Real opcode `0x88`/`0x89` handler family (`$0153`/`$015E`, found

@@ -741,6 +741,25 @@ function Field:draw()
     -- otherwise. Direct user prompt: "ich glaube er müsste sich auch
     -- drehen" -- re-checked live rather than guessing, and confirmed:
     -- not a 4-direction sprite set, just a real mirror for one facing.
+    -- REVERTED (2026-08-15, same day, direct user report: "im ersten
+    -- bossraum scheint die kollision verschoben zu sein" -- collision
+    -- looks shifted in the first boss room). This briefly called
+    -- `self.player:renderPosition()` (the real, OAM-verified `(-8,-16)`
+    -- hardware offset, see Player.lua's own doc comment) here too --
+    -- WRONG for this specific room: `startRoom`'s own real
+    -- `floorTileIds`/sprite positions were historically captured and
+    -- cross-checked via direct screenshot comparison against the RAW,
+    -- unshifted `self.player.x/y` -- this whole room's own visual
+    -- calibration already implicitly assumes that convention. Applying
+    -- the render offset here shifts the sprite 8px left/16px up
+    -- relative to that already-correct calibration -- a real, self-
+    -- inflicted regression, not a fix. The underlying OAM finding
+    -- itself is still real (confirmed via live hardware OAM dump) --
+    -- it just isn't safe to apply blindly to every room this project
+    -- already calibrated the OLD way. Back to the raw, untouched
+    -- position here; see `rom_profiles.lua`'s own `thirdRoom.exits`
+    -- doc comment for where this offset DOES apply (one specific,
+    -- individually-verified landing spot, not a global draw-time rule).
     self.playerSprite:draw(self.player.x, self.player.y, self.player.facing == "right")
     -- Real attack visuals, drawn on top of the player (see AttackSwing
     -- .lua/AttackThrust.lua) -- a no-op draw while inactive; at most one

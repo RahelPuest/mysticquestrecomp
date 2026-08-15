@@ -25,8 +25,8 @@ const OPCODE_DESCRIPTIONS = {
     text: "Liest einen 16-Bit-Zeiger aus dem Stream und springt den Cursor dorthin -- z.B. „nächste Seite dieser Nachricht“. Reale Bank-übergreifende Ziele sind nicht aus einer Formel ableitbar, nur aus konkret bekannten Szenen.",
   },
   TICK_HANDLER_ADDRESS: {
-    title: "Tick (0x04)",
-    text: "Pro-Tick-Pacing-Callback -- u.a. der reale Typewriter-Reveal (ein Buchstabe alle 5 GB-Frames).",
+    title: "Text-/Steuercode-Klassifizierer (0x04)",
+    text: "UPDATE 2026-08-15 (voller Disassembly-Nachweis, echter Codewechsel): kein einfacher parameterloser Tick, sondern ein echter PRO-BYTE-KLASSIFIZIERER ($333D) -- liest das Byte an der aktuellen Cursor-Position und verzweigt: reales Terminator-Byte 0x00 (Textlauf zu Ende, sofortiger Weiterlauf), echter Steuercode 0x10-0x1F (Dispatch über eine reale Sprungtabelle bei $38F6 -- siehe „0xFF-Subtabelle” unten, dieselbe Maschine), oder ein echtes druckbares Textzeichen (getaktet mit der real gemessenen 5-Frame-Kadenz, der Typewriter-Reveal). Steuercode 0x11 pausiert dabei zusätzlich 9 echte Frames lang (WRAM $D853 Bit 7, live mGBA-Trace bestätigt) und springt danach über eine reale $36D0-Brücke ein Byte weiter, bevor der Klassifizierer erneut einsteigt. Dieser volle Mechanismus ist inzwischen in StandardScriptHandlers.tick als echter, bytegenauer Nachbau implementiert (nicht nur dokumentiert) und im Boss-Defeat-Shadow-Run live bestätigt: der Cursor folgt dem echten ROM bytegenau bis 0x61d8 (echtes HEAL_LP). UPDATE 2026-08-15, weiter: die Palette-Fade-Familie (0xBC/0xBD/0xBE, siehe eigener Eintrag) ist inzwischen ebenfalls verdrahtet -- der Cursor kommt jetzt noch weiter (dispatcht 0xBD alle echten 66 Male, erreicht Opcode 0xF3), stößt dort aber auf eine NEUE, echte Lücke (0xF3's eigener, nicht nachgebildeter $1ED7-Selector-0x10-Seiteneffekt) und landet wieder beim altbekannten 0x4798.",
   },
   MESSAGE_HANDLER_ADDRESS: {
     title: "Nachricht anzeigen (0xFE)",
@@ -58,7 +58,7 @@ const OPCODE_DESCRIPTIONS = {
   },
   SUBTABLE_DISPATCH_HANDLER_ADDRESS: {
     title: "0xFF-Subtabelle",
-    text: "Zweite, eigenständige Dispatch-Tabelle (11 Einträge, Bank 0, $3BAC), indiziert über ein eigenes WRAM-Register ($D86B) statt des primären „aktueller Opcode“-Bytes.",
+    text: "Zweite, eigenständige Dispatch-Tabelle (11 Einträge, Bank 0, $3BAC), indiziert über ein eigenes WRAM-Register ($D86B) statt des primären „aktueller Opcode“-Bytes. UPDATE 2026-08-15: dieselbe Maschine wie die reale $38F6-Steuercode-Tabelle, die Opcode 0x04's Klassifizierer für Bytes 0x10-0x1F anspringt (siehe „Text-/Steuercode-Klassifizierer” oben) -- beide wurden unabhängig voneinander in verschiedenen Sessions disassembliert und erst nachträglich als EIN reales System erkannt (der „multi-line textbox driver”). Bytes 0x14/0x15 sind der reale Namens-Einfügemechanismus (zwei WRAM-Stringpointer, $D79D/$D7A2) -- sehr wahrscheinlich der lange gesuchte „[0x14]”-Sprecher-Tag. Bytes 0x1C-0x1F sind der bereits dokumentierte Cursor-Delta-Dispatcher (Text-Cursor hoch/runter/links/rechts). Byte 0x1A deckt sich exakt mit TextDecoder.lua's unabhängig hergeleitetem NEWLINE_BYTE=0x1A.",
   },
   ACTOR_ACTION_HANDLER_ADDRESS: {
     title: "Actor-Action-Familie",
@@ -143,6 +143,10 @@ const OPCODE_DESCRIPTIONS = {
   ACTOR_FLAG_LIST_HANDLER_ADDRESS: {
     title: "Nullterminierte Flag-Liste (0x08)",
     text: "Eine echte bedingte Schleife: holt, testet, wiederholt oder fällt durch (gemeinsamer Helfer $35EF). Exakte reale Bedingung nicht vollständig dekodiert.",
+  },
+  PALETTE_FADE_HANDLER_ADDRESS: {
+    title: "Palette-Fade-Familie (0xBC/0xBD/0xBE)",
+    text: "WIRED 2026-08-15 (kehrt die frühere „genuinely known-hard\"-Einschätzung vom 2026-08-14 um): alle drei Opcodes rufen denselben, jetzt vollständig disassemblierten Leaf $1142 auf -- ein echter, deterministischer 6x11=66-Tick-Pacing-Zähler auf WRAM $D499/$D49A, strukturell wie das bereits nachgebaute Steuercode-0x11-Pacing. Alle drei lesen NULL Operand-Bytes aus dem Skript-Stream. Die eigentliche Fade-FARBE (4 reale Lookup-Tabellen, $101A/$1030/$107B/$1091) bleibt wie bei 0xFB/0xBF ein optionaler, unverdrahteter Callback -- kein Rendering nötig, nur für den Cursor-Fortschritt reicht das Pacing. Live-Test: der Interpreter dispatcht 0xBD jetzt alle echten 66 Male und erreicht danach Opcode 0xF3 -- dort stößt er aber auf eine NEUE, echte Lücke (0xF3's eigener, unmodellierter $1ED7-Selector-0x10-Seiteneffekt) und landet wieder beim altbekannten Cursor 0x4798.",
   },
 };
 

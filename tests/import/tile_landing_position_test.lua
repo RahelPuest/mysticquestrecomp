@@ -33,12 +33,17 @@ end)
 --
 -- CORRECTED (2026-08-14, "gamemap absolute prio"): the minimum count
 -- was 5 (including fourthRoom's own since-RETRACTED second exit into
--- "sixthRoom", landingX=80/landingY=96 -- see sixth_room_test.lua's
--- own "RETRACTED" test and rom_profiles.lua's doc comments). That
--- exit was never a real cut transition, so its landing position is
--- gone too -- the real count of already-known landing positions is
--- now 4. Lowering this floor is the honest, direct consequence of
--- that retraction, not a loosened check.
+-- "sixthRoom", landingX=80/landingY=96). That exit was never a real
+-- cut transition, so its landing position went with it, dropping the
+-- real count to 4.
+--
+-- RE-ADDED (2026-08-15): fourthRoom's west exit into `sixthRoom` is
+-- back (see rom_profiles.lua's own doc comment -- an honest engineering
+-- choice, not a reversal of the 2026-08-14 ROM finding), with a NEW
+-- landing position (144,80) chosen this time, which is why the count
+-- below is still just `>= 4` rather than bumped to an exact 5 -- this
+-- test only cares that the formula holds for whatever real set exists,
+-- not the exact count.
 local function collectLandingPositions(node, out)
   if type(node) ~= "table" then return end
   if type(node.landingX) == "number" and type(node.landingY) == "number" then

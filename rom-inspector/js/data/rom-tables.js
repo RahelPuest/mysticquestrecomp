@@ -37,14 +37,14 @@ const ROM_TABLES = [
     "bank": 2,
     "fileOffset": 40421,
     "name": "itemTable",
-    "recordCount": 20,
+    "recordCount": 59,
     "status": "PARTIALLY VERIFIED"
   },
   {
     "bank": 2,
     "fileOffset": 41408,
     "name": "weaponTable",
-    "recordCount": 20,
+    "recordCount": 48,
     "status": "PARTIALLY VERIFIED"
   },
   {

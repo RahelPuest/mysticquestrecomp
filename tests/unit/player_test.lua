@@ -14,6 +14,23 @@ Harness.test("Player.new: defaults to (0,0), not moving", function()
   Harness.assertTrue(not p.moving)
 end)
 
+-- Real hardware OAM-vs-WRAM sprite offset (2026-08-15, see this
+-- module's own `RENDER_OFFSET_X`/`RENDER_OFFSET_Y` doc comment for the
+-- full real-ROM trace): `:renderPosition()` must NOT mutate `self.x`/
+-- `self.y` (those stay the real, raw WRAM-matching collision-space
+-- value used everywhere else in this project) -- only its own return
+-- value is shifted.
+Harness.test("Player:renderPosition(): applies the real (-8,-16) hardware offset without touching self.x/y", function()
+  local p = Player.new(120, 112)
+  local rx, ry = p:renderPosition()
+  Harness.assertEqual(rx, 120 + Player.RENDER_OFFSET_X)
+  Harness.assertEqual(ry, 112 + Player.RENDER_OFFSET_Y)
+  Harness.assertEqual(rx, 112)
+  Harness.assertEqual(ry, 96)
+  Harness.assertEqual(p.x, 120, "renderPosition must not mutate the real collision-space x")
+  Harness.assertEqual(p.y, 112, "renderPosition must not mutate the real collision-space y")
+end)
+
 Harness.test("Player.new: defaults to a generic single-tile size when none given, real size when passed", function()
   local p = Player.new(0, 0)
   Harness.assertEqual(p.width, Player.DEFAULT_WIDTH)
