@@ -1551,6 +1551,32 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   472/472 tests pass; website regenerated and Playwright-verified.
   Task #152 narrowed to `0xAC`/`0xAE` only.
 
+- **2026-08-15, "laut website sind noch 2 offen. beende die auch"**:
+  `0xAC`/`0xAE` fully closed -- a real 8-phase `$D499` state machine
+  (NOT 6 like the sibling `paletteFadeCompletionGate` family, confirmed
+  by reading both real `$1ED7` selector `0x11`/`0x12` jump tables as
+  raw bytes). Self-caught correction of this SAME day's earlier "phase
+  0 is byte-identical in shape" claim -- it does substantial extra real
+  palette/effect work the sibling family's own phase 0 doesn't. Found
+  a real, elegant, decisively-confirmed symmetric design: phase 2's
+  real "2 markers converging" wait and phase 6's real countdown share
+  ONE WRAM tick counter (`$D49A`) -- the wipe closes over N ticks and
+  reopens over the exact same N ticks. New
+  `StandardScriptHandlers.wipeCompletionGate` (the 8-phase machine) +
+  `.completionPredicateCommand` (a new, reusable generic "predicate
+  each tick, release via `$3727` once true" outer shape), wired via
+  `ctx.isWipeMarkerConverged`/`ctx.onWipeCompletionPhaseAC`/`AE`.
+  Primary opcode table: **201 decoded / 49 default / 6 known-hard / 0
+  undecoded** (was 199/49/6/2) -- **the primary 256-entry opcode table
+  has ZERO undecoded entries for the first time.** Real, measured
+  corpus-scan impact: `clean` 859->875 (+16, the largest single-pass
+  jump of the whole arc), `halt_undecoded` 178->162 -- the remaining
+  halted scripts are now entirely accounted for by the 6 already-known
+  `$02AB`-family known-hard entries. 478/478 tests pass (+6); website
+  regenerated and Playwright-verified. **Task #152 CLOSED** -- this
+  closes the entire multi-session "decode the remaining primary script
+  opcodes" arc.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

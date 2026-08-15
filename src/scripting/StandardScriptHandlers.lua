@@ -2060,6 +2060,160 @@ function StandardScriptHandlers.paletteFadeCompletionGate(state, isDualGateClear
   end
 end
 
+--- Real opcodes `0xAC`/`0xAE`'s own true release condition -- `$1ED7`
+-- selectors `0x11`/`0x12`'s real 8-phase `$D499` state machine (CLOSED
+-- 2026-08-15, "laut website sind noch 2 offen. beende die auch" --
+-- task #152's own final pair). Byte-for-byte, both selectors' real
+-- jump tables (`$4170`/`$418C`, same `$2B70` multiply-and-jump shape
+-- this project already trusts for selector `0x10`'s own table) share
+-- 6 of their 8 real entries -- confirmed by reading BOTH tables' raw
+-- bytes directly, not assumed:
+--   phase 0 (`$419C`): unconditional advance. Real side effects go
+--     well beyond the sibling family's own trivial phase 0 (a
+--     self-caught correction of THIS SAME DAY's earlier "byte-
+--     identical in shape" claim, which only checked the first 2
+--     instructions): `$D49A=0`/`$D499++` (the shared housekeeping),
+--     THEN a real palette/DMA-transfer call (`$02F3`, table `$40FC` or
+--     `$4116` selected by `$C4D4` bit 1), a real `$C0A5` cache-then-
+--     mask (`$D49C = $C0A5`, `$C0A5 &= 0xFC`), and a real numbered-
+--     effect dispatch (`$297D` with `A=0x24`).
+--   phase 1 (`$4477`): the ALREADY-known real `$C8E0`/`$CEE8` dual
+--     gate -- the SAME leaf address the sibling family's own phase 1/3
+--     use, reused here via `isDualGateClear` exactly like that family.
+--   phase 2 (`$41D6`): a real, bounded "2 markers converging" wait --
+--     4 real bytes at WRAM `$D3A0`-`$D3A3` (only the low byte `$D3A0`
+--     and high byte `$D3A3` are touched; `$D3A1`/`$D3A2` sit unused in
+--     between): each real tick, low `+=2`, high `-=2`; while they
+--     haven't met/crossed, increments `$D49A` (a real ELAPSED-TICK
+--     counter, confirmed reset to 0 by phase 0 above) and halts. Once
+--     met: `CALL $0313` (untraced), `$C0A5 &= 0xFC` again, `CALL
+--     $1D5E` with `HL=$FF40` (the real LCDC hardware register address,
+--     passed as a literal, not directly poked here) -- plausibly a
+--     real screen-wipe-closing effect. Advances to phase 3.
+--   phase 3 (`$422B` for `0x11` / `$433E` for `0x12`): the ONE real
+--     phase that genuinely, substantially DIFFERS between the two
+--     selectors -- both do real OAM/sprite-buffer memcpy work (`$2B49`,
+--     `HL=$C350`/`$C3A0`, `B=0x50`) and call the ALREADY-known real
+--     cross-actor dispatch primitive `$26DC` (task #85's own finding)
+--     plus `$04A4` (already flagged as unmodeled by the sibling
+--     family's own phase-2-to-3 note above) -- genuinely NOT
+--     reproduced here, matching this project's established scope for
+--     opaque multi-leaf visual work. Unconditional single-tick advance.
+--   phase 4 (`$4477`): the SAME dual-gate leaf as phase 1 (confirmed
+--     by reading the raw table bytes, not assumed).
+--   phase 5 (`$4422` for `0x11` / `$4456` for `0x12`): a SECOND real
+--     palette/DMA call (`$02F3`, table `$4109` or `$4116`, same
+--     `$C4D4` bit-1 selector as phase 0), a real numbered-effect
+--     dispatch (`$297D` with `A=0x23`, a DIFFERENT effect ID from
+--     phase 0's `0x24`), and a call to the ALREADY-known real pending-
+--     sound-queue processor `$2EF7` (the SAME leaf opcode `0xAA`'s own
+--     selector `0x1F` reaches). `0x11` additionally, conditionally
+--     calls `$0DE6` first if `$D49F != 0` -- a real, selector-specific
+--     extra branch, opaque. Unconditional single-tick advance.
+--   phase 6 (`$4205`, shared): a real COUNTDOWN gate, NOT a marker
+--     check -- decrements `$D49A` each real tick (the EXACT value
+--     phase 2 counted UP to while converging: a real, decisively-
+--     confirmed SYMMETRIC design -- the wipe closes over N ticks in
+--     phase 2 and reopens over the SAME N ticks here, sharing one real
+--     WRAM counter). While counting down, ALSO drives the SAME
+--     `$D3A0`/`$D3A3` markers in the OPPOSITE direction (low `-=2`,
+--     high `+=2` -- undoing phase 2's own convergence). Once `$D49A`
+--     hits 0: `CALL $0313` again, restores `$C0A5` from phase 0's own
+--     `$D49C` cache (undoing the earlier mask), advances to phase 7.
+--   phase 7 (`$448C`, shared): the ALREADY-known real reset leaf --
+--     the SAME address the sibling family's own phase 5 uses --
+--     `$D499=0`, real release.
+--
+-- `state`: a private `{phase=0, convergeTicks=0}` table, fresh per
+-- real occurrence (same "one shared hardware cell, several private Lua
+-- shadow counters" precedent as `.paletteFadeCompletionGate`'s own
+-- `state`). `convergeTicks` is this Lua port's own internal bookkeeping
+-- for the real phase-2/phase-6 SYMMETRIC-duration relationship
+-- described above -- NOT a separate ctx hook, since the real ROM's own
+-- `$D49A` reuse makes phase 6's duration a deterministic function of
+-- phase 2's, not independently observable state.
+-- `isDualGateClear`: passed straight through to phases 1/4, same
+-- optional/defaults-to-"always clear" contract as
+-- `.paletteFadeCompletionGate`'s own parameter of the same name --
+-- pass `ctx.isTriggerEventGateClear` to reuse the SAME real gate.
+-- `isMarkerConverged`: the real phase-2 "have the 2 `$D3A0`/`$D3A3`
+-- markers met/crossed yet" predicate -- REQUIRED (matching this
+-- project's now-established convention for brand-new gate predicates,
+-- e.g. `waypointStepCommand`'s own `advanceStep`; the "unwired gate
+-- defaults open" behavior belongs one layer up, in `ScriptRuntime.lua`'s
+-- own `ctx` wiring).
+-- `onPhase(phase)`: optional observer, fires on EVERY real call with
+-- the CURRENT phase number (0-7) -- same role as the sibling family's
+-- own `onPhase`.
+function StandardScriptHandlers.wipeCompletionGate(state, isDualGateClear, isMarkerConverged, onPhase)
+  assert(type(state) == "table", "wipeCompletionGate requires a state table")
+  state.phase = state.phase or 0
+  state.convergeTicks = state.convergeTicks or 0
+  return function()
+    if onPhase then
+      onPhase(state.phase)
+    end
+    if state.phase == 0 then
+      state.phase = 1 -- real $419C: unconditional advance (real palette/effect work, unmodeled)
+      return false
+    elseif state.phase == 1 or state.phase == 4 then
+      -- real $4477: gated on the real $C8E0/$CEE8 dual gate (SAME leaf as the sibling family)
+      if isDualGateClear and not isDualGateClear() then
+        return false
+      end
+      state.phase = state.phase + 1
+      return false
+    elseif state.phase == 2 then
+      -- real $41D6: gated on the 2 real $D3A0/$D3A3 markers converging
+      if not isMarkerConverged() then
+        state.convergeTicks = state.convergeTicks + 1
+        return false
+      end
+      state.phase = 3 -- real finish work ($0313/$C0A5/$1D5E), unmodeled
+      return false
+    elseif state.phase == 3 or state.phase == 5 then
+      state.phase = state.phase + 1 -- real $422B/$433E or $4422/$4456: unconditional advance (real work, unmodeled)
+      return false
+    elseif state.phase == 6 then
+      -- real $4205: a real COUNTDOWN gate, taking EXACTLY as many real
+      -- ticks as phase 2 took to converge (see this function's own doc
+      -- comment for the full evidence).
+      if state.convergeTicks > 0 then
+        state.convergeTicks = state.convergeTicks - 1
+        return false
+      end
+      state.phase = 7 -- real finish work ($0313/$C0A5 restore), unmodeled
+      return false
+    else -- state.phase == 7
+      state.phase = 0 -- real $448C: unconditional reset -- $D499==0 again, real release
+      state.convergeTicks = 0
+      return true
+    end
+  end
+end
+
+--- Generic "call a completion predicate each real tick; release once
+-- it returns true" handler shape -- zero explicit script-stream
+-- operand bytes, matching `chainedOpaqueEffectCommand`'s/
+-- `waitForAnyButtonCommand`'s own `$3727`-tail convention (this
+-- project's standard "no real operand, but still consumes exactly 1
+-- byte via the trailing skip" shape). Used for opcodes `0xAC`/`0xAE`'s
+-- own outer wrapper (`PUSH AF / LD A,<selector> / JP $1ED7` trampoline,
+-- then `LD A,($D499) / CP 0 / RET NZ / CALL $3727 / RET` -- release
+-- exactly when `$D499` returns to 0) -- see
+-- `.wipeCompletionGate`'s own doc comment for what actually drives
+-- `isComplete()` in that specific case; this wrapper itself is fully
+-- generic and doesn't know or care what `isComplete` represents.
+function StandardScriptHandlers.completionPredicateCommand(isComplete)
+  return function(stream, cursor)
+    if isComplete() then
+      local _, afterSkip = ScriptInterpreter.fetch(stream, cursor)
+      return afterSkip
+    end
+    return nil
+  end
+end
+
 --- Real opcode `0x88`/`0x89` handler family (`$0153`/`$015E`, found
 -- 2026-08-14, direct follow-up to the whole-corpus scan's rank-13
 -- blocker -- `0x88` alone blocks 13 real scripts) -- writes a FIXED

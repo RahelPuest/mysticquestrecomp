@@ -1499,6 +1499,109 @@ Harness.test("StandardScriptHandlers.peekTwoByteGate + paletteFadeCompletionGate
   Harness.assertEqual(nextCursor, 2) -- released at afterOpcode -- byte1 (0x0f) becomes the next real fetch
 end)
 
+Harness.test("StandardScriptHandlers.wipeCompletionGate: with the real dual gate and marker check both defaulting to always-clear, completes the whole real 8-phase sequence in exactly 8 calls", function()
+  local gate = StandardScriptHandlers.wipeCompletionGate({}, nil, function() return true end, nil)
+  for _ = 1, 7 do
+    Harness.assertEqual(gate(), false)
+  end
+  Harness.assertEqual(gate(), true) -- the 8th call: phase 7's own unconditional reset+release
+end)
+
+Harness.test("StandardScriptHandlers.wipeCompletionGate: onPhase reports the real phase sequence 0,1,2,3,4,5,6,7", function()
+  local seen = {}
+  local gate = StandardScriptHandlers.wipeCompletionGate({}, nil, function() return true end,
+    function(phase) seen[#seen + 1] = phase end)
+  for _ = 1, 8 do gate() end
+  local expected = { 0, 1, 2, 3, 4, 5, 6, 7 }
+  Harness.assertEqual(#seen, #expected)
+  for i = 1, #expected do
+    Harness.assertEqual(seen[i], expected[i])
+  end
+end)
+
+Harness.test("StandardScriptHandlers.wipeCompletionGate: real dual-gate phases (1 and 4) genuinely halt while the gate is closed, and re-check it on every call", function()
+  local gateOpen = false
+  local checkCalls = 0
+  local gate = StandardScriptHandlers.wipeCompletionGate({}, function()
+    checkCalls = checkCalls + 1
+    return gateOpen
+  end, function() return true end, nil)
+  Harness.assertEqual(gate(), false) -- phase 0 -> 1, unconditional
+  for _ = 1, 5 do
+    Harness.assertEqual(gate(), false) -- phase 1: real dual gate closed, halts
+  end
+  Harness.assertTrue(checkCalls >= 5)
+  gateOpen = true
+  Harness.assertEqual(gate(), false) -- phase 1 -> 2
+  Harness.assertEqual(gate(), false) -- phase 2 -> 3 (marker check defaults to always-converged)
+  Harness.assertEqual(gate(), false) -- phase 3 -> 4, unconditional
+  gateOpen = false
+  for _ = 1, 3 do
+    Harness.assertEqual(gate(), false) -- phase 4 halts again
+  end
+  gateOpen = true
+  Harness.assertEqual(gate(), false) -- phase 4 -> 5
+  Harness.assertEqual(gate(), false) -- phase 5 -> 6, unconditional
+  Harness.assertEqual(gate(), false) -- phase 6 -> 7 (0 convergeTicks, immediate)
+  Harness.assertEqual(gate(), true)  -- phase 7 -> 0, real release
+end)
+
+Harness.test("StandardScriptHandlers.wipeCompletionGate: real phase 6 takes EXACTLY as many halting ticks as phase 2 took to converge (the real, decisively-confirmed symmetric $D49A design)", function()
+  local phaseLog = {}
+  local convergedAfter = 3 -- real phase-2 marker check: false for the first 3 calls, then true
+  local markerChecks = 0
+  local gate = StandardScriptHandlers.wipeCompletionGate({}, nil, function()
+    markerChecks = markerChecks + 1
+    return markerChecks > convergedAfter
+  end, function(phase) phaseLog[#phaseLog + 1] = phase end)
+
+  -- Drive the WHOLE real sequence to completion, counting how many
+  -- times each phase number appears in the real per-call phase log.
+  local done = false
+  local guard = 0
+  while not done do
+    done = gate()
+    guard = guard + 1
+    Harness.assertTrue(guard < 100) -- real safety bound, not expected to matter
+  end
+
+  local function countPhase(p)
+    local n = 0
+    for _, logged in ipairs(phaseLog) do
+      if logged == p then n = n + 1 end
+    end
+    return n
+  end
+  -- Real phase 2: 3 halting "not converged" checks + 1 final "converged,
+  -- advance" call = 4 total appearances. Real phase 6 (the SAME real
+  -- $D49A counter, drained back down): the SAME 4 total appearances.
+  Harness.assertEqual(countPhase(2), 4)
+  Harness.assertEqual(countPhase(6), 4)
+end)
+
+Harness.test("StandardScriptHandlers.wipeCompletionGate: fails loudly without a state table", function()
+  Harness.assertTrue(not pcall(StandardScriptHandlers.wipeCompletionGate, nil, nil, function() return true end, nil))
+end)
+
+Harness.test("StandardScriptHandlers.completionPredicateCommand + wipeCompletionGate: real opcode 0xAC halts for the whole real 8-tick sequence (default gates), then releases with the standard 1-byte $3727 skip, zero explicit operand bytes", function()
+  local addr = ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AC
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0xAC] = addr }))
+  interp:registerHandler(addr, StandardScriptHandlers.completionPredicateCommand(
+    StandardScriptHandlers.wipeCompletionGate({}, nil, function() return true end, nil)))
+
+  local stream = { 0xAC, 0xFF }
+  local cursor = 1
+  for _ = 1, 7 do
+    local nextCursor, _, kind = interp:step(stream, cursor)
+    Harness.assertEqual(kind, "halted")
+    Harness.assertEqual(nextCursor, cursor) -- re-dispatched at the SAME opcode position
+    cursor = nextCursor
+  end
+  local nextCursor, _, kind = interp:step(stream, cursor)
+  Harness.assertEqual(kind, "handled")
+  Harness.assertEqual(nextCursor, 3) -- opcode + 1 real $3727-skipped byte, ZERO explicit operand bytes
+end)
+
 Harness.test("StandardScriptHandlers.playerEntityTypeWrite: real opcodes 0x88/0x89 each fire their own fixed constant and consume exactly one real (unused) padding byte", function()
   local addr88 = ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_88
   local addr89 = ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_89

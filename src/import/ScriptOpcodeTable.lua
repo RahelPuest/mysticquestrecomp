@@ -1873,37 +1873,36 @@ ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD = 0x0DBC
 -- `StandardScriptHandlers.waypointStepCommand`'s own doc comment.
 ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B = 0x0D1B
 
--- Genuinely still open after this pass (2026-08-15, "ok dann mal die
--- fehlenden opcodes dekodieren" / "ok die restlichen bitte auch noch")
--- -- characterized, NOT guessed into a constant, matching this
--- project's own "no silent fallbacks" rule:
---   `0xAC`/`0xAE` (`$11E5`/`$11F8`, real `$1ED7` selectors `0x11`/
---     `0x12`, targets `$4164`/`$4180`): BOTH real, genuine `$D499`-
---     phase-driven state machines -- structurally related to the
---     ALREADY-modeled `paletteFadeCompletionGate` (opcode `0xF3`'s own
---     selector `0x10` family, see that function's own doc comment):
---     their own phase-0 AND phase-1 sub-table entries are BYTE-
---     IDENTICAL in shape to that family's (`$419C`≈unconditional
---     `$D49A=0/$D499++`; phase 1 = the SAME real `$4477` dual-gate
---     `$C8E0`/`$CEE8` check) -- but phase 2 (`$41D6`) is a GENUINELY
---     DIFFERENT, more substantial real routine: a bounded "2 markers
---     expanding toward each other" comparator over 4 real bytes at
---     WRAM `$D3A0` (each real tick, the low marker `+= 2`, the high
---     marker `-= 2`; while they haven't met/crossed, increments
---     `$D49A` and halts; once they meet, calls a real "finish" leaf
---     (`$0313`) that touches `$C0A5` and references the real LCDC
---     hardware register address (`$FF40`) as a literal value -- likely
---     a genuine screen-transition/wipe completion, not yet confirmed
---     further). Phases 3/5 differ substantially between the two
---     selectors AND from the palette-fade family's own phases 2/4.
---     **NOT safe to reuse `paletteFadeCompletionGate` wholesale** --
---     the gating SHAPE (phase 0/1) matches, but phase 2 onward needs
---     `$0313`/`$1D5E` (and phases 3-5) traced before wiring, or the
---     real pacing would be silently wrong. Left deliberately unwired.
--- Both remaining are real, decodable-in-principle mechanisms (not
--- opaque dead ends like the `$02AB` family) -- genuinely a "needs more
--- tracing time" gap, not a "needs live state this project can never
--- have" one.
+-- `0xAC`/`0xAE` (`$11E5`/`$11F8`) -- CLOSED 2026-08-15, direct follow-up
+-- ("laut website sind noch 2 offen. beende die auch", task #152's own
+-- final pair). Real `$1ED7` selectors `0x11`/`0x12` (targets
+-- `$4164`/`$4180`), each a `LD D,H/LD E,L / LD A,($D499) / LD
+-- HL,<table> / CALL $2B70 / RET` real jump-table dispatch (the SAME
+-- `$2B63`-based "multiply by 2, read a 16-bit entry, JP" shape already
+-- trusted for selector `0x10`'s own table). Reading BOTH real tables'
+-- raw bytes directly (not disassembling them as code, which would
+-- misread real DATA as instructions) found a real, 8-PHASE state
+-- machine (0-7, NOT 6 like the sibling `paletteFadeCompletionGate`
+-- family -- confirmed by checking where each table degrades into
+-- obvious garbage addresses past index 7, same boundary-detection
+-- discipline this project uses for every other real table). See
+-- `StandardScriptHandlers.wipeCompletionGate`'s own doc comment for
+-- the complete, byte-exact real disassembly of all 8 phases (including
+-- a self-caught correction of this SAME DAY's earlier "phase 0 is
+-- byte-identical in shape to the sibling family" claim -- it isn't;
+-- phase 0 does substantial extra real palette/effect work the sibling
+-- family's own phase 0 doesn't) and the decisive real evidence for the
+-- phase-2/phase-6 SYMMETRIC-duration design (both share ONE real WRAM
+-- tick counter, `$D49A`).
+--
+-- The outer opcode itself (`$11E5`/`$11F8`): `CALL <trampoline> / LD
+-- A,($D499) / CP 0 / RET NZ / CALL $3727 / RET` -- zero real explicit
+-- script-stream operand bytes; releases exactly when the real 8-phase
+-- state machine reports `$D499==0` again. See
+-- `StandardScriptHandlers.completionPredicateCommand`'s own doc
+-- comment for this generic outer shape.
+ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AC = 0x11E5
+ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AE = 0x11F8
 
 -- `0x9A`/`0x9B` ($1674/$1681, added 2026-08-14, whole-corpus scan's
 -- own next real untouched blockers after `0xB7`, found right next to

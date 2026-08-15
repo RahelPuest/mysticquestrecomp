@@ -1376,8 +1376,11 @@ const OPCODES = [
   },
   {
     "handler": 4581,
+    "names": [
+      "WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AC"
+    ],
     "opcode": 172,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 3516,
@@ -1389,8 +1392,11 @@ const OPCODES = [
   },
   {
     "handler": 4600,
+    "names": [
+      "WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AE"
+    ],
     "opcode": 174,
-    "status": "undecoded"
+    "status": "decoded"
   },
   {
     "handler": 11495,

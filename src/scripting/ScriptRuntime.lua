@@ -346,6 +346,23 @@ ScriptRuntime.__index = ScriptRuntime
 --                             `ctx.isActorReady` -- see
 --                             `StandardScriptHandlers
 --                             .waypointStepCommand`'s own doc comment.
+--   ctx.isWipeMarkerConverged() -- opcodes `0xAC`/`0xAE` (added
+--                             2026-08-15, task #152's own final pair)
+--                             -- optional predicate for the real phase-2
+--                             "have the 2 $D3A0/$D3A3 markers met/
+--                             crossed yet" check; defaults to "always
+--                             converged immediately" (never blocks) when
+--                             unset, same "unwired gate defaults open"
+--                             convention as `ctx.isActorReady` -- see
+--                             `StandardScriptHandlers
+--                             .wipeCompletionGate`'s own doc comment.
+--   ctx.onWipeCompletionPhaseAC(phase)/onWipeCompletionPhaseAE(phase) --
+--                             optional observers for the SAME opcodes'
+--                             own real 8-phase state machine (0-7) --
+--                             separate per opcode since phases 3/5's
+--                             own real side effects genuinely differ
+--                             between `0xAC` and `0xAE` -- see that same
+--                             handler's own doc comment.
 --   ctx.hasSufficientBudget(amount) -- opcode `0xD1` (added 2026-08-14,
 --                             whole-corpus scan) -- optional predicate
 --                             for the real `$D7BE`/`$D7BF` 16-bit
@@ -603,6 +620,13 @@ function ScriptRuntime:registerStandardHandlers()
   -- waypoint-table walk, same "unwired gate defaults open" convention
   -- as `isActorReady`/`isAnyButtonPressed` above.
   local advanceWaypointStep = ctx.advanceWaypointStep or function() return true, 0 end
+  -- Real evaluator for `0xAC`/`0xAE`'s own real phase-2 "2 markers
+  -- converged" check (see StandardScriptHandlers.wipeCompletionGate's
+  -- own doc comment) -- defaults to "always converged immediately"
+  -- (never blocks) when the caller hasn't wired the real, untraced
+  -- $D3A0/$D3A3 marker WRAM state, same "unwired gate defaults open"
+  -- convention as `isActorReady`/`isAnyButtonPressed` above.
+  local isWipeMarkerConverged = ctx.isWipeMarkerConverged or function() return true end
 
   -- `0x80` (added 2026-08-14, task 10, "die 6 $02AB-Geschwister
   -- wirklich lösen" -- CRACKING the whole-corpus scan's own longest-
@@ -1146,6 +1170,25 @@ function ScriptRuntime:registerStandardHandlers()
   -- than guessing it shares `0xF3`'s own real sequence.
   interp:registerHandler(ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F4,
     StandardScriptHandlers.peekTwoByteGate(ctx.onPeekTwoByteGate, ctx.isPeekGateClear))
+  -- `0xAC`/`0xAE` (added 2026-08-15, direct follow-up "laut website
+  -- sind noch 2 offen. beende die auch", task #152's own final pair):
+  -- real 8-phase `$D499` state machines -- see
+  -- `StandardScriptHandlers.wipeCompletionGate`'s own doc comment for
+  -- the complete real disassembly. Each gets its OWN private `{}` state
+  -- table (real per-occurrence state, same precedent as `0xF3`'s own
+  -- `paletteFadeCompletionGate` registration above) and its OWN
+  -- `onPhase` observer, but SHARE `ctx.isTriggerEventGateClear` for
+  -- their real dual-gate phases (the SAME real `$C8E0`/`$CEE8` cells)
+  -- and `isWipeMarkerConverged` for their real phase-2 marker check
+  -- (structurally identical between `0xAC`/`0xAE`; the ONE real
+  -- difference, phase 3/5's own opaque leaf work, doesn't affect this
+  -- gate's own shape).
+  interp:registerHandler(ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AC,
+    StandardScriptHandlers.completionPredicateCommand(
+      StandardScriptHandlers.wipeCompletionGate({}, ctx.isTriggerEventGateClear, isWipeMarkerConverged, ctx.onWipeCompletionPhaseAC)))
+  interp:registerHandler(ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AE,
+    StandardScriptHandlers.completionPredicateCommand(
+      StandardScriptHandlers.wipeCompletionGate({}, ctx.isTriggerEventGateClear, isWipeMarkerConverged, ctx.onWipeCompletionPhaseAE)))
 
   -- CORRECTED/EXTENDED (2026-08-13, direct follow-up to a real, live
   -- shadow-run against the actual boss-defeat script bytes: the FIRST
