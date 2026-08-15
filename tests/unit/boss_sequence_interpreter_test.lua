@@ -240,27 +240,37 @@ Harness.testIfAvailable(
 -- comments (dated 2026-08-14, well before this session) already fully
 -- disassembled `$0e77` as the THIRD confirmed sibling of the
 -- already-known-hard `$02AB` family (alongside opcode `0x80`/`$15A4`
--- and `0xEC`/`0xEE`): it switches to WRAM `$C3F0`'s dynamic bank,
--- dereferences the task-#85 `$C3FE`/`$C3FF` cross-actor pointer one
--- further level, then calls `$02AB` (a masked read of the player
--- entity's own real facing byte -- itself fully understood) -- but
--- WHICH bank/pointer gets staged into `$C3F0`/`$C3FE`/`$C3FF` for a
--- given real scene is genuinely DATA-DEPENDENT, and this project has
--- no live player-entity WRAM simulation to compute it with.
--- `ScriptOpcodeTable.lua` states outright that this family is
--- "EXPECTED to remain at the top of the scan's own blocker ranking
--- permanently, not a sign of unfinished work". So this test's real
--- significance is different from what was first claimed: the `0xF3`
--- fix makes the interpreter track the real ROM losslessly all the way
--- to the project's own PRE-EXISTING, PERMANENT ceiling for this
--- opcode family -- not to some fresh, still-open mystery. There is no
--- "disassemble `$0e77` next" follow-up; real further interpreter
--- progress needs either live player-entity WRAM simulation (a
--- substantial separate undertaking) or this script hitting a
--- genuinely different, still-unexplored opcode elsewhere in its
--- stream.
+-- and `0xEC`/`0xEE`) -- genuinely known-hard WHEN the real script
+-- actually needs to execute it.
+--
+-- FURTHER CORRECTION, same day (tasks #141-146, "weiter arbeiten bis
+-- das spiel zu 100% durchläuft"): the "permanent ceiling, nothing more
+-- to do" framing above turned out to be premature too. A real
+-- architectural gap in opcode `0x04`'s own classifier (it couldn't
+-- stay "pinned" across real per-character ticks -- see
+-- `ScriptInterpreter:step`'s own "PINNING" doc comment) meant `0x61f9`
+-- was reached by MISDISPATCHING raw real TEXT bytes as fresh top-level
+-- opcodes, not because the real ROM's own execution ever visits
+-- `$0E77` as a script opcode at cursor `0x61f9` at all -- a real,
+-- coincidental numeric collision, not a genuine dispatch. With real
+-- opcode pinning shipped, PLUS two further live-confirmed real control-
+-- code fixes (`0x14` name-insertion bridges through opcode `0xFF` for
+-- one real tick then resumes `0x04`; `0x1A` NEWLINE unconditionally
+-- resumes `0x04`, confirmed safe to generalize via `$35B0`'s own full
+-- disassembly), the interpreter now tracks a REAL further multi-line
+-- text run and reaches cursor `0x6208` -- past the OLD `0x61f9` stop
+-- entirely. It stops there on the SAME opcode value `0xed` again, but
+-- THIS is honestly uncertain too (task #146, still open): control byte
+-- `0x12` (cursor `0x6206`, un-modeled -- bridges into `0xFF` sub-opcode
+-- 4, a real bank-2-delegated conditional halt this project hasn't
+-- traced) releases to a fresh top-level dispatch that happens to reach
+-- `0xed` again -- this MAY be another coincidental collision from the
+-- SAME class of un-modeled-control-code bug, not necessarily proof the
+-- real script genuinely dispatches the `$02AB` family here either.
+-- Real, well-scoped remaining work: disassemble `$1ED1`/`$350F` (the
+-- real `0x12`/sub-opcode-4 target) to find out for certain.
 Harness.testIfAvailable(
-  "BossSequenceInterpreter: WITH the real 0xF3 5-byte release fix wired (extraBytesOnRelease=2), the cursor tracks the real ROM past the OLD 0x4798 desync entirely, reaching this project's own pre-existing, permanently-unwired $02AB-family ceiling (opcode 0xed at 0x61f9)",
+  "BossSequenceInterpreter: WITH real opcode pinning + the 0x10/0x14/0x1A control-code fixes (tasks #141-146), the cursor tracks a real further multi-line text run past the OLD 0x61f9 stop, reaching cursor 0x6208 (honestly uncertain whether this new 0xed hit is real or another un-modeled-control-code collision -- see task #146)",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -296,6 +306,27 @@ Harness.testIfAvailable(
           controlCodeState.lastByte = nil
           return 0, cursor == 0x61e3
         end
+        -- Mirrors VictorySequence.buildBossSequenceInterpreter's own
+        -- real production wiring (task #146): control byte 0x14 at the
+        -- ONE live-confirmed real cursor (0x61e4) bridges through
+        -- opcode 0xFF for exactly one real tick then resumes 0x04 at
+        -- cursor+2 -- modeled here as consuming 1 extra byte (net +2
+        -- from the control byte's own position) and pinning straight
+        -- back to 0x04, an honest simplification that does not
+        -- literally dispatch 0xFF's own handler (see the production
+        -- wiring's own doc comment for the full real evidence/scope).
+        if byte == 0x14 and cursor == 0x61e4 then
+          controlCodeState.lastByte = nil
+          return 1, true
+        end
+        -- Real NEWLINE_BYTE (0x1A) -- $35B0's own disassembly shows an
+        -- UNCONDITIONAL `CALL $36D0` (no gate, unlike 0x10), so this is
+        -- safe to pin for every real occurrence, not just one (see the
+        -- production wiring's own doc comment for the full evidence).
+        if byte == 0x1a then
+          controlCodeState.lastByte = nil
+          return 0, true
+        end
         controlCodeState.lastByte = nil
         return 0
       end,
@@ -326,20 +357,25 @@ Harness.testIfAvailable(
     Harness.assertEqual(bsi.runtime.opcodeCounts[0xBD], 66) -- the real, full 6x11 pacing cycle, paced then released
     Harness.assertEqual(bsi.runtime.opcodeCounts[0xBC], 66) -- 0x61de's own opcode, now correctly reached
     Harness.assertTrue(bsi.runtime.opcodeCounts[0xF3] ~= nil and bsi.runtime.opcodeCounts[0xF3] > 0) -- PEEK_TWO_BYTE_GATE
-    -- The boundary: the OLD 0x4798 desync is fully gone (this fix
-    -- resolved it); the run now honestly stops on opcode 0xed --
-    -- this project's own PRE-EXISTING, PERMANENTLY-unwired $02AB-family
-    -- ceiling (see this test's own doc comment above), not a fresh
-    -- mystery. See this test's own doc comment above for the exact
-    -- real-ROM byte evidence (0x3a1f9: 0xed).
+    -- Real, live-confirmed further progress (tasks #141-146): the real
+    -- NEWLINE_BYTE (0x1A) fires multiple times across this longer real
+    -- text run, and the interpreter tracks all of them correctly.
+    Harness.assertTrue(bsi.runtime.opcodeCounts[0x04] ~= nil and bsi.runtime.opcodeCounts[0x04] > 30,
+      "expected many real opcode-0x04 classifier dispatches across the longer real text run now reached")
+    -- The NEW boundary: the OLD 0x61f9 stop is fully gone (past it
+    -- entirely now); the run honestly stops on real opcode 0xed again,
+    -- but this time at cursor 0x6208 -- see this test's own doc comment
+    -- above for why this is DELIBERATELY NOT claimed to be a confirmed
+    -- "$02AB family" dispatch this time (task #146, still open: could
+    -- be another un-modeled-control-code (0x12) collision, same as the
+    -- old 0x61f9 stop turned out to be).
     Harness.assertTrue(bsi.runtime.stopped,
-      "expected the run to now honestly stop on real opcode 0xed (this project's own pre-existing, " ..
-      "permanently-unwired $02AB-family ceiling) -- if this fails because it ran further still, " ..
-      "that's welcome progress: re-trace and update this test's own expected stopping point again")
+      "expected the run to now honestly stop further along than before -- if this fails because it ran " ..
+      "further still, that's welcome progress: re-trace and update this test's own expected stopping point again")
     Harness.assertTrue(tostring(bsi.runtime.stopError):find("0xed", 1, true) ~= nil,
       "expected the run to stop specifically on real opcode 0xed (real ROM handler 0x0e77), got: " ..
       tostring(bsi.runtime.stopError))
-    Harness.assertEqual(bsi.cursor, 0x61f9)
+    Harness.assertEqual(bsi.cursor, 0x6208)
     Harness.assertEqual(bsi.bank, 14)
   end
 )

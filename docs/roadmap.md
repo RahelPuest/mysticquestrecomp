@@ -1185,6 +1185,32 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       live WRAM trace and a static byte read remains open (task #146),
       documented precisely rather than declared solved prematurely.
 
+      **Task #146, same day, direct continuation ("ja")**: a
+      fine-grained live trace (correlating each real `$36D9` hit with
+      the ACTUAL classified byte, resolving the earlier discrepancy)
+      found two more real control-code behaviors and fixed them:
+      `0x14` (name insertion) bridges through opcode `0xFF` for exactly
+      one real tick then resumes `0x04` two bytes later (modeled as an
+      honest net-2-byte simplification, not a full dispatch of `0xFF`'s
+      own sub-opcode-1 internals); `0x1A` (NEWLINE, already
+      independently confirmed by `TextDecoder.lua`) unconditionally
+      pins via `$36D0` (safe to generalize, per `$35B0`'s own
+      unconditional disassembly, unlike `0x10`). With both wired, the
+      interpreter tracks a real further multi-line text run and reaches
+      cursor `0x6208` -- genuinely PAST the old `0x61f9` stop (462/462
+      pass). **Important correction along the way**: the OLD `0x61f9`
+      "permanent `$02AB`-family ceiling" claim was itself wrong -- that
+      stop was a coincidental numeric collision from the SAME
+      un-modeled-control-code bug class, not a real dispatch (the real
+      ROM never executes `$0E77` at that cursor -- it's real text data,
+      not an opcode there). The new `0x6208` stop hits the identical
+      opcode value again via a NEW un-modeled control byte (`0x12`,
+      bridging into `0xFF` sub-opcode 4, a real bank-2-delegated
+      conditional halt at `$1ED1`/`$350F`) -- honestly flagged as
+      UNCERTAIN for the exact same reason, not re-claimed as confirmed.
+      Task #146 stays open; real next step is disassembling
+      `$1ED1`/`$350F`.
+
 - [~] **NEW -- Monster/NPC/Item catalog (2026-08-15, direct user request
       "versuche mal alle monster, npcs und items zu extrahieren").**
       Real, honestly-scoped extraction across all 3 categories, since

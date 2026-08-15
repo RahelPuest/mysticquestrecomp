@@ -9020,3 +9020,59 @@ was not investigated this pass -- deferred, real, well-scoped follow-up.
 
 462/462 tests pass throughout every step of this investigation
 (including both self-corrections, verified before moving on each time).
+
+## 2026-08-15, task #146, direct continuation ("ja"): two more real control-code fixes, real further progress (0x61f9 -> 0x6208), and an important correction to the "permanent $02AB ceiling" claim
+
+A fine-grained live trace -- correlating each real `$36D9`/`$36DB` hit
+with the ACTUAL byte being classified at that instant (not periodic
+WRAM snapshots, which had earlier conflated separate real completions)
+-- found two more concrete, live-confirmed real behaviors:
+
+- **Control byte `0x14`** (name insertion) bridges through opcode
+  `0xFF` for EXACTLY ONE real tick (WRAM `$D85A` briefly becomes
+  `0xFF`, confirmed live) before resuming as opcode `0x04` two real
+  bytes past its own position. Modeled as an honest simplification:
+  consumes the same net 2 real bytes and pins straight back to `0x04`,
+  without literally dispatching `0xFF`'s own sub-opcode-1 internals
+  (would need `$3C7E`/`$36C2`/`$3C92`/`$3777` disassembled -- not done
+  this pass; the real hero-name character insertion itself is NOT
+  modeled, only the correct cursor resumption).
+- **Control byte `0x1A`** (`NEWLINE_BYTE`, already independently
+  confirmed by `TextDecoder.lua`'s own separate reverse-engineering --
+  a real cross-validation) -- full disassembly of `$35B0` found an
+  UNCONDITIONAL `CALL $36D0` (no `JR NZ`/`CALL Z` gate, unlike `0x10`'s
+  own handler) -- safe to pin for EVERY real occurrence, not just one
+  live-traced position.
+
+With both fixes wired (`VictorySequence.lua` and the test's own
+`onControlCode`), the interpreter now tracks a real, further multi-line
+text run correctly and reaches real cursor `0x6208` -- past the OLD
+`0x61f9` stop entirely (462/462 tests pass).
+
+**An important correction, found while chasing this further**: the OLD
+`0x61f9` stop was NEVER a genuine `$02AB`-family dispatch by the real
+ROM at all -- it was a coincidental NUMERIC collision, reached only
+because an un-modeled control code released to a "fresh top-level
+dispatch of whatever raw byte sits at cursor", which happened to
+succeed through several more real, already-decoded opcodes before
+landing on `0xed` by chance. The real ROM's own actual execution never
+visits `$0E77` as a script opcode at cursor `0x61f9` -- that address is
+real plain TEXT DATA in this script, not an executed opcode.
+
+**The new `0x6208` stop is honestly flagged as uncertain for the exact
+same reason, not re-claimed as a confirmed dispatch**: it's reached via
+control byte `0x12` (cursor `0x6206`, un-modeled -- bridges into `0xFF`
+sub-opcode 4, a real bank-2-delegated conditional halt at
+`$1ED1`/`$350F`, "tests `C==0`", per this project's own earlier `$38F6`
+table disassembly) releasing to ANOTHER fresh top-level dispatch (real
+opcode `0x1B`, already decoded, succeeds) that happens to land on the
+same `0xed` value again. This MAY be yet another coincidental
+collision from the identical class of bug -- genuinely unknown until
+`$1ED1`/`$350F` get disassembled (task #146, still open, real
+well-scoped follow-up).
+
+`tests/unit/boss_sequence_interpreter_test.lua`'s own long-running
+regression test updated to the new, further, honestly-hedged checkpoint
+(`bank=14 cursor=0x6208`) with the "permanent ceiling" language removed
+from its doc comment -- replaced with the corrected understanding above.
+462/462 tests pass.

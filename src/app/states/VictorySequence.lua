@@ -378,12 +378,63 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
         return 0, cursor == 0x61e3
       end
 
-      -- HONEST SCOPE: every OTHER real control code (0x12-0x1F) is NOT
-      -- yet live-traced for its own real pacing/bridge/pin behavior --
-      -- defaults to the old, simple immediate single-byte consume (0
-      -- extra bytes, no pin) rather than guessing whether it also needs
-      -- either treatment (see StandardScriptHandlers.tick's own doc
-      -- comment).
+      if byte == 0x14 and cursor == 0x61e4 then
+        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct follow-up): a
+        -- fine-grained trace correlating each real `$36D9`/`$36DB` hit
+        -- with the ACTUAL real byte being classified (not just periodic
+        -- WRAM snapshots, which had earlier conflated this with plain
+        -- text) found real WRAM `$D85A` briefly becomes `0xFF` for
+        -- EXACTLY ONE real tick right after this control byte -- the
+        -- real `$3C74` bridge (`$357D`'s own disassembly: `... CALL
+        -- $3C74` with `B=1`) genuinely hands off into the ALREADY-
+        -- documented "0xFF sub-table" system (sub-opcode 1) -- then
+        -- resumes as opcode `0x04` at real cursor `0x61e6`, two real
+        -- bytes past this control byte's own position (`0x61e4`),
+        -- confirmed live: the byte there (`0x37`) is the first of a
+        -- long real plain-text run.
+        --
+        -- HONEST SIMPLIFICATION: this project's own Lua model does NOT
+        -- actually dispatch through opcode `0xFF`'s own handler for
+        -- this specific one-tick interlude -- doing so byte-exactly
+        -- would need `$3C7E`/`$36C2`/`$3C92`/`$3777` disassembled (the
+        -- real sub-opcode-1 internals, e.g. the actual hero-name
+        -- character insertion), not done this pass. Instead, this
+        -- consumes the SAME net 2 real bytes (1 extra beyond the
+        -- control byte's own +1) and resumes pinning as `0x04`
+        -- directly, matching the OBSERVABLE real cursor effect (correct
+        -- resumption of real text typing at `0x61e6`) without claiming
+        -- to model the skipped interlude's own real side effects (the
+        -- name text itself is NOT inserted into anything this project
+        -- renders). A real, well-scoped follow-up, not silently
+        -- pretended away.
+        controlCodeState.lastByte = nil
+        return 1, true
+      end
+
+      if byte == 0x1a then
+        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct follow-up),
+        -- SAFE TO GENERALIZE (unlike 0x10 above): full disassembly of
+        -- $35B0 (real NEWLINE_BYTE handler -- also independently
+        -- confirmed by TextDecoder.lua's own, completely separate
+        -- reverse-engineering, a real cross-validation) shows `CALL
+        -- $3C92 / CALL $380B / CALL $3C7E / CALL $3736 / POP HL / CALL
+        -- $36D0 / RET` -- `$36D0` is reached UNCONDITIONALLY (a plain
+        -- `CALL`, no `JR NZ`/`CALL Z` gate like 0x10's own handler
+        -- had) -- so pinning is correct for EVERY real occurrence of a
+        -- newline within running text, not just one live-traced
+        -- position. Consumes 0 extra real bytes beyond the control
+        -- byte itself, matching $36D0's own standard "+1" advance.
+        controlCodeState.lastByte = nil
+        return 0, true
+      end
+
+      -- HONEST SCOPE: every OTHER real control code (0x12/0x13/0x15-
+      -- 0x19/0x1B-0x1F, and 0x14/0x15 at any OTHER real cursor than the
+      -- one live-confirmed above) is NOT yet live-traced for its own
+      -- real pacing/bridge/pin behavior -- defaults to the old, simple
+      -- immediate single-byte consume (0 extra bytes, no pin) rather
+      -- than guessing whether it also needs either treatment (see
+      -- StandardScriptHandlers.tick's own doc comment).
       controlCodeState.lastByte = nil
       return 0
     end,
