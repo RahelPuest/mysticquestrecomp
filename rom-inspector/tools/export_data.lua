@@ -310,6 +310,62 @@ writeJs("opcodes.js", "OPCODES", opcodes,
   "Real per-opcode decode status for all 256 primary script opcodes -- 'decoded' means ScriptRuntime actually has a registered Lua handler for that real ROM address (checked by building a live ScriptRuntime, not hand-classified); 'default' is the real ROM-confirmed no-op; 'known-hard' is traced but deliberately unwired (see the 'note' field); 'undecoded' is genuinely open.")
 
 ----------------------------------------------------------------------
+-- 4c. Opcode 0x04's own real control-code sub-system (2026-08-15,
+-- tasks #141-147). These are NOT entries in the primary 256-opcode
+-- table above -- they're real byte VALUES (0x10-0x1F) opcode 0x04's
+-- own classifier (see StandardScriptHandlers.tick) reads directly from
+-- the live script cursor while already dispatched, matching the real
+-- ROM's own `$38F6` jump table (`SUB $10` before lookup). Curated, not
+-- code-derived (this data doesn't live in a Lua table this project can
+-- walk mechanically -- it's the direct product of live mgba tracing +
+-- static disassembly, cited here exactly as found) -- see
+-- docs/reverse-engineering/events.md's own dated task #141-147 entries
+-- for the full real evidence trail behind every claim below.
+----------------------------------------------------------------------
+do
+  local CONTROL_CODES = {
+    {
+      byte = 0x10, title = "Modus-Register setzen",
+      handler = "$34E7",
+      status = "occurrence-specific",
+      note = "Setzt $D84A=6, dann CONDITIONAL `CALL Z,$36D0` -- die reale Bedingung ($3627, ein bank-2-Aufruf) ist nicht nachverfolgt. Live bestätigt: PINNT bei Cursor 0x61e3, PINNT NICHT bei einer früheren Vorkommnis (Cursor 0x61bc) im selben echten Durchlauf -- selbe Byte-Wert, unterschiedliches reales Verhalten.",
+    },
+    {
+      byte = 0x11, title = "Pacing-Gate (echter $D853-Bit-7-Takt)",
+      handler = "$34F4",
+      status = "live-confirmed (pacing only)",
+      note = "Pausiert für live bestätigte 9 echte Ticks ($D853 Bit 7), dann `CALL $36D0` unconditional. Ob das Pinnen (Rückkehr zu Opcode 0x04) für JEDE reale Vorkommnis gilt, ist NICHT bestätigt -- ein erster Versuch, das anzunehmen, brach eine andere, bereits funktionierende echte HEAL_LP-Dispatch -- zurückgesetzt auf den ehrlichen Standard (kein Pin).",
+    },
+    {
+      byte = 0x12, title = "Bank-2-Bedingung -> 0xFF Sub-Opcode 4",
+      handler = "$3502 -> $350F",
+      status = "occurrence-specific (156 echte Ticks)",
+      note = "Bedingt (`$1ED1`, ein realer Bank-2-Funktionsaufruf-Trampolin) Brücke in 0xFF Sub-Opcode 4. Live-getraced: genau 156 echte Ticks Pause für DIESE Vorkommnis (Cursor 0x6206), dann unconditional Rückkehr zu Opcode 0x04 via $36D0. Bank 2s eigene interne Berechnung nicht nachverfolgt (bewusst zurückgestellt, wie bei anderen $1F06-Aufrufen dieses Projekts).",
+    },
+    {
+      byte = 0x14, title = "Namenseinfügung -> 0xFF Sub-Opcode 1",
+      handler = "$357D",
+      status = "occurrence-specific (1 echter Tick)",
+      note = "Brücke in 0xFF Sub-Opcode 1 für GENAU EINEN echten Tick ($D85A kurzzeitig =0xFF, live bestätigt), dann Rückkehr zu Opcode 0x04 zwei echte Bytes weiter. Die echte Namenseinfügung selbst (Heldenname) wird NICHT modelliert -- nur die korrekte Cursor-Fortsetzung.",
+    },
+    {
+      byte = 0x1a, title = "NEWLINE_BYTE (Zeilenumbruch)",
+      handler = "$35B0",
+      status = "generalisiert, sicher",
+      note = "UNCONDITIONAL `CALL $36D0` (kein Gate, anders als 0x10) -- vollständige Disassemblierung bestätigt: sicher für JEDE reale Vorkommnis zu verallgemeinern. Bereits unabhängig durch TextDecoder.lua's eigene, komplett getrennte Reverse-Engineering bestätigt (echte Kreuzvalidierung).",
+    },
+    {
+      byte = 0x1b, title = "Cursor-Setup -> 0xFF Sub-Opcode 2",
+      handler = "$35C1 -> $3648",
+      status = "occurrence-specific (1 echter Tick)",
+      note = "Setzt reale $D8B2-$D8B5 Cursor-Position-Zellen, dann Brücke in 0xFF Sub-Opcode 2 für GENAU EINEN echten Tick (live bestätigt), dann Rückkehr zu Opcode 0x04. $3648 enthält selbst eine reale Bedingung ($D84A==0?) für einen weiteren, nicht verfolgten Pfad -- daher nur für DIESE Vorkommnis (Cursor 0x6207) übernommen, nicht verallgemeinert.",
+    },
+  }
+  writeJs("control-codes.js", "CONTROL_CODES", CONTROL_CODES,
+    "Real control-code sub-system opcode 0x04's own classifier dispatches through (script byte values 0x10-0x1F, NOT separate top-level opcodes -- see StandardScriptHandlers.tick's own doc comment). Found and fixed 2026-08-15 (tasks #141-147) via live mgba tracing + static disassembly -- 'occurrence-specific' means this project only claims the real behavior for the ONE live-traced real cursor cited, NOT every occurrence of that byte value (two self-caught over-generalizations this session -- 0x10 and 0x11 -- both broke real, already-working dispatches when assumed universal). With all confirmed here wired, this project's own BossSequenceInterpreter now runs the ENTIRE remaining real boss-defeat script and reaches the real opcode 0x00 queue-gate (see docs/reverse-engineering/events.md) -- the same landmark this whole investigation started from.")
+end
+
+----------------------------------------------------------------------
 -- 4b. Script-tracer EXAMPLES (2026-08-14, direct user request: "kannst
 --     du mal den ganzen script mechanismus mal in app... intuitiver
 --     darstellen. vielleicht mit einem beispielscript so das man

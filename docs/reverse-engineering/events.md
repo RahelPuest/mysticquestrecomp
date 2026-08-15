@@ -9168,3 +9168,67 @@ next -- not attempted this pass.
 regression test rewritten to this final, decisive, correct boundary:
 `not stopped`, `lastKind == "halted"`, `bank=14 cursor=0x4798`.
 462/462 tests pass. Task #146 is CLOSED.
+
+### 2026-08-15 -- Consolidation: pinning + 6 control-code fixes built into the app and the website (task #148)
+
+Following direct user request ("konsolidieren, cleanen, dokumentieren
+und in die app und die website einbauen"), the findings from the
+pinning architecture + tasks #141-147 above were built into both
+user-facing surfaces, not left as code + doc comments only:
+
+- **App (`src/app/states/CatalogExplorer.lua`)**: the interpreter-mode
+  status line used to show a blanket `"läuft..."` (running) for ANY
+  non-stopped runtime state, making a genuine, understood HALT
+  (`runtime.lastKind == "halted"`) visually indistinguishable from
+  still actively running. Now shows `"halt (kind=halted) -- reale,
+  verstandene Bedingung (Task #147)"` when halted, distinct from
+  `"läuft..."` (still running) and `"gestoppt: ..."` (real error). Live
+  `love .`-verified: launched with `MYSTICQUEST_VICTORY_DEMO=1
+  MYSTICQUEST_SCRIPT_INTERPRETER=1`, scripted navigation to the boss
+  species + interpreter mode, waited for `bossCursor=18328` (`0x4798`)
+  via `MYSTICQUEST_WAIT_FOR` -- screenshot confirmed the exact new
+  message plus `bank=14 cursor=0x4798`.
+- **Website (`rom-inspector/`)**: the 6 real control codes
+  (`0x10`/`0x11`/`0x12`/`0x14`/`0x1A`/`0x1B`) are byte values opcode
+  `0x04`'s own classifier reads directly off the live script cursor --
+  invisible to the primary 256-entry `OPCODES` table (which only
+  covers top-level opcodes), so they'd never have shown up on the
+  existing Skript-Opcode-Explorer page without a dedicated export.
+  Added a new curated data export, `js/data/control-codes.js`
+  (`CONTROL_CODES`, written by `rom-inspector/tools/export_data.lua`,
+  cross-referencing this file's own task #141-146 entries for the
+  underlying evidence rather than restating it), and a new panel on
+  the Skript-Opcode-Explorer page (`js/viz/opcodes.js`,
+  `render_control_codes`) explaining the real `$36D0`/`$D85A` pinning
+  mechanism and showing all 6 codes with their real handler addresses,
+  live-confirmed status (`generalisiert, sicher` for `0x1A`,
+  `occurrence-specific` for the rest), and evidence notes. Also notes
+  the "full circle to the `0x00` queue-gate" milestone finding inline.
+  Playwright-verified: page loads with zero console errors, all 6
+  cards render with their real handler addresses and notes (screenshot
+  reviewed directly, not just DOM-queried).
+- `luajit tests/run_tests.lua`: 462 passed, 0 failed, 0 skipped
+  (unchanged by this consolidation pass -- no runtime code touched,
+  only the app's status line and the website's static data/JS).
+
+**Honest side-effect caught while regenerating the website data**: the
+whole-corpus shadow-run stats (`js/data/scan-results.js`, all 1357 real
+`scriptPointerTable` entries run through the current opcode coverage)
+SHIFTED as a real consequence of the pinning fix, since the ONE
+generalized part of it (text-character-release ALWAYS pins, in
+`StandardScriptHandlers.tick` -- see task #144/#145 above) applies to
+the ENTIRE corpus scan, not just the boss-defeat script. Before:
+`clean=884, errorOther=244, haltUndecoded=229`. After:
+`clean=821, errorOther=318, haltUndecoded=218` (totals still sum to
+1357). Read plainly: 63 scripts that previously reported "clean" were
+doing so on the back of the same coincidental-misdispatch bug class
+this whole day's investigation was built to fix -- with real pinning
+in place, some of those now correctly surface as real errors instead.
+This is NOT a regression to chase down here (task #148 is a
+consolidation/documentation pass, not a new corpus-wide decoding
+effort) -- it is flagged honestly, in place, as exactly what this
+project's own engineering discipline demands: a previously-inflated
+"success" count getting corrected downward is real progress in
+accuracy even though the raw number looks worse. Left as an open,
+separate observation for whoever next works the corpus-scan blockers
+list (task #89's ongoing successor work) -- not folded into #147.

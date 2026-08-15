@@ -1423,6 +1423,18 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       `export_data.lua`, both website viz files, AND `CatalogExplorer
       .lua` before starting Phase 2, avoiding duplicate work.
 
+- **2026-08-15**: consolidated the day's script-interpreter findings
+  (real opcode "pinning" architecture + 6 real control-code fixes,
+  tasks #141-147: the interpreter now runs the ENTIRE remaining real
+  boss-defeat script and reaches the real `0x00` queue-gate) into both
+  user-facing surfaces (task #148): `CatalogExplorer.lua`'s
+  interpreter-mode display now distinguishes a genuine understood halt
+  from still-running from an actual error (live `love .`-verified);
+  the rom-inspector website gained a new `control-codes.js` export +
+  a new panel on the Skript-Opcode-Explorer page documenting the real
+  `$36D0`/`$D85A` pinning mechanism and all 6 control codes with their
+  live-confirmed status (Playwright-verified, zero console errors).
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

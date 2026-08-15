@@ -121,6 +121,62 @@ function render_script_tracer(container) {
   onSectionUnload(RomBytes.onChange(renderTracer));
 }
 
+// Real control-code sub-system opcode 0x04's own classifier dispatches
+// through (byte values 0x10-0x1F read directly off the live script
+// cursor, NOT separate top-level opcodes -- see CONTROL_CODES's own
+// header comment in js/data/control-codes.js / export_data.lua for the
+// full real evidence trail). Found + fixed 2026-08-15 (tasks #141-147)
+// via live mgba tracing + static disassembly of the real ROM. Shown
+// as its own panel because these bytes are invisible to the primary
+// 256-opcode grid above -- opcode 0x04 alone "owns" them.
+function render_control_codes(container) {
+  const statusColor = {
+    "generalisiert, sicher": "rgba(107,207,127,.4)",
+    "live-confirmed (pacing only)": "rgba(240,192,90,.4)",
+  };
+  function swatchFor(status) {
+    return statusColor[status] || "rgba(120,150,240,.4)"; // occurrence-specific default
+  }
+  container.innerHTML = `
+    <h2 class="section-title">Control-Code-Subsystem von Opcode 0x04 (Pinning)</h2>
+    <p style="color:var(--text-dim); font-size:13px; max-width:760px; line-height:1.6;">
+      Opcode <code>0x04</code> ist real ein eigener Klassifikator: er liest laufend weitere,
+      selbst gewählte Bytes direkt vom Skript-Cursor (<code>0x10</code>-<code>0x1F</code>), OHNE
+      dass die reale ROM den normalen Opcode-Fetch (<code>$3727</code>) erneut aufruft. Die reale
+      ROM „pinnt" dafür ihr eigenes WRAM-Register „aktueller Opcode" ($D85A) über viele echte
+      Ticks auf <code>0x04</code>, indem <code>$36D0</code> (die Control-Code-/Text-Freigabe-
+      Routine) den Cursor weiterschiebt UND <code>$D85A=0x04</code> direkt neu setzt &mdash;
+      ohne je wieder <code>$3727</code> aufzurufen. Diese Website-Software hatte diese Struktur
+      lange nicht nachgebildet: jeder Tick las <code>stream[cursor]</code> als frischen Top-
+      Level-Opcode neu ein, was echte Textbytes gelegentlich rein numerisch mit unabhängigen
+      Opcodes kollidieren ließ. Die Lösung: <code>ScriptInterpreter:step()</code> akzeptiert jetzt
+      einen optionalen <code>pinnedOpcode</code>-Parameter, und jeder Handler kann per zweitem
+      Rückgabewert <code>pin</code> verlangen, dass der NÄCHSTE Tick denselben Opcode direkt
+      erneut aufruft, statt den Cursor-Inhalt als neuen Opcode zu interpretieren.
+    </p>
+    <p style="color:var(--text-dim); font-size:13px; max-width:760px; line-height:1.6;">
+      Mit allen unten bestätigten Control-Codes verdrahtet läuft dieses Projekts eigener
+      <code>BossSequenceInterpreter</code> jetzt das GESAMTE verbleibende reale Boss-Defeat-Skript
+      sauber durch und erreicht den echten Opcode-<code>0x00</code>-Queue-Gate &mdash; denselben
+      Fund, mit dem diese gesamte Untersuchung an diesem Tag begann (siehe
+      <code>docs/reverse-engineering/events.md</code>).
+    </p>
+    <div class="opcode-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+      ${CONTROL_CODES.map(c => `
+        <div class="panel" style="padding:10px 14px;">
+          <div class="mono" style="font-size:13px;">
+            Byte 0x${c.byte.toString(16).toUpperCase().padStart(2, "0")}
+            <span style="margin-left:6px; font-size:11px; padding:2px 6px; border-radius:4px; background:${swatchFor(c.status)};">${escapeHtml(c.status)}</span>
+          </div>
+          <div style="font-size:13px; font-weight:600; margin-top:4px;">${escapeHtml(c.title)}</div>
+          <div class="mono" style="color:var(--accent2); font-size:12px; margin-top:2px;">Handler: ${escapeHtml(c.handler)}</div>
+          <div style="font-size:12.5px; margin-top:6px; line-height:1.55; color:var(--text-dim);">${escapeHtml(c.note)}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 function render_opcodes(main) {
   const params = new URLSearchParams(location.hash.split("?")[1] || "");
   const focusOpcode = params.has("focus") ? parseInt(params.get("focus"), 10) : null;
@@ -154,9 +210,12 @@ function render_opcodes(main) {
 
     <div class="opcode-grid" id="opcodeGrid"></div>
     <div id="opcodeDetail" class="panel"></div>
+
+    <div id="controlCodesHost" style="margin-top:28px;"></div>
   `;
 
   render_script_tracer(document.getElementById("scriptTracerHost"));
+  render_control_codes(document.getElementById("controlCodesHost"));
 
   const grid = document.getElementById("opcodeGrid");
   const cells = {};

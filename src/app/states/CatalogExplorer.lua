@@ -354,9 +354,23 @@ function CatalogExplorer:_drawMonster()
     if isBossLinked and self.bossInterpreter then
       lines[#lines + 1] = string.format("[Interpreter] bank=%d cursor=%#06x",
         self.bossInterpreter.bank, self.bossInterpreter.cursor)
-      lines[#lines + 1] = self.bossInterpreter.runtime.stopped
-        and ("gestoppt: " .. tostring(self.bossInterpreter.runtime.stopError):match("^[^\n]*"))
-        or "läuft..."
+      -- CLARIFIED 2026-08-15 (task #146/#147, direct follow-up "in die
+      -- app... einbauen"): "läuft..." used to cover BOTH "still making
+      -- real progress" and "reached a real, deliberate HALT and will
+      -- never move again" -- indistinguishable to anyone watching this
+      -- screen. Real tasks #141-146 made the interpreter run the
+      -- ENTIRE remaining real script and land on a genuine, understood
+      -- halt (opcode 0x00's own real queue-gate, `kind=="halted"`) --
+      -- worth surfacing honestly rather than papering over with a
+      -- generic "running" label.
+      local runtime = self.bossInterpreter.runtime
+      if runtime.stopped then
+        lines[#lines + 1] = "gestoppt: " .. tostring(runtime.stopError):match("^[^\n]*")
+      elseif runtime.lastKind == "halted" then
+        lines[#lines + 1] = "halt (kind=halted) -- reale, verstandene Bedingung (Task #147)"
+      else
+        lines[#lines + 1] = "läuft..."
+      end
     else
       lines[#lines + 1] = "[Interpreter] kein echtes Skript für diese Spezies bekannt"
     end
