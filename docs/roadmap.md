@@ -2049,6 +2049,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   rom-map.md's stale 2026-08-13 "Consolidated reference" section 4
   corrected in place. `luajit tests/run_tests.lua`: 532/532 pass.
 
+- **2026-08-16, direct continuation -- room connectivity DECISIVELY
+  CLOSED too**: live-traced the real `$4395` (`CALL $026DC`) call site
+  for thirdRoom->fourthRoom directly -- found the SAME already-decoded
+  landing record's own first operand byte (`A1`) is the real target
+  `roomSelector`, fed to `$026DC` unmodified. Confirmed statistically
+  across all 186 records (ranges exactly 1-15, zero gaps, matching
+  `roomSelectorTable`'s real 16-entry size). Resolves fourthRoom's own
+  long-standing "roomSelector 0 or 1?" ambiguity as a real bonus
+  (`romRoomSelectorConfirmed=1`). Self-caught and corrected an earlier
+  same-day hypothesis (a different sibling record type) that turned
+  out to be a coincidence, not the real mechanism -- reported and fixed
+  in place, not silently dropped. **Both of the two original blockers
+  ("was fehlt für komplett autark interpretiert") are now closed for
+  wipe-style cut transitions** -- the ROM's own dominant transition
+  mechanism within a connected dungeon area; the genuinely-unconnected
+  jump-cut and continuous-scroll styles remain separate, already-
+  documented mechanisms outside this table's scope. `luajit
+  tests/run_tests.lua`: 533/533 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

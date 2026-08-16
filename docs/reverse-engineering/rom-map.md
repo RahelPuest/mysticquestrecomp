@@ -6216,44 +6216,55 @@ shadow block. The player is very plausibly slot 4 (`$C244`/`$C245` =
 `$C200+4*16+4/+5` exactly) -- but no code was found that explicitly
 allocates/positions the player through this same path (see section 4).
 
-### 4. Room connectivity and player spawn position -- UPDATED 2026-08-16, no longer both "genuinely not a static table"
+### 4. Room connectivity and player spawn position -- BOTH CLOSED 2026-08-16 for wipe-style cut transitions
 
 **SUPERSEDED, this section's own original 2026-08-13 conclusion below
-kept for history.** Two later real passes (2026-08-14: found the real
-`$11B7`/opcode-`0xF4` tile-to-pixel mechanism for exactly 2 live-traced
-transitions; 2026-08-16, direct instruction "then do those blockers...
-if one strategy does not work try another one": found the real,
-GENERAL, 186-record landing table this mechanism reads from, via a
-live hardware watchpoint on `$C244`/`$C245` -- the exact blind spot
-the original static literal-address search below could never cover,
-since the real write is INDIRECT, `LD (HL),D`/`LD (HL),E`, not a
-literal `LD (nn),A`) decisively changed the player-spawn-position half
-of this conclusion:
+kept for history.** Three later real passes -- 2026-08-14 (found the
+real `$11B7`/opcode-`0xF4` tile-to-pixel mechanism for exactly 2
+live-traced transitions); 2026-08-16 pass 1 (direct instruction "then
+do those blockers... if one strategy does not work try another one":
+found the real, GENERAL, 186-record landing table this mechanism reads
+from, via a live hardware watchpoint on `$C244`/`$C245` -- the exact
+blind spot the original static literal-address search below could
+never cover, since the real write is INDIRECT, `LD (HL),D`/
+`LD (HL),E`, not a literal `LD (nn),A`); 2026-08-16 pass 2 (same
+instruction, direct continuation after the user chose to keep tracing
+connectivity live rather than stop) -- decisively closed BOTH halves
+of this conclusion, not just the landing-position one:
 
 - **Player spawn/landing position: RESOLVED as a real, general,
   decoded ROM table for wipe-style cut transitions.** See
   `src/import/CutTransitionTable.lua`'s own doc comment for the full
   derivation and `tests/import/cut_transition_table_test.lua` for the
-  byte-exact regression. 186 real records (`00 05 F4 A1 A2 tileCol
-  tileRow 00 0B`), bank 14 exclusive, zero false positives anywhere
-  else in the ROM, cross-validated exactly against both already-known
-  live-traced examples. The 3 OTHER already-recorded `landingX`/
-  `landingY` pairs (startRoom, willyRoom's own exit, sixthRoom) do NOT
-  appear in this table -- a real, CONSISTENT confirmation, not a gap:
-  all 3 are independently already known to be non-CUT mechanisms
-  (initial spawn; a SCROLL-type transition; a continuous, non-single-
-  cut hardware scroll).
-- **Room connectivity (which exit leads to which target room): STILL
-  genuinely open, but with a real, promising, unconfirmed lead.** An
-  adjacent, structurally similar record (`00 08 C5 idx F4 a b 09 0C EC
-  00 0B`, 36 real matches, also bank-14-exclusive) has an `idx`
-  operand ranging 0-15 -- exactly `roomSelectorTable`'s own real
-  16-entry index range -- a strong structural candidate for the real
-  connectivity key, but NOT live-cross-validated against a real
-  transition this pass (would need the same live-tracing effort each
-  of the 2 known landing examples took). The underlying mechanism
-  (section 1's own `$026DC`, called from this same bank-14 script
-  region via `$4395`'s nibble-split `BC`) is unchanged and still real.
+  byte-exact regression. 186 real records (`00 05 F4 roomSelector
+  subIndexByte tileCol tileRow 00 0B`), bank 14 exclusive, zero false
+  positives anywhere else in the ROM, cross-validated exactly against
+  both already-known live-traced examples. The 3 OTHER already-
+  recorded `landingX`/`landingY` pairs (startRoom, willyRoom's own
+  exit, sixthRoom) do NOT appear in this table -- a real, CONSISTENT
+  confirmation, not a gap: all 3 are independently already known to be
+  non-CUT mechanisms (initial spawn; a SCROLL-type transition; a
+  continuous, non-single-cut hardware scroll).
+- **Room connectivity (which exit leads to which target room):
+  RESOLVED -- the SAME record's own first operand byte IS the real
+  target `roomSelectorTable` index.** Live-traced the real `$4395`
+  (`CALL $026DC`) call site for thirdRoom->fourthRoom directly:
+  `A=0x1` at that exact real moment, fed completely unmodified into
+  `$026DC`'s own real `A` argument (already known, section 1, to be
+  the table index) -- and `1` is one of fourthRoom's own 2 candidate
+  `romRoomSelectors` (`{0,1}`), resolving that room's own long-standing
+  ambiguity as a real bonus (`rom_profiles.lua`'s own
+  `romRoomSelectorConfirmed=1`, new this pass). Statistically decisive
+  too: this "roomSelector" field ranges EXACTLY `1`-`15` across ALL
+  186 real records, zero gaps, zero out-of-range values -- matching
+  `roomSelectorTable`'s own real 16-entry index space precisely (no
+  record targets `0`, plausibly because index `0` is `startRoom`'s own
+  initial spawn, never a real CUT target). An earlier, SAME-DAY
+  hypothesis that a different, structurally similar sibling record
+  (`scanSelectorRecords`, `idx` also ranging 0-15) was the real
+  connectivity key turned out to be a coincidence, not the mechanism --
+  reported and corrected in place, not silently dropped; that record
+  type's own real meaning stays genuinely undecoded.
 
 **ORIGINAL 2026-08-13 conclusion (superseded above, kept for the
 historical record)**: Two real questions were pursued exhaustively

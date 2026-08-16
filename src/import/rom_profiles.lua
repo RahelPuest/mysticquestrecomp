@@ -1847,6 +1847,20 @@ RomProfiles.PROFILES = {
         -- reasoning -- an honest, unreconciled structural note, not
         -- silently resolved either way.
         romRoomSelectors = { 0, 1 },
+        -- RESOLVED (2026-08-16, task "komplett autark
+        -- interpretiert"/blocker resolution): live-traced the real
+        -- thirdRoom->fourthRoom transition's own `$4395` (`CALL
+        -- $026DC`) call site directly -- `A=0x1` at that exact real
+        -- moment, and `$026DC`'s own `A` argument IS the real target
+        -- `roomSelectorTable` index, unmodified (see
+        -- `CutTransitionTable.lua`'s own doc comment for the full
+        -- derivation). **fourthRoom's own real roomSelector is `1`**,
+        -- not `0` -- resolving the "0 or 1" ambiguity above for good
+        -- (plausibly meaning `startRoom` below, sharing the same
+        -- `{0,1}` candidate pair, is `0` -- a reasonable inference,
+        -- NOT itself separately live-confirmed, so left as `{0,1}`
+        -- there rather than asserted).
+        romRoomSelectorConfirmed = 1,
         cols = 20,
         rows = 16,
         tileOffsets = {

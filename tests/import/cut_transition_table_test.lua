@@ -6,6 +6,7 @@ Harness.test("CutTransitionTable.scanLandingRecords: finds a synthetic real-shap
   local rom = string.rep("\0", 5) .. "\x00\x05\xF4\x01\x57\x0E\x0C\x00\x0B" .. string.rep("\0", 5)
   local records = CutTransitionTable.scanLandingRecords(rom)
   Harness.assertEqual(#records, 1)
+  Harness.assertEqual(records[1].roomSelector, 1)
   Harness.assertEqual(records[1].tileCol, 14)
   Harness.assertEqual(records[1].tileRow, 12)
   Harness.assertEqual(records[1].pixelX, 120)
@@ -33,10 +34,12 @@ Harness.testIfAvailable(
       Harness.assertEqual(r.bank, 14)
     end
 
-    -- thirdRoom -> fourthRoom: real, live-traced landing (120,112).
+    -- thirdRoom -> fourthRoom: real, live-traced landing (120,112),
+    -- roomSelector=1 (live-confirmed at the real $4395 CALL $026DC
+    -- site -- see this module's own doc comment).
     local foundThirdToFourth = false
     for _, r in ipairs(records) do
-      if r.pixelX == 120 and r.pixelY == 112 and r.a1 == 1 and r.a2 == 87 then
+      if r.pixelX == 120 and r.pixelY == 112 and r.roomSelector == 1 and r.subIndexByte == 87 then
         Harness.assertEqual(r.tileCol, 14)
         Harness.assertEqual(r.tileRow, 12)
         foundThirdToFourth = true
@@ -47,7 +50,7 @@ Harness.testIfAvailable(
     -- fourthRoom -> fifthRoom: real, live-traced landing (136,32).
     local foundFourthToFifth = false
     for _, r in ipairs(records) do
-      if r.pixelX == 136 and r.pixelY == 32 and r.a1 == 4 and r.a2 == 80 then
+      if r.pixelX == 136 and r.pixelY == 32 and r.roomSelector == 4 and r.subIndexByte == 80 then
         foundFourthToFifth = true
       end
     end
@@ -56,7 +59,27 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "CutTransitionTable.scanSelectorRecords: real ROM has 36 real records, idx values fall inside roomSelectorTable's own real 0-15 range",
+  "CutTransitionTable.scanLandingRecords: roomSelector spans exactly the real roomSelectorTable's own 0-15 index range, zero gaps",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local records = CutTransitionTable.scanLandingRecords(romData)
+    local minSel, maxSel = math.huge, -math.huge
+    for _, r in ipairs(records) do
+      Harness.assertTrue(r.roomSelector >= 0 and r.roomSelector <= 15,
+        "expected roomSelector inside the real 0-15 range, got " .. tostring(r.roomSelector))
+      minSel = math.min(minSel, r.roomSelector)
+      maxSel = math.max(maxSel, r.roomSelector)
+    end
+    -- Real, decoded distribution: 1-15 (no record ever targets 0 --
+    -- plausibly startRoom's own initial spawn, never a real CUT target).
+    Harness.assertEqual(minSel, 1)
+    Harness.assertEqual(maxSel, 15)
+  end
+)
+
+Harness.testIfAvailable(
+  "CutTransitionTable.scanSelectorRecords: real ROM has 36 real records (a distinct, still-undecoded sibling record type)",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -64,7 +87,7 @@ Harness.testIfAvailable(
     Harness.assertEqual(#records, 36)
     for _, r in ipairs(records) do
       Harness.assertEqual(r.bank, 14)
-      Harness.assertTrue(r.idx >= 0 and r.idx <= 15, "expected idx inside the real 0-15 roomSelector range")
+      Harness.assertTrue(r.idx >= 0 and r.idx <= 15, "expected idx inside the real 0-15 range")
     end
   end
 )
