@@ -7835,3 +7835,62 @@ caught one real self-correction (`bank9_creature_columns`'s own
 watchpoint follow-up), both documented with the SAME honest "lead
 generator, not proof" scoping every other heuristic tool in this
 project already carries.
+
+## Same-day follow-up: applying task #160's findings to existing open questions
+
+Direct user question: "ok können wir damit vorher bestehende questions
+lösen?" (can we solve previously-existing open questions with this).
+Checked every entry in `OPEN_QUESTIONS`
+(`rom-inspector/js/data/open-questions.js`) for a real connection to
+the newly-disassembled graphics-loading mechanism. Two real hits:
+
+**1. `$C8E0`/`$CEE8` dual gate now has a concrete real-world meaning.**
+The big "opcode 0x04's real $38F6 control-code table" open question
+already names `$C8E0`/`$CEE8` as something script opcodes `0xFC`/`0xFD`
+and `$1ED7` selector 0x10's phases 1/3 wait on, WITHOUT knowing what
+they represent. Task #160 answered that: `$C8E0` is the real queue
+depth of the tile-streaming DMA system disassembled above -- those
+opcodes are literally pausing script execution until pending ROM->VRAM
+graphics transfers finish. This doesn't close the remaining open part
+of that entry (which sub-call inside phase 2/4 performs the missing
+`$3727` fetch), but replaces "an opaque gate" with "a gate on a fully
+understood real subsystem" -- real, useful context for whoever
+continues that trace.
+
+**2. Task #81 (cross-bank CHAIN mystery): genuine new progress, still
+not closed.** Checked directly whether `CHAIN`'s own real handler
+(`$32FE`, `ScriptOpcodeTable.CHAIN_HANDLER_ADDRESS`) uses the SAME
+`$2100`-write convention the graphics loader does. It doesn't call
+`$2DF5`/the tile queue at all -- but disassembling it found something
+else real and substantial: a previously-undocumented, general-purpose
+**bank call-stack** primitive, used at ~35 real sites across bank 0:
+- `$29FB` (push+switch): takes a bank number in `A`, pushes it onto a
+  WRAM array at `$C000+` (indexed via HRAM `$FF8A`, incremented here),
+  then switches to it via the real `$2100` MBC2 convention.
+- `$2A0A` (pop+switch): decrements the `$FF8A` index, reads the NEW
+  top-of-stack bank, and switches to IT via `$2100` -- "return to the
+  bank active before the last push."
+- `$2A17` (peek): reads the current top-of-stack bank without
+  modifying anything -- this is the SAME routine task #160's own tile-
+  DMA consumer (`$2DD3`) calls right before restoring its own bank
+  after a transfer completes, tying this bank-stack primitive directly
+  to the already-disassembled graphics loader.
+
+`CHAIN`'s own handler (and a sibling block at `$32CF`-`$32E2` sharing
+the identical "commit new cursor to `$D8B6`/`$D8B7`, then `CALL
+$2A0A`, then `CALL $3C4F`, then `CALL $3727` release" shape) DOES call
+the POP+switch variant as a standard part of committing its new
+cursor -- a real, previously totally unknown fact about CHAIN's actual
+execution. This narrows task #81 from "no bank-switch mechanism found
+at all" to "a real, general bank-stack mechanism exists and CHAIN
+provably touches it" -- but does NOT yet prove it resolves the 7
+specific real cross-bank CHAIN targets correctly (no matching `$29FB`
+PUSH site was traced back to a script-entry point, and no live trace
+of one of the actual 7 problem scripts hitting this code was run this
+pass). Correctly left OPEN rather than declared solved -- the next
+concrete step is a live `$2100`-write watchpoint across one of the 7
+real scripts' own CHAIN execution, not more static reading.
+
+Both findings folded into `OPEN_QUESTIONS`
+(`rom-inspector/js/data/open-questions.js`) with dated updates, not as
+new separate entries where an existing one already covered the topic.

@@ -1741,6 +1741,24 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   structured data, not pixel art; the candidate's own note corrected,
   not silently left standing. 487/487 tests still pass (docs +
   GraphicsCandidates.lua note change only, no code-behavior change).
+- **2026-08-16, same-day follow-up, applying task #160 to existing
+  open questions ("können wir damit vorher bestehende questions
+  lösen?")**: checked every `OPEN_QUESTIONS` entry against the new
+  graphics-loading finding. Two real hits, both folded into existing
+  entries (not new ones): (1) the `$C8E0`/`$CEE8` dual gate the
+  opcode-0x04/`$1ED7` selector-0x10 investigation already named now
+  has a concrete meaning -- it's the tile-streaming DMA's own queue
+  depth, so those gates are provably waiting for pending graphics
+  transfers, not an opaque flag. (2) Task #81 (cross-bank CHAIN
+  mystery) got genuine new progress: disassembling `CHAIN`'s own
+  handler ($32FE) found a previously-undocumented, general bank
+  call-stack primitive (`$29FB` push, `$2A0A` pop, `$2A17` peek --
+  ~35 real call sites) that CHAIN provably calls (the pop variant) as
+  part of committing its new cursor -- narrowed from "no mechanism
+  found" to "a real mechanism exists and CHAIN touches it," but NOT
+  proven to correctly resolve the actual 7 cross-bank targets (needs a
+  live `$2100`-write trace next, honestly left open). 487/487 tests
+  still pass (docs + open-questions.js text only).
 
 ## Superseded by this file
 
