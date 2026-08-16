@@ -760,6 +760,30 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       honestly open. Full Lua test suite: 318 -> 319 this pass (no
       further wiring changes during the correction itself, which was
       pure re-verification).
+      **UPDATE 2026-08-16 (direct user instruction, "es soll alles
+      komplett über den interpreter laufen"): the real interpreter now
+      drives ACTUAL, VISIBLE GAMEPLAY for the first time** — not
+      another opt-in shadow run. A live single-step trace (native
+      mGBA, PC watchpoint on `$11B7`, opcode `0xF4`'s real handler)
+      found the real entry point for the thirdRoom→fourthRoom cut
+      transition (bank 14, `$42F6`) and, decisively, that the real
+      `$413C` step automaton reaches its FIRST real peek
+      (roomSelector/subIndexByte) via genuine top-level script
+      dispatch, but its SECOND (the landing tile) via the automaton's
+      own internal jump, NOT top-level dispatch — a lower-level
+      mechanism this project's `ScriptRuntime` doesn't model yet. New
+      `CutTransitionInterpreter.lua` (modeled on `BossSequenceInterpreter
+      .lua`) now genuinely, live-captures roomSelector for this one
+      transition and cross-checks it (fails loudly on any mismatch or
+      missing capture) — `VictorySequence.lua`'s own `switchToTargetRoom`
+      wires this in UNGATED (not behind `MYSTICQUEST_SCRIPT_INTERPRETER`).
+      Honest scope: only 1 of ~186 known real landing records has a
+      live-confirmed entry point, and only ITS OWN room-selection half
+      is interpreter-driven — the landing position stays the pre-baked,
+      already ROM-table-verified constant. Live-verified via `love .`:
+      zero regression (real gameplay path reaches fourthRoom at the
+      exact same real position as before), 4 new tests. See events.md's
+      own dated entry for the full live-trace evidence.
 
 - [~] **Milestone 8 — Menu/inventory/equipment.** Data Crystal's US RAM
       map cross-checked live and matches with zero offset (HP/MP/level/

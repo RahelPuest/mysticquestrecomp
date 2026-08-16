@@ -78,6 +78,34 @@
 -- hand-authored cutscene/room-graph machinery above stays 100% unchanged
 -- and fully in control of real gameplay.
 --
+-- REAL interpreter, UNGATED and DRIVING ACTUAL GAMEPLAY, for the FIRST
+-- time (2026-08-16, direct user instruction "es soll alles komplett
+-- über den interpreter laufen" -- see `CutTransitionInterpreter.lua`'s
+-- own doc comment for the full live-trace evidence this is built on).
+-- `thirdRoom.exits[1]` (the fourthRoom staircase cut) now carries a
+-- real `scriptEntry` field; `beginTransition`/`switchToTargetRoom`
+-- build and tick a real `CutTransitionInterpreter` (NOT behind
+-- `MYSTICQUEST_SCRIPT_INTERPRETER` -- this is the direct answer to
+-- "alles komplett", not another opt-in shadow run) whenever an exit
+-- has one. HONEST, DELIBERATELY NARROW SCOPE: a live single-step trace
+-- found the real ROM's own `$413C` step automaton reaches its first
+-- real peek (`roomSelector`/`subIndexByte`) via genuine top-level
+-- script dispatch, but reaches its SECOND real peek (the landing tile)
+-- via the automaton's own internal jump, NOT top-level dispatch -- a
+-- lower-level mechanism this project's `ScriptRuntime` doesn't model
+-- yet. So `roomSelector` really is now live-captured from real ROM
+-- execution and cross-checked (`switchToTargetRoom` fails loudly on a
+-- mismatch, or if the interpreter never captured anything at all) --
+-- but `landingX`/`landingY`/`targetRoom` stay the pre-baked,
+-- already-independently-ROM-table-verified constants, honestly
+-- labeled as such at the call site. Only this ONE transition (of ~186
+-- real known `CutTransitionTable` records, 82 genuinely distinct)
+-- has a live-confirmed entry point -- every other exit, including
+-- every scroll transition (genuinely NOT script-driven in the real
+-- ROM -- pure hardware scrolling) and fourthRoom's own fifthRoom cut
+-- (not yet separately live-traced), is completely unaffected, still
+-- 100% hand-authored, by design, not oversight.
+--
 -- REWRITTEN 2026-08-15 (task "ScriptInterpreter soll wirklich treiben,
 -- nicht nur parallel beobachten" -- direct continuation of this
 -- project's own quick-wins list, item 1): the ORIGINAL version of this
@@ -175,6 +203,7 @@ local RoomFloorLayout = require("src.import.RoomFloorLayout")
 local ZoneMatch = require("src.entities.ZoneMatch")
 local HoldTrigger = require("src.entities.HoldTrigger")
 local RoomWipeTransition = require("src.entities.RoomWipeTransition")
+local CutTransitionInterpreter = require("src.scripting.CutTransitionInterpreter")
 local NpcProximity = require("src.entities.NpcProximity")
 local NpcWander = require("src.entities.NpcWander")
 local TextDecoder = require("src.import.TextDecoder")
@@ -1137,6 +1166,16 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     end
     assert(foundExit, "MYSTICQUEST_VICTORY_START_ROOM: no real exit targets room '" ..
       debugStartRoom .. "' -- check the room key against rom_profiles.lua's own graphics table")
+    -- 2026-08-16: `switchToTargetRoom` now requires a real,
+    -- already-ticked `CutTransitionInterpreter` for any exit carrying
+    -- `scriptEntry` (see that method's own doc comment) -- build and
+    -- run one here too, same as `beginTransition` does for the real
+    -- gameplay path, so this dev teleport shortcut keeps working
+    -- (and genuinely exercises the real interpreter, not a bypass).
+    if foundExit.scriptEntry then
+      self.cutTransitionInterpreter = CutTransitionInterpreter.new(self.romData, foundExit.scriptEntry.transitionKey, {})
+      self.cutTransitionInterpreter:tick()
+    end
     self:switchToTargetRoom(foundExit)
     self.phase = "interactive"
   end
@@ -1417,6 +1456,17 @@ function VictorySequence:beginTransition(exit)
     self.doorOpened = true
   end
   self.pendingExit = exit
+  -- REAL interpreter-driven room-selector capture (2026-08-16, direct
+  -- user instruction "es soll alles komplett über den interpreter
+  -- laufen" -- see `CutTransitionInterpreter.lua`'s own doc comment
+  -- and `rom_profiles.lua`'s own `scriptEntry` doc comment for the
+  -- full live-trace evidence and honest scope). Only built when this
+  -- specific exit has a real, live-confirmed entry point -- every
+  -- other exit (including every scroll transition, which is genuinely
+  -- NOT script-driven in the real ROM) is completely unaffected.
+  if exit.scriptEntry then
+    self.cutTransitionInterpreter = CutTransitionInterpreter.new(self.romData, exit.scriptEntry.transitionKey, {})
+  end
   if exit.transition.type == "cut" then
     self.phase = "cutClosing"
     self.cutFrame = 0
@@ -1435,6 +1485,40 @@ end
 -- only once the closing wipe has fully covered the screen for a cut,
 -- matching the real ROM's own room-pointer commit timing).
 function VictorySequence:switchToTargetRoom(exit)
+  -- REAL interpreter cross-check (2026-08-16, see `beginTransition`'s
+  -- own doc comment above and `CutTransitionInterpreter.lua`'s own doc
+  -- comment for the full evidence). By the time this runs (only once
+  -- `RoomWipeTransition.CLOSE_FRAMES` real frames have passed, per
+  -- `update`'s own `"cutClosing"` handling), the real interpreter has
+  -- had ample opportunity to reach its own real, live-confirmed peek
+  -- (observed live in a single real tick) -- if it somehow hasn't,
+  -- that's a real, honest gap worth failing loudly on rather than
+  -- silently proceeding as if the interpreter path didn't exist.
+  -- HONEST SCOPE: only `roomSelector` is interpreter-CAPTURED and
+  -- cross-checked here -- `targetRoom` itself stays the hand-authored
+  -- Lua room key (see `rom_profiles.lua`'s own `scriptEntry` doc
+  -- comment for why: `CutTransitionTable.FAMILY_BY_ROOM_SELECTOR` is
+  -- deliberately coarse, not an injective selector->room-key map), and
+  -- `landingX`/`landingY` stay the pre-baked, already ROM-table-
+  -- verified constants (the landing-tile peek is real but reached via
+  -- the `$413C` automaton's own internal jump, not top-level dispatch
+  -- -- this project's interpreter does not yet model that).
+  if exit.scriptEntry then
+    local interp = self.cutTransitionInterpreter
+    assert(interp, "VictorySequence:switchToTargetRoom: exit.scriptEntry is set but no " ..
+      "CutTransitionInterpreter was built in beginTransition -- a real bug, not a ROM gap")
+    local captured = interp:capturedRoomSelector()
+    assert(captured ~= nil, ("VictorySequence:switchToTargetRoom: the real interpreter " ..
+      "(bank %d, started at cpuAddress 0x%x) never captured a roomSelector after %d real " ..
+      "cutClosing frames -- refusing to silently fall back to the pre-baked constant"):format(
+      interp.bank, CutTransitionInterpreter.ENTRY_POINTS[exit.scriptEntry.transitionKey].cpuAddress,
+      RoomWipeTransition.CLOSE_FRAMES))
+    assert(captured == exit.romRoomSelector, ("VictorySequence:switchToTargetRoom: the real, " ..
+      "live-captured roomSelector (%d) does not match rom_profiles.lua's own recorded " ..
+      "romRoomSelector (%d) for this exit -- a real discrepancy, not a value to paper over"):format(
+      captured, exit.romRoomSelector))
+    self.cutTransitionInterpreter = nil
+  end
   self.currentRoomKey = exit.targetRoom
   self:ensureRoomLoaded(self.currentRoomKey)
   if self.player then
@@ -1643,6 +1727,15 @@ function VictorySequence:update(dt)
   -- matching the real ROM's own room-pointer commit happening while
   -- the screen is fully wiped, not before or after.
   if self.phase == "cutClosing" then
+    -- REAL interpreter tick, unconditional on how far the wipe has
+    -- progressed (same "unconditional per real frame" pattern the
+    -- boss-sequence shadow run above already uses) -- see
+    -- `beginTransition`'s own doc comment. A no-op when this exit has
+    -- no `scriptEntry` (every transition except thirdRoom->fourthRoom,
+    -- for now).
+    if self.cutTransitionInterpreter then
+      self.cutTransitionInterpreter:tick()
+    end
     self.cutFrame = self.cutFrame + 1
     if self.cutFrame >= RoomWipeTransition.CLOSE_FRAMES then
       self:switchToTargetRoom(self.pendingExit)
@@ -1766,6 +1859,12 @@ function VictorySequence:debugState()
     secondBossAlive = self.secondBoss and self.secondBoss:isAlive(),
     secondBossHp = self.secondBoss and self.secondBoss.stats.curLP,
     secondBossDefeated = self.secondBossDefeated,
+    -- ADDED (2026-08-16, real interpreter-driven cut transitions --
+    -- see `CutTransitionInterpreter.lua`'s own doc comment) -- nil
+    -- whenever no interpreter-backed transition is in flight.
+    cutTransitionCapturedRoomSelector = self.cutTransitionInterpreter and
+      self.cutTransitionInterpreter:capturedRoomSelector(),
+    cutTransitionInterpreterDone = self.cutTransitionInterpreter and self.cutTransitionInterpreter.done,
   }
 end
 

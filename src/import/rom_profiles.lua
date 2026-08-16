@@ -1802,6 +1802,33 @@ RomProfiles.PROFILES = {
             -- `(12+2)*8=112` -- exact match, confirming this project's
             -- own real tile-to-pixel formula (`TileLandingPosition
             -- .lua`) end to end.
+            --
+            -- INTERPRETER-DRIVEN, real ROM bytecode (2026-08-16, direct
+            -- user instruction "es soll alles komplett über den
+            -- interpreter laufen"): a live single-step trace (native
+            -- mGBA, PC watchpoint on `$11B7`, opcode `0xF4`'s real
+            -- handler) found this transition's own real entry point --
+            -- bank 14, CPU `$42F6` (file `0x382F6`, the `0xF4` byte
+            -- itself, immediately before the already-known landing
+            -- record's own `A1`/`A2` bytes at file `0x382F7`) -- reached
+            -- via genuine TOP-LEVEL script dispatch (74 real hits across
+            -- the transition, all bank 14). `roomSelector`/
+            -- `subIndexByte` (below) are now LIVE-CAPTURED by
+            -- `CutTransitionInterpreter` at this exact real ROM address,
+            -- not just read from the static table -- see that module's
+            -- own doc comment for the full trace and the honest limit
+            -- (only this ONE peek is reached via top-level dispatch; the
+            -- landing-tile peek is reached via the real `$413C` step
+            -- automaton's own internal jump, NOT top-level dispatch, so
+            -- `landingX`/`landingY` above stay the pre-baked, already
+            -- ROM-table-verified constants -- not yet interpreter-
+            -- captured).
+            scriptEntry = {
+              bank = 14,
+              cpuAddress = 0x42F6,
+              transitionKey = "thirdRoomToFourthRoom",
+            },
+            romRoomSelector = 1, -- live-captured cross-check target, see VictorySequence.lua's own switchToTargetRoom
           },
         },
       },
