@@ -755,6 +755,18 @@ end
 -- Once BOTH clear, resets the latch (`getLatch()` returns `false`
 -- again) and continues normally.
 --
+-- `$C8E0` CRACKED 2026-08-16 (task #160, live mGBA read-watchpoints
+-- during real combat + full disassembly of bank 0 `$2D57`-`$2E31`,
+-- see `rom-map.md`'s "the real graphics-loading mechanism" section):
+-- it's the real queue depth of a ROM->VRAM tile-streaming DMA system
+-- -- this gate is the real ROM genuinely waiting for pending graphics
+-- tile transfers to finish before letting the script continue. This
+-- project's own `isGateClear` still correctly defaults to "always
+-- ready" (see the HONEST SCOPE note below) -- knowing WHAT the real
+-- ROM waits for doesn't change that this project's rendering has no
+-- VRAM-transfer latency to wait for in the first place; the value is
+-- purely documentary. `$CEE8`'s own real meaning is still untraced.
+--
 -- HONEST SCOPE, NARROWED (2026-08-13): a live trace of the real post-
 -- boss sequence caught a genuine, real `0xFC` dispatch consuming its
 -- own operand byte and landing DIRECTLY on the very next real opcode
@@ -816,7 +828,10 @@ end
 -- real instructions, byte-for-byte, are the EXACT SAME dual-WRAM gate
 -- (`$C8E0`/`$CEE8`, `RET NZ` on either) already modeled by
 -- `.oneShotTriggerGate` for opcodes `0xFC`/`0xFD` -- confirmed by
--- direct comparison, not assumed to match. Once BOTH real gates clear,
+-- direct comparison, not assumed to match (see that handler's own doc
+-- comment for `$C8E0`'s now-CRACKED real meaning, task #160: the real
+-- ROM->VRAM tile-streaming DMA queue's own depth counter). Once BOTH
+-- real gates clear,
 -- the real leaf goes on to do the real VRAM tile-pattern update itself
 -- (branching on the opcode's own literal `case` parameter, `4` for
 -- `0xE8` vs `8` for `0xE9`, real bytes `0x0F5A`/`$0F71`).
@@ -2022,9 +2037,11 @@ end
 -- shadow counters" precedent as `0xFB`/`0xBF`).
 -- `isDualGateClear`: the real `$C8E0`/`$CEE8` dual gate phases 1 and 3
 -- both check -- pass `ctx.isTriggerEventGateClear` directly (the SAME
--- real WRAM cells `0xFC`/`0xFD`/`0xE8`-`0xEB` already model); optional,
--- defaults to "always clear" like every other real consumer of this
--- gate in this project.
+-- real WRAM cells `0xFC`/`0xFD`/`0xE8`-`0xEB` already model, see
+-- `.oneShotTriggerGate`'s own doc comment for `$C8E0`'s now-CRACKED
+-- real meaning -- task #160's ROM->VRAM tile-streaming DMA queue);
+-- optional, defaults to "always clear" like every other real consumer
+-- of this gate in this project.
 -- `onPhase(phase)`: optional observer, fires on EVERY real call
 -- (including repeated halts) with the CURRENT phase number (0-5) --
 -- lets a future caller drive phase 2/4's own real (currently

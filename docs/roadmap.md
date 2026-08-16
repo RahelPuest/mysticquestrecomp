@@ -1759,6 +1759,38 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   proven to correctly resolve the actual 7 cross-bank targets (needs a
   live `$2100`-write trace next, honestly left open). 487/487 tests
   still pass (docs + open-questions.js text only).
+- **2026-08-16, task #161, consolidate task #160 into the interpreted
+  app + website ("bitet das wissen konsolidieren, dokumentieren,
+  cleanen, und in interpretierte app und website einbauen")**: no
+  runtime behavior change (this project's own rendering has no VRAM-
+  transfer-latency concept to model, so the existing "always ready"
+  gate defaults stay correct) -- pure documentation + tooling
+  consolidation. `rom-inspector/js/data/wram-map.js` (the "Speicherkarte"
+  page) gets 5 new/updated entries: `$C8E0`/`$CEE8` upgraded from
+  "opaque gate" to VERIFIED (the tile-DMA queue depth), plus new
+  entries for `$C5E0+` (the queue itself), `$C8E1` (its reentrancy
+  guard), HRAM `$FF8A` and `$C000+` (the bank call-stack). `src/
+  scripting/StandardScriptHandlers.lua`'s own `.oneShotTriggerGate`/
+  0xE8-0xE9 handler/`isDualGateClear` doc comments and `src/import/
+  ScriptOpcodeTable.lua`'s `CHAIN_HANDLER_ADDRESS` doc comment enriched
+  with the concrete real meaning, each explicitly noting the recomp's
+  own simplification stays correct. Cleanup: `tools/rom/
+  find_graphic_refs.py` and `watch_graphic_refs.py` had two silently-
+  divergible copies of the same 16-entry candidate list -- factored
+  into a new shared `graphics_candidates_addresses.py` (now also
+  carrying each candidate's real `tileCount`, enabling a proper
+  `resolve()`-by-range-containment). Fixed a real, previously-manual
+  bug in `watch_graphic_refs.py`'s own hit reporting: it used to label
+  a hit by whichever candidate's watch fired, not by which candidate
+  the real, active-bank-resolved file offset actually belongs to (the
+  exact confusion that required manual recomputation to catch the real
+  `bank9_icon_fragments` finding during task #160's own live run) --
+  now resolved automatically and correctly on every run. Re-verified:
+  487/487 tests pass, both Python tools re-run against the real ROM
+  with identical (find_graphic_refs) or now-auto-correct
+  (watch_graphic_refs) output, Playwright-verified the Speicherkarte
+  page renders all 5 new entries with zero HTML-escaping artifacts and
+  zero console errors.
 
 ## Superseded by this file
 

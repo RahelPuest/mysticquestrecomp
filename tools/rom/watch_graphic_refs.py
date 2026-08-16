@@ -24,6 +24,18 @@ Uses `Watcher` (watcher.py) -- `core.step()`-driven single-stepping
 with native mGBA watchpoints, the SAME primitive task #150's own
 concurrent-script investigation already used, per that doc comment
 in rom-map.md.
+
+IMPORTANT real gotcha, fixed 2026-08-16 during cleanup: a watched CPU
+address is bank-AMBIGUOUS -- the SAME address can genuinely be read
+while a DIFFERENT bank than the one the watch was armed for is
+active, and the byte actually read then belongs to whatever candidate
+(if any) REALLY owns that (activeBank, address) combination, not the
+one the watch happened to be labeled with. Every hit below is
+resolved via `graphics_candidates_addresses.resolve()` against the
+real (activeBank, address)-derived file offset, not the watch's own
+label -- this is exactly how task #160's own real find
+(`bank9_icon_fragments` genuinely being read, surfaced under a watch
+armed for `bank10_7900`) was actually made.
 """
 import os
 import sys
@@ -33,43 +45,19 @@ import mgba_env  # noqa: E402
 import checkpoints  # noqa: E402
 from watcher import Watcher, rom_offset  # noqa: E402
 from mgba._pylib import lib  # noqa: E402
-
-CANDIDATES = [
-    ("CONTROL_enemySprite", 11, 0x2FE00),
-    ("CONTROL_font", 8, 0x22B00),
-    ("bank10_7900", 10, 0x2B900),
-    ("bank10_6400", 10, 0x2A400),
-    ("bank10_6A20", 10, 0x2AA20),
-    ("bank10_6D90", 10, 0x2AD90),
-    ("bank11_5220", 11, 0x2D220),
-    ("bank8_portraits", 8, 0x22260),
-    ("bank8_icon_fragments", 8, 0x22EE0),
-    ("bank9_creature_columns", 9, 0x24400),
-    ("bank9_icon_fragments", 9, 0x27000),
-    ("bank11_creatures_a", 11, 0x2C400),
-    ("bank11_creatures_b", 11, 0x2D180),
-    ("bank11_creatures_c", 11, 0x2DF00),
-    ("bank11_creatures_d", 11, 0x2EC80),
-    ("bank12_environment_b", 12, 0x31000),
-]
-
-
-def to_cpu(file_offset):
-    return 0x4000 + (file_offset % 0x4000)
+from graphics_candidates_addresses import CANDIDATES, to_cpu, resolve  # noqa: E402
 
 
 def main():
     steps_budget = int(sys.argv[1]) if len(sys.argv) > 1 else 300000
-    print(f"Reaching courtyard_enemy_engaged() (real, active-combat state)...")
+    print("Reaching courtyard_enemy_engaged() (real, active-combat state)...")
     s = checkpoints.courtyard_enemy_engaged()
     core = s.core
 
     w = Watcher(core)
-    addr_to_name = {}
-    for name, bank, file_offset in CANDIDATES:
+    for name, bank, file_offset, _tile_count in CANDIDATES:
         cpu = to_cpu(file_offset)
         w.watch(cpu, kind=lib.WATCHPOINT_READ)
-        addr_to_name.setdefault(cpu, []).append((name, bank))
         print(f"  armed READ watch: {name}  bank={bank}  cpu={cpu:#06x}")
 
     print(f"\nSingle-stepping up to {steps_budget} real SM83 instructions "
@@ -93,12 +81,20 @@ def main():
         if hit:
             pc = cpu_iface.pc
             addr = w.last_hit.get("address")
-            names = addr_to_name.get(addr, [("?", "?")])
-            off = rom_offset(core, pc)
-            hits.append((i, addr, names, pc, off, core._native.memory.currentBank))
-            print(f"  HIT at step {i}: watched addr {addr:#06x} ({names}) "
-                  f"read from PC={pc:#06x} (file {off if off is not None else '?'}) "
-                  f"activeBank={core._native.memory.currentBank}")
+            active_bank = core._native.memory.currentBank
+            # The real file offset the CPU actually read from, given
+            # which bank was genuinely active at hit time -- NOT
+            # whichever candidate the watch happened to be armed for.
+            real_file_offset = active_bank * 0x4000 + (addr - 0x4000) if addr >= 0x4000 else None
+            resolved = resolve(real_file_offset) if real_file_offset is not None else None
+            resolved_name = resolved[0] if resolved else "(no known candidate -- real find, or noise)"
+            pc_file_offset = rom_offset(core, pc)
+            hits.append((i, addr, resolved_name, pc, pc_file_offset, active_bank))
+            real_offset_str = f"{real_file_offset:#07x}" if real_file_offset is not None else "?"
+            pc_offset_str = f"{pc_file_offset:#07x}" if pc_file_offset is not None else "?"
+            print(f"  HIT at step {i}: watched addr {addr:#06x}, activeBank={active_bank} "
+                  f"-> real file offset {real_offset_str} = {resolved_name}, "
+                  f"read from PC={pc:#06x} (file {pc_offset_str})")
     print(f"\nDone. {len(hits)} total hits across {i} steps.")
     if not hits:
         print("NO hits for ANY candidate, including the 2 positive controls "

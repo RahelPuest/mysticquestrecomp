@@ -51,9 +51,21 @@ const WRAM_MAP = [
   },
   {
     address: "$C8E0 / $CEE8",
-    name: "Dual trigger-event gate",
-    status: "PARTIALLY VERIFIED",
-    description: "Both cells checked together by opcodes 0xFC/0xFD (one-shot) and 0xE8/0xE9 (repeating leaf). Exact real-world meaning of the gate condition itself not pinned down -- only the mechanism is traced."
+    name: "Dual trigger-event gate -- $C8E0 CRACKED 2026-08-16 (task #160)",
+    status: "VERIFIED ($C8E0's own real meaning); $CEE8 still PARTIALLY VERIFIED",
+    description: "Both cells checked together by opcodes 0xFC/0xFD (one-shot), 0xE8/0xE9 (repeating leaf), and $1ED7 selector 0x10's phases 1/3. $C8E0 is now fully understood, found via live mGBA read-watchpoints during real combat: it's the real queue depth of a ROM-to-VRAM tile-streaming DMA system (see the new '$C5E0 tile-transfer queue' entry below and rom-map.md's own 'the real graphics-loading mechanism' section for the full disassembly) -- these opcodes are literally waiting for pending graphics transfers to finish, not an opaque flag. $CEE8's own real meaning (a separate, still-unconfirmed cell) remains untraced."
+  },
+  {
+    address: "$C5E0+",
+    name: "Real ROM->VRAM tile-transfer work queue",
+    status: "VERIFIED",
+    description: "FOUND 2026-08-16 (task #160, live mGBA read-watchpoints + full disassembly of bank 0 $2D57-$2E31). 6 bytes/entry: {bankByte, pad, destAddrLo, destAddrHi, srcAddrLo, srcAddrHi}. Producer entries $2DF5 (append) and $2E45 (insert-at-front, found but genuinely never called anywhere in the ROM -- real dead code) take HL=source ROM address, DE=destination VRAM address, A=bank number. Consumer entry $2D57 (called every real VBlank, the ONLY static caller found, at $71) drains up to a real scanline-time-budgeted number of 16-byte tiles per call, switching the MBC2 bank per queue entry via the real $2100 convention before each unrolled copy loop. $C8E0 (see above) is this queue's own real depth counter."
+  },
+  {
+    address: "$C8E1",
+    name: "Tile-transfer-queue reentrancy guard",
+    status: "VERIFIED",
+    description: "FOUND 2026-08-16 (task #160), same disassembly as $C5E0 above. A transient busy flag (0=free, briefly 1=busy) guarding both the enqueue ($2DF5/$2E45) and dequeue ($2D57) entry points against real re-entrant calls -- distinct from $C8E0 (the queue depth) and from $CEE8 (a separate, unrelated cell the script-level gate opcodes also check)."
   },
   {
     address: "$D3A0",
@@ -149,7 +161,19 @@ const WRAM_MAP = [
     address: "$D8B6 / $D8B7",
     name: "Persistent cross-call script cursor cache",
     status: "VERIFIED",
-    description: "The real ROM's own mirror of the interpreter's HL cursor between ticks -- this project's own ScriptRuntime just threads the cursor explicitly instead of storing it in WRAM."
+    description: "The real ROM's own mirror of the interpreter's HL cursor between ticks -- this project's own ScriptRuntime just threads the cursor explicitly instead of storing it in WRAM. UPDATE 2026-08-16 (task #160 follow-up): CHAIN's own real handler ($32FE) writes its new target here, then immediately calls $2A0A (see the bank call-stack entries below) before releasing -- real, previously-unknown detail about CHAIN's own execution, part of the still-open cross-bank CHAIN investigation (task #81)."
+  },
+  {
+    address: "HRAM $FF8A",
+    name: "Bank call-stack index",
+    status: "VERIFIED",
+    description: "FOUND 2026-08-16 (task #160 follow-up, tracing CHAIN's own real bank-switch behavior). A real, general-purpose stack pointer (HRAM, not WRAM) into the $C000+ bank-number array below -- incremented by the real push routine ($29FB), decremented by the real pop routine ($2A0A). ~35 real call sites across bank 0 use this pair -- a previously-undocumented, project-wide 'remember which bank to return to' primitive, not specific to graphics or to CHAIN."
+  },
+  {
+    address: "$C000+ (indexed by HRAM $FF8A)",
+    name: "Bank call-stack array",
+    status: "VERIFIED",
+    description: "FOUND 2026-08-16 (task #160 follow-up). Each slot holds one real MBC2 bank number, pushed by $29FB (argument in A: push the bank, write it here, switch to it via the real $2100 convention) and consumed by $2A0A (pop: switch to whatever is now on top -- 'return to the previous bank') or $2A17 (peek, no switch -- the SAME routine the $C5E0 tile-transfer queue's own consumer calls to restore its bank after a transfer, see above). CHAIN's own handler calls the pop variant; whether this is what correctly resolves the real 7 cross-bank CHAIN targets (task #81) is not yet proven."
   },
   {
     address: "$D8B8-$D8BB",

@@ -25,6 +25,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 from disasm import disasm_range  # noqa: E402
+from graphics_candidates_addresses import CANDIDATES, to_cpu, bank_of  # noqa: E402
 
 # Opcode -> which 16-bit register pair it loads (SM83: 0x01=LD BC,nn;
 # 0x11=LD DE,nn; 0x21=LD HL,nn; 0x31=LD SP,nn -- SP is never a graphics
@@ -84,42 +85,12 @@ def context(data, file_offset, before=6, after=10):
     return lines
 
 
-def bank_of(file_offset):
-    return file_offset // 0x4000
-
-
-def to_cpu(file_offset):
-    return 0x4000 + (file_offset % 0x4000)
-
-
-CANDIDATES = [
-    # --- Positive controls: ALREADY-CONFIRMED regions (rom_profiles.lua) ---
-    ("CONTROL_enemySprite", 11, 0x2FE00),
-    ("CONTROL_font", 8, 0x22B00),  # font tileset base, see rom_profiles.lua graphics.font
-    # --- The 12 real GraphicsCandidates.lua entries (unconfirmed identity) ---
-    ("bank10_7900", 10, 0x2B900),
-    ("bank10_6400", 10, 0x2A400),
-    ("bank10_6A20", 10, 0x2AA20),
-    ("bank10_6D90", 10, 0x2AD90),
-    ("bank11_5220", 11, 0x2D220),
-    ("bank8_portraits", 8, 0x22260),
-    ("bank8_icon_fragments", 8, 0x22EE0),
-    ("bank9_creature_columns", 9, 0x24400),
-    ("bank9_icon_fragments", 9, 0x27000),
-    ("bank11_creatures_a", 11, 0x2C400),
-    ("bank11_creatures_b", 11, 0x2D180),
-    ("bank11_creatures_c", 11, 0x2DF00),
-    ("bank11_creatures_d", 11, 0x2EC80),
-    ("bank12_environment_b", 12, 0x31000),
-]
-
-
 def main():
     rom_path = sys.argv[1]
     data = open(rom_path, "rb").read()
     print(f"ROM: {rom_path} ({len(data)} bytes)\n")
 
-    for name, bank, file_offset in CANDIDATES:
+    for name, bank, file_offset, _tile_count in CANDIDATES:
         cpu = to_cpu(file_offset)
         print(f"=== {name}  bank={bank}  fileOffset={file_offset:#07x}  cpu={cpu:#06x} ===")
         imm_hits = find_immediate_refs(data, cpu)

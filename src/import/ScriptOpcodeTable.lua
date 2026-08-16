@@ -47,6 +47,23 @@ ScriptOpcodeTable.HEAL_MP_HANDLER_ADDRESS = 0x3968
 -- set/flag-clear pair on WRAM `$D874` bit 1.
 ScriptOpcodeTable.SKIP_HANDLER_ADDRESS = 0x32F3
 ScriptOpcodeTable.CHAIN_HANDLER_ADDRESS = 0x32FE
+-- CHAIN's own real handler ($32FE), disassembled directly 2026-08-16
+-- (task #160/#81 follow-up, direct user question "können wir damit
+-- vorher bestehende questions lösen"): computes its target the
+-- already-VERIFIED way (`byte1*256+byte2+0x4000`), writes it to the
+-- real persistent-cursor cache ($D8B6/$D8B7, `WRAM_MAP`'s own entry),
+-- then calls a real, previously-undocumented, general-purpose BANK
+-- CALL-STACK primitive found this same pass: $2A0A ("pop" -- decrement
+-- HRAM $FF8A's own stack index, switch to whatever real MBC2 bank is
+-- now on top via the real $2100 convention). The matching "push"
+-- ($29FB) and "peek" ($2A17, the SAME routine the graphics-DMA
+-- consumer at $2DD3 calls to restore ITS OWN bank after a transfer --
+-- see rom-map.md's "the real graphics-loading mechanism" section) are
+-- both real and disassembled, but no live trace has yet confirmed
+-- this stack is what correctly resolves the real 7 cross-bank CHAIN
+-- targets task #81 is about -- genuine narrowing, not a closure. A
+-- sibling block at $32CF shares the identical "commit cursor, pop
+-- bank, release" shape, byte for byte.
 ScriptOpcodeTable.FLAG_SET_HANDLER_ADDRESS = 0x3B5B
 ScriptOpcodeTable.FLAG_CLEAR_HANDLER_ADDRESS = 0x3B66
 
