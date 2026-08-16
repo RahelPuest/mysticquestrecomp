@@ -110,8 +110,14 @@ tools/export_data.lua      Regenerates js/data/*.js from the real ROM + this
 - **Monster** — the real 11-species stat table (`EnemySpeciesTable.lua`).
 - **Items & Waffen** — the real item/spell and weapon/armor tables, grouped
   by their real `categoryByte`.
-- **NPCs** — every real NPC this project has found and placed (no static ROM
-  placement table exists — each found via live OAM tracing).
+- **NPCs** — every real NPC this project has found and placed (each found via
+  live OAM tracing). 2026-08-16: the real spawn MECHANISM behind
+  secondRoom's two NPCs is now traced end-to-end (a proximity check +
+  the already-known combat PRNG select an index into a real 24-byte
+  actor-definition table, bank 3) — but it's genuinely NOT a static
+  per-room placement table (the index is computed at runtime), which
+  is why no such table was ever found by static search alone. See
+  `src/import/ActorDefinitionTable.lua`.
 - **Story & Charaktere** — a full-ROM text census: monster defeat messages
   and every named story character found in dialogue text.
 - **Grafiken** — candidate creature/map-tile graphics regions found via a

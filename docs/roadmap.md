@@ -487,6 +487,38 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       formula, until that opcode depth is reached -- an honest,
       bounded, now well-understood limitation, not an open question
       about WHETHER a table exists.
+      **UPDATE 2026-08-16 (room connectivity + landing position, both
+      CLOSED for wipe-style cut transitions)**: a live hardware
+      watchpoint on WRAM `$C244`/`$C245` found the real record format
+      -- a 186-record, bank-14 table (`CutTransitionTable.lua`) that
+      encodes BOTH the target room selector AND the real landing tile
+      in one place, generalized via static byte-pattern search to 82
+      genuinely distinct real transitions (36 targeting the
+      long-mysterious `unknownRoomA` family -- real intended content,
+      not dead data). Shipped in the app (`TransitionExplorer.lua`,
+      F10) and the website (`Raum-Übergänge` tab). Honest scope: only
+      2 of the 82 have a known in-game trigger; the other 80's real
+      story/dialog trigger is still unknown (time-boxed live search
+      found nothing new).
+      **UPDATE 2026-08-16 (NPC placement mechanism, direct
+      continuation, "NPC-Platzierungstabelle suchen")**: the first
+      concrete, live-traced mechanism behind this milestone's own
+      "PRNG-placed" note above. A real chain (bank 3): a proximity
+      check calls the already-known combat PRNG (`$2B1E`) to compute an
+      index into a REAL 24-byte-stride table (bank 3, CPU `0x5f5a`),
+      whose record embeds a pointer to a SECOND 24-byte sub-record of
+      small, tile-ID-shaped bytes, before finally calling the
+      already-known `$0A74` entity allocator
+      (`ActorDefinitionTable.lua`). The two live-captured indices (99,
+      121) produce sub-records whose every varying byte differs by
+      EXACTLY `+0x20` -- a byte-exact match, via a totally independent
+      method, to this project's own already-confirmed "characterB's
+      OAM tile IDs are characterA's own `+0x20`" fact. Honest scope:
+      this is NOT a static per-room placement table -- the index is
+      computed at runtime (RNG-influenced), which is exactly why no
+      such table was ever found by static search alone; the full
+      24-byte record semantics and the table's real total extent
+      remain undecoded.
 
 - [~] **Milestone 6 — Text and dialogue.** Real in-ROM font rendering,
       a real bordered textbox component with typewriter reveal, real
