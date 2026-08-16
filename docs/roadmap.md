@@ -305,7 +305,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 | P0 | **3 — Map/room extraction** | 🟢 pipeline GENERALIZED (2026-08-12); **8 real, walkable rooms now wired (2026-08-13)**, up from 6 | willyRoom/secondRoom/thirdRoom/fourthRoom/fifthRoom/sixthRoom, plus the 2 unrelated dev-only `unknownRoomA` clusters. Remaining work is "extract/wire more real rooms with this proven pipeline," not "prove the pipeline works." |
 | P0 | **NEW — World scope / content pipeline** | 🟢 384 real, decodable rooms (2026-08-14, up from 320); 2 more real ones found live and wired this session (`fifthRoom`, `sixthRoom`, 2026-08-13) | A real, general "decode any room" capability exists; actually WIRING a new room as walkable content is now a well-practiced, real, repeatable process (tile-offset search + floor classification + `HoldTrigger`-based exit), demonstrated twice more this session. Bank 7's own "Templated" encoding is now CRACKED for tile content AND collision (2026-08-14, base-template + per-record diff, see rom-map.md) -- 64 more decodable, collision-aware rooms, live-verified via real screenshots. Its door-data bytes show a real, clean statistical structure (per-record 4-byte prefix: 8-value alphabet, zero outliers) but stay honestly undecoded -- no live bank-7 gameplay exists to confirm byte-to-direction meaning. Connectivity/spawn position are still KNOWN to be script-driven, not table-driven (see the "general room/map system" investigation). |
 | P1 | **7 — Script/event system** | 🟢 **187/256 real opcode values covered**, whole-corpus scan `clean` at 871/1357, the longest-standing known-hard opcode (`0x80`) finally closed. **2026-08-15**: the boss-defeat script now runs LIVE, per-frame, correctly-banked (`BossSequenceInterpreter`, bank 13→14) instead of a one-shot burst against the wrong bank (a real, self-caught bug fixed the same pass) | 6+ census rounds plus a new whole-corpus scan tool (shadow-runs all 1357 real scripts, not just one) found and wired most of the actor-flag/queued-action/trigger-event/actorSlotPosition/actorAction-family opcodes; a `ScriptRuntime` actually RUNS real, decoded scripts against live ROM bytes (behind `MYSTICQUEST_SCRIPT_INTERPRETER=1`, reported via the debug overlay), and (2026-08-13/14, task #84) has driven its first real, VISIBLE output. Still parallel to, not replacing, `Field.lua`'s hand-authored `FIELD_EVENTS`/`VictorySequence` room-graph — 187/256 is closing in on 3/4 but the remaining ~50 addresses are mostly non-trivial control flow (the cross-actor `$C3F0` dispatch mechanism, task #85's own subject). The `$1F35`/`$C5AF` edge-detector's own trigger CLOSED (2026-08-15, live-traced -- fires once, lands the cursor at the real, correct entry point). The concrete remaining blocker for a real dialogue swap-over is now narrowly identified as something ELSE: this project's own per-frame `:tick()` cadence desyncs from the real ROM's own (not-yet-found) per-opcode dispatch rate once per-frame-paced opcodes are reached (see "Same-day follow-up #5" + its correction above) -- not a wide "opcode coverage" gap; opcode coverage was even confirmed sufficient (the real script genuinely reaches the still-undecoded `0xBC`/`0xBD`, live-confirmed for the first time). |
-| P1 | **9 — Combat (remainder)** | 🟡 partial, real progress 2026-08-12 | Close to done, high player-facing impact — real per-species ATK now fully extracted (11 species), DEF still genuinely open (one more lead chased and ruled out, see combat.md) — real, honest, bounded remaining scope. |
+| P1 | **9 — Combat (remainder)** | 🟢 both directions' real formulas now understood (2026-08-16) | Real per-species ATK fully extracted (11 species); player-attacks-enemy MAJOR CORRECTION 2026-08-16 -- real PRNG-driven formula found (same shape/PRNG as `$50AC`), the earlier "flat, no formula" read was a floor-rounding coincidence at the only testable base value, see combat.md. Remaining: whether the base is weapon-power or fixed (untestable, only 1 weapon exists), no weapon-power table wired into the Lua implementation yet. |
 | P1 | **NEW — Bestiary (multiple enemy types)** | 🟡 real stat DATA now available (2026-08-12), still exactly 1 SPAWNABLE enemy | `EnemySpeciesTable.lua` has real ATK for all 11 real species — ready for wiring once P0's room work surfaces a real spawn trigger for any of the other 10 (this project does not fabricate a species-to-room mapping without ROM evidence). |
 | P2 | **6 — Text/dialogue (remainder)** | 🟢 digraph table effectively closed (2026-08-12): 30 → 91 confirmed entries, ~66% real-region coverage, full sentences now decode end to end | Needed for every new dialogue P0 content brings in; not a hard blocker today. Remaining gap is wiring the now-solid decoder into actual gameplay text (still hand-authored `FIELD_EVENTS`/`VictorySequence` strings today), not more decoding work. |
 | P2 | **8 — Menu/inventory (remainder)** | 🟡 partial | Visible gameplay gap (items/equipment aren't usable yet), but independently addressable. |
@@ -782,12 +782,30 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       live ROM trace) and the real enemy ATK (8, code- and live-
       confirmed). Real attack visuals (swing/thrust, hit-flash), real
       knockback + invincibility flicker (with a 2026-08-10 fix: no
-      longer ignores wall collision). **Remaining:** the enemy DEF
-      value for the reverse direction (player attacking an enemy) is
-      still not conclusively identified (task #5/P1); no weapon-power
-      table wired; no magic/spell casting at all despite a real MP
-      stat existing; and, starkly, exactly ONE enemy exists in the
-      whole game today — see the new Bestiary entry below.
+      longer ignores wall collision).
+      **UPDATE 2026-08-16 (MAJOR CORRECTION, direct user request to
+      try a fresh angle -- "ob die Waffe selbst einen variablen
+      Schadenswert beiträgt"): the player-attacks-enemy direction is
+      real, PRNG-driven, and fully traced end to end** -- it uses the
+      SAME real combat PRNG (`$2B1E`) and the SAME
+      `floor(noise*base/1024)+base` formula shape as `$50AC`, with a
+      real base value (`4`, read from a real bank-4 ROM table plus
+      WRAM `$CF63`). The prior "flat, no formula" conclusion (5 leads
+      chased and closed) correctly found no enemy-side DEF term, but
+      never reached this machinery -- its output is numerically
+      indistinguishable from a flat constant here only because
+      `255*4=1020 < 1024`, so the noise term floors to 0 for every
+      possible roll at this specific base (the exact same coincidence
+      already known for the enemy formula's own base=3 case). See
+      combat.md's own dated "MAJOR CORRECTION" entry for the full
+      disassembly. **Remaining:** whether the base value is genuinely
+      weapon-power (untestable — only one weapon exists) or a fixed
+      per-attack-type constant; no weapon-power TABLE wired into the
+      Lua implementation (the value 4 stays hardcoded, now with a
+      correct explanation instead of an incomplete one); no magic/
+      spell casting at all despite a real MP stat existing; and,
+      starkly, exactly ONE enemy exists in the whole game today — see
+      the new Bestiary entry below.
 
 - [~] **Audio.** Format DECODED (2026-08-15, task #6/P7, direct user
       request). Driver location VERIFIED (100% of sound-hardware-

@@ -256,20 +256,25 @@ Enemy.CONTACT_TICK_SECONDS = 1.0
 -- real damage-subtract routine (bank 4, ROM `$470B`, see combat.md's
 -- "Enemy HP" entry) during real landed swings -- exactly `-4` every
 -- time, across 8 consecutive real hits in a fresh 2026-08-11 trace
--- (HP sequence `31,27,23,19,15,11,7,3,dead`, every step exactly 4),
--- not just the single earlier observation. Traced the real call chain
--- one level further back this pass (`$49A9`->`$2B70`, `$49D2`->`$27CE`,
--- `$27CE`->`$04AA`+a bank-trampoline dispatch with a HARDCODED constant
--- `A=0`, not a computed value) -- no ATK-DEF subtraction visible
--- anywhere in this path, unlike the enemy-damages-player direction's
--- own fully-decoded `$50AC` formula (see CombatFormulas.lua). Real,
--- honest read: this project's own damage FORMULA is still not fully
--- decoded, but the new evidence leans toward "flat per-weapon damage,
--- no live DEF subtraction" for THIS direction, not merely "formula
--- not found yet" -- see rom-map.md's "P1 continued" entries for the
--- full trace and the open end (the dispatch's own hardcoded `A=0`
--- argument's real target, one bank-trampoline hop further, not yet
--- followed).
+-- (HP sequence `31,27,23,19,15,11,7,3,dead`, every step exactly 4).
+--
+-- MAJOR CORRECTION (2026-08-16, combat.md's own dated "MAJOR
+-- CORRECTION" entry has the full disassembly): the earlier "flat
+-- per-weapon damage, no live DEF subtraction" framing UNDERSOLD this.
+-- The real chain (`$4495`->`$466E`[real bank-4 table lookup, file
+-- `0x10d31`]->`$469B`[reads WRAM `$CF63`]->`$46F6`) genuinely calls
+-- **`$2B1E`, the SAME real combat PRNG `CombatFormulas.lua` already
+-- uses for the enemy-attacks-player direction**, through the SAME
+-- `floor(noise*base/1024)+base` formula shape as `$50AC`. `4` really
+-- is the live, real base value for the only currently-equippable
+-- weapon ("Breit") -- but the reason every observed hit looks flat is
+-- that `255*4=1020 < 1024`, so the noise term mathematically floors
+-- to 0 for every possible real PRNG byte at this base -- the EXACT
+-- same floor-rounding coincidence already documented for the enemy
+-- formula's own base=3 case, not evidence of "no formula." Genuinely
+-- still open: whether this base is really weapon-power (would need a
+-- second weapon to test -- blocked, see combat.md) or a fixed
+-- per-attack-type constant. `4` stays numerically correct either way.
 Enemy.PLAYER_ATTACK_DAMAGE = 4
 -- VERIFIED (see HP_INIT_TRACE_NOTE above): the real starting enemy's
 -- own initial HP, found by direct ROM code trace, not reproduced by
