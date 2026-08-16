@@ -7988,3 +7988,29 @@ rendered even without pointer access to per-tile detail.
 
 `luajit tests/run_tests.lua`: 487/487 pass (JS/CSS/HTML-only change,
 Lua suite unaffected by design, re-run anyway).
+
+## Task #151: real music playback ported into `love.audio`
+
+Direct user instruction ("erst 151 dann 81"). Full detail in
+`docs/reverse-engineering/audio.md`'s own "Playback -- PORTED into
+love.audio" section -- not duplicated here. Summary: `src/audio/
+MusicScore.lua` (event list -> playable segments, real loop-point
+resolution via a new `startFileOffset` field added to every
+`MusicDecoder` event), `src/audio/GBSquareSynth.lua` (real duty-cycle
+square-wave PCM synthesis), `src/audio/MusicPlayer.lua` (streams to
+`love.audio.newQueueableSource`, one real source per channel), and a
+dev-only `src/app/states/MusicJukebox.lua` browser (F9 from
+Field.lua, same "real content, no fabricated trigger" precedent as
+RoomExplorer's F8) for all 30 real songs.
+
+A real `love .` smoke test (`MYSTICQUEST_JUKEBOX_DEMO=1`) caught a
+genuine bug before it shipped: song 1 channel 3 computes 65536 Hz for
+one real note byte -- mathematically correct per the real GB formula,
+but would alias into harsh noise. Fixed with a Nyquist guard in
+`GBSquareSynth.render`; a real, new, concrete data point for the
+already-open "channel 3's real hardware target unconfirmed" question.
+End-to-end live verification (`MYSTICQUEST_WAIT_FOR_MAX=600`, a real
+~10-second run) showed all 3 channels genuinely streaming and
+independently progressing through their own real segment lists with
+buffers staying correctly topped up -- not just "no crash." 8 new unit
+tests, `luajit tests/run_tests.lua`: 501/501 pass.

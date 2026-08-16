@@ -347,6 +347,14 @@ end
 -- screen's real "Weiterspielen" option (TitleScreen.lua), not a
 -- second dev key here.
 --
+-- F9 (2026-08-16, task #151, "port the decoded music format into src/
+-- audio/ + love.audio playback"): opens MusicJukebox.lua -- a dev-only
+-- browser for all 30 real songs this project's own MusicDecoder/
+-- MusicScore/MusicPlayer pipeline can now actually play through
+-- `love.audio`. Same "real content, no fabricated trigger" reasoning
+-- as F8 below: no live ROM trigger for "which song plays at which
+-- real game moment" has been found yet.
+--
 -- F8 (2026-08-12, REWRITTEN same day to cover all 320 bank-5/bank-6
 -- records, see RoomExplorer.lua's own doc comment): opens
 -- RoomExplorer.lua -- a dev-only browser, originally for just
@@ -391,6 +399,13 @@ function Field:keypressed(key)
       and self.profile.graphics.unknownRoomA_8 then
     local RoomExplorer = require("src.app.states.RoomExplorer")
     self.stack:push(RoomExplorer.new(self.romData, self.profile, self.input, self.overlay, self.stack))
+  elseif key == "f9" and self.romData and self.stack then
+    -- Task #151 (2026-08-16, "port the decoded music format into src/
+    -- audio/ + love.audio playback"): a dev-only jukebox for all 30
+    -- real songs, same "real content, no fabricated trigger" precedent
+    -- as F8's RoomExplorer -- see MusicJukebox.lua's own doc comment.
+    local MusicJukebox = require("src.app.states.MusicJukebox")
+    self.stack:push(MusicJukebox.new(self.romData, self.input, self.overlay, self.stack))
   end
 end
 

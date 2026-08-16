@@ -194,6 +194,32 @@ function love.load()
       ") -- falling back to the normal Boot flow")
   end
 
+  -- Dev/CI-only: MYSTICQUEST_JUKEBOX_DEMO=1 (2026-08-16, task #151,
+  -- same reasoning/pattern as MYSTICQUEST_ROOM_EXPLORER_DEMO/
+  -- MYSTICQUEST_CATALOG_DEMO above -- added to screenshot/state-verify
+  -- MusicJukebox.lua, the new real love.audio music playback) skips
+  -- the real Boot->TitleScreen->Field->F9 flow and pushes a real
+  -- MusicJukebox directly. Optional MYSTICQUEST_JUKEBOX_SONG=N starts
+  -- song N (1-based) already playing instead of leaving it stopped on
+  -- song 1.
+  if os.getenv("MYSTICQUEST_JUKEBOX_DEMO") == "1" then
+    local RomLocator = require("src.import.RomLocator")
+    local MusicJukebox = require("src.app.states.MusicJukebox")
+    local data, pathOrReason = RomLocator.find()
+    if data then
+      local jukebox = MusicJukebox.new(data, input, overlay, stack)
+      local startSong = tonumber(os.getenv("MYSTICQUEST_JUKEBOX_SONG"))
+      if startSong then
+        jukebox.songIndex = startSong
+        jukebox:_playCurrent()
+      end
+      stack:push(jukebox)
+      return
+    end
+    print("MYSTICQUEST_JUKEBOX_DEMO: could not load a real ROM (" .. tostring(pathOrReason) ..
+      ") -- falling back to the normal Boot flow")
+  end
+
   stack:push(Boot.new(stack, input, overlay))
 end
 

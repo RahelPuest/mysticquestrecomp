@@ -98,6 +98,13 @@ end
 -- event tables, stopping cleanly (not guessing) on an unhandled
 -- command or the real terminator. Event `type`s: "NOTE", "REST",
 -- "NOTE_OFF", "SET_OCTAVE", "SHIFT_OCTAVE", "COMMAND", "STOP", "EOF".
+--
+-- Every event also carries `startFileOffset` (the real ROM position of
+-- its own leading byte, BEFORE consuming it) -- added 2026-08-16 for
+-- task #151 (porting playback into `src/audio/`): `MusicScore.lua`
+-- needs it to resolve a real `0xE1` JUMP's own `jumpTarget` back to
+-- WHICH already-decoded event to loop playback to, since a song's own
+-- real repeat point is virtually never the very first event.
 function MusicDecoder.decodeChannel(romData, startFileOffset, maxEvents)
   maxEvents = maxEvents or 400
   local romLen = #romData
@@ -116,11 +123,12 @@ function MusicDecoder.decodeChannel(romData, startFileOffset, maxEvents)
       break
     end
     visited[pos] = true
+    local eventStart = pos
     local byte = romData:byte(pos + 1)
     pos = pos + 1
 
     if byte == 0xFF then
-      events[#events + 1] = { type = "STOP" }
+      events[#events + 1] = { type = "STOP", startFileOffset = eventStart }
       break
     elseif byte >= 0xE0 and byte <= 0xEC then
       local operandLen = MusicDecoder.COMMAND_OPERAND_LENGTHS[byte]
@@ -137,28 +145,28 @@ function MusicDecoder.decodeChannel(romData, startFileOffset, maxEvents)
       if byte == 0xE1 then
         local target = operand[1] + operand[2] * 256
         local f = cpuToFile(target)
-        events[#events + 1] = { type = "COMMAND", byte = byte, name = MusicDecoder.COMMAND_NAMES[byte], operand = operand, jumpTarget = f }
+        events[#events + 1] = { type = "COMMAND", byte = byte, name = MusicDecoder.COMMAND_NAMES[byte], operand = operand, jumpTarget = f, startFileOffset = eventStart }
         if f then pos = f end
       else
         pos = pos + operandLen
-        events[#events + 1] = { type = "COMMAND", byte = byte, name = MusicDecoder.COMMAND_NAMES[byte], operand = operand }
+        events[#events + 1] = { type = "COMMAND", byte = byte, name = MusicDecoder.COMMAND_NAMES[byte], operand = operand, startFileOffset = eventStart }
       end
     elseif byte >= 0xD0 and byte <= 0xD7 then
       octaveOffset = (byte % 8) * 24
-      events[#events + 1] = { type = "SET_OCTAVE", octaveBlock = byte % 8 }
+      events[#events + 1] = { type = "SET_OCTAVE", octaveBlock = byte % 8, startFileOffset = eventStart }
     elseif byte >= 0xD8 and byte <= 0xDF then
       local raw = romData:byte(MusicDecoder.OCTAVE_SHIFT_TABLE_FILE_OFFSET + (byte % 8) + 1)
       local signed = raw >= 128 and (raw - 256) or raw
       octaveOffset = (octaveOffset + signed) % 256
-      events[#events + 1] = { type = "SHIFT_OCTAVE", rawTableByte = raw, signedDelta = signed }
+      events[#events + 1] = { type = "SHIFT_OCTAVE", rawTableByte = raw, signedDelta = signed, startFileOffset = eventStart }
     else
       local highNibble = math.floor(byte / 16)
       local lowNibble = byte % 16
       local durationFrames = highNibble < 13 and romData:byte(MusicDecoder.DURATION_TABLE_FILE_OFFSET + highNibble + 1) or nil
       if lowNibble == 0x0F then
-        events[#events + 1] = { type = "NOTE_OFF", durationFrames = durationFrames }
+        events[#events + 1] = { type = "NOTE_OFF", durationFrames = durationFrames, startFileOffset = eventStart }
       elseif lowNibble == 0x0E then
-        events[#events + 1] = { type = "REST", durationFrames = durationFrames }
+        events[#events + 1] = { type = "REST", durationFrames = durationFrames, startFileOffset = eventStart }
       else
         local tableOff = MusicDecoder.FREQ_TABLE_FILE_OFFSET + octaveOffset + lowNibble * 2
         local rawWord = readWord(romData, tableOff)
@@ -171,6 +179,7 @@ function MusicDecoder.decodeChannel(romData, startFileOffset, maxEvents)
           type = "NOTE", rawByte = byte, noteIndex = lowNibble,
           durationFrames = durationFrames, regPair = rawWord,
           period = period, noteName = MusicDecoder.noteName(period),
+          startFileOffset = eventStart,
         }
       end
     end

@@ -1815,6 +1815,28 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   pass; every fix independently Playwright-verified, zero regressions
   across all 18 sections.
 
+- **2026-08-16, task #151, real music playback ported into `love.audio`**:
+  the decoded music format (song table/note events/frequency table,
+  DECODED 2026-08-15) is now real, playing engine code, not just a
+  standalone Python proof. New `src/audio/MusicScore.lua` (event list
+  -> playable segments, real loop-point resolution),
+  `src/audio/GBSquareSynth.lua` (real GB duty-cycle square-wave PCM
+  synthesis), `src/audio/MusicPlayer.lua` (streams to
+  `love.audio.newQueueableSource`, one real source per channel), and a
+  dev-only `src/app/states/MusicJukebox.lua` (F9 from Field.lua, same
+  "real content, no fabricated trigger" precedent as RoomExplorer's
+  F8) covering all 30 real songs. A real `love .` smoke test caught a
+  genuine bug before it shipped: song 1 channel 3 computes 65536 Hz
+  for one real note byte, mathematically correct per the real GB
+  formula but far above human hearing/this synth's own Nyquist limit
+  -- fixed with a silencing guard, itself a new concrete data point for
+  the still-open "channel 3 hardware target unconfirmed" question.
+  Live-verified over a real ~10-second run: all 3 channels genuinely
+  streaming and independently progressing through their own segment
+  lists, buffers staying correctly topped up. 8 new unit tests,
+  `luajit tests/run_tests.lua`: 501/501 pass. Full detail in
+  `docs/reverse-engineering/audio.md`.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
