@@ -220,6 +220,31 @@ function love.load()
       ") -- falling back to the normal Boot flow")
   end
 
+  -- Dev/CI-only: MYSTICQUEST_TRANSITIONS_DEMO=1 (2026-08-16, task
+  -- "komplett autark interpretiert"/blocker resolution, same reasoning/
+  -- pattern as MYSTICQUEST_ROOM_EXPLORER_DEMO/MYSTICQUEST_CATALOG_DEMO/
+  -- MYSTICQUEST_JUKEBOX_DEMO above -- added to screenshot/state-verify
+  -- TransitionExplorer.lua, the new cut-transition-table browser) skips
+  -- the real Boot->TitleScreen->Field->F10 flow and pushes a real
+  -- TransitionExplorer directly. Optional MYSTICQUEST_TRANSITIONS_INDEX=N
+  -- starts on entry N (1-based) instead of the first one.
+  if os.getenv("MYSTICQUEST_TRANSITIONS_DEMO") == "1" then
+    local RomLocator = require("src.import.RomLocator")
+    local TransitionExplorer = require("src.app.states.TransitionExplorer")
+    local data, pathOrReason = RomLocator.find()
+    if data then
+      local explorer = TransitionExplorer.new(data, input, overlay, stack)
+      local startIndex = tonumber(os.getenv("MYSTICQUEST_TRANSITIONS_INDEX"))
+      if startIndex then
+        explorer.index = startIndex
+      end
+      stack:push(explorer)
+      return
+    end
+    print("MYSTICQUEST_TRANSITIONS_DEMO: could not load a real ROM (" .. tostring(pathOrReason) ..
+      ") -- falling back to the normal Boot flow")
+  end
+
   stack:push(Boot.new(stack, input, overlay))
 end
 

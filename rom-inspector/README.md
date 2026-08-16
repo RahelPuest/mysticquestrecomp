@@ -72,8 +72,8 @@ index.html              Shell (topbar + sidebar + #main mount point)
 css/style.css            Dark theme, design tokens, component styles
 js/app.js                 Hash router, sidebar rendering, cross-section search
 js/data/*.js               Real ROM data (see above)
-js/viz/*.js                One module per section (overview, memory, entity,
-                            opcodes, scan, rooms, text, tables, questions)
+js/viz/*.js                One module per section (see "Sections" below --
+                            each render_<id>() matches app.js's own SECTIONS list)
 tools/export_data.lua      Regenerates js/data/*.js from the real ROM + this
                             project's own Lua modules
 ```
@@ -92,9 +92,29 @@ tools/export_data.lua      Regenerates js/data/*.js from the real ROM + this
 - **Raum-System** — the known room graph (scroll vs. cut transitions) as an SVG.
 - **Map-Viewer** — composes a real room's full tilemap into one image, decoded
   live from a ROM file you supply locally (never embedded, never uploaded).
+- **Weltkarte** — statistical room-adjacency evidence across the 384 decodable
+  bank-5/6 room-catalog records, rendered as a 16×16/8×8 world grid.
+- **Raum-Übergänge** (2026-08-16) — the real, general cut-transition landing
+  table (`CutTransitionTable.lua`): 186 raw ROM records collapsing to 82
+  genuinely distinct real transitions, each with its target `roomSelector`
+  AND real landing tile. Filterable by target room family; only 2 entries are
+  currently live-verified AND wired into actual gameplay — the rest,
+  including 36 targeting the long-mysterious `unknownRoomA` family, are real
+  ROM data whose in-game trigger is honestly still unknown.
 - **Tile-Viewer** — browse individual 8×8 tiles from any known tileset or a
   free-form ROM offset range, same local-only decoding.
 - **Text-Encoding** — a live decoder for the real character/digraph/umlaut
   tables, with real ROM byte samples to try.
+- **Musik & Sound** — the real 30-song table, decoded note/duration/octave
+  event streams per channel, playable in-browser.
+- **Monster** — the real 11-species stat table (`EnemySpeciesTable.lua`).
+- **Items & Waffen** — the real item/spell and weapon/armor tables, grouped
+  by their real `categoryByte`.
+- **NPCs** — every real NPC this project has found and placed (no static ROM
+  placement table exists — each found via live OAM tracing).
+- **Story & Charaktere** — a full-ROM text census: monster defeat messages
+  and every named story character found in dialogue text.
+- **Grafiken** — candidate creature/map-tile graphics regions found via a
+  systematic ROM sweep, rendered as tile sheets.
 - **Offene Fragen** — every currently-unresolved real question this
   reverse-engineering effort has, with the concrete ROM addresses involved.

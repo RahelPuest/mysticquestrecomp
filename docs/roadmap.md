@@ -2089,6 +2089,21 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   remains open -- likely gated behind story/quest progression past this
   project's own current checkpoint chain. No production code changed.
 
+- **2026-08-16, direct continuation -- CutTransitionTable consolidated
+  into the app and the website**: `CutTransitionTable.lua` gained
+  shared, reusable logic (`distinctLandings`, `FAMILY_BY_ROOM_SELECTOR`)
+  so both new consumers call the same real function. New rom-inspector
+  tab "Raum-Übergänge" (filterable by target room family, Playwright-
+  verified zero console errors) plus a consolidated `open-questions.js`
+  entry telling the whole blocker-closure story for site visitors. New
+  dev-only `TransitionExplorer.lua` (F10 from `Field`, plus
+  `MYSTICQUEST_TRANSITIONS_DEMO`) browses all 82 real distinct
+  transitions live in the actual LÖVE app, live-verified via 3 real
+  `love .` screenshots. `rom-inspector/README.md`'s own stale section
+  lists (missing 8 already-shipped tabs) refreshed to match reality
+  while in there. Purely additive, no behavior change to shipped code.
+  `luajit tests/run_tests.lua`: 535/535 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

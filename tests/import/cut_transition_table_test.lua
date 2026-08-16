@@ -78,6 +78,36 @@ Harness.testIfAvailable(
   end
 )
 
+Harness.test("CutTransitionTable.distinctLandings: collapses repeated real records into one distinct entry, counts occurrences", function()
+  local rom = "\x00\x05\xF4\x01\x57\x0E\x0C\x00\x0B" -- roomSelector=1, pixel(120,112)
+    .. "\x00\x05\xF4\x01\x00\x0E\x0C\x00\x0B" -- roomSelector=1, same pixel, different subIndexByte
+    .. "\x00\x05\xF4\x04\x50\x10\x02\x00\x0B" -- roomSelector=4, pixel(136,32)
+  local distinct = CutTransitionTable.distinctLandings(rom)
+  Harness.assertEqual(#distinct, 2)
+  Harness.assertEqual(distinct[1].roomSelector, 1)
+  Harness.assertEqual(distinct[1].occurrences, 2)
+  Harness.assertEqual(distinct[1].targetFamily, "startRoom/fourthRoom")
+  Harness.assertEqual(distinct[2].roomSelector, 4)
+  Harness.assertEqual(distinct[2].occurrences, 1)
+  Harness.assertEqual(distinct[2].targetFamily, "willyRoom/secondRoom/thirdRoom/fifthRoom")
+end)
+
+Harness.testIfAvailable(
+  "CutTransitionTable.distinctLandings: real ROM collapses 186 raw records into exactly 82 distinct real transitions",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local distinct = CutTransitionTable.distinctLandings(romData)
+    Harness.assertEqual(#distinct, 82)
+    local totalOccurrences = 0
+    for _, d in ipairs(distinct) do
+      totalOccurrences = totalOccurrences + d.occurrences
+      Harness.assertTrue(d.targetFamily ~= nil and d.targetFamily ~= "", "expected a real targetFamily label")
+    end
+    Harness.assertEqual(totalOccurrences, 186)
+  end
+)
+
 Harness.testIfAvailable(
   "CutTransitionTable.scanSelectorRecords: real ROM has 36 real records (a distinct, still-undecoded sibling record type)",
   romData ~= nil,

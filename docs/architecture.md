@@ -257,6 +257,13 @@ Per the project's "debugging tools are a first-class feature" principle:
 - **SELECT** (from `TileViewer`) — pushes `MapBlockViewer`, the map-table
   record browser (LEFT/RIGHT page records, UP/DOWN adjust live reshape
   width); SELECT again pops back.
+- **F8/F9/F10** (from `Field`) — `RoomExplorer` (the whole decoded room
+  catalog), `MusicJukebox` (all 30 real songs via `love.audio`),
+  `TransitionExplorer` (2026-08-16, the real cut-transition landing
+  table — 82 genuinely distinct real transitions, target roomSelector +
+  landing tile, only 2 of which have a known real in-game trigger).
+  Same "real content, no fabricated trigger" precedent throughout — see
+  each state's own doc comment.
 - `MYSTICQUEST_SCREENSHOT`/`MYSTICQUEST_SCRIPT` env vars (`main.lua`) —
   scripted, OS-automation-free screenshot capture for manual/CI visual
   verification (see "Testing strategy" above).

@@ -12,6 +12,7 @@ const SECTIONS = [
   { id: "rooms", icon: "⬢", label: "Raum-System", group: "Welt" },
   { id: "map", icon: "▦", label: "Map-Viewer", group: "Welt" },
   { id: "worldmap", icon: "🗺", label: "Weltkarte", group: "Welt" },
+  { id: "transitions", icon: "🚪", label: "Raum-Übergänge", group: "Welt" },
   { id: "tiles", icon: "◱", label: "Tile-Viewer", group: "Welt" },
   { id: "text", icon: "“”", label: "Text-Encoding", group: "Welt" },
   { id: "music", icon: "♪", label: "Musik & Sound", group: "Welt" },
@@ -30,6 +31,7 @@ function countFor(id) {
     if (id === "rooms") return String(ROOMS.length);
     if (id === "map") return String(ROOM_MAPS.length + ROOM_CATALOG.length);
     if (id === "worldmap") return "16×16 / 8×8";
+    if (id === "transitions") return String(TRANSITIONS.distinct.length);
     if (id === "monsters") return String(MONSTERS.species.length);
     if (id === "items") return String(ITEMS.items.length + ITEMS.weapons.length);
     if (id === "npcs") return String(NPCS.length);

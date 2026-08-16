@@ -100,6 +100,32 @@ local CutTransitionTable = {}
 CutTransitionTable.LANDING_RECORD_BODY_LENGTH = 9
 CutTransitionTable.SELECTOR_RECORD_BODY_LENGTH = 12
 
+--- Real, already-established `roomSelectorTable` family assignments
+-- (see `docs/reverse-engineering/rom-map.md`'s own "Consolidated
+-- reference" section) -- curated project knowledge, NOT derived by
+-- this module itself. Every real `roomSelector` value `scanLandingRecords`
+-- can return (`1`-`15`) has an entry; `0` is included too (never
+-- actually used by a real landing record, per this module's own doc
+-- comment, but a real, valid `roomSelectorTable` index nonetheless).
+CutTransitionTable.FAMILY_BY_ROOM_SELECTOR = {
+  [0] = "startRoom/fourthRoom",
+  [1] = "startRoom/fourthRoom",
+  [2] = "willyRoom/secondRoom/thirdRoom/fifthRoom",
+  [3] = "willyRoom/secondRoom/thirdRoom/fifthRoom",
+  [4] = "willyRoom/secondRoom/thirdRoom/fifthRoom",
+  [5] = "willyRoom/secondRoom/thirdRoom/fifthRoom",
+  [6] = "willyRoom/secondRoom/thirdRoom/fifthRoom",
+  [7] = "pre-transition placeholder (kein echter Raum)",
+  [8] = "unknownRoomA",
+  [9] = "unknownRoomA",
+  [10] = "unknownRoomA",
+  [11] = "unknownRoomA",
+  [12] = "unknownRoomA",
+  [13] = "unknownRoomA",
+  [14] = "unbekannt (kein bereits bekannter Raum)",
+  [15] = "unknownRoomB (schwarzer Wipe-Hintergrund)",
+}
+
 --- Scans `romData` for every real landing record body
 -- (`00 05 F4 A1 A2 tileCol tileRow 00 0B`). Returns a plain 1-based
 -- array of `{ fileOffset, bank, roomSelector, subIndexByte, tileCol,
@@ -142,6 +168,52 @@ function CutTransitionTable.scanLandingRecords(romData)
     end
   end
   return records
+end
+
+--- Collapses `scanLandingRecords`' own raw records into the real,
+-- GENUINELY DISTINCT set of `(roomSelector, pixelX, pixelY)`
+-- transitions -- the same real story/dialogue transition is referenced
+-- from many different points in the corpus (e.g. `roomSelector=2,
+-- pixel=(136,32)` alone accounts for 11 of the 186 raw records), not
+-- 11 different real transitions. Returns a plain 1-based array of
+-- `{ roomSelector, targetFamily, pixelX, pixelY, tileCol, tileRow,
+-- occurrences, exampleFileOffset }`, sorted by `roomSelector` then
+-- `pixelX` then `pixelY` (a stable, deterministic order for a caller
+-- that renders this as a table/list). `targetFamily` is looked up from
+-- `FAMILY_BY_ROOM_SELECTOR` above (`"unbekannt (roomSelector N)"` for
+-- any value that table doesn't cover, an honest fallback rather than
+-- a crash if a future ROM revision's own scan finds a value outside
+-- the currently-known 0-15 range).
+function CutTransitionTable.distinctLandings(romData)
+  local records = CutTransitionTable.scanLandingRecords(romData)
+  local byKey = {}
+  local order = {}
+  for _, r in ipairs(records) do
+    local key = r.roomSelector .. ":" .. r.pixelX .. ":" .. r.pixelY
+    local entry = byKey[key]
+    if not entry then
+      entry = {
+        roomSelector = r.roomSelector,
+        targetFamily = CutTransitionTable.FAMILY_BY_ROOM_SELECTOR[r.roomSelector]
+          or ("unbekannt (roomSelector " .. r.roomSelector .. ")"),
+        pixelX = r.pixelX,
+        pixelY = r.pixelY,
+        tileCol = r.tileCol,
+        tileRow = r.tileRow,
+        occurrences = 0,
+        exampleFileOffset = r.fileOffset,
+      }
+      byKey[key] = entry
+      order[#order + 1] = entry
+    end
+    entry.occurrences = entry.occurrences + 1
+  end
+  table.sort(order, function(a, b)
+    if a.roomSelector ~= b.roomSelector then return a.roomSelector < b.roomSelector end
+    if a.pixelX ~= b.pixelX then return a.pixelX < b.pixelX end
+    return a.pixelY < b.pixelY
+  end)
+  return order
 end
 
 --- Scans `romData` for every real "selector-shaped" record body

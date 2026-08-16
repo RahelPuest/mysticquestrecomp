@@ -34,6 +34,7 @@ local NpcCatalog = require("src.import.NpcCatalog")
 local GraphicsCandidates = require("src.import.GraphicsCandidates")
 local MapTileCatalog = require("src.import.MapTileCatalog")
 local MusicDecoder = require("src.import.MusicDecoder")
+local CutTransitionTable = require("src.import.CutTransitionTable")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -988,6 +989,50 @@ do
     "frame vibrato/pitch-delta stream (real, disassembled, structurally confirmed, but a fine " ..
     "modulation layer this decoder doesn't walk -- see rom-map.md); exact musical intent of " ..
     "several commands beyond their real WRAM side effect.")
+end
+
+----------------------------------------------------------------------
+-- 16. Cut-transition landing/connectivity table (CutTransitionTable
+-- .lua, 2026-08-16, task "komplett autark interpretiert"/blocker
+-- resolution) -- real, general ROM structure that encodes BOTH the
+-- target roomSelector AND the real landing tile for every "wipe-style"
+-- room-to-room cut transition in the game, found via a live hardware
+-- watchpoint (the exact indirect-write blind spot 6+ earlier static
+-- passes couldn't cover) then generalized via static pattern search.
+-- See CutTransitionTable.lua's own doc comment for the full
+-- disassembly/live-trace chain and docs/reverse-engineering/rom-map.md
+-- "Consolidated reference" section 4 for the closed-blocker summary.
+----------------------------------------------------------------------
+do
+  local distinct = CutTransitionTable.distinctLandings(romData)
+  local selectorRecords = CutTransitionTable.scanSelectorRecords(romData)
+  writeJs("transitions.js", "TRANSITIONS", {
+    rawRecordCount = 186,
+    distinct = distinct,
+    selectorRecords = selectorRecords,
+    knownLive = {
+      { roomSelector = 1, pixelX = 120, pixelY = 112,
+        label = "thirdRoom -> fourthRoom (live-verified, real ROM cut transition)" },
+      { roomSelector = 4, pixelX = 136, pixelY = 32,
+        label = "fourthRoom -> fifthRoom (live-verified, real ROM cut transition)" },
+    },
+  }, "Real, general ROM structure (bank 14, 186 raw records collapsing to " ..
+    #distinct .. " genuinely distinct real transitions) that encodes BOTH the target " ..
+    "roomSelectorTable index AND the real landing tile for every wipe-style room-to-room cut " ..
+    "transition -- found 2026-08-16 via a live hardware watchpoint on WRAM $C244/$C245 (the " ..
+    "real write is INDIRECT, LD (HL),D/LD (HL),E, the exact blind spot 6+ earlier static-only " ..
+    "passes across prior sessions could never cover), then generalized via static byte-pattern " ..
+    "search once the real record shape was known. Only 2 of the 82 distinct real transitions " ..
+    "are currently live-verified end to end and wired into actual gameplay (see `knownLive` " ..
+    "above); the rest are real, ROM-decoded DATA whose real in-game TRIGGER (which story/dialogue " ..
+    "moment actually invokes each one) is honestly still unknown -- a time-boxed live search " ..
+    "across every wall of every currently-reachable room found nothing new. targetFamily=" ..
+    "\"unknownRoomA\" entries (roomSelector 8-13) are especially notable: real, ROM-verified " ..
+    "proof this long-mysterious room family (never reached live in any earlier session) is " ..
+    "genuine intended content, not dead data. selectorRecords is a real, structurally distinct " ..
+    "sibling record type this same investigation found (originally suspected to be the " ..
+    "connectivity key -- that hypothesis turned out to be wrong, its own real meaning stays " ..
+    "undecoded, kept here as a real, verified structural finding.)")
 end
 
 io.stderr:write("done.\n")

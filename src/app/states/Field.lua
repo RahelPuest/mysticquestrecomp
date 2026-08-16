@@ -366,6 +366,17 @@ end
 -- for). Still gated on `profile.graphics.unknownRoomA_8` existing --
 -- a real, still-present field, just no longer itself rendered by this
 -- path (RoomExplorer decodes everything live from the ROM instead).
+--
+-- F10 (2026-08-16, task "komplett autark interpretiert"/blocker
+-- resolution): opens TransitionExplorer.lua -- a dev-only browser for
+-- the real, general cut-transition landing table this session found
+-- (CutTransitionTable.lua). Same "real content, no fabricated
+-- trigger" reasoning as F8/F9: 82 genuinely distinct real transitions
+-- are fully decoded (target roomSelector + real landing tile), but
+-- only 2 have a known real in-game trigger and are actually wired as
+-- ordinary exits -- the other 80 (including 36 targeting the long-
+-- mysterious `unknownRoomA` family) are real ROM data with an
+-- honestly-unknown real trigger, not fabricated new doors.
 function Field:keypressed(key)
   if key == "f2" and self.romData and self.profile and self.stack then
     local TileViewer = require("src.app.states.TileViewer")
@@ -406,6 +417,16 @@ function Field:keypressed(key)
     -- as F8's RoomExplorer -- see MusicJukebox.lua's own doc comment.
     local MusicJukebox = require("src.app.states.MusicJukebox")
     self.stack:push(MusicJukebox.new(self.romData, self.input, self.overlay, self.stack))
+  elseif key == "f10" and self.romData and self.stack then
+    -- 2026-08-16, task "komplett autark interpretiert"/blocker
+    -- resolution: a dev-only browser for the real, general cut-
+    -- transition landing table (CutTransitionTable.lua) -- same "real
+    -- content, no fabricated trigger" precedent as F8/F9 above: 82
+    -- genuinely distinct real transitions are fully decoded, but only
+    -- 2 have a known real in-game trigger (see TransitionExplorer.lua's
+    -- own doc comment).
+    local TransitionExplorer = require("src.app.states.TransitionExplorer")
+    self.stack:push(TransitionExplorer.new(self.romData, self.input, self.overlay, self.stack))
   end
 end
 

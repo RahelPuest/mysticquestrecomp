@@ -198,7 +198,7 @@ const NPCS = [
       ]
     },
     "dialogue": [
-      "Amanda: Das mit\nWilly tut mir\nleid.",
+      "Amanda:Das mit\nWilly tut mir\nleid.",
       "Wir müssen hier\nraus!",
       "Ich möchte nach\nHause zu meinem\nkleinen Bruder."
     ],
