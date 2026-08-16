@@ -9516,3 +9516,32 @@ Direct continuation, refining the previous pass's whole-frame-granularity inject
 **Real, decisive conclusion**: this project's OWN already-documented "cross-actor dispatch mechanism" (task #85, `$31AD`/`$26DC`/`$C3F0`-family) is NOT a side detail here -- it's the actual reason single-tick WRAM injection can't cleanly render arbitrary content during an active real sequence: the SAME shared `$D85A`/`$D8B6`/`$D8B7` cells are genuinely time-shared across MULTIPLE real, concurrently-running scripts (at minimum, whatever drives the boss-sequence's own story text AND opcode `0xFF`'s own sub-dispatch machinery), each getting its own turn per real per-frame cycle -- a single foreign injection survives only until the NEXT real script's own turn comes back around and overwrites the shared cursor with its own legitimate continuation. Closing this properly would need EITHER a genuinely idle moment where NO other real script is concurrently active (not yet found -- plain overworld idle doesn't run the interpreter AT ALL, and every active-sequence moment tried so far has concurrent scripts), or neutralizing/pausing whatever OTHER real script(s) are sharing the cursor for the injection's own duration (itself a real research question: which WRAM byte tracks "whose turn is it").
 
 **Time-boxed stop, not abandonment.** This is a genuinely deep architectural question (the real ROM's own per-frame scheduler), not a quick fix -- explicitly reporting the boundary reached rather than continuing indefinitely or forcing a fabricated result. Task #150 stays open; the concurrent-script-interference finding is itself real, useful, load-bearing knowledge for whoever continues this (a completely different next avenue than "try harder at the same injection" -- either find/construct a genuinely quiet moment, or map out the real scheduler enough to neutralize concurrent scripts on purpose). No production code changed this pass; `luajit tests/run_tests.lua` unaffected.
+
+## 2026-08-16, task #150, direct continuation ("digraph/low-byte gap"): the "[f9][0f][04]" sub-finding CLOSED -- it was never a text mystery, just already-decoded opcodes `dump_strings.py` can't recognize
+
+Direct continuation, picking a smaller, bounded, purely-static sub-thread of task #150's own open scope before returning to the deeper live-scheduler question above: the earlier (2026-08-15, "na dann entschluessel mal") entry flagged `[f9][0f][04]` recurring 3+ times immediately before "item/spell obtained" messages as "a real, currently-uncharacterized 2-opcode sequence at the top level... NOT closeable via a TextDecoder glyph fix -- would need real opcode-table disassembly."
+
+**That disassembly already existed** (found 2026-08-13/2026-08-14, simply never cross-referenced against this specific `dump_strings.py` finding): re-ran `tools/rom/dump_strings.py --gaps --min-len 8 --min-ratio 0.7` and pulled every real file offset where `[f9][0f]` appears (9 total, both banks 13 and 14). Directly read the raw ROM bytes at and around all 9 real offsets:
+
+```
+0x358e2  ...00 | f9 0f 04 ...        (Knochenschlüssel erhalten)
+0x3ad50  ...00 | f9 0f 04 ...        (Heilungszauber erlernt)
+0x34e5b  ...00 | f9 0f 04 1b...      (Schlafzauber erlernt)
+0x35196  ...00 | f9 0f 04 ...        (Blockzauber erlernt)
+0x3baea  ...00 | f9 0f 04 ...        (Lebenszauber erlernt)
+0x3548c  ...00 | f9 0f d6 07 04 ...  (Bombenzauber erlernt)
+0x3946a  ... g | f9 0f af 04 10...   (Rostiges Schwert erhalten)
+0x3528c  ... c | d6 06 f9 0f 04 1b.. (Blitzezauber erlernt)
+0x39a6c  ... c | d6 05 f9 0f af 04.. (Eiszauber erlernt)
+```
+
+Every single byte in all 9 sequences is a REAL, ALREADY-DECODED top-level script opcode, not text:
+- `0xF9` = `SOUND_PARAM_2_HANDLER_ADDRESS` (`$1194`, found 2026-08-13) -- 1 real operand byte (always `0x0F` here), unconditional continue.
+- `0xD6` = `GATED_BYTE_LEAF_HANDLER_ADDRESS_D6` (`$3ABA`, found 2026-08-13, task #86) -- 1 real operand byte (`0x07`/`0x06` here), via `StandardScriptHandlers.gatedByteLeafCommand`.
+- `0xAF` = `CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AF` (`$2CE7`, found 2026-08-14) -- 0 explicit operand bytes.
+- `0x04` = the already-fully-decoded TICK/text-reveal classifier, correctly starting the REAL following text ("Knochenschlüssel erhalten", "du erhältst den Heilungszauber...", etc. -- all real, grammatically correct German, exactly matching this project's own "item/spell obtained" message convention).
+- The byte immediately BEFORE `f9`/`d6` is `0x00` (the real TERMINATOR byte) in every case that starts a fresh block, or a real preceding letter (`g`/`c` -- themselves genuine `0xD6`-adjacent glyph coincidences, not evidence against this reading) where `dump_strings.py`'s own maximal-run window happened to start mid-message.
+
+Every byte in all 9 occurrences is now fully, decisively accounted for -- `dump_strings.py` is a TEXT-ONLY heuristic scanner with zero awareness of script-opcode boundaries (confirmed directly from its own source: it scans linearly byte-by-byte with no bank/opcode-table awareness at all), so it naturally renders genuine opcode bytes as `[XX]` gap markers whenever they don't happen to decode as printable glyphs -- exactly the "bleeding across a real opcode/text-data boundary" hypothesis the original entry already suspected, now confirmed rather than left open. **No TextDecoder change, no new opcode work needed** -- this was purely a documentation gap (an already-solved disassembly never linked back to this specific static-scan finding), not a real remaining mystery.
+
+**What this does NOT close**: the actual bulk of task #150's own 141-count `errorOther` breakdown (real mid-text-run digraph/control bytes in scripts this project cannot yet REACH via normal gameplay) is untouched -- that remains blocked on the genuine architectural question the two previous passes above already found and time-boxed (concurrent-script scheduling sharing `$D85A`/`$D8B6`/`$D8B7`). Task #150 stays open for that reason; this pass closes one small, previously-flagged, real sub-thread within it. No production code changed; `luajit tests/run_tests.lua` unaffected (verified: 506/506 still pass).
