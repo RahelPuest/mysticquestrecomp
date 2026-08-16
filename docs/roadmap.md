@@ -1949,6 +1949,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   follow-up -- nothing consumes these files yet. `luajit
   tests/run_tests.lua`: 519/519 pass.
 
+- **2026-08-16, task #128 CLOSED -- decisive self-caught correction**: the
+  2026-08-15 `$5BA7` disassembly was reading the WRONG BANK (assumed
+  bank 5 via a naive `bank*0x4000` guess instead of the caller's own
+  currently-mapped bank 2) -- proof: file `0x15BA7` disassembles to
+  pure garbage, while the CORRECT file `0x9BA7` (bank 2, no bank-switch
+  between caller and callee) disassembles to a clean, complete 7-
+  instruction routine. The real `$5BA7` is trivially understood: it's
+  the exact same `$A200`/`$768C` "class/kit record byte +1" lookup the
+  already-verified `$D6C0`/`$D6C2` defense bonus uses, just reading a
+  different slot (`$D6E9`, index `0x01`). Byte-exact live cross-check:
+  ROM file `0xA201 = 4`, an exact match to the already-known
+  `$D6C1=6, $D7C2=2` live state. This retracts the whole
+  `$0C86`/`$0CBA`/`$297D`/`$2E99`-vs-`$2EB1`/`SUB C` narrative from the
+  prior entry (never real code) and closes every "genuinely still
+  open" item from that entry except the live equip-CHANGE test, which
+  stays blocked on a real, unchanged precondition (no shop/item pickup
+  reachable yet). No production code changed; `luajit
+  tests/run_tests.lua`: 519/519 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
