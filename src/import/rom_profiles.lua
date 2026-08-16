@@ -1791,6 +1791,17 @@ RomProfiles.PROFILES = {
             -- `landingY` -- while the render-side fix is properly
             -- finished (see Player.lua).
             landingX = 120, landingY = 112,
+            -- ROM-TABLE-VERIFIED (2026-08-16, task "komplett autark
+            -- interpretiert"/blocker resolution): this pair is not
+            -- just an empirical WRAM capture anymore -- it's the real,
+            -- decoded tile coordinate (14,12) at ROM file `0x382f3`
+            -- (bank 14), part of a real, general 186-record landing
+            -- table this session found and decoded (see
+            -- `src/import/CutTransitionTable.lua`'s own doc comment
+            -- for the full derivation). `(14+1)*8=120`,
+            -- `(12+2)*8=112` -- exact match, confirming this project's
+            -- own real tile-to-pixel formula (`TileLandingPosition
+            -- .lua`) end to end.
           },
         },
       },
@@ -2143,6 +2154,13 @@ RomProfiles.PROFILES = {
             transition = { type = "cut" },
             targetRoom = "fifthRoom",
             landingX = 136, landingY = 32,
+            -- ROM-TABLE-VERIFIED (2026-08-16, same pass as
+            -- thirdRoom->fourthRoom's own citation above): real,
+            -- decoded tile coordinate (16,2) at ROM file `0x38c82`
+            -- (bank 14) or its sibling record at `0x38c8c` (both
+            -- resolve to the identical real pixel pair) -- see
+            -- `src/import/CutTransitionTable.lua`'s own doc comment.
+            -- `(16+1)*8=136`, `(2+2)*8=32` -- exact match.
             holdFrames = 64, holdDirection = "down",
           },
           {

@@ -6216,11 +6216,50 @@ shadow block. The player is very plausibly slot 4 (`$C244`/`$C245` =
 `$C200+4*16+4/+5` exactly) -- but no code was found that explicitly
 allocates/positions the player through this same path (see section 4).
 
-### 4. What is genuinely NOT a static table (honest, checked, not guessed)
+### 4. Room connectivity and player spawn position -- UPDATED 2026-08-16, no longer both "genuinely not a static table"
 
-Two real questions were pursued exhaustively this session (6+
-independent static-analysis angles, all real code, all reported
-honestly, all negative) and are NOT resolved as clean ROM data:
+**SUPERSEDED, this section's own original 2026-08-13 conclusion below
+kept for history.** Two later real passes (2026-08-14: found the real
+`$11B7`/opcode-`0xF4` tile-to-pixel mechanism for exactly 2 live-traced
+transitions; 2026-08-16, direct instruction "then do those blockers...
+if one strategy does not work try another one": found the real,
+GENERAL, 186-record landing table this mechanism reads from, via a
+live hardware watchpoint on `$C244`/`$C245` -- the exact blind spot
+the original static literal-address search below could never cover,
+since the real write is INDIRECT, `LD (HL),D`/`LD (HL),E`, not a
+literal `LD (nn),A`) decisively changed the player-spawn-position half
+of this conclusion:
+
+- **Player spawn/landing position: RESOLVED as a real, general,
+  decoded ROM table for wipe-style cut transitions.** See
+  `src/import/CutTransitionTable.lua`'s own doc comment for the full
+  derivation and `tests/import/cut_transition_table_test.lua` for the
+  byte-exact regression. 186 real records (`00 05 F4 A1 A2 tileCol
+  tileRow 00 0B`), bank 14 exclusive, zero false positives anywhere
+  else in the ROM, cross-validated exactly against both already-known
+  live-traced examples. The 3 OTHER already-recorded `landingX`/
+  `landingY` pairs (startRoom, willyRoom's own exit, sixthRoom) do NOT
+  appear in this table -- a real, CONSISTENT confirmation, not a gap:
+  all 3 are independently already known to be non-CUT mechanisms
+  (initial spawn; a SCROLL-type transition; a continuous, non-single-
+  cut hardware scroll).
+- **Room connectivity (which exit leads to which target room): STILL
+  genuinely open, but with a real, promising, unconfirmed lead.** An
+  adjacent, structurally similar record (`00 08 C5 idx F4 a b 09 0C EC
+  00 0B`, 36 real matches, also bank-14-exclusive) has an `idx`
+  operand ranging 0-15 -- exactly `roomSelectorTable`'s own real
+  16-entry index range -- a strong structural candidate for the real
+  connectivity key, but NOT live-cross-validated against a real
+  transition this pass (would need the same live-tracing effort each
+  of the 2 known landing examples took). The underlying mechanism
+  (section 1's own `$026DC`, called from this same bank-14 script
+  region via `$4395`'s nibble-split `BC`) is unchanged and still real.
+
+**ORIGINAL 2026-08-13 conclusion (superseded above, kept for the
+historical record)**: Two real questions were pursued exhaustively
+that session (6+ independent static-analysis angles, all real code,
+all reported honestly, all negative) and were NOT resolved as clean
+ROM data:
 
 - **Room connectivity** (which exit leads to which target room): real,
   genuinely script/bytecode-driven (section 1) -- the ROM does not
@@ -6230,13 +6269,8 @@ honestly, all negative) and are NOT resolved as clean ROM data:
   tried), and the two most plausible real candidate routines
   (`$235B`'s own callers, `$01AF3`) both provably don't touch it
   either. This project's own `rom_profiles.lua` `landingX`/`landingY`
-  values remain, honestly, LIVE-CAPTURED empirical measurements, not
-  values derived from any ROM table -- and per this investigation,
-  that is very likely the ROM's own real design too (continuous player
-  movement for SCROLL-type transitions genuinely never needs a "set
-  position" step at all; CUT-type transitions' own real positioning
-  mechanism, if any exists beyond "whatever ordinary collision/
-  movement already had it at," was not found).
+  values remained, at the time, LIVE-CAPTURED empirical measurements,
+  not values derived from any ROM table.
 
 ### 5. `$1ED7` -- a second general cross-bank dispatcher (bank 1)
 

@@ -2031,6 +2031,24 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   live-decodes `romData` for everything else; that migration is real,
   much larger, separate follow-up work.
 
+- **2026-08-16, "then do those blockers... try another strategy" --
+  player spawn/landing position substantially closed, room
+  connectivity narrowed with a real lead**: a live hardware watchpoint
+  on `$C244`/`$C245` (the exact indirect-write blind spot 6+ earlier
+  static-analysis passes couldn't cover) found the real write site and
+  its FULL live call chain back to the script cursor. Static pattern
+  search then found the real, general, 186-record landing-position
+  table this mechanism reads from (bank 14 exclusive, zero false
+  positives anywhere else in the ROM, byte-exact cross-validated
+  against both already-known real transitions). New
+  `src/import/CutTransitionTable.lua` (4 new tests). Room connectivity
+  itself stays open, but with a real, structurally strong,
+  `roomSelectorTable`-range-matching lead (a 36-record companion
+  table) not yet live-cross-validated. `rom_profiles.lua`'s 2 known
+  landing citations updated with real ROM-table file offsets;
+  rom-map.md's stale 2026-08-13 "Consolidated reference" section 4
+  corrected in place. `luajit tests/run_tests.lua`: 532/532 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
