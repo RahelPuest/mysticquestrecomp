@@ -9964,3 +9964,11 @@ landing position. The other 80+ transitions remain exactly as
 hand-authored as before.
 
 `luajit tests/run_tests.lua`: 549/549 pass (up from 546).
+
+## 2026-08-16, continuation ("in der reihenfolge die du vorgeschlagen hast", item 2 -- Level/XP): a 3rd angle attempted, also blocked, same root cause as before
+
+Direct continuation, second item of the user's own prioritized list. Attempted a genuinely different angle from the 2 already-exhausted ones (live WRAM diff around the one real fight; static sibling-opcode search): **audit the boss-defeat script's own actually-dispatched real opcodes** (via `BossSequenceInterpreter`, which already runs this exact real script live) for anything resembling a stat/XP-grant handler, rather than diffing raw memory or hunting for a sibling counter opcode.
+
+**Result**: the interpreter only gets 4 real opcodes into the script (`0x02` `CHAIN_HANDLER_ADDRESS`, `0x08` `ACTOR_FLAG_LIST_HANDLER_ADDRESS`, `0x3C` a confirmed no-op `DEFAULT_HANDLER_ADDRESS`, `0xF8` `SOUND_PARAM_1_HANDLER_ADDRESS`) before honestly halting on the already-known-undecoded `0xDC` (real ROM handler `$3B5B`) -- none of the 4 reached opcodes is remotely stat-related (control flow, actor flags, a no-op, a sound parameter). This is the SAME root blocker this whole session has repeatedly hit from other directions: the real victory/reward logic, if any exists in this specific script, sits further into the script than current opcode coverage reaches -- consistent with, not contradicting, the 2 already-negative angles' own honest conclusion.
+
+**Status, unchanged from the entry above**: Level/XP remains genuinely blocked on either (a) decoding `0xDC` and whatever comes after it in this specific script (a real, separately-scoped opcode-decoding task, not a quick continuation), or (b) accepting the accumulated evidence (3 independent negative angles now) as reasonably strong support for hypothesis (a) from the entry above -- the one currently-reachable "gate creature" fight is a tutorial encounter that genuinely grants no reward in this ROM. No further angle attempted this pass; reporting back to the user rather than continuing to grind on a blocked thread.
