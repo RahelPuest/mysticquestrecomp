@@ -1883,6 +1883,21 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   independently re-verified after every fix. Full detail in
   `docs/reverse-engineering/rom-map.md`.
 
+- **2026-08-16, task #149, `$31AD` fully disassembled + a real, tested
+  `:rearm()` mechanism**: closes the "one-shot trigger" gap task #147
+  scoped. Full byte-level disassembly of `$3297` (opcode 0x00's real
+  handler) and `$31AD` together, for the first time -- found a real,
+  previously undocumented WRAM cell (`$D865`, real queue-empty flag)
+  and the real self-gating scheme (`$31AD` checks/sets bit 1 of
+  `$C0A1`/`$C0A2`; `$3297`'s own genuine-idle path clears it). Decisive
+  correction: `$31AD` is not hardware-one-shot -- it fires at most once
+  per busy period, auto-re-armed by the SAME real event this project's
+  own `queueGate` already models. A live trace caught a real SECOND
+  firing (matching task #86's own `$C5AF` timing almost exactly) and
+  found it commits the exact same real entry point as the first
+  invocation -- honestly left open WHY. New `BossSequenceInterpreter
+  :rearm()`, 2 new tests, `luajit tests/run_tests.lua`: 508/508 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

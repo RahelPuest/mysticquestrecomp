@@ -152,6 +152,18 @@ const WRAM_MAP = [
     description: "$D870 is opcode 0x09's real fixed loop bound (7). $D871/$D873 are the real external match byte and gate cell for opcodes 0x0B/0x0C's runListSearch -- this project has no live simulation to supply real values for either."
   },
   {
+    address: "$D865",
+    name: "Real script-continuation queue empty flag",
+    status: "VERIFIED",
+    description: "FOUND 2026-08-16 (task #149, disassembling $3297/QUEUE_GATE_HANDLER_ADDRESS in full for the first time). 0 means the real queue is genuinely empty. Read right after $D874 bit 0's own already-known isBlocked gate -- when 0, the real handler clears $D85A, restores $C0A0 from $D86E, and unconditionally clears bits 1/2/3 of BOTH $C0A1 and $C0A2 (see those cells' own entry below) before halting. This project's own queue:isEmpty() already models the OBSERVABLE effect correctly; this is the real underlying byte."
+  },
+  {
+    address: "$C0A1 / $C0A2",
+    name: "$31AD self-gate bits (bit 1) + idle-cleanup marker (bit 3) + completion marker (bit 2)",
+    status: "VERIFIED",
+    description: "FOUND 2026-08-16 (task #149). $31AD itself opens with BIT 1,(HL=$C0A1) / RET NZ -- a real, genuine self-gate against re-firing while bit 1 is set. Its own completion sets bits 2 and 1 again (both cells). $3297's own real 'queue genuinely empty' halt (see $D865 above) unconditionally clears bits 1/2/3 of both cells -- the real event that re-arms $31AD. Decisive correction to the earlier 'one-shot' framing (tasks #86/#147): $31AD fires at most once PER busy period, not once ever -- the real ROM clears its own gate automatically. See BossSequenceInterpreter:rearm()."
+  },
+  {
     address: "$D874",
     name: "Multi-bit flag byte",
     status: "VERIFIED",
@@ -161,7 +173,7 @@ const WRAM_MAP = [
     address: "$D8B6 / $D8B7",
     name: "Persistent cross-call script cursor cache",
     status: "VERIFIED",
-    description: "The real ROM's own mirror of the interpreter's HL cursor between ticks -- this project's own ScriptRuntime just threads the cursor explicitly instead of storing it in WRAM. UPDATE 2026-08-16 (task #160 follow-up): CHAIN's own real handler ($32FE) writes its new target here, then immediately calls $2A0A (see the bank call-stack entries below) before releasing -- real, previously-unknown detail about CHAIN's own execution, part of the still-open cross-bank CHAIN investigation (task #81)."
+    description: "The real ROM's own mirror of the interpreter's HL cursor between ticks -- this project's own ScriptRuntime just threads the cursor explicitly instead of storing it in WRAM. UPDATE 2026-08-16 (task #160 follow-up): CHAIN's own real handler ($32FE) writes its new target here, then immediately calls $2A0A (see the bank call-stack entries below) before releasing -- real, previously-unknown detail about CHAIN's own execution, part of the still-open cross-bank CHAIN investigation (task #81). UPDATE 2026-08-16 (task #149): a live write watchpoint found $31AD's own real completion ALSO commits here (PC $31f2/$31f6) -- a real, live-traced SECOND commit was caught landing on the exact same real entry point (bank 13, $470F) the boss-defeat script itself starts from, ~200,000 real steps after the first script's own genuine idle."
   },
   {
     address: "HRAM $FF8A",

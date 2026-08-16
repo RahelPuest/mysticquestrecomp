@@ -1297,6 +1297,56 @@ ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A = 0x33B0
 -- after its HP hits the dead sentinel -- not an arbitrary timer, and
 -- not (contrary to this doc's own retracted claim above) the actor-
 -- COMMAND queue.
+--
+-- **`$3297`'s own real body, fully disassembled for the first time
+-- (2026-08-16, task #149, "generalize the one-shot $31AD trigger into
+-- a re-armable one")**: `LD A,($D874) / BIT 0,A / RET NZ` (the
+-- already-modeled `isBlocked` gate) `/ LD A,($D865) / AND A / JR
+-- NZ,<queue-has-content path>`. **`$D865` is a real, previously
+-- undocumented WRAM cell -- 0 means the real queue is genuinely
+-- empty** (this project's own `queue:isEmpty()` already models the
+-- OBSERVABLE effect correctly; this is the real underlying byte). The
+-- genuinely-empty path: `XOR A / LD ($D85A),A` (clears the current-
+-- opcode byte) `/ LD A,($D86E) / LD ($C0A0),A` (restores a saved
+-- value) `/` then **unconditionally clears bits 1, 2, and 3 of BOTH
+-- `$C0A1` and `$C0A2`** `/ RET`.
+--
+-- **This is the real "re-arm" event `$31AD` (`$0x31AD`, this
+-- project's own already-documented cross-actor dispatcher, tasks
+-- #85/#111) depends on.** Full disassembly of `$31AD` itself: it
+-- opens with `PUSH HL / LD HL,$C0A1 / BIT 1,(HL) / POP HL / RET NZ`
+-- -- i.e. **`$31AD` self-gates against re-firing via bit 1 of
+-- `$C0A1`**, and is a genuine no-op while that bit is set. Its own
+-- real completion (after computing a new script cursor via a real
+-- `0x0B`/`0x04`/`0x08` special-case branch already independently
+-- decoded by task #52, correcting it via the already-known `$3c4f`,
+-- committing it to `$D8B7`/`$D8B6`, fetching via `$3727`, and popping
+-- the bank via `$2a0a`) **SETS bits 2 and 1 of both `$C0A1` and
+-- `$C0A2`** -- re-gating itself. So `$31AD` is NOT hardware one-shot
+-- in the sense of "fires at most once, ever" -- it fires at most once
+-- PER busy period, and the real ROM itself clears that gate at the
+-- EXACT SAME real moment `$3297`'s own real "queue genuinely empty"
+-- halt above already happens (matching `StandardScriptHandlers
+-- .queueGate`'s own already-modeled `kind == "halted"` state, real
+-- opcode byte `0x00`). `src/scripting/BossSequenceInterpreter.lua`'s
+-- own `:rearm()` method (task #149) uses exactly this real, decisive
+-- precondition, not a guess.
+--
+-- **Live cross-check**: a `$D8B6`/`$D8B7` write watchpoint across
+-- `checkpoints.courtyard_boss_defeated()` found a real SECOND commit
+-- (PC `$31f2`/`$31f6`, inside `$31AD`'s own real tail above, bank 0)
+-- at real step 221397 -- matching task #86's own already-documented
+-- `$C5AF` edge-transition timing (step 221251) almost exactly, i.e.
+-- this is very likely THE SAME real event task #86 already found the
+-- TRIGGER condition for, now with `$31AD`'s own internal real logic
+-- fully decoded too. It commits the EXACT SAME real entry point
+-- (`bank=13`, `$470F`) this module's own `START_BANK`/
+-- `START_CPU_ADDRESS` already use for the FIRST invocation -- honestly
+-- flagged as NOT yet explained WHY the real ROM reinvokes the exact
+-- same real entry a second time (a deliberate real repeat vs. this
+-- project's own model simply not diverging where live hardware with
+-- different WRAM state would) -- see events.md's own dated task #149
+-- entry for the full trail.
 ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS = 0x3297
 
 -- `0x08` ($3370) -- structurally traced in task #83 (2026-08-13), its

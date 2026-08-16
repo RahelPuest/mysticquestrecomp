@@ -4,6 +4,57 @@ local DevRomLocator = require("tests.dev_rom_locator")
 
 local romData = DevRomLocator.find()
 
+--- Mirrors `VictorySequence.buildBossSequenceInterpreter`'s own real
+-- production `onControlCode` wiring (see the big test below for the
+-- full real evidence behind each real byte/cursor pair) -- extracted
+-- 2026-08-16 (task #149) so the re-arm tests can build a genuinely
+-- FRESH ctx (a fresh `controlCodeState` closure) without duplicating
+-- 60+ lines verbatim.
+local function newProductionCtx()
+  local controlCodeState = { lastByte = nil, ticksSeen = 0 }
+  return {
+    stats = { curLP = 5, maxLP = 19, curMP = 1, maxMP = 6 },
+    flags = { byte = 0 },
+    wramBitFlags = { byte = 0 },
+    actorStateFlags = { byte = 0 },
+    onControlCode = function(byte, cursor)
+      if byte ~= controlCodeState.lastByte then
+        controlCodeState.lastByte = byte
+        controlCodeState.ticksSeen = 0
+      end
+      controlCodeState.ticksSeen = controlCodeState.ticksSeen + 1
+      if byte == 0x11 then
+        if controlCodeState.ticksSeen < 9 then return false end
+        controlCodeState.lastByte = nil
+        return 1
+      end
+      if byte == 0x10 then
+        controlCodeState.lastByte = nil
+        return 0, cursor == 0x61e3
+      end
+      if byte == 0x14 and cursor == 0x61e4 then
+        controlCodeState.lastByte = nil
+        return 1, true
+      end
+      if byte == 0x1a then
+        controlCodeState.lastByte = nil
+        return 0, true
+      end
+      if byte == 0x12 and cursor == 0x6206 then
+        if controlCodeState.ticksSeen < 156 then return false end
+        controlCodeState.lastByte = nil
+        return 0, true
+      end
+      if byte == 0x1b and cursor == 0x6207 then
+        controlCodeState.lastByte = nil
+        return 1, true
+      end
+      controlCodeState.lastByte = nil
+      return 0
+    end,
+  }
+end
+
 Harness.testIfAvailable(
   "BossSequenceInterpreter: starts at the real, live-verified bank 13 (not scriptPointerTable's own bank 8)",
   romData ~= nil,
@@ -433,6 +484,70 @@ Harness.testIfAvailable(
       "may have regressed: " .. tostring(bsi.runtime.stopError))
     Harness.assertEqual(bsi.runtime.lastKind, "halted",
       "expected the run to end in a real, honest HALT (opcode 0x00's own real queue-gate), not an error")
+    Harness.assertEqual(bsi.cursor, 0x4798)
+    Harness.assertEqual(bsi.bank, 14)
+  end
+)
+
+Harness.testIfAvailable(
+  "BossSequenceInterpreter:rearm refuses to rearm before the real $3297 queue-empty halt (task #149)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local bsi = BossSequenceInterpreter.new(romData, newProductionCtx())
+    bsi:tick() -- one real step in -- genuinely NOT at a queue-empty halt yet
+    local ok, err = pcall(function() bsi:rearm(13, 0x470F) end)
+    Harness.assertTrue(not ok, "expected :rearm to refuse a premature call")
+    Harness.assertTrue(tostring(err):find("real $3297 queue-empty halt", 1, true) ~= nil,
+      "expected the real, specific refusal reason, got: " .. tostring(err))
+  end
+)
+
+Harness.testIfAvailable(
+  "BossSequenceInterpreter:rearm -- task #149, real live-traced SECOND $31AD redirect (bank 13, $470F): rearming at the real queue-empty halt runs cleanly and reaches a real, honest halt again, not an error",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local bsi = BossSequenceInterpreter.new(romData, newProductionCtx())
+    -- Same real 1000-tick budget the big test above already
+    -- established is enough to reach the real 0x4798 halt.
+    for _ = 1, 1000 do
+      bsi:tick()
+    end
+    Harness.assertEqual(bsi.cursor, 0x4798)
+    Harness.assertEqual(bsi.bank, 14)
+    Harness.assertEqual(bsi.runtime.lastOpcode, 0x00)
+    Harness.assertEqual(bsi.runtime.lastKind, "halted")
+
+    -- The real, live-traced redirect target (events.md's own dated
+    -- task #149 entry): a real write at bank-0 PC $31f2/$31f6 commits
+    -- this exact (bank, cpuAddress) into the shared persistent-cursor
+    -- cells a few real seconds after the first script's own genuine
+    -- idle -- the SAME real entry point this module's own
+    -- START_BANK/START_CPU_ADDRESS already use.
+    bsi:rearm(13, 0x470F)
+    Harness.assertEqual(bsi.bank, 13)
+    Harness.assertEqual(bsi.cursor, 0x470F)
+    Harness.assertTrue(not bsi.runtime.stopped, "a freshly rearmed run should start clean, not already stopped")
+
+    for _ = 1, 1000 do
+      bsi:tick()
+    end
+    -- Real, decisive cross-check: replaying from the exact same real
+    -- entry point over the exact same real ROM bytes (this project has
+    -- no live-traced DIFFERENT real script content for a genuinely
+    -- separate second scene yet) deterministically reaches the exact
+    -- same real halt as the very first run did -- not a crash, not a
+    -- still-undecoded-opcode stop, matching the whole point of task
+    -- #149: the mechanism generalizes, even though this specific
+    -- scene's own SECOND real script content is honestly still the
+    -- same bytes as the first (see this method's own doc comment for
+    -- why a genuinely different real scene needs its own live-traced
+    -- redirect target, not this one reused blindly).
+    Harness.assertTrue(not bsi.runtime.stopped,
+      "expected the rearmed run to also end in a real, honest halt, not an error: " ..
+      tostring(bsi.runtime.stopError))
+    Harness.assertEqual(bsi.runtime.lastKind, "halted")
     Harness.assertEqual(bsi.cursor, 0x4798)
     Harness.assertEqual(bsi.bank, 14)
   end

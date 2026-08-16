@@ -48,6 +48,38 @@ local START_CPU_ADDRESS = 0x470F
 -- rather than any general formula, since none was found to exist).
 local POST_CHAIN_BANK = 14
 
+-- Real, live-traced SECOND cross-actor `$31AD`-style redirect (task
+-- #149, 2026-08-16, "generalize the one-shot trigger into a re-
+-- armable one" -- see events.md's own dated entry for the full live
+-- trace). After the FIRST script's own genuine, permanent halt
+-- (`bank=14 cursor=$4798`, task #147, CLOSED), a live `$D8B6`/`$D8B7`
+-- write watchpoint across `checkpoints.courtyard_boss_defeated()`
+-- found a real, concrete SECOND write -- PC `$31f2`/`$31f6` (executing
+-- from bank-6 context), ~200,000 real steps (a few real seconds)
+-- after the first halt -- committing the exact SAME real entry point,
+-- bank 13 / `$470F`, this module's own `START_BANK`/`START_CPU_ADDRESS`
+-- already use for the FIRST invocation. Re-running from there reaches
+-- the ALREADY-known `"13:0x4712" -> 0x472a` `FLAG_LIST_EXHAUSTED_TARGETS`
+-- checkpoint again (a real, decisive, live cross-check that this
+-- table's own value holds for a genuinely SEPARATE real invocation,
+-- not just the original one it was traced from), then a real CHAIN at
+-- `$472b` (operand `0x61 0xb2`, the SAME real target the first
+-- invocation's own CHAIN used) -- HONEST SCOPE: this project's own
+-- live trace observed the real ROM stop re-invoking `$3727` right
+-- there (matching `post_black_wipe()`'s own doc comment: the first
+-- real courtyard-story textbox is showing, waiting for real player
+-- input) -- plausibly ordinary per-character/per-page pacing, NOT a
+-- new undecoded-opcode gap, but NOT independently confirmed by
+-- sending real button input either. `:rearm()` callers should expect
+-- this Lua model to behave differently here: it has no per-frame
+-- textbox-pacing throttle of its own, so it will likely DISPATCH this
+-- real CHAIN immediately rather than pausing the way the real,
+-- per-frame-gated ROM did in this one live trace -- an honest,
+-- already-established limitation (see `:tick()`'s own doc comment
+-- below), not new.
+local REARM_BANK = 13
+local REARM_CPU_ADDRESS = 0x470F
+
 -- Real, empirically-traced continuations for opcode `0x08`'s own "list
 -- exhausted" leaf effect (see `StandardScriptHandlers
 -- .zeroTerminatedFlagList`'s own doc comment for the full disassembly
@@ -164,8 +196,66 @@ function BossSequenceInterpreter.new(romData, ctx)
   end
 
   local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTable)
+  self.opcodeEntries = opcodeEntries -- kept for :rearm() -- see that method's own doc comment
+  self.ctx = ctx
   self.runtime = ScriptRuntime.new(opcodeEntries, ctx)
   return self
+end
+
+--- Real, general "re-arm" support for task #149 ("generalize the
+-- one-shot trigger into a re-armable one"). Static disassembly this
+-- pass (2026-08-16, see events.md's own dated entry) fully decoded
+-- `$3297` (`QUEUE_GATE_HANDLER_ADDRESS`, opcode `0x00`) for the first
+-- time -- previously only characterized via live behavior. Its real
+-- "queue genuinely empty" path (gated on a real, NEWLY-found WRAM
+-- cell, `$D865` -- 0 means empty) unconditionally clears bits 1/2/3 of
+-- `$C0A1`/`$C0A2` before returning. `$31AD` itself opens with `BIT
+-- 1,(HL=$C0A1) / RET NZ` -- i.e. it self-gates against re-firing via
+-- that SAME bit, and its own completion re-sets it. So `$31AD` is NOT
+-- hardware one-shot in the sense of "can only ever fire once" -- it is
+-- gated to fire at most once PER busy period, and the real ROM itself
+-- clears that gate at the EXACT SAME moment `StandardScriptHandlers
+-- .queueGate` already models as its own "queue empty" halt (`kind ==
+-- "halted"`, real opcode byte `0x00`). That is the real, decisive,
+-- now-verified precondition for calling this method -- not `self.done`
+-- (a genuine queue-gate halt never sets it, see `:tick()` below).
+--
+-- This project's own interpreter still has no way to DETECT which
+-- fresh real script a live SECOND `$31AD` firing would redirect to
+-- (it isn't running against real WRAM) -- a caller must supply the new
+-- `bank`/`cpuAddress` explicitly, matching this whole module's own
+-- established "empirical, not derived" epistemics (see
+-- `START_BANK`/`START_CPU_ADDRESS`'s own doc comment). `REARM_BANK`/
+-- `REARM_CPU_ADDRESS` above are the one real, live-traced data point
+-- this project currently has for this one scene's own real redirect
+-- target -- callers for a DIFFERENT real scene must supply their own
+-- live-traced values, not reuse these blindly.
+--
+-- Builds a genuinely FRESH `ScriptRuntime` (the old one's own
+-- `stopped`/`finished` flags permanently latch further `:step()` calls
+-- into no-ops -- see that module's own doc comment -- so continuing
+-- needs a new instance, not a reset of the old one) over the SAME
+-- `opcodeEntries`/`ctx` this instance was originally built with,
+-- preserving every real callback/flag table a caller already wired
+-- (`ctx.stats`, `ctx.flags`, `ctx.onMessage`, the `onControlCode`
+-- state machine, ...) rather than discarding it.
+function BossSequenceInterpreter:rearm(bank, cpuAddress)
+  assert(self.runtime.lastKind == "halted" and self.runtime.lastOpcode == 0x00 and not self.runtime.stopped,
+    "BossSequenceInterpreter:rearm called without the real $3297 queue-empty halt " ..
+    "(lastOpcode=" .. tostring(self.runtime.lastOpcode) .. ", lastKind=" ..
+    tostring(self.runtime.lastKind) .. ", stopped=" .. tostring(self.runtime.stopped) ..
+    ") -- that is the one real event the ROM itself clears $31AD's own re-entry gate on; " ..
+    "rearming at any other halt (e.g. an ordinary per-character pacing pause) would not " ..
+    "match anything the real ROM actually does")
+  assert(type(bank) == "number" and type(cpuAddress) == "number",
+    "BossSequenceInterpreter:rearm requires an explicit real (bank, cpuAddress) -- " ..
+    "this project does not guess the real ROM's own next cross-actor redirect target")
+  self.bank = bank
+  self.cursor = cpuAddress
+  self.stream = RomScriptStream.forBank(self.romData, bank)
+  self.bankSwitched = false
+  self.done = false
+  self.runtime = ScriptRuntime.new(self.opcodeEntries, self.ctx)
 end
 
 --- Advance exactly ONE real opcode dispatch per call.
