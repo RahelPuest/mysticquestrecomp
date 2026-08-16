@@ -304,7 +304,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 |---|---|---|---|
 | P0 | **3 — Map/room extraction** | 🟢 pipeline GENERALIZED (2026-08-12); **8 real, walkable rooms now wired (2026-08-13)**, up from 6 | willyRoom/secondRoom/thirdRoom/fourthRoom/fifthRoom/sixthRoom, plus the 2 unrelated dev-only `unknownRoomA` clusters. Remaining work is "extract/wire more real rooms with this proven pipeline," not "prove the pipeline works." |
 | P0 | **NEW — World scope / content pipeline** | 🟢 384 real, decodable rooms (2026-08-14, up from 320); 2 more real ones found live and wired this session (`fifthRoom`, `sixthRoom`, 2026-08-13) | A real, general "decode any room" capability exists; actually WIRING a new room as walkable content is now a well-practiced, real, repeatable process (tile-offset search + floor classification + `HoldTrigger`-based exit), demonstrated twice more this session. Bank 7's own "Templated" encoding is now CRACKED for tile content AND collision (2026-08-14, base-template + per-record diff, see rom-map.md) -- 64 more decodable, collision-aware rooms, live-verified via real screenshots. Its door-data bytes show a real, clean statistical structure (per-record 4-byte prefix: 8-value alphabet, zero outliers) but stay honestly undecoded -- no live bank-7 gameplay exists to confirm byte-to-direction meaning. Connectivity/spawn position are still KNOWN to be script-driven, not table-driven (see the "general room/map system" investigation). |
-| P1 | **7 — Script/event system** | 🟢 **187/256 real opcode values covered**, whole-corpus scan `clean` at 871/1357, the longest-standing known-hard opcode (`0x80`) finally closed. **2026-08-15**: the boss-defeat script now runs LIVE, per-frame, correctly-banked (`BossSequenceInterpreter`, bank 13→14) instead of a one-shot burst against the wrong bank (a real, self-caught bug fixed the same pass) | 6+ census rounds plus a new whole-corpus scan tool (shadow-runs all 1357 real scripts, not just one) found and wired most of the actor-flag/queued-action/trigger-event/actorSlotPosition/actorAction-family opcodes; a `ScriptRuntime` actually RUNS real, decoded scripts against live ROM bytes (behind `MYSTICQUEST_SCRIPT_INTERPRETER=1`, reported via the debug overlay), and (2026-08-13/14, task #84) has driven its first real, VISIBLE output. Still parallel to, not replacing, `Field.lua`'s hand-authored `FIELD_EVENTS`/`VictorySequence` room-graph — 187/256 is closing in on 3/4 but the remaining ~50 addresses are mostly non-trivial control flow (the cross-actor `$C3F0` dispatch mechanism, task #85's own subject). The `$1F35`/`$C5AF` edge-detector's own trigger CLOSED (2026-08-15, live-traced -- fires once, lands the cursor at the real, correct entry point). The concrete remaining blocker for a real dialogue swap-over is now narrowly identified as something ELSE: this project's own per-frame `:tick()` cadence desyncs from the real ROM's own (not-yet-found) per-opcode dispatch rate once per-frame-paced opcodes are reached (see "Same-day follow-up #5" + its correction above) -- not a wide "opcode coverage" gap; opcode coverage was even confirmed sufficient (the real script genuinely reaches the still-undecoded `0xBC`/`0xBD`, live-confirmed for the first time). |
+| P1 | **7 — Script/event system** | 🟢 **all 256 opcode values now classified (2026-08-16)** — 201 decoded/wired, 49 confirmed no-op, 6 known-hard by design, **0 genuinely undecoded** (up from 187/256 covered, ~50 still-open addresses); whole-corpus scan `clean` at 883/1357 (up from 871). The real interpreter now also drives one real transition's room selection live in actual gameplay (2026-08-16, see below), not just a shadow run | 6+ census rounds plus a new whole-corpus scan tool (shadow-runs all 1357 real scripts, not just one) found and wired most of the actor-flag/queued-action/trigger-event/actorSlotPosition/actorAction-family opcodes; a `ScriptRuntime` actually RUNS real, decoded scripts against live ROM bytes (behind `MYSTICQUEST_SCRIPT_INTERPRETER=1`, reported via the debug overlay), and (2026-08-13/14, task #84) has driven its first real, VISIBLE output. Still parallel to, not replacing, `Field.lua`'s hand-authored `FIELD_EVENTS`/`VictorySequence` room-graph for anything beyond that one live-wired transition. "0 undecoded" means every opcode VALUE has a real, verified classification (decoded/no-op/known-hard) — it does NOT mean every opcode has gameplay-ready behavior: the 6 known-hard ones are traced but deliberately left unwired (each needs a live player-entity/OAM simulation this project doesn't have, see the Milestone 7 detail entry's 2026-08-16 update), and plenty of "decoded" opcodes only run correctly within the narrow context this project's interpreter currently drives. |
 | P1 | **9 — Combat (remainder)** | 🟢 both directions' real formulas now understood (2026-08-16) | Real per-species ATK fully extracted (11 species); player-attacks-enemy MAJOR CORRECTION 2026-08-16 -- real PRNG-driven formula found (same shape/PRNG as `$50AC`), the earlier "flat, no formula" read was a floor-rounding coincidence at the only testable base value, see combat.md. Remaining: whether the base is weapon-power or fixed (untestable, only 1 weapon exists), no weapon-power table wired into the Lua implementation yet. |
 | P1 | **NEW — Bestiary (multiple enemy types)** | 🟡 real stat DATA now available (2026-08-12), still exactly 1 SPAWNABLE enemy | `EnemySpeciesTable.lua` has real ATK for all 11 real species — ready for wiring once P0's room work surfaces a real spawn trigger for any of the other 10 (this project does not fabricate a species-to-room mapping without ROM evidence). |
 | P2 | **6 — Text/dialogue (remainder)** | 🟢 digraph table effectively closed (2026-08-12): 30 → 91 confirmed entries, ~66% real-region coverage, full sentences now decode end to end | Needed for every new dialogue P0 content brings in; not a hard blocker today. Remaining gap is wiring the now-solid decoder into actual gameplay text (still hand-authored `FIELD_EVENTS`/`VictorySequence` strings today), not more decoding work. |
@@ -784,6 +784,34 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       zero regression (real gameplay path reaches fourthRoom at the
       exact same real position as before), 4 new tests. See events.md's
       own dated entry for the full live-trace evidence.
+      **UPDATE 2026-08-16, discovered while updating README.md/roadmap
+      numbers against `rom-inspector`'s live-generated data (this
+      project's own docs had quietly drifted out of date, not a new
+      finding from fresh reverse-engineering): opcode classification
+      for the primary 256-entry table is now COMPLETE.** 201 of 256
+      values have a real, tested Lua handler (`status = "decoded"`,
+      checked by actually building a `ScriptRuntime` and confirming a
+      handler is registered — never hand-classified), 49 more are
+      confirmed real no-ops (`status = "default"`), and the remaining
+      6 are `status = "known-hard"` — traced to a real, understood ROM
+      mechanism but deliberately left unwired because each one's own
+      real effect depends on a live player-entity/OAM simulation this
+      project doesn't have (the `$02AB` "player facing byte" family:
+      `0x0E73`/`0x0E77`/`0x0E7B`/`0x01C1`/`0x15FB`, plus `0x0EB2`'s own
+      `$D499`-driven entity-lifecycle state machine gated on the
+      untraced `$52CD` sub-table). **This means 0 opcode VALUES are
+      genuinely undecoded any more** — a real milestone this project's
+      own roadmap/README hadn't caught up with (both still said
+      "187/256" and "133/256" respectively going into this session).
+      Important honest caveat this number does NOT claim: "0 undecoded"
+      is about classification completeness, not gameplay completeness
+      — most "decoded" opcodes have only ever been exercised within the
+      one boss-defeat script and the one live-wired room transition;
+      running the interpreter against a genuinely new script would very
+      plausibly still surface a real gap in how a decoded handler
+      behaves outside the narrow context it's been tested in so far.
+      The whole-corpus shadow-run number moved with it: `clean` is now
+      883/1357 (up from 871), `haltUndecoded` correspondingly down.
 
 - [~] **Milestone 8 — Menu/inventory/equipment.** Data Crystal's US RAM
       map cross-checked live and matches with zero offset (HP/MP/level/
