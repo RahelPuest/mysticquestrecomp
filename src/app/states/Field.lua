@@ -389,6 +389,14 @@ end
 -- actually used at runtime is computed via the real combat PRNG, not
 -- a fixed per-room constant, so most entries' own real in-game
 -- relevance stays honestly unknown.
+--
+-- F12 (2026-08-16, direct user selection "Item/Ausrüstung nutzbar
+-- machen"): grants a few real catalog items/weapons into `self
+-- .inventory` -- NOT a screen, just inventory-state mutation. Exists
+-- only to make Menu.lua's own new real Dinge/Waffe interactivity
+-- reachable: the real ROM's own item-granting trigger (shop? chest?)
+-- is honestly still unknown, so a fresh, un-F12'd game still shows
+-- the exact same real, VERIFIED empty-inventory menu as before.
 function Field:keypressed(key)
   if key == "f2" and self.romData and self.profile and self.stack then
     local TileViewer = require("src.app.states.TileViewer")
@@ -449,6 +457,29 @@ function Field:keypressed(key)
     -- live spawn (see ActorExplorer.lua's own doc comment).
     local ActorExplorer = require("src.app.states.ActorExplorer")
     self.stack:push(ActorExplorer.new(self.romData, self.input, self.overlay, self.stack))
+  elseif key == "f12" and self.inventory then
+    -- 2026-08-16, task "Item/Ausrüstung nutzbar machen" (direct user
+    -- selection): a dev-only shortcut granting a few real catalog
+    -- items/weapons -- exists ONLY to make the new real Dinge/Waffe
+    -- interactivity (Menu.lua) reachable and testable. NOT a claimed
+    -- ROM trigger: the real ROM's own item-granting condition (shop?
+    -- chest?) is honestly still unknown (see combat.md's own "Real
+    -- equip-swap test attempted, blocked" entry) -- same "dev-only
+    -- browser, no fabricated gameplay trigger" precedent as F8-F11
+    -- above, just for inventory state instead of a new screen. Grants
+    -- real, named catalog entries (not guessed placeholders); repeated
+    -- presses keep granting items (a real pickup would too) but the
+    -- weapon grant is a real no-op once already held (Inventory
+    -- .addWeapon's own duplicate guard).
+    local inv = self.inventory
+    if inv.itemCatalog[1] then inv:addItem(inv.itemCatalog[1].name) end
+    if inv.spellCatalog[2] then inv:addItem(inv.spellCatalog[2].name) end
+    for _, w in ipairs(inv.weaponCatalog) do
+      if w.index ~= inv.equippedWeaponIndex then
+        inv:addWeapon(w.name)
+        break
+      end
+    end
   end
 end
 

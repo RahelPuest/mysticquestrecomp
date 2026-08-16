@@ -308,7 +308,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 | P1 | **9 — Combat (remainder)** | 🟢 both directions' real formulas now understood (2026-08-16) | Real per-species ATK fully extracted (11 species); player-attacks-enemy MAJOR CORRECTION 2026-08-16 -- real PRNG-driven formula found (same shape/PRNG as `$50AC`), the earlier "flat, no formula" read was a floor-rounding coincidence at the only testable base value, see combat.md. Remaining: whether the base is weapon-power or fixed (untestable, only 1 weapon exists), no weapon-power table wired into the Lua implementation yet. |
 | P1 | **NEW — Bestiary (multiple enemy types)** | 🟡 real stat DATA now available (2026-08-12), still exactly 1 SPAWNABLE enemy | `EnemySpeciesTable.lua` has real ATK for all 11 real species — ready for wiring once P0's room work surfaces a real spawn trigger for any of the other 10 (this project does not fabricate a species-to-room mapping without ROM evidence). |
 | P2 | **6 — Text/dialogue (remainder)** | 🟢 digraph table effectively closed (2026-08-12): 30 → 91 confirmed entries, ~66% real-region coverage, full sentences now decode end to end | Needed for every new dialogue P0 content brings in; not a hard blocker today. Remaining gap is wiring the now-solid decoder into actual gameplay text (still hand-authored `FIELD_EVENTS`/`VictorySequence` strings today), not more decoding work. |
-| P2 | **8 — Menu/inventory (remainder)** | 🟡 partial | Visible gameplay gap (items/equipment aren't usable yet), but independently addressable. |
+| P2 | **8 — Menu/inventory (remainder)** | 🟢 items/equipment now usable (2026-08-16) | Real Dinge/Waffe interactivity shipped (use/equip), gated behind a real, non-empty inventory (F12 dev-only grant, since no real ROM item-granting trigger is known). Remaining: no real per-item/weapon effect formula decoded (heal amount, weapon power). |
 | P2 | **NEW — Magic/spell system** | 🔴 not started | Core Seiken Densetsu genre feature; depends on P1's event system and P2/8's item plumbing. |
 | P2 | **NEW — Level/XP system** | 🔴 not started | Well-scoped, not a blocker for anything else. |
 | P3 | **2 — Graphics extraction (remainder)** | 🟡 partial | On-demand extraction is already working practice; a full sweep only pays off once P0 delivers more content to render. |
@@ -767,11 +767,45 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       models; the real in-game menu (`Dinge`/`Magie`/`Waffe`/`Frage`)
       renders real decoded item/weapon/spell names (`ItemTable.lua`/
       `WeaponTable.lua`, VERIFIED against live ROM bytes, including the
-      live-cross-checked "Breit" weapon name). **Remaining:** items and
-      equipment are visible in the menu but not actually usable/
-      equippable in gameplay yet — no item-granting, no equipment-
-      swapping logic; weapon/item stat-byte fields still UNKNOWN (no
-      real value to compare a formula against yet).
+      live-cross-checked "Breit" weapon name).
+      **UPDATE 2026-08-16 (direct user selection, "Item/Ausrüstung
+      nutzbar machen"): items and equipment are now real, usable
+      gameplay, not just a static readout.** `Inventory.lua` gained
+      `heldWeapons` (a real "what this character actually owns" list,
+      seeded with the real starting weapon — `equip()` now correctly
+      requires a weapon be held first, rather than accepting any
+      catalog name), `addWeapon()`, and `useItem()` (consumes a held
+      consumable item — HONEST SCOPE: applies no numeric effect, since
+      `ItemTable.lua`'s own doc comment already states the likely
+      heal-amount/effect bytes aren't decoded — this project has no
+      real formula to apply without fabricating one). `Menu.lua`'s
+      `Dinge`/`Waffe` options now open a real sub-list (reusing the
+      same box/cursor convention as the main menu) when their real
+      list is non-empty; selecting an item uses it, selecting a weapon
+      equips it. The real, VERIFIED empty-inventory behavior (every
+      option closes the menu) is UNCHANGED and still exactly
+      reproduced for a fresh, un-modified game — no real ROM trigger
+      for granting items has ever been found (see combat.md's own
+      "Real equip-swap test attempted, blocked" entry), so `Field.lua`
+      gained a new F12 dev-only shortcut (matching the established
+      F8-F11 "real content, no fabricated trigger" precedent) that
+      grants a few real catalog items/weapons purely to make the new
+      interactivity reachable and testable. A real, previously-
+      invisible layout bug (the sub-list's own label ran off the top
+      of the native 160x144 canvas) was caught and fixed via an actual
+      `love .` screenshot, not guessed. 5 new/updated `Inventory.lua`
+      tests; live-verified via 6 real screenshots (`MYSTICQUEST_MENU_
+      DEMO=1`, a new dev-only shortcut skipping the fragile-to-script
+      full Boot->Intro->NameEntry->BattleIntro flow): empty state
+      unchanged, granting works, the Dinge submenu opens and an item
+      use correctly consumes it and returns to the main menu, the
+      Waffe submenu shows both held weapons, and equipping a different
+      one updates the real equipped-weapon readout. **Remaining:**
+      weapon/item stat-byte fields still UNKNOWN (no real value to
+      compare a formula against yet — same open item as combat.md's
+      own `$3DF4`/table-semantics follow-up); whether equipping a
+      different weapon changes real combat damage is honestly still
+      open (see combat.md's own MAJOR CORRECTION entry).
 
 - [~] **Milestone 9 — Combat.** Real-time contact/action combat,
       confirmed (not a separate turn-based battle mode). **The real

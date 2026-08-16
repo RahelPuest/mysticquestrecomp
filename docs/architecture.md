@@ -266,6 +266,12 @@ Per the project's "debugging tools are a first-class feature" principle:
   table — 218 fully-decoded records, only 2 with a confirmed live
   spawn behind them). Same "real content, no fabricated trigger"
   precedent throughout — see each state's own doc comment.
+- **F12** (from `Field`, 2026-08-16) — grants a few real catalog
+  items/weapons into `self.inventory`. Not a screen; exists only to
+  make Menu.lua's real Dinge/Waffe interactivity (use an item, equip a
+  weapon) reachable and testable — no real ROM item-granting trigger
+  is known, so an un-F12'd game still shows the exact same real,
+  VERIFIED empty-inventory menu as before.
 - `MYSTICQUEST_SCREENSHOT`/`MYSTICQUEST_SCRIPT` env vars (`main.lua`) —
   scripted, OS-automation-free screenshot capture for manual/CI visual
   verification (see "Testing strategy" above).

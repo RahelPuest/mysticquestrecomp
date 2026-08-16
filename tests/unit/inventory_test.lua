@@ -10,13 +10,16 @@ Harness.test("Inventory.new: with no ROM/profile, starts real-empty and has no e
   Harness.assertEqual(#inv.spells, 0)
   Harness.assertEqual(#inv.itemCatalog, 0)
   Harness.assertEqual(#inv.weaponCatalog, 0)
+  Harness.assertEqual(#inv.heldWeapons, 0)
   Harness.assertEqual(inv:equippedWeapon(), nil)
 end)
 
-Harness.test("Inventory:equip/addItem/has: fail loudly (return false) against an empty catalog, never fake success", function()
+Harness.test("Inventory:equip/addItem/addWeapon/has: fail loudly (return false) against an empty catalog, never fake success", function()
   local inv = Inventory.new(nil, nil)
   Harness.assertTrue(not inv:equip("Breit"))
   Harness.assertTrue(not inv:addItem("Portion"))
+  Harness.assertTrue(not inv:addWeapon("Breit"))
+  Harness.assertTrue(not inv:useItem("Portion"))
   Harness.assertTrue(not inv:has("Portion"))
 end)
 
@@ -37,7 +40,10 @@ Harness.testIfAvailable(
 
     -- VERIFIED fresh-character state (rom-map.md "The in-game menu
     -- system") -- Dinge/Magie are empty, Waffe shows exactly one
-    -- already-equipped weapon.
+    -- already-equipped, already-HELD weapon (2026-08-16: heldWeapons
+    -- is seeded with the real starting weapon, not left empty).
+    Harness.assertEqual(#inv.heldWeapons, 1)
+    Harness.assertEqual(inv.heldWeapons[1].name, "Breit")
     Harness.assertEqual(#inv.items, 0)
     Harness.assertEqual(#inv.spells, 0)
 
@@ -77,7 +83,13 @@ Harness.testIfAvailable(
   function()
     local inv = Inventory.new(romData, profile)
 
-    -- Equip a different real weapon than the starting one.
+    -- Equipping a real catalog weapon the character doesn't OWN yet
+    -- must fail (2026-08-16: equip() now requires it be held first).
+    Harness.assertTrue(not inv:equip("Axt"))
+    Harness.assertEqual(inv:equippedWeapon().name, "Breit")
+
+    -- Grant it, then equip it -- a different real weapon than the starting one.
+    Harness.assertTrue(inv:addWeapon("Axt"))
     Harness.assertTrue(inv:equip("Axt"))
     Harness.assertEqual(inv:equippedWeapon().name, "Axt")
 
@@ -110,6 +122,56 @@ Harness.testIfAvailable(
     Harness.assertTrue(inv:addItem(firstSpellName))
     Harness.assertTrue(inv:has(firstSpellName))
     Harness.assertEqual(#inv.items, 1)
+    Harness.assertEqual(#inv.spells, 1)
+  end
+)
+
+Harness.testIfAvailable(
+  "Inventory:addWeapon: real catalog weapons can be granted, no duplicates, unknown names fail loudly",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local inv = Inventory.new(romData, profile)
+    Harness.assertEqual(#inv.heldWeapons, 1) -- just the starting weapon
+
+    Harness.assertTrue(inv:addWeapon("Axt"))
+    Harness.assertEqual(#inv.heldWeapons, 2)
+
+    -- Granting the SAME weapon again is a no-op failure, not a duplicate entry.
+    Harness.assertTrue(not inv:addWeapon("Axt"))
+    Harness.assertEqual(#inv.heldWeapons, 2)
+
+    -- Unknown name: no silent fallback.
+    Harness.assertTrue(not inv:addWeapon("Not A Real Weapon"))
+    Harness.assertEqual(#inv.heldWeapons, 2)
+  end
+)
+
+Harness.testIfAvailable(
+  "Inventory:useItem: consumes a held item (removes it), never touches spells, fails loudly if not held",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local inv = Inventory.new(romData, profile)
+    local itemName = inv.itemCatalog[1].name
+    local spellName = inv.spellCatalog[2].name -- see the collision note above -- avoids itemCatalog[1]'s own name clash
+
+    Harness.assertTrue(not inv:useItem(itemName), "not held yet")
+
+    Harness.assertTrue(inv:addItem(itemName))
+    Harness.assertTrue(inv:addItem(spellName))
+    Harness.assertEqual(#inv.items, 1)
+    Harness.assertEqual(#inv.spells, 1)
+
+    Harness.assertTrue(inv:useItem(itemName))
+    Harness.assertEqual(#inv.items, 0) -- consumed
+    Harness.assertEqual(#inv.spells, 1) -- untouched -- spells are known, not consumed
+
+    -- Using it again (already consumed) fails loudly, no silent no-op success.
+    Harness.assertTrue(not inv:useItem(itemName))
+
+    -- useItem never operates on spells, even if the name happens to match.
+    Harness.assertTrue(not inv:useItem(spellName))
     Harness.assertEqual(#inv.spells, 1)
   end
 )

@@ -66,7 +66,8 @@ function Inventory.new(romData, profile)
     spells = {}, -- known spells, real-empty for a fresh character
     itemCatalog = {}, -- every real ItemTable record whose categoryByte marks it a consumable
     spellCatalog = {}, -- every real ItemTable record whose categoryByte marks it a spell
-    weaponCatalog = {}, -- every real WeaponTable record
+    weaponCatalog = {}, -- every real WeaponTable record (the full in-ROM catalog, not what the player owns)
+    heldWeapons = {}, -- the weapons this character actually HAS -- starts with just the real starting weapon
     equippedWeaponIndex = nil,
   }, Inventory)
 
@@ -90,6 +91,7 @@ function Inventory.new(romData, profile)
       local starting = findByName(self.weaponCatalog, Inventory.STARTING_WEAPON_NAME)
       if starting then
         self.equippedWeaponIndex = starting.index
+        self.heldWeapons[1] = starting
       end
     end
   end
@@ -110,14 +112,35 @@ function Inventory:equippedWeapon()
   return nil
 end
 
---- Equip the weapon named `name` from the real catalog. Returns true on
--- success. Returns false (no silent fallback/partial state) if `name`
--- isn't a real catalog entry -- equip state never points at a weapon
--- that doesn't exist in the decoded ROM data.
+--- Equip the weapon named `name` -- must already be HELD (see
+-- `addWeapon`), matching real "you can only wield what you own" game
+-- logic (2026-08-16, task "Item/Ausrüstung nutzbar machen" -- CHANGED
+-- from the earlier "any real catalog weapon" semantics, which let a
+-- caller equip a weapon the character never actually acquired).
+-- Returns true on success, false (no silent fallback/partial state)
+-- if `name` isn't currently held.
 function Inventory:equip(name)
-  local record = findByName(self.weaponCatalog, name)
+  local record = findByName(self.heldWeapons, name)
   if not record then return false end
   self.equippedWeaponIndex = record.index
+  return true
+end
+
+--- Grant weapon `name` from the real catalog into `heldWeapons`.
+-- Returns true on success, false if `name` isn't a real catalog entry
+-- or is already held (no duplicate held-weapon entries). Same "real
+-- content only, fail loudly on an unknown name" discipline as
+-- `addItem` below -- this is real, general inventory-management code;
+-- the real ROM's own item-granting TRIGGER (a shop, a found chest) is
+-- honestly still unknown (see combat.md's own "Real equip-swap test
+-- attempted, blocked" entry) -- callers decide WHEN to grant (see
+-- `Field.lua`'s F12 dev-only shortcut), this method only decides
+-- WHETHER a grant is valid against the real decoded catalog.
+function Inventory:addWeapon(name)
+  if findByName(self.heldWeapons, name) then return false end
+  local record = findByName(self.weaponCatalog, name)
+  if not record then return false end
+  self.heldWeapons[#self.heldWeapons + 1] = record
   return true
 end
 
@@ -144,6 +167,28 @@ end
 --- Whether `name` is currently held/known (an item or a spell).
 function Inventory:has(name)
   return findByName(self.items, name) ~= nil or findByName(self.spells, name) ~= nil
+end
+
+--- Consume one held instance of consumable item `name`, removing it
+-- from `self.items`. Returns true on success, false if not currently
+-- held. HONEST SCOPE (2026-08-16, task "Item/Ausrüstung nutzbar
+-- machen"): this is real, general inventory-management code (using an
+-- item really does remove it), but applies NO numeric effect --
+-- `ItemTable.lua`'s own doc comment already states bytes 9-14 (the
+-- likely heal-amount/effect fields) are NOT decoded, so this project
+-- has no real ROM-derived formula to apply without fabricating one.
+-- Deliberately does NOT operate on `self.spells` -- spells are KNOWN,
+-- not consumed on cast (matching this genre's real MP-cost
+-- convention, not an item-stock convention); no MP-cost formula is
+-- wired either, so casting isn't modeled here at all yet.
+function Inventory:useItem(name)
+  for i, record in ipairs(self.items) do
+    if record.name == name then
+      table.remove(self.items, i)
+      return true
+    end
+  end
+  return false
 end
 
 return Inventory

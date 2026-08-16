@@ -137,6 +137,43 @@ function love.load()
       ") -- falling back to the normal Boot flow")
   end
 
+  -- Dev/CI-only: MYSTICQUEST_MENU_DEMO=1 (2026-08-16, same reasoning/
+  -- pattern as MYSTICQUEST_VICTORY_DEMO above -- added to screenshot-
+  -- verify Menu.lua's new real Dinge/Waffe interactivity, task "Item/
+  -- Ausrüstung nutzbar machen") skips the real Boot->TitleScreen->
+  -- Intro->NameEntry->BattleIntro->Field->START flow (fragile to
+  -- script blindly -- name entry alone needs letter-by-letter
+  -- selection) and pushes a real Field + Menu pair directly, same real
+  -- ROM data Boot.lua itself loads. Optional
+  -- MYSTICQUEST_MENU_DEMO_GRANT=1 also runs Field's own real F12
+  -- dev-grant logic first (see Field.lua's own F12 doc comment) so the
+  -- new Dinge/Waffe interactivity has something real to show -- without
+  -- it, this reproduces the exact real, VERIFIED empty-inventory state
+  -- instead.
+  if os.getenv("MYSTICQUEST_MENU_DEMO") == "1" then
+    local RomLocator = require("src.import.RomLocator")
+    local RomIdentity = require("src.import.RomIdentity")
+    local RomProfiles = require("src.import.rom_profiles")
+    local Field = require("src.app.states.Field")
+    local Menu = require("src.app.states.Menu")
+    local data, pathOrReason = RomLocator.find()
+    if data then
+      local identity = RomIdentity.identify(data)
+      local profile = RomProfiles.match(identity)
+      if profile then
+        local field = Field.new(data, profile, input, overlay, stack)
+        if os.getenv("MYSTICQUEST_MENU_DEMO_GRANT") == "1" then
+          field:keypressed("f12")
+        end
+        stack:push(field)
+        stack:push(Menu.new(data, profile, input, stack, field.inventory))
+        return
+      end
+    end
+    print("MYSTICQUEST_MENU_DEMO: could not load a real ROM (" .. tostring(pathOrReason) ..
+      ") -- falling back to the normal Boot flow")
+  end
+
   -- Dev/CI-only: MYSTICQUEST_ROOM_EXPLORER_DEMO=1 (2026-08-14, same
   -- reasoning/pattern as MYSTICQUEST_VICTORY_DEMO above -- added to
   -- screenshot-verify RoomExplorer.lua changes, e.g. the bank-7
