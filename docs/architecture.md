@@ -130,6 +130,22 @@ split) that actually runs this against the real ROM and writes
 to run cleanly and reproduce deterministic output (byte-identical
 except the manifest's own timestamp) on repeated runs.
 
+**Read side started (2026-08-16)**: `src/import/GeneratedCache.lua`
+(pure Lua) — `tryLoad(name)` wraps `require("data.generated." ..
+name)` in `pcall` for graceful absence (matching `RomLocator.lua`'s own
+established convention: content bundled inside the app's own source
+tree goes through LÖVE's filesystem-aware `require`, not a bespoke
+reader); `verifyManifest(romSha1)` refuses a cache whose recorded
+SHA-1 doesn't match the currently-loaded ROM (never silently serves a
+stale cache from a different ROM revision); `loadAll(romData)` reuses
+`RomExtractor.STAGES` directly to load every stage all-or-nothing.
+**Wired into exactly one real consumer so far**: `CatalogExplorer.lua`
+(its 4 data sources are precisely `RomExtractor.STAGES`' 4 stages) —
+tries the cache first, falls back to the unchanged live-decode path
+when absent/stale. Live-verified via a real `love .` launch with a
+freshly-generated cache present: confirmed the cache path (not the
+fallback) actually renders correct real data.
+
 **Still explicitly NOT done** (a deliberate, separate follow-up, not an
 oversight): no `ImageWriter`/`assets/generated/**/*.png` step yet (no
 importer this pipeline wires produces pixel data — `MapTileCatalog`/
@@ -137,13 +153,15 @@ importer this pipeline wires produces pixel data — `MapTileCatalog`/
 `RomExtractor.lua`'s own doc comment); no `RoomFloorLayout` stage
 (needs a per-room selector argument, not a single "decode everything"
 entry point — a different shape than the stages wired so far); and
-critically, **the runtime switch itself has NOT been made** — `Field`,
-`TileViewer`, `MapBlockViewer`, `Menu`, and every other consumer still
-decode `romData` bytes live on every run, exactly as before. Generated
-files are written but nothing yet reads them back at boot. That
-migration is real, valuable follow-up work, deliberately scoped out
-here so this pass stays reviewable — matching this project's own
-"note the goal, don't build it all at once" discipline.
+**every OTHER consumer still decodes `romData` live** — `Field`,
+`VictorySequence`, `TileViewer`, `MapBlockViewer`, `Menu` all still
+read raw ROM bytes on every run, exactly as before (most of what they
+need — room floor layouts, sprite graphics, dialogue text — isn't even
+in `RomExtractor.STAGES` yet). One real, working, tested slice of the
+runtime switch exists now; migrating the rest is real, valuable,
+much larger follow-up work, deliberately scoped out here — matching
+this project's own "note the goal, don't build it all at once"
+discipline.
 
 ## ROM-version-specific knowledge is centralized
 

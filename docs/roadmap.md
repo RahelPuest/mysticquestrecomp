@@ -2011,6 +2011,26 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   concretely-actionable item from the same gap analysis (cache-pipeline
   read-side) is still open.
 
+- **2026-08-16, "komplett autark interpretiert" gap analysis, second
+  concrete step -- generated-cache pipeline's READ side wired for
+  real**: `src/import/GeneratedCache.lua` (pure Lua) -- `tryLoad`
+  wraps `require("data.generated.<name>")` in `pcall` (matching
+  `RomLocator.lua`'s own convention for content bundled in the app's
+  source tree); `verifyManifest` refuses a cache whose recorded SHA-1
+  doesn't match the current ROM; `loadAll` reuses `RomExtractor
+  .STAGES` directly, all-or-nothing. Wired into `CatalogExplorer.lua`
+  (the one consumer whose 4 data sources exactly match `RomExtractor`'s
+  4 stages) -- tries the cache first, falls back to the unchanged live
+  decode when absent/stale. Live-verified via a real `love .` launch +
+  screenshot with a freshly-generated cache present: confirmed the
+  cache path actually ran and rendered correct real data. 6 new tests
+  (gated on the cache actually existing -- honest skip, not fail, on a
+  fresh checkout). `luajit tests/run_tests.lua`: 528/528 pass. Honest
+  scope: one real, working, tested slice of the runtime switch --
+  every other state (`Field`, `VictorySequence`, `Menu`, ...) still
+  live-decodes `romData` for everything else; that migration is real,
+  much larger, separate follow-up work.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
