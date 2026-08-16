@@ -19,6 +19,10 @@ function render_transitions(main) {
       deren echter In-Game-Auslöser (welcher Story-/Dialog-Moment ihn tatsächlich abruft) ehrlich
       noch unbekannt ist &mdash; eine zeitlich begrenzte Live-Suche über jede Wand jedes aktuell
       erreichbaren Raums fand nichts Neues. Besonders bemerkenswert:
+      Die 2 live-verifizierten Einträge sind auch im
+      <a href="#rooms">Raum-System</a>-Tab als echte, spielbare Kante verdrahtet &mdash; dieser
+      Tab hier zeigt die VOLLE zugrundeliegende ROM-Tabelle, jener nur die tatsächlich
+      spielbare Teilmenge. Besonders bemerkenswert:
       <span class="badge partial">unknownRoomA</span>-Einträge (roomSelector 8&ndash;13) sind
       der erste reale ROM-Beleg, dass diese seit Langem mysteriöse Raumfamilie (nie in einer
       früheren Session live erreicht) echter beabsichtigter Content ist, kein toter Datenmüll.

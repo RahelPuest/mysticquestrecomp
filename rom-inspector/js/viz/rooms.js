@@ -9,6 +9,18 @@ function render_rooms(main) {
       und ein echter „Cut“ &mdash; ein sofortiger Szenenwechsel über die relozierbare
       Zeiger-Pipeline (<span style="color:var(--accent3)">gestrichelt</span>).
     </p>
+    <p class="page-lede">
+      <strong>Nur die tatsächlich im Spiel verdrahteten Übergänge</strong> &mdash; nicht
+      die volle rohe ROM-Tabelle. Diese ${ROOMS.reduce((n, r) => n + r.exits.length, 0)}
+      Kanten sind eine kleine, live bestätigte Teilmenge der
+      <a href="#transitions">${TRANSITIONS.distinct.length} echten, distinkten Übergänge</a>,
+      die 2026-08-16 direkt aus dem ROM dekodiert wurden (Bank 14, Ziel-<code>roomSelector</code>
+      + reale Landeposition in einem Record). Der Grund für den Unterschied ist ehrlich: nur
+      2 dieser 82 Einträge haben einen bekannten echten In-Game-Auslöser und sind deshalb hier
+      als spielbare Kante verdrahtet &mdash; die anderen 80 (darunter 36 zur lange mysteriösen
+      <code>unknownRoomA</code>-Familie) sind reale ROM-Daten ohne bekannten Trigger. Siehe den
+      <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige Tabelle.
+    </p>
     <svg id="roomGraphSvg"></svg>
     <div class="card-grid" id="roomCards" style="margin-top:20px;"></div>
   `;
