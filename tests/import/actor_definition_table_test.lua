@@ -51,3 +51,43 @@ Harness.testIfAvailable(
     Harness.assertTrue(sawVaryingByte, "expected at least one varying byte between the two sub-records")
   end
 )
+
+Harness.testIfAvailable(
+  "ActorDefinitionTable.scanTable: the real measured extent is exactly 218 records, 5 of them anomalous (index 0 and the 12-15 cluster)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local records = ActorDefinitionTable.scanTable(romData)
+    Harness.assertEqual(#records, ActorDefinitionTable.TABLE_COUNT)
+    Harness.assertEqual(#records, 218)
+
+    local anomalousIndices, plausibleCount, subRecordCount = {}, 0, 0
+    for _, record in ipairs(records) do
+      if record.anomalous then
+        anomalousIndices[#anomalousIndices + 1] = record.index
+      else
+        plausibleCount = plausibleCount + 1
+        Harness.assertTrue(record.spriteSubRecord ~= nil, "expected a sub-record for a non-anomalous entry")
+        subRecordCount = subRecordCount + 1
+      end
+    end
+    Harness.assertEqual(#anomalousIndices, 5)
+    Harness.assertEqual(table.concat(anomalousIndices, ","), "0,12,13,14,15")
+    Harness.assertEqual(plausibleCount, 213)
+    Harness.assertEqual(subRecordCount, 213)
+  end
+)
+
+Harness.testIfAvailable(
+  "ActorDefinitionTable.readRecord: index 218 (just past the measured extent) is a real record but NOT part of the coherent table",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    -- This is the exact boundary this module's own extent measurement
+    -- rests on: index 218's spritePointer must NOT land in the normal
+    -- bank-3 window, confirming the table really does end at 217.
+    local record = ActorDefinitionTable.readRecord(romData, 218)
+    Harness.assertTrue(record ~= nil)
+    Harness.assertTrue(record.anomalous, "expected index 218 to fall outside the coherent table")
+  end
+)

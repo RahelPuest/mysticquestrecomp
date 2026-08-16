@@ -116,8 +116,16 @@ tools/export_data.lua      Regenerates js/data/*.js from the real ROM + this
   the already-known combat PRNG select an index into a real 24-byte
   actor-definition table, bank 3) — but it's genuinely NOT a static
   per-room placement table (the index is computed at runtime), which
-  is why no such table was ever found by static search alone. See
-  `src/import/ActorDefinitionTable.lua`.
+  is why no such table was ever found by static search alone. See the
+  **Akteur-Tabelle** tab and `src/import/ActorDefinitionTable.lua`.
+- **Akteur-Tabelle** (2026-08-16) — the real, RNG-gated actor-definition
+  table behind secondRoom's NPC spawns (`ActorDefinitionTable.lua`):
+  all 218 real records (indices 0–217, its measured full extent), each
+  with its embedded sprite sub-record pointer. Filterable by live-
+  confirmed vs. anomalous (5 records point into the fixed bank-0
+  region instead of the normal bank-3 window). Only 2 of 218 have a
+  confirmed live spawn behind them — the rest are real, structured ROM
+  data whose in-game trigger is honestly unknown.
 - **Story & Charaktere** — a full-ROM text census: monster defeat messages
   and every named story character found in dialogue text.
 - **Grafiken** — candidate creature/map-tile graphics regions found via a

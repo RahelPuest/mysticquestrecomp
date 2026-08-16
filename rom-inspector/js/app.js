@@ -19,6 +19,7 @@ const SECTIONS = [
   { id: "monsters", icon: "👾", label: "Monster", group: "Katalog" },
   { id: "items", icon: "🗡", label: "Items & Waffen", group: "Katalog" },
   { id: "npcs", icon: "🧑", label: "NPCs", group: "Katalog" },
+  { id: "actors", icon: "🎲", label: "Akteur-Tabelle", group: "Katalog" },
   { id: "story", icon: "📖", label: "Story & Charaktere", group: "Katalog" },
   { id: "graphics", icon: "🖼", label: "Grafiken", group: "Katalog" },
   { id: "questions", icon: "?", label: "Offene Fragen", group: "Status" },
@@ -35,6 +36,7 @@ function countFor(id) {
     if (id === "monsters") return String(MONSTERS.species.length);
     if (id === "items") return String(ITEMS.items.length + ITEMS.weapons.length);
     if (id === "npcs") return String(NPCS.length);
+    if (id === "actors") return String(ACTORS.tableCount);
     if (id === "story") return String(STORY.bossDefeats.length + STORY.namedCharacters.length);
     if (id === "music") return String(MUSIC.songCount);
     if (id === "graphics") return String(GRAPHICS_CANDIDATES.length);

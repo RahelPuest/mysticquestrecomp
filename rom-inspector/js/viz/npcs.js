@@ -4,13 +4,16 @@ function render_npcs(main) {
   main.innerHTML = `
     <h1 class="page-title">NPCs</h1>
     <p class="page-lede">
-      Anders als Monster/Items gibt es in dieser ROM KEINE statische Platzierungs-Tabelle
-      für NPCs &mdash; eine frühere, eigenständige Untersuchung hat das bereits live und
+      Anders als Monster/Items gibt es in dieser ROM keine STATISCHE Pro-Raum-Platzierungs-
+      Tabelle für NPCs &mdash; eine frühere, eigenständige Untersuchung hat das bereits live und
       erschöpfend festgestellt. Jeder Eintrag unten wurde einzeln per Live-OAM-Tracing +
       Raum-für-Raum-Dialogtest gefunden. "Vollständig" heißt hier "alle bisher gefundenen",
       nicht "alle, die im Spiel existieren" &mdash; weitere NPCs zu finden würde bedeuten,
       weitere Räume live zu erkunden (siehe roadmap.md, "World scope / content pipeline"),
-      nicht eine Tabelle mechanisch weiterzulesen.
+      nicht eine Tabelle mechanisch weiterzulesen. 2026-08-16: der reale SPAWN-MECHANISMUS
+      hinter secondRooms zwei NPCs ist inzwischen live nachverfolgt &mdash; eine echte,
+      PRNG-indizierte Tabelle, kein statischer Pro-Raum-Eintrag. Siehe den
+      <a href="#actors">Akteur-Tabelle</a>-Tab.
     </p>
     <div id="npcRomBanner"></div>
     <div class="card-grid" id="npcCards"></div>

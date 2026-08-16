@@ -517,8 +517,15 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       this is NOT a static per-room placement table -- the index is
       computed at runtime (RNG-influenced), which is exactly why no
       such table was ever found by static search alone; the full
-      24-byte record semantics and the table's real total extent
-      remain undecoded.
+      24-byte record semantics remain undecoded.
+      **UPDATE 2026-08-16 (same day, "Tabelle voll ausmessen")**: the
+      table's real total extent is now MEASURED, not undecoded --
+      exactly 218 records (indices 0-217), 5 of them anomalous
+      (bank-0-pointing, not the normal bank-3 window). Shipped as a
+      new "Akteur-Tabelle" website tab (all 218 rows, filterable) and
+      `ActorDefinitionTable.scanTable`. Still open: the 24-byte field
+      semantics beyond the 2 already-decoded fields, and the exact
+      RNG-roll -> index derivation.
 
 - [~] **Milestone 6 — Text and dialogue.** Real in-ROM font rendering,
       a real bordered textbox component with typewriter reveal, real

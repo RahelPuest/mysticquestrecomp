@@ -37,12 +37,27 @@
 --
 -- LIVE-CONFIRMED INDICES: two real spawn events, captured live via
 -- PC-history tracing (60-instruction window, not a static guess),
--- used table indices 99 and 121. Sampling the surrounding index range
--- (0-9, 95-124, 160-174, direct ROM reads) confirms the table is real
--- and structurally regular across at least ~175 entries; indices 0-9
--- look like a DIFFERENT record family (a near-constant embedded
--- pointer across all of them, unlike 95+) and are honestly left
--- uninterpreted -- may not be NPC-relevant at all.
+-- used table indices 99 and 121.
+--
+-- **UPDATE 2026-08-16, direct continuation ("Tabelle voll ausmessen")**:
+-- the table's real extent is now MEASURED, not sampled. A static
+-- plausibility scan (does bytes[8..9] land inside the real bank-3
+-- banked window, 0x4000-0x7fff?) across every index that fits before
+-- the bank ends finds real, structured data through index 217 -- then,
+-- at index 218, the byte shape abruptly changes to short repeating
+-- 4-byte groups (`24 77 24 77`, `bd bd bd bd`, ...), a visibly
+-- different, NOT actor-record-shaped region -- confirming the table
+-- really ends at 217 (218 entries total, indices 0-217). WITHIN that
+-- range, 5 entries are real but anomalous (bytes[8..9] point into the
+-- FIXED bank-0 region, 0x0000-0x3fff, not the swappable bank-3 window
+-- every other entry uses): index 0 alone, then a tight cluster at
+-- 12/13/14/15 that additionally share near-identical bytes[1..8] and
+-- TWO repeated bank-0 pointers (0x2cab for 12-14, 0x2cc3 for 15) --
+-- plausibly a small family of reserved/fixed-graphics slots (e.g.
+-- always-loaded UI or story-specific actors that don't need the
+-- swappable-bank sprite pipeline), not confirmed live. Both
+-- live-confirmed indices (99, 121) sit inside the normal, non-anomalous
+-- range. See `scanTable` for a full-extent reader.
 --
 -- THE EMBEDDED SECOND POINTER (bytes[8..9]) resolves to a SECOND real
 -- 24-byte block, same bank, whose varying bytes are all small
@@ -69,15 +84,37 @@
 -- Bottom line, matching this session's room-connectivity precedent (a
 -- real, general table found and decoded, decisively explaining a
 -- long-open mechanism, while the full general "what triggers each
--- entry" question stays open): the *spawn mechanism* is closed, the
--- *full table semantics* (all 24 bytes of both record types, the exact
--- RNG -> index derivation, and the table's real total extent) are not.
+-- entry" question stays open): the *spawn mechanism* is closed, and
+-- (2026-08-16 update) the table's real total EXTENT is now measured
+-- too (218 records, indices 0-217). What's still open: the *full
+-- field semantics* (all 24 bytes of both record types beyond the 2
+-- currently-decoded fields) and the exact RNG -> index derivation.
 
 local ActorDefinitionTable = {}
 
 local BANK = 3
 local TABLE_BASE_CPU = 0x5f5a
 local RECORD_SIZE = 24
+
+--- 2026-08-16, direct continuation ("Tabelle voll ausmessen"): the
+-- table's real extent, measured (not guessed) via a static plausibility
+-- scan -- for every index, is bytes[8..9] (LE) a CPU address inside the
+-- real bank-3 banked window (0x4000-0x7fff)? Real, structured records
+-- run through index 217 (218 entries, 0-217); index 218 onward
+-- abruptly changes shape (repeating 4-byte groups like `24 77 24 77`,
+-- `bd bd bd bd` -- a visibly different, NOT actor-record-shaped, data
+-- region starts exactly there). WITHIN 0-217, 5 entries are real but
+-- anomalous: index 0, plus a tight cluster at 12/13/14/15 (near-
+-- identical bytes[1..8], 2 repeated bank-0 pointers) -- their own
+-- bytes[8..9] point into the FIXED bank-0 region (0x0000-0x3fff,
+-- always mapped regardless of the active bank), not the swappable
+-- bank-3 window every other real record uses -- plausibly a small
+-- reserved/fixed-graphics family, not confirmed live.
+-- `TABLE_COUNT` includes all of them (218 total) since they ARE real,
+-- structurally present ROM data at the expected stride -- `scanTable`
+-- marks each one `anomalous = true` rather than silently treating them
+-- like the rest.
+local TABLE_COUNT = 218
 
 --- Converts a bank + CPU address (0x4000-0x7fff, banked ROM window) to
 -- a flat ROM file offset. Same formula this project already uses
@@ -86,6 +123,14 @@ local function fileOffset(bank, cpuAddr)
   return bank * 0x4000 + (cpuAddr - 0x4000)
 end
 ActorDefinitionTable.fileOffset = fileOffset
+ActorDefinitionTable.TABLE_COUNT = TABLE_COUNT
+
+--- True when `cpuAddr` falls inside the real, swappable bank-3 ROM
+-- window (0x4000-0x7fff) -- the same plausibility test used to measure
+-- the table's own real extent (see `TABLE_COUNT`'s doc comment above).
+local function inBankedWindow(cpuAddr)
+  return cpuAddr >= 0x4000 and cpuAddr <= 0x7fff
+end
 
 --- Reads the raw 24-byte outer record at table index `index` (0-based).
 -- Returns the raw bytes plus the two currently-understood fields:
@@ -99,13 +144,39 @@ function ActorDefinitionTable.readRecord(romData, index)
   local raw = romData:sub(off + 1, off + RECORD_SIZE)
   if #raw < RECORD_SIZE then return nil end
   local lo, hi = raw:byte(9), raw:byte(10)
+  local spritePointer = lo + hi * 256
   return {
     index = index,
     fileOffset = off,
     raw = raw,
     allocParam = raw:byte(1),
-    spritePointer = lo + hi * 256,
+    spritePointer = spritePointer,
+    -- true when spritePointer does NOT land in the normal bank-3
+    -- banked window -- real, but structurally different from every
+    -- other record (see `TABLE_COUNT`'s doc comment; index 0 is the
+    -- one currently-known case).
+    anomalous = not inBankedWindow(spritePointer),
   }
+end
+
+--- Reads every real record across the table's own measured extent
+-- (`TABLE_COUNT`, indices 0..TABLE_COUNT-1). Each entry additionally
+-- carries `spriteSubRecord` (via `readSpriteSubRecord`) when its own
+-- `spritePointer` is plausible (skipped, left nil, for anomalous
+-- records -- following an out-of-window pointer with the same-bank
+-- formula would silently read the wrong bank's bytes).
+function ActorDefinitionTable.scanTable(romData)
+  local records = {}
+  for index = 0, TABLE_COUNT - 1 do
+    local record = ActorDefinitionTable.readRecord(romData, index)
+    if record then
+      if not record.anomalous then
+        record.spriteSubRecord = ActorDefinitionTable.readSpriteSubRecord(romData, record)
+      end
+      records[#records + 1] = record
+    end
+  end
+  return records
 end
 
 --- Follows a record's own `spritePointer` to its real sprite sub-

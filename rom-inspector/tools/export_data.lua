@@ -35,6 +35,7 @@ local GraphicsCandidates = require("src.import.GraphicsCandidates")
 local MapTileCatalog = require("src.import.MapTileCatalog")
 local MusicDecoder = require("src.import.MusicDecoder")
 local CutTransitionTable = require("src.import.CutTransitionTable")
+local ActorDefinitionTable = require("src.import.ActorDefinitionTable")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -1033,6 +1034,57 @@ do
     "sibling record type this same investigation found (originally suspected to be the " ..
     "connectivity key -- that hypothesis turned out to be wrong, its own real meaning stays " ..
     "undecoded, kept here as a real, verified structural finding.)")
+end
+
+----------------------------------------------------------------------
+-- 17. Actor-definition table (ActorDefinitionTable.lua, 2026-08-16,
+-- task "NPC-Platzierungstabelle suchen" / "Tabelle voll ausmessen") --
+-- the real, live-traced RNG-gated spawn table behind secondRoom's two
+-- NPCs, its full measured extent (218 records, indices 0-217, 5
+-- anomalous). See ActorDefinitionTable.lua's own doc comment for the
+-- full live-trace chain and disassembly.
+----------------------------------------------------------------------
+do
+  local function toHex(s)
+    return (s:gsub(".", function(c) return string.format("%02x", c:byte()) end))
+  end
+
+  local records = ActorDefinitionTable.scanTable(romData)
+  local exported = {}
+  for _, r in ipairs(records) do
+    local sub = nil
+    if r.spriteSubRecord then
+      sub = { fileOffset = r.spriteSubRecord.fileOffset, rawHex = toHex(r.spriteSubRecord.raw) }
+    end
+    exported[#exported + 1] = {
+      index = r.index,
+      fileOffset = r.fileOffset,
+      anomalous = r.anomalous,
+      allocParam = r.allocParam,
+      spritePointer = r.spritePointer,
+      rawHex = toHex(r.raw),
+      spriteSubRecord = sub,
+    }
+  end
+
+  writeJs("actors.js", "ACTORS", {
+    tableCount = ActorDefinitionTable.TABLE_COUNT,
+    records = exported,
+    liveConfirmed = ActorDefinitionTable.LIVE_CONFIRMED,
+  }, "Real, RNG-gated actor-definition table (bank 3, CPU $5f5a, 24-byte stride, " ..
+    ActorDefinitionTable.TABLE_COUNT .. " records, indices 0-" .. (ActorDefinitionTable.TABLE_COUNT - 1) ..
+    ") -- found 2026-08-16 live-tracing secondRoom's two NPC spawns (a proximity check calls " ..
+    "the already-known combat PRNG, $2B1E, to compute an index into this table). Each record " ..
+    "embeds a pointer (bytes[8..9]) to a SECOND 24-byte sprite sub-record; the two live-captured " ..
+    "indices' (99, 121) own sub-records differ by EXACTLY +0x20 on every varying byte -- a " ..
+    "byte-exact match, via a totally independent method (live OAM tile-ID capture), to this " ..
+    "project's own already-confirmed 'characterB's tile IDs are characterA's own +0x20' fact. " ..
+    "Honest scope: this is NOT a static per-room placement table -- the index is computed at " ..
+    "runtime (RNG-influenced), which is why static search alone never found one. 5 records " ..
+    "(anomalous=true) point into the fixed bank-0 region instead of the normal bank-3 window -- " ..
+    "index 0 plus a tight cluster at 12-15, plausibly a reserved/fixed-graphics family. Only " ..
+    "indices 99 and 121 (see liveConfirmed) have a confirmed live spawn behind them -- every " ..
+    "other record is real, structured ROM data whose own in-game trigger is honestly unknown.")
 end
 
 io.stderr:write("done.\n")
