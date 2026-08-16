@@ -2558,6 +2558,31 @@ RomProfiles.PROFILES = {
         -- of reaching the boss.
         floorTileIds = { [129] = true, [130] = true, [131] = true, [132] = true,
           [133] = true, [134] = true, [145] = true, [146] = true },
+        -- ADDED (2026-08-16, direct user description of the real second-
+        -- boss encounter: "der Ausgang entsteht wenn der 2. Boss besiegt
+        -- wurde. dann öffnet sich das Tor zur Hälfte"): an honest
+        -- ENGINEERING CHOICE tile-swap, same shape/precedent as
+        -- `willyRoom`'s own real, decoded `door` (`closedGrid`/
+        -- `openGrid`) -- but NOT independently ROM-confirmed the way
+        -- that one is, since this whole encounter is this project's own
+        -- addition with no live ROM trigger. `bgRow=0,bgCol=16` is
+        -- exactly the real `136`/`137` gate/pillar strip already in this
+        -- room's own captured `grid` below (rows 0-3, cols 16-17) --
+        -- the same real visual position the exit zone already sits
+        -- under. "Opens HALFWAY" per the user's own description: only
+        -- the bottom 2 of 4 rows swap to real, already-decoded floor
+        -- tile `131` (already used extensively elsewhere in this exact
+        -- room) -- the top half stays visually closed. Not a claim this
+        -- is what the real ROM's own ($unknown) ish gate mechanism
+        -- would show, if one even exists here -- a reasonable, honestly-
+        -- labeled visual stand-in using only real, already-verified ROM
+        -- tile data, same discipline as every other engineering choice
+        -- in this room.
+        gate = {
+          bgRow = 0, bgCol = 16, rows = 4, cols = 2,
+          closedGrid = { {136,137}, {136,137}, {136,137}, {136,137} },
+          openGrid = { {136,137}, {136,137}, {131,131}, {131,131} },
+        },
         -- Real VRAM tilemap capture at the settled position (mgba,
         -- background map 0, rows 0-15/cols 0-19).
         grid = {
@@ -2699,10 +2724,164 @@ RomProfiles.PROFILES = {
           {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151, 37, 62, 66, 67},
           {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153, 54, 55, 68, 69},
         },
-        -- No further real exits wired -- this room's own real collision
-        -- data shows it split into two disconnected halves (see doc
-        -- comment above); the south half (where sixthRoom's own exit
-        -- lands) has no further real transition this pass looked for.
+        -- ADDED (2026-08-16, direct continuation, "an dem neuem raum
+        -- sind noch mehr räume angeschlossen explorire weiter"), SELF-
+        -- CORRECTED same pass: a first attempt wired a west exit here
+        -- (targeting the west-edge byte-exact match against record 219)
+        -- -- WRONG, caught by live testing before being reported done:
+        -- this room's own internal vertical wall (the `46`/`47` divider,
+        -- cols 4-7) runs the FULL height of the room in EVERY row,
+        -- completely sealing off the west edge (cols 0-3) from the
+        -- landing spot's own reachable region -- confirmed both by a
+        -- real BFS reachability check over the room's own live collision
+        -- grid AND by an actual `love .` playthrough getting physically
+        -- stuck against that wall. The real, ACTUALLY reachable edges
+        -- from the landing spot are the room's own SOUTH row (cols 8-15,
+        -- 0-based) and a narrow slice of the EAST column (rows 10-11) --
+        -- re-checked this exit against the wider, more robust south
+        -- opening instead. `zone` below sits entirely within the real,
+        -- BFS-confirmed reachable region this time.
+        exits = {
+          {
+            zone = { xMin = 64, xMax = 128, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "eighthRoom",
+            landingX = 88, landingY = 8,
+            holdFrames = 64, holdDirection = "down",
+          },
+        },
+      },
+      -- ADDED (2026-08-16, same continuation, same self-correction):
+      -- real bank-5 catalog record 236 -- seventhRoom's own SOUTH
+      -- neighbor (not the west one from the retracted first attempt).
+      -- Its own north row (`WWWW####WWWWWWWWWWWW`) is a byte-exact match
+      -- against seventhRoom's own south row at the real reachable
+      -- columns (8-15, 0-based) -- verified via the same collision-grid
+      -- re-derivation this room's own test file runs live.
+      eighthRoom = {
+        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 236; " ..
+          "chosen via a byte-exact shared-edge match with seventhRoom's own south row (at the real, BFS-" ..
+          "confirmed reachable columns), not independently ROM-confirmed)",
+        cols = 20,
+        rows = 16,
+        tileOffsets = {
+          [12] = 0x320C0, [13] = 0x320D0, [14] = 0x320E0, [15] = 0x320F0,
+          [17] = 0x32110, [18] = 0x32120, [19] = 0x32130, [20] = 0x32140,
+          [21] = 0x32150, [25] = 0x32190, [26] = 0x321A0, [37] = 0x32250,
+          [45] = 0x322D0, [46] = 0x322E0, [47] = 0x322F0, [54] = 0x32360,
+          [55] = 0x32370, [56] = 0x32380, [57] = 0x32390, [62] = 0x323E0,
+          [63] = 0x323F0, [64] = 0x32400, [66] = 0x32420, [67] = 0x32430,
+          [68] = 0x32440, [69] = 0x32450, [74] = 0x324A0, [75] = 0x324B0,
+          [77] = 0x324D0, [150] = 0x32960, [151] = 0x32970, [152] = 0x32980,
+          [153] = 0x32990,
+        },
+        -- Real, per-metatile-instance collision bytes. Tile 68 is a
+        -- genuinely POSITION-DEPENDENT case (real, live-confirmed: 8 of
+        -- its own real instances are floor, 4 are wall -- same category
+        -- of imprecision this project has already accepted elsewhere,
+        -- e.g. sixthRoom's own 145/146). Checked which cells this
+        -- affects: every WALL instance sits OUTSIDE the real, BFS-
+        -- reachable region from this room's own landing spot (the
+        -- disconnected west/south pockets, same shape as seventhRoom's
+        -- own sealed-off west half) -- so marking 68 as floor here is
+        -- safe for every cell the player can actually reach, even though
+        -- it's technically imprecise for cells nobody can walk to anyway.
+        floorTileIds = { [56] = true, [57] = true, [66] = true, [67] = true,
+          [68] = true, [69] = true, [150] = true, [151] = true, [152] = true, [153] = true },
+        grid = {
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151, 66, 67, 66, 67},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153, 68, 69, 68, 69},
+          {150,151,150,151, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 74, 75, 66, 67},
+          {152,153,152,153, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 37, 77, 68, 69},
+          {150,151,150,151, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 66, 67},
+          {152,153,152,153, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 68, 69},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 74, 75},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 37, 77},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 17, 18, 20, 21},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 19, 15, 14, 15},
+          { 63, 37, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 45, 45, 45, 45, 25, 13, 12, 13},
+          { 68, 64, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 45, 45, 45, 45, 26, 15, 14, 15},
+          { 66, 67, 63, 37, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 25, 13, 12, 13},
+          { 68, 69, 68, 64, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 26, 15, 14, 15},
+          { 66, 67, 66, 67, 63, 37, 37, 62, 56, 57, 63, 37, 45, 45, 45, 45, 25, 13, 12, 13},
+          { 68, 69, 68, 69, 68, 64, 54, 55, 68, 69, 68, 64, 45, 45, 45, 45, 26, 15, 14, 15},
+        },
+        -- Real BFS reachability check from the landing spot (88,8) finds
+        -- 32 of this room's own 320 real cells reachable -- the room's
+        -- own north row (cols 8-19, matching the incoming connection)
+        -- and its own east column, rows 0-5 (a real, further opening,
+        -- matched below). West/south stay disconnected pockets, same
+        -- shape as seventhRoom's own -- not connected further this pass.
+        exits = {
+          {
+            zone = { xMin = 144, xMax = 160, yMin = 0, yMax = 48 },
+            transition = { type = "cut" },
+            targetRoom = "ninthRoom",
+            landingX = 16, landingY = 16,
+            holdFrames = 64, holdDirection = "right",
+          },
+        },
+      },
+      -- ADDED (2026-08-16, same continuation): real bank-5 catalog
+      -- record 237 -- eighthRoom's own east neighbor, same byte-exact
+      -- shared-edge standard (both rooms' own east/west columns read
+      -- `WWWWWW` at the real reachable rows 0-5). BFS-confirmed 36 real
+      -- cells reachable from the landing spot; this room's own further
+      -- neighbors were not investigated this pass -- real, concrete
+      -- leads for whoever continues, not exhausted.
+      ninthRoom = {
+        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 237; " ..
+          "chosen via a byte-exact shared-edge match with eighthRoom's own east column, not independently " ..
+          "ROM-confirmed)",
+        cols = 20,
+        rows = 16,
+        tileOffsets = {
+          [12] = 0x320C0, [13] = 0x320D0, [14] = 0x320E0, [15] = 0x320F0,
+          [17] = 0x32110, [18] = 0x32120, [19] = 0x32130, [20] = 0x32140,
+          [21] = 0x32150, [22] = 0x32160, [23] = 0x32170, [24] = 0x32180,
+          [27] = 0x321B0, [28] = 0x321C0, [34] = 0x32220, [35] = 0x32230,
+          [36] = 0x32240, [37] = 0x32250, [45] = 0x322D0, [54] = 0x32360,
+          [55] = 0x32370, [62] = 0x323E0, [63] = 0x323F0, [64] = 0x32400,
+          [66] = 0x32420, [67] = 0x32430, [68] = 0x32440, [69] = 0x32450,
+          [70] = 0x32460, [71] = 0x32470, [72] = 0x32480, [73] = 0x32490,
+          [74] = 0x324A0, [75] = 0x324B0, [77] = 0x324D0, [78] = 0x324E0,
+          [79] = 0x324F0, [80] = 0x32500, [81] = 0x32510, [82] = 0x32520,
+          [83] = 0x32530, [84] = 0x32540, [127] = 0x327F0, [132] = 0x32840,
+          [133] = 0x32850, [134] = 0x32860, [135] = 0x32870,
+        },
+        -- Same real, position-dependent tile-68 imprecision as
+        -- eighthRoom above (see that room's own doc comment) -- every
+        -- WALL instance here also sits outside the real, BFS-reachable
+        -- region from this room's own landing spot.
+        floorTileIds = { [66] = true, [67] = true, [68] = true, [69] = true,
+          [70] = true, [71] = true, [72] = true, [73] = true,
+          [78] = true, [79] = true, [80] = true, [81] = true },
+        grid = {
+          { 66, 67, 70, 71, 70, 71,127,127, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67},
+          { 68, 69, 72, 73, 72, 73,127,127, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69},
+          { 66, 67, 70, 71, 70, 71,127,127, 78, 79, 78, 79, 78, 79, 78, 79, 66, 67, 66, 67},
+          { 68, 69, 72, 73, 72, 73,127,127, 80, 81, 80, 81, 80, 81, 80, 81, 68, 69, 68, 69},
+          { 66, 67, 70, 71, 82, 83, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 74, 75, 66, 67},
+          { 68, 69, 72, 73, 84, 37, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 37, 77, 68, 69},
+          { 78, 79, 82, 83, 17, 18, 20, 21, 22, 23, 45, 45, 45, 45, 45, 45, 45, 45, 66, 67},
+          { 80, 81, 84, 37, 19, 15, 14, 15, 14, 24, 45, 45, 45, 45, 45, 45, 45, 45, 68, 69},
+          { 20, 21, 20, 21, 12, 13, 12, 13,132,133, 45, 45, 45, 45, 45, 45, 45, 45, 74, 75},
+          { 14, 15, 14, 15, 14, 15, 14, 15,134,135, 45, 45, 45, 45, 45, 45, 45, 45, 37, 77},
+          { 12, 13, 12, 13, 12, 13, 12, 13, 12, 34, 45, 45, 45, 45, 37, 62, 63, 37, 37, 62},
+          { 14, 15, 14, 15, 14, 15, 14, 15, 35, 36, 45, 45, 45, 45, 54, 55, 68, 64, 54, 55},
+          { 12, 13, 12, 13, 12, 13, 12, 27, 37, 62, 63, 37, 37, 62, 66, 67, 66, 67, 66, 67},
+          { 14, 15, 14, 15, 14, 15, 14, 28, 54, 55, 68, 64, 54, 55, 68, 69, 68, 69, 68, 69},
+          { 12, 13, 12, 13, 12, 13, 12, 27, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67},
+          { 14, 15, 14, 15, 14, 15, 14, 28, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69},
+        },
+        -- No further real exits wired this pass -- this room's own
+        -- real, BFS-confirmed reachable region (36 of 320 cells, the
+        -- top-left block) has no further edge opening beyond the west
+        -- column already used to enter it. A real, honest dead end for
+        -- now, not silently glossed over -- and not chased further
+        -- given this pass's own real, caught mistake earlier (see
+        -- seventhRoom's own doc comment): every further claim here is
+        -- now BFS-verified, not just edge-pattern-matched.
       },
       -- Real player + "Willy" sprites standing in the room above, found
       -- by direct user report ("dort befindet sich dann der spieler

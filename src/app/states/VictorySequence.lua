@@ -1223,6 +1223,29 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   if self.roomBg[roomKey] then return end
   local room = self.profile.graphics[roomKey]
   if not room then return end
+  -- ADDED (2026-08-16, sixthRoom's own gate -- see rom_profiles.lua's
+  -- doc comment on `sixthRoom.gate`): once the second boss is defeated,
+  -- render the room with its gate's `openGrid` patch instead of the
+  -- static, always-closed `grid` -- a shallow-patched COPY, same "never
+  -- mutate the shared profile.graphics table" discipline as this
+  -- function's own scene-dialogue handling above.
+  if room.gate and self.secondBossDefeated then
+    local patched = {}
+    for k, v in pairs(room) do patched[k] = v end
+    patched.grid = {}
+    for r, rowValues in ipairs(room.grid) do
+      local newRow = {}
+      for c, tileId in ipairs(rowValues) do newRow[c] = tileId end
+      patched.grid[r] = newRow
+    end
+    local g = room.gate
+    for gr = 1, g.rows do
+      for gc = 1, g.cols do
+        patched.grid[g.bgRow + gr][g.bgCol + gc] = g.openGrid[gr][gc]
+      end
+    end
+    room = patched
+  end
   self.roomBg[roomKey] = TileGridBackground.new(self.romData, room)
   -- UPGRADED (2026-08-14, task "Kollision generalisieren"): willyRoom
   -- specifically now uses real, ROM-decoded, POSITION-AWARE collision
@@ -1680,6 +1703,15 @@ function VictorySequence:update(dt)
         self.secondBoss:updateDeath(dt)
         if self.secondBoss:deathComplete() then
           self.secondBossDefeated = true
+          -- Invalidate the cached sixthRoom background/collision so the
+          -- next `ensureRoomLoaded` rebuilds it with the gate's own
+          -- `openGrid` patch applied (see rom_profiles.lua's own
+          -- `sixthRoom.gate` doc comment) -- `ensureRoomLoaded` itself
+          -- only ever builds once and caches, so without this the gate
+          -- would stay visually closed even though the real exit
+          -- (`requiresFlag="secondBossDefeated"`) is already usable.
+          self.roomBg.sixthRoom = nil
+          self.roomWalk.sixthRoom = nil
         end
       end
     end
