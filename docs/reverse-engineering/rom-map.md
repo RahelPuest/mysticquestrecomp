@@ -7709,3 +7709,129 @@ end to end: Grafiken tab renders both sections with real pixels, kind
 filter works, palette switch changes real canvas pixel colors and
 persists across reload, ROM button has visible button chrome, zero
 console errors across graphics/worldmap/tiles/map/monsters/npcs/items.
+
+## Task #160: the real graphics-loading mechanism, found via access analysis
+
+Direct user follow-up: "du kennst ja jetzt die positionen von vielen
+grafiken. kannst du anhand der zugriffe auf diese neue informationen
+ableiten" (you now know many graphics regions' positions -- can you
+derive new information from the ACCESSES to them). Two-stage
+investigation, static first, then live, both real evidence:
+
+**Stage 1, static byte scan (`tools/rom/find_graphic_refs.py`,
+NEW tool), decisive negative**: searched the whole ROM for a literal
+`LD BC/DE/HL,<addr>` immediate matching each of the 14
+`GraphicsCandidates.lua` base addresses, PLUS 2 positive controls
+(`enemySprite`, the font tileset) this project already knows for
+certain ARE loaded and rendered by real code. Result: **zero clean
+hits for every single one, including both positive controls** -- proof
+the real ROM does NOT embed a literal per-region source pointer as a
+code immediate; graphics loading must be indirect (a table lookup or
+computed address), the same shape this project already knows for the
+generic environment tileset (`tilesetFileOffset + tileId*16`).
+
+**Stage 2, live read-watchpoints (`tools/rom/watch_graphic_refs.py`,
+NEW tool)**: armed native mGBA READ watchpoints (`watcher.py`, the
+same `core.step()`-driven primitive task #150's own investigation
+used) on all 14 candidate bases + the 2 positive controls, then
+single-stepped through `courtyard_enemy_engaged()` (the real gate-
+creature boss on screen and animating) while periodically pressing
+attack. Real hits: **enemySprite's own base address genuinely read
+while `activeBank==11`** (validates the whole method -- a true
+positive against an ALREADY-known-used region) and a hit resolving,
+once the actually-active bank is honored instead of trusting which
+watch fired, to real file offset `0x27900` -- **inside
+`bank9_icon_fragments`** (one of this project's own unconfirmed
+graphics candidates!). Both hits point to the exact same caller PC,
+`$2D8F` (fixed bank 0).
+
+**Full disassembly of `$2D8F`'s own routine (bank 0, `$2D57`-`$2E31`),
+a real, previously-undocumented generic tile-streaming DMA system**:
+- `$C5E0`+: a real WRAM work QUEUE, 6 bytes/entry
+  (`bankByte, pad, destAddrLo, destAddrHi, srcAddrLo, srcAddrHi`).
+- `$C8E0`: real queue depth (nonzero = work pending) -- this is the
+  SAME `$C8E0` this project's own `ScriptOpcodeTable.lua` already
+  documents as half of the "`$C8E0`/`$CEE8` dual gate" opcodes
+  `0xFC`/`0xFD` wait on (`$27F9`/`$2820`) -- a real, concrete
+  UNIFICATION of two previously-separate findings: those script
+  opcodes literally wait for THIS tile-loader to finish.
+- `$C8E1`: a real reentrancy/busy guard (0=free, transient 1=busy).
+- Consumer entry `$2D57` (called from the real VBlank handler, `$71`,
+  the ONLY static caller found): each invocation copies up to
+  a scanline-budgeted number of 16-byte tiles (`LDH A,(0xFF44)` vs. a
+  `+6`-scanline deadline, real hardware timing awareness), popping
+  each queue entry's bank byte straight into `LD ($2100),A` (the
+  SAME real MBC2 bank-select convention this project's own tooling
+  already uses) before an unrolled 16x `LD A,(HL+)/LD (DE),A/INC DE`
+  tile copy.
+- Two real producer/enqueue entries, `$2DF5` (append) and `$2E45`
+  (insert-at-front, found via disassembly but genuinely never called
+  anywhere in the ROM -- real dead code, not a gap in this search).
+  Calling convention (confirmed from BOTH the internal PUSH/POP
+  shuffle and every real literal call site below): **`HL`=source ROM
+  address (bank-relative), `DE`=destination VRAM address, `A`=bank
+  number, `CALL $2DF5`**.
+
+**17 real call sites to `$2DF5` found (`CD F5 2D` byte search),
+spanning banks 0/1/2/3/4/9** -- disassembled every one:
+- Several LITERAL calls in bank 1 (`$4078`, `$4300`, `$430B`, `$4316`,
+  `$4321`) all load from source `$4250`/`$4260` (bank 12, file
+  `0x30250`/`0x30260`) to various VRAM destinations -- real,
+  additional confirmation of the ALREADY-known "0x30000 bank12 chunk,
+  used piecemeal" finding from task #154's own map-tile search (NOT
+  inside the new `bank12_environment_b` candidate -- consistent, not
+  contradictory).
+- 5 call sites (bank 0, `$1C01`/`$1C9B`/`$1CC0` + 2 more) compute a
+  dynamic source address via a `RES 7,H`/`SET 6,H` bit-trick with a
+  LITERAL `LD A,0x0C` (bank 12) -- more real bank-12 UI/map-tile
+  loaders.
+- 2 call sites (bank 0, `$1ABD`/`$1AEC`) use a LITERAL `LD A,0x08`
+  (bank 8, the font/portrait bank) with a computed source -- plausibly
+  the real per-glyph font-tile loader.
+- **A genuinely NEW, important mechanism**: 2 byte-for-byte IDENTICAL
+  routines, one duplicated per-bank in bank 3 (`$C439`) and bank 4
+  (`$103BB`) (a real, deliberate duplication so each bank can call it
+  without an inter-bank jump), walk a 2-level indexed record table and
+  compute the graphics bank DYNAMICALLY: `LD A,B (a per-record "kind"
+  byte) / SWAP A / SRL A / SRL A / AND 0x03 / ADD A,0x08` -- i.e.
+  **bank = 8 + ((kindByte >> 2) & 3), landing on exactly banks 8, 9,
+  10, or 11** -- precisely the 4 real graphics-bearing banks this
+  project's own full sweep (task #154a) already identified as the
+  ONLY banks holding creature/character/icon art. This is almost
+  certainly the real per-entity ("species"/NPC-kind) graphics dispatch
+  this project has been looking for since the monster/NPC candidate
+  search began -- HOW a "kind byte" resolves to one of the 4 candidate
+  banks is now understood in principle, even though the exact
+  kind-byte -> region mapping (which would let candidates be assigned
+  a real species) still needs a live trace of this specific routine
+  while different real enemies/NPCs spawn -- correctly left OPEN, not
+  guessed.
+- Bank 9's OWN local variant (`$24228`, literal `LD A,0x09`) walks a
+  6-byte-stride table living at file `0x24479` -- **a real, honest
+  correction to `bank9_creature_columns`'s own note**: that address
+  sits INSIDE the region this project catalogued as "704 tiles of
+  creature-column art." Raw bytes there (`62 08 08 01 0a 00 30 04 00
+  70 f9 46 71 47 c3 48 ...`) show a clearly repeating, small-period,
+  non-pixel-shaped structure (real recurring byte pairs like `f9 46`/
+  `c3 48`), NOT 2bpp tile noise -- structurally confirmed, via real
+  code that actually walks it 6-bytes-at-a-time, to be a REAL RECORD
+  TABLE, not pixel art, at least for the portion starting at
+  `0x24479`. The bulk of `bank9_creature_columns` still visually
+  reads as real creature art on direct render (unchanged conclusion),
+  but this specific sub-range's own "art" characterization is
+  retracted -- an honest, self-caught gap, not silently left standing.
+
+**Net result**: did not (yet) resolve which candidate region belongs
+to which of the 11 real species/3 real NPCs -- that still needs a live
+trace of the bank-3/bank-4 dynamic dispatcher's own kind-byte table
+while real entities spawn, a bigger undertaking left OPEN for a future
+pass. But this pass DID find and fully document a real, previously-
+unknown generic ROM-graphics-loading subsystem, tied it directly to an
+ALREADY-documented script-opcode gate (`$C8E0`/`$CEE8`), confirmed
+several already-known regions via independent code evidence, and
+caught one real self-correction (`bank9_creature_columns`'s own
+`0x24479` sub-range). New reusable tools: `find_graphic_refs.py`
+(static lead generator) and `watch_graphic_refs.py` (live read-
+watchpoint follow-up), both documented with the SAME honest "lead
+generator, not proof" scoping every other heuristic tool in this
+project already carries.

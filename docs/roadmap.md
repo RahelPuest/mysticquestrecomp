@@ -1713,6 +1713,34 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   MapTileCatalog tests (incl. a real-ROM 14-room/243-tile/3-bank
   cross-check) -- 487/487 tests pass. Playwright-verified end to end,
   zero console errors.
+- **2026-08-16, task #160, real graphics-loading mechanism found via
+  access analysis**: direct follow-up ("du kennst ja jetzt die
+  positionen von vielen grafiken. kannst du anhand der zugriffe auf
+  diese neue informationen ableiten"). Static byte scan (new
+  `find_graphic_refs.py`) found ZERO literal `LD HL,<addr>` references
+  to any candidate OR to 2 known-used positive controls -- a decisive
+  negative proving graphics load indirectly. Live mGBA read-
+  watchpoints (new `watch_graphic_refs.py`) during real active combat
+  caught real hits, leading to a full disassembly of a previously-
+  undocumented generic ROM->VRAM tile-streaming DMA system (bank 0,
+  `$2D57`-`$2E31`): a real WRAM work queue (`$C5E0`, 6 bytes/entry),
+  gated by `$C8E0` (queue depth) -- the SAME `$C8E0` this project's
+  own `$C8E0`/`$CEE8` dual-gate script opcodes (`0xFC`/`0xFD`) already
+  wait on, now understood as literally waiting for this loader.
+  Confirmed calling convention (HL=source, DE=dest VRAM, A=bank,
+  `CALL $2DF5`) against 17 real call sites spanning banks 0/1/2/3/4/9.
+  Found a genuinely new mechanism: 2 identical routines (banks 3 & 4)
+  compute the graphics bank DYNAMICALLY as `8 + ((kindByte>>2)&3)` --
+  landing on exactly the 4 real graphics-bearing banks (8-11) this
+  project's own full sweep already found -- almost certainly the real
+  per-species/NPC-kind graphics dispatch, though the exact kind-byte
+  mapping is still open (needs a live trace while entities spawn).
+  Self-caught correction: bank 9's own local loader (`$24228`) walks a
+  real 6-byte record table at file `0x24479`, INSIDE the
+  `bank9_creature_columns` candidate -- that sub-range is real
+  structured data, not pixel art; the candidate's own note corrected,
+  not silently left standing. 487/487 tests still pass (docs +
+  GraphicsCandidates.lua note change only, no code-behavior change).
 
 ## Superseded by this file
 

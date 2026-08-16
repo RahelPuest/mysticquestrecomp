@@ -217,7 +217,20 @@ GraphicsCandidates.ENTRIES = {
       "this whole pass -- genuinely too dense and repetitive to " ..
       "confidently split into individual creature boundaries without " ..
       "a live OAM trace, so kept as one large honest region rather " ..
-      "than guessing where one sprite ends and the next begins.",
+      "than guessing where one sprite ends and the next begins. " ..
+      "SELF-CAUGHT CORRECTION (2026-08-16, task #160, access analysis " ..
+      "-- see rom-map.md's own 'the real graphics-loading mechanism' " ..
+      "section for the full disassembly): real code at file 0x24228 " ..
+      "(bank 9's own graphics-dispatch routine) walks a 6-byte-stride " ..
+      "RECORD TABLE starting at file 0x24479 -- INSIDE this claimed " ..
+      "range. Raw bytes there show a clearly repeating, small-period, " ..
+      "non-pixel structure, not 2bpp tile noise -- that sub-range is " ..
+      "real STRUCTURED DATA, not pixel art, confirmed via the code " ..
+      "that actually consumes it. The bulk of this region still " ..
+      "visually reads as real creature art on direct render (that " ..
+      "part of the original finding stands), but this note is no " ..
+      "longer claiming EVERY byte in fileOffset..fileOffset+tileCount" ..
+      "*16 is pixel data -- an honest, partial retraction.",
   },
   {
     id = "bank9_icon_fragments",
