@@ -1472,6 +1472,19 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       (task #133) -- verified present in `NpcCatalog.lua`,
       `export_data.lua`, both website viz files, AND `CatalogExplorer
       .lua` before starting Phase 2, avoiding duplicate work.
+      **Phase 3 CLOSED (2026-08-16, direct user request "Katalog-Plan
+      fortsetzen")**: the graphics sweep (`GraphicsCandidates.lua`, 12
+      real candidate regions across banks 8-12) was already shipped;
+      the one remaining gap was `fourthRoom`'s own live NPC check
+      (thirdRoom/willyRoom were already covered same-day 2026-08-15).
+      A real walking pass (all 4 directions, 150 frames each, from
+      `fourth_room_free()`) plus an idle-vs-movement control check
+      found ZERO new NPC spawns -- matching the plan's own realistic
+      "0-2 new NPCs" expectation. Cross-checking the 6 already-alive
+      entity slots at room entry against `secondRoom`'s own known-NPC
+      checkpoint found byte-IDENTICAL values across all 3 rooms --
+      generic engine scaffolding, not room-specific NPCs. **The entire
+      saved Katalog-Erweiterung plan (Phases 1-3) is now complete.**
 
 - **2026-08-15**: consolidated the day's script-interpreter findings
   (real opcode "pinning" architecture + 6 real control-code fixes,
