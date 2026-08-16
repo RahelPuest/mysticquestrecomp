@@ -67,10 +67,10 @@ function render_overview(main) {
     <h2 class="section-title">Bereiche</h2>
     <div class="card-grid">
       ${SECTIONS.filter(s => s.id !== "overview").map(s => `
-        <div class="card" style="cursor:pointer" onclick="location.hash='#${s.id}'">
+        <a class="card" href="#${s.id}">
           <h3>${s.icon} ${s.label}</h3>
           <div class="desc">${sectionBlurb(s.id)}</div>
-        </div>`).join("")}
+        </a>`).join("")}
     </div>
   `;
 }

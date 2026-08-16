@@ -8097,3 +8097,103 @@ scripts that previously hard-errored on "cursor out of stream bounds").
 new `tests/unit/chain_cross_bank_test.lua` with real-ROM cross-checks
 for scripts 489 and 703 plus a real full-7-script sweep). `luajit
 tests/run_tests.lua`: 506/506 pass.
+
+## Task #163: rom-inspector website, second deep audit pass
+
+Direct continuation of the same "elite product team, question
+everything" brief the user ran once already (task #162) -- re-scoped
+via AskUserQuestion to a SECOND pass over `rom-inspector/`, this time
+covering everything added since #162 (Grafiken tab, Weltkarte, the
+Monster/Item/NPC/Story catalog tabs, the Musik tab, new open-questions
+entries -- 18 sections total now, up from #162's own count).
+
+**Methodology**: a real, disposable Playwright driver (`npx playwright`
+resolves the already-cached browser locally, no project dependency
+needed) crawling all 18 sections -- console-error capture, a computed
+WCAG contrast sweep (the SAME luminance-ratio math #162 used, applied
+to every rendered text node against its own real composited
+background, not just the tokens #162 already checked), a tab-order
+walk, and a real 390px-viewport horizontal-overflow check. Static
+`grep` sweeps cross-referenced every `cursor:pointer` site and every
+custom click handler against `enhanceKeyboardAccessibility()`'s own
+whitelist to find anything NOT covered.
+
+**Found and fixed, all independently Playwright-verified after the
+fix (zero regressions, 18/18 pages clean on every check)**:
+
+1. **11 real form controls with no accessible name** across 8 pages
+   (`wramSearch`, `slotSlider`, `scriptExampleSelect`, `opcodeSearch`,
+   `mapRoomSelect`, `worldmapSource`, `tilePreset`, `customOffset`,
+   `customCount`, `byteInput`, `songSelect`) -- placeholder text alone
+   is not an accessible name (WCAG 4.1.2). Each of these was added by
+   a DIFFERENT task across several sessions (worldmap by #103-105,
+   music by #151, tiles/graphics by #153/#154, ...) and individually
+   missed a label -- #162's own audit predates all of them. Fixed via
+   `aria-label` (matching the site's own already-established
+   `paletteSelect`/`globalSearch` pattern) or a real `<label for>`
+   (entity.js's slot slider already had a VISIBLE but unassociated
+   `<label>` -- added the missing `for` instead of a redundant
+   `aria-label`).
+
+2. **One real WCAG AA contrast failure**: `.byte-box.highlight .off`
+   (the small offset label inside a highlighted entity-struct field
+   box, entity.js) -- `--text-faint` (already fixed site-wide by #162)
+   still only clears 3.79:1 there specifically, because the
+   highlighted box's own green-tinted background lightens the
+   effective backdrop just enough to drop below 4.5:1 on this ONE
+   background (confirmed: zero other failures anywhere else on the
+   whole 18-page sweep). Fixed with a small, scoped color override
+   (measured 4.83:1) rather than jumping to full-bright text, to
+   preserve the box's own deliberate 3-tier visual hierarchy.
+
+3. **The overview page's own 17-card "Bereiche" navigation grid was
+   completely keyboard-unreachable** -- `<div class="card" onclick=...>`
+   with `cursor:pointer` but no `tabindex`/`role`, not covered by
+   `enhanceKeyboardAccessibility()`'s whitelist. This is the primary
+   navigation surface on the site's own landing page. Fixed the same
+   way #162 already fixed the sidebar: real `<a href="#section">`
+   elements instead of a div+click shim -- natively focusable/
+   operable, zero new JS, `.card`'s own CSS just needed
+   `display:block`/`text-decoration:none` (harmless no-ops for the
+   OTHER, non-interactive uses of `.card` elsewhere) plus a hover/
+   focus accent matching the sidebar's own established style.
+
+4. **A real, page-wide mobile horizontal-scroll bug affecting literally
+   every one of the 18 pages**, root-caused to three separate,
+   compounding causes, none of them touched by #162's own mobile-nav
+   work: (a) `#paletteSelect` (task #157) has no width constraint, so
+   it renders at ~250px (its longest preset label) regardless of
+   viewport; (b) `table.data-table`'s real content (long descriptions,
+   hex addresses) has no horizontal-scroll container of its own, so it
+   forces the whole page wider on the 4 pages with wide tables
+   (memory/entity/story, and any future one); (c) `opcodes.js`'s
+   `scriptExampleSelect` has the same unconstrained-select problem as
+   (a), with even longer option text. Measured live via Playwright:
+   `#topbar`'s own `scrollWidth` was 783px at a real 390px viewport
+   -- roughly double -- on every single page. Fixed generally rather
+   than chasing individual pixel budgets: the mobile top bar now wraps
+   onto multiple rows (`flex-wrap`) instead of cramming every control
+   into an ever-shrinking single line (durable against future
+   additions), `table.data-table` scrolls itself
+   (`display:block;overflow-x:auto`, the standard responsive-table
+   trick, zero changes needed at any of its many call sites), and
+   every text input/select/textarea now caps at `max-width:100%`
+   site-wide. The mobile nav drawer's own `top`/`inset` values
+   (hardcoded to the OLD single-row topbar height) were updated to
+   match the new wrapped height, keeping the drawer positioned
+   correctly below the top bar rather than overlapping it.
+
+**What was checked and found ALREADY correct, not re-fixed**: the
+skip link (a false alarm from this pass's own probe script, which
+searched for the English word "skip" against the site's real German
+label "Zum Inhalt springen" -- confirmed working correctly via a
+direct, isolated check); all 17 graphics-page canvas `aria-label`s
+(distinct and descriptive, not a copy-pasted template); every
+`.pill-tab`/`.bank-cell`/`.opcode-cell`/`.hbar-row` custom control
+across every page (still correctly covered by
+`enhanceKeyboardAccessibility()`); zero console errors on any of the
+18 pages, before or after.
+
+No test-suite changes (this is a static HTML/CSS/JS site with no Lua
+surface); `luajit tests/run_tests.lua` unaffected by design, re-run
+anyway: 506/506 pass.

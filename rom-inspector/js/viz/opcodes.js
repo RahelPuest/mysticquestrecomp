@@ -65,7 +65,7 @@ function render_script_tracer(container) {
         Katalog (Bank 5) -- siehe <a href="#worldmap">Weltkarte</a>.
       </p>
       <div class="toolbar">
-        <select id="scriptExampleSelect">
+        <select id="scriptExampleSelect" aria-label="Skript-Beispiel auswählen">
           ${SCRIPT_EXAMPLES.map((ex, i) => `<option value="${i}" ${i === exampleIndex ? "selected" : ""}>${escapeHtml(ex.title)}</option>`).join("")}
         </select>
         <button class="btn small" id="scriptStepBtn" ${stopped ? "disabled" : ""}>Schritt &rarr;</button>
@@ -243,7 +243,7 @@ function render_opcodes(main) {
         ${["all", "decoded", "default", "known-hard", "undecoded"].map(s =>
           `<div class="pill-tab${s === "all" ? " active" : ""}" data-status="${s}">${s}</div>`).join("")}
       </div>
-      <input type="text" id="opcodeSearch" placeholder="Name oder Handler-Adresse&hellip;" style="width:240px;">
+      <input type="text" id="opcodeSearch" placeholder="Name oder Handler-Adresse&hellip;" style="width:240px;" aria-label="Opcodes filtern nach Name oder Handler-Adresse">
     </div>
 
     <div class="opcode-grid" id="opcodeGrid"></div>

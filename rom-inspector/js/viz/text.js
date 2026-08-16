@@ -37,7 +37,7 @@ function render_text(main) {
         ${TEXT_DECODER.samples.map((s, i) => `<button class="btn small" data-sample="${i}">Beispiel: ${escapeHtml(s.label)}</button>`).join("")}
         <button class="btn small" id="clearBytes">Leeren</button>
       </div>
-      <textarea id="byteInput" class="mono-input" rows="3" style="width:100%;" placeholder="Hex-Bytes, z.B. B6 B0 BF ... 00"></textarea>
+      <textarea id="byteInput" class="mono-input" rows="3" style="width:100%;" placeholder="Hex-Bytes, z.B. B6 B0 BF ... 00" aria-label="Hex-Bytes zum Dekodieren eingeben"></textarea>
       <div style="margin-top:10px;">
         <button class="btn primary" id="decodeBtn">Dekodieren</button>
       </div>

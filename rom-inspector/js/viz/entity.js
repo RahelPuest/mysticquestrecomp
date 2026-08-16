@@ -11,7 +11,7 @@ function render_entity(main) {
 
     <div class="panel entity-row">
       <div class="entity-controls">
-        <label style="font-size:12px; color:var(--text-dim);">Slot-Index (0-${ENTITY_STRUCT.slotCount - 1})</label><br>
+        <label for="slotSlider" style="font-size:12px; color:var(--text-dim);">Slot-Index (0-${ENTITY_STRUCT.slotCount - 1})</label><br>
         <input type="range" id="slotSlider" min="0" max="${ENTITY_STRUCT.slotCount - 1}" value="${ENTITY_STRUCT.playerSlotIndex}">
         <div style="margin-top:10px; font-family:var(--mono);">
           Slot <span id="slotNum" style="color:var(--accent-bright);"></span>

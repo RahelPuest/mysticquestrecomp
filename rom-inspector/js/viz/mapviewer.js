@@ -42,7 +42,7 @@ function render_map(main) {
     <div id="mapRomBanner"></div>
 
     <div class="toolbar">
-      <select id="mapRoomSelect" style="min-width:280px;">
+      <select id="mapRoomSelect" style="min-width:280px;" aria-label="Raum auswählen">
         <optgroup label="Echte, verbundene Räume (${ROOM_MAPS.length})">
           ${ROOM_MAPS.map((r, i) => `<option value="${i}">${escapeHtml(r.name)} (${r.cols}&times;${r.rows})</option>`).join("")}
         </optgroup>

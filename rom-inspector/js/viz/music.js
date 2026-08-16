@@ -149,7 +149,7 @@ function render_music(main) {
     </p>
 
     <div class="toolbar">
-      <select id="songSelect"></select>
+      <select id="songSelect" aria-label="Song auswählen"></select>
       <button class="btn small" id="playBtn">▶ Abspielen (Kanal 1+2)</button>
       <button class="btn small" id="stopBtn" disabled>■ Stopp</button>
       <label style="font-size:13px; color:var(--text-dim); display:flex; align-items:center; gap:4px;">

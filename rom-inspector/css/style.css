@@ -309,11 +309,23 @@ h2.section-title:first-of-type { margin-top: 0; }
   gap: 14px;
 }
 .card {
+  display: block; /* the overview page's "Bereiche" cards are real <a
+    href> tags (2026-08-16 second audit pass: they were plain
+    <div onclick>, unreachable and unactivatable by keyboard -- same
+    class of bug task #162 already fixed for the sidebar, same fix
+    here). `.card` is also used for plain, non-interactive <div>s
+    elsewhere (monster/NPC/question cards) -- `display:block` and
+    `text-decoration:none` below are no-ops there, so this is safe to
+    apply unconditionally rather than needing a second, link-only class. */
+  text-decoration: none;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 16px;
 }
+.card:hover { text-decoration: none; }
+a.card:hover { border-color: var(--accent); }
+a.card:hover h3 { color: var(--accent); }
 .card h3 {
   margin: 0 0 8px;
   font-size: 14px;
@@ -341,7 +353,17 @@ h2.section-title:first-of-type { margin-top: 0; }
 .badge.partial { color: var(--warn); border-color: var(--warn); }
 .badge.unknown-b { color: var(--text-dim); border-color: var(--border); }
 
-table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* 2026-08-16 second audit pass: several real tables (WRAM cells,
+   entity fields, named characters, ...) are naturally wider than a
+   phone viewport -- their own unbreakable content (long descriptions,
+   hex addresses) was bleeding past #main and forcing the WHOLE PAGE
+   to scroll horizontally, not just the table. `display:block` lets
+   the table itself become the scrolling element (a standard, minimal
+   responsive-table pattern -- no changes needed at any of this
+   class's many call sites across memory.js/entity.js/story.js/etc.),
+   so only the table scrolls sideways on a narrow screen, same as any
+   other well-behaved data grid. */
+table.data-table { display: block; overflow-x: auto; width: 100%; border-collapse: collapse; font-size: 13px; }
 table.data-table th {
   text-align: left;
   font-size: 11px;
@@ -362,6 +384,14 @@ table.data-table td.addr, table.data-table td.num { font-family: var(--mono); co
 table.data-table tr.ev-playing td { background: rgba(107,207,127,.18); }
 
 input[type=text], input[type=search], select, textarea {
+  /* 2026-08-16 second audit pass: a <select> with long option text
+     (e.g. opcodes.js's real script-example titles) sizes itself to
+     its LONGEST option by default, which can exceed a phone's own
+     viewport width even inside an already-wrapping `.toolbar` --
+     capping every text input/select at their container's own width
+     is a safe, general rule (the closed-state text truncates; the
+     native dropdown/expanded textarea still shows the full value). */
+  max-width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text);
@@ -457,6 +487,18 @@ textarea.mono-input { font-family: var(--mono); }
 .byte-box .off { color: var(--text-faint); font-size: 9px; }
 .byte-box .fname { color: var(--accent-bright); font-size: 9px; margin-top: 2px; text-align: center; line-height: 1.1; }
 .byte-box.highlight { border-color: var(--accent); background: rgba(143,214,148,.15); }
+/* 2026-08-16 second audit pass: `--text-faint` (3.79:1) and even
+   `--text-dim` (4.32:1) both fail WCAG AA's 4.5:1 minimum specifically
+   here -- the highlighted box's own green-tinted background lightens
+   the effective backdrop just enough that neither already-verified
+   token clears the bar on THIS one background (they still pass
+   everywhere else on the site, confirmed by a full contrast sweep of
+   all 18 sections finding no other failures). A small, scoped
+   brightness bump (measured 4.83:1 against the real composited
+   background) rather than jumping to full-bright `--text` preserves
+   the deliberate 3-tier hierarchy (offset < body < accent field name)
+   this box's own layout already relies on. */
+.byte-box.highlight .off { color: #929db0; }
 input[type=range] { width: 260px; accent-color: var(--accent); }
 
 /* ---------- opcode explorer ---------- */
@@ -595,9 +637,33 @@ footer.site-footer {
   #globalSearch { width: 130px; }
   #main { padding: 20px; }
 
+  /* 2026-08-16 second audit pass: cutting `.subtitle` and narrowing
+     the search box was NOT enough on real phone widths -- the
+     unconstrained `#paletteSelect` (sized to its longest preset
+     label, ~250px) plus the ROM-load control and search box together
+     still forced #topbar past a 390px viewport, so the WHOLE PAGE
+     scrolled horizontally on every real phone (confirmed via a live
+     Playwright measurement: #topbar's own scrollWidth was 783px at a
+     390px viewport, on every page, including ones already covered by
+     the original mobile-nav fix). Wrapping onto a second row (instead
+     of cramming every control into an ever-shrinking single line) is
+     also the more durable fix -- it stays correct if a future control
+     gets added to the top bar, rather than needing its own new pixel
+     budget recalculated. `.spacer` only exists to push the desktop
+     single-row layout right-aligned; once wrapped it would otherwise
+     render as an empty, height-eating row of its own. */
+  #topbar { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; row-gap: 8px; }
+  #topbar .spacer { display: none; }
+  #paletteSelect { max-width: 130px; }
+
+  /* #topbar is no longer a fixed 52px once wrapped (measured ~171px
+     across 320-390px real phone widths, live via Playwright) -- the
+     drawer and its backdrop both need to start below the now-taller
+     top bar, not the old desktop height, or they'd render UNDER the
+     wrapped controls' second/third row. */
   #sidebar {
     position: fixed;
-    top: 52px;
+    top: 176px;
     left: 0;
     bottom: 0;
     z-index: 19;
@@ -608,6 +674,7 @@ footer.site-footer {
     box-shadow: 2px 0 24px rgba(0, 0, 0, .5);
   }
   #sidebar.open { transform: translateX(0); }
+  #sidebarBackdrop { inset: 176px 0 0 0; }
   #sidebarBackdrop.open { display: block; }
   @media (prefers-reduced-motion: reduce) {
     #sidebar { transition: none; }

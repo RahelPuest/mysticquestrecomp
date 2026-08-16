@@ -1861,6 +1861,28 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   `luajit tests/run_tests.lua`: 506/506 pass. Full detail in
   `docs/reverse-engineering/rom-map.md`.
 
+- **2026-08-16, task #163, rom-inspector second deep audit pass**:
+  the same "elite product team" brief re-run against everything added
+  since task #162 (Grafiken/Weltkarte/Katalog/Musik tabs, 18 sections
+  total). Real, measured, Playwright-verified findings: 11 form
+  controls with no accessible name across 8 pages (fixed via
+  `aria-label`/`<label for>`); one real WCAG AA contrast failure
+  specific to a highlighted entity-struct box's background tint
+  (fixed, 4.83:1); the overview page's own 17-card navigation grid was
+  completely keyboard-unreachable (`<div onclick>`, same class of bug
+  #162 already fixed for the sidebar -- converted to real `<a href>`
+  elements); and a real, page-wide mobile horizontal-scroll bug
+  affecting every one of the 18 pages (topbar's own `scrollWidth` was
+  783px at a 390px viewport), root-caused to three compounding causes
+  (an unconstrained palette `<select>`, un-contained wide data tables,
+  an unconstrained script-example `<select>`) and fixed generally
+  (topbar wraps, tables scroll themselves, all inputs cap at
+  `max-width:100%`) rather than chasing pixel budgets. Zero
+  regressions: 18/18 pages clean on console errors, contrast, missing
+  accessible names, and horizontal overflow, both desktop and mobile,
+  independently re-verified after every fix. Full detail in
+  `docs/reverse-engineering/rom-map.md`.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

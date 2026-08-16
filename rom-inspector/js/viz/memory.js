@@ -16,7 +16,7 @@ function render_memory(main) {
 
     <h2 class="section-title">Bekannte WRAM-Zellen</h2>
     <div class="toolbar">
-      <input type="text" id="wramSearch" placeholder="Filtern nach Adresse/Name&hellip;" style="width:280px;">
+      <input type="text" id="wramSearch" placeholder="Filtern nach Adresse/Name&hellip;" style="width:280px;" aria-label="WRAM-Zellen filtern nach Adresse oder Name">
     </div>
     <table class="data-table" id="wramTable">
       <thead><tr><th style="width:150px;">Adresse</th><th style="width:220px;">Name</th><th style="width:110px;">Status</th><th>Beschreibung</th></tr></thead>

@@ -15,14 +15,14 @@ function render_tiles(main) {
     <div id="tileRomBanner"></div>
 
     <div class="toolbar">
-      <select id="tilePreset" style="min-width:220px;">
+      <select id="tilePreset" style="min-width:220px;" aria-label="Tile-Quelle auswählen">
         <option value="font">Font-Tileset (${FONT_TILESET.tileCount} Tiles, $${FONT_TILESET.fileOffset.toString(16).toUpperCase()})</option>
         ${roomOptions.map((r, i) => `<option value="room:${i}">${escapeHtml(r.label)}</option>`).join("")}
         <option value="custom">Freier Adressbereich&hellip;</option>
       </select>
       <span id="customRange" style="display:none; gap:8px; align-items:center;">
-        <input type="text" id="customOffset" placeholder="Offset, z.B. 0x22B00" style="width:150px;">
-        <input type="text" id="customCount" placeholder="Anzahl" value="64" style="width:70px;">
+        <input type="text" id="customOffset" placeholder="Offset, z.B. 0x22B00" style="width:150px;" aria-label="ROM-Offset in Hex">
+        <input type="text" id="customCount" placeholder="Anzahl" value="64" style="width:70px;" aria-label="Anzahl der Tiles">
       </span>
       <label style="font-size:12px; color:var(--text-dim);">Spalten
         <input type="text" id="tileCols" value="16" style="width:44px; margin-left:4px;">

@@ -154,7 +154,7 @@ function render_worldmap(main) {
     <div id="worldmapRomBanner"></div>
 
     <div class="toolbar">
-      <select id="worldmapSource">
+      <select id="worldmapSource" aria-label="Kartenquelle auswählen">
         <option value="bank5">${WORLDMAP_SOURCES.bank5.label}</option>
         <option value="bank6">${WORLDMAP_SOURCES.bank6.label}</option>
       </select>
