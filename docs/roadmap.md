@@ -1661,6 +1661,18 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   regenerated and Playwright-verified. **Task #152 CLOSED** -- this
   closes the entire multi-session "decode the remaining primary script
   opcodes" arc.
+  **UPDATE 2026-08-16 ("Whole-Corpus-Scan-Abdeckung erhöhen")**: the
+  top 3 real `$02AB`-family handlers (`$0E73`/`$0E77`/`$0E7B`, 132/163
+  = 81% of the current `halt_undecoded` bucket) fully disassembled --
+  a real 3-way sibling family, each pushing the current MBC bank
+  (`$29FB`), dereferencing the `$C3FE`/`$C3FF` actor pointer offset by
+  0/1/2 bytes, reading the player's real facing nibble (`$02AB`), then
+  calling a still-undecoded leaf (`$3213`) before popping the bank
+  back (`$2A0A`). Real, incremental progress -- the entry sequence is
+  now fully mapped, but `$3213`'s own release condition (and `$0EB2`'s
+  separate `$D499`-indexed `$0ECA` table) stay undecoded, so corpus-
+  scan numbers are unchanged (884/163/310) -- honestly reported as
+  groundwork, not a closed opcode.
 
 - **2026-08-15, task #150 continuation**: refined the remaining 154
   `tick`-error bytes' static classification -- 10/12 top values fail
