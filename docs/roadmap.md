@@ -903,6 +903,22 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       map-level 24-byte door-data block and each record's own 4-byte
       prefix remain undecoded (plausibly door/exit-flag data), and
       real per-room collision is not yet implemented for bank 7.
+      **UPDATE 2026-08-16 ("World scope: weitere Räume erschließen"):
+      fifthRoom flood-filled live (8 real probes: all 4 directions from
+      the landing spot + 2 reached corners) -- exactly ONE real
+      connection exists (the already-known, bidirectional link back to
+      fourthRoom); every other wall is a genuine dead end, zero new
+      tile-source-pointer changes anywhere. sixthRoom's other 3
+      directions (UP/DOWN/RIGHT) re-checked too, reconfirming its own
+      already-closed 2026-08-14 finding (one continuous fourthRoom
+      canvas, no real cut). New reusable `fifth_room_free()`/
+      `sixth_room_free()` checkpoints shipped (`tools/rom/
+      checkpoints.py`) -- neither existed before despite both rooms
+      being wired since 2026-08-13. Honest conclusion: this session's
+      earlier `CutTransitionTable` finding (80 real, ROM-decoded
+      transitions with no known in-game trigger, 36 to `unknownRoomA`)
+      remains the real, larger opportunity for "more rooms" -- not
+      further walls of these 2 already-fully-explored leaf rooms.
 
 - [ ] **NEW — Bestiary (multiple real enemy types).** Exactly one
       enemy is actually SPAWNABLE in the implementation today.

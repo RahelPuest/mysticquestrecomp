@@ -257,6 +257,48 @@ def fourth_room_free(session=None):
     return s
 
 
+def fifth_room_free(session=None):
+    """Real moment: the real "cut" transition out of fourthRoom's own
+    north corridor (see `rom_profiles.lua`'s `fourthRoom.exits[1]`) has
+    resolved and the player is standing at the real landing spot in
+    fifthRoom (Y=32, X=136 -- matches `landingX=136, landingY=32`
+    exactly, live-confirmed here via the real `$D392`/`$D393` tile-
+    source pointer changing from `(176,64)` to `(176,70)`).
+
+    Built 2026-08-16 (direct continuation, "World scope: weitere Räume
+    erschließen"): NO existing checkpoint reached fifthRoom before this
+    -- `rom_profiles.lua`'s own doc comment on this exit already
+    documents the mechanism, but no live mgba checkpoint had verified
+    it end to end. The REAL trigger is genuinely counter-intuitive: the
+    player must first walk UP until physically blocked (a real wall
+    sits between y=30 and y=32 -- `fourth_room_free()`'s own resting
+    spot needs `RIGHT` first to enter the real x=112-128 exit band,
+    then `UP` just gets the player stuck at y=32/x=136, going no
+    further), THEN hold DOWN for a real ~64-frame window while still
+    inside the (tall) trigger zone -- confirmed live: holding UP alone,
+    even for 300 frames, does nothing further once stuck; the DOWN
+    hold is what actually fires the cut."""
+    s = session or fourth_room_free()
+    _hold(s, s.core.KEY_RIGHT, 80)  # (Y=88,X=60) -> X=120, inside the real x=112-128 exit band
+    _hold(s, s.core.KEY_UP, 120)  # walk up until physically blocked at y=32 (real wall)
+    _hold(s, s.core.KEY_DOWN, 70)  # real cut transition into fifthRoom (counter-intuitive: DOWN, not UP)
+    s.run(30)  # settle
+    return s
+
+
+def sixth_room_free(session=None):
+    """Real moment: the real, ROM-documented-as-"one continuous canvas"
+    corridor west of fourthRoom (see `rom_profiles.lua`'s
+    `fourthRoom.exits[2]` -- honestly NOT a genuine ROM "cut", an
+    engineering-choice static exit this project's own no-camera-scroll
+    engine exposes) resolved and the player is at the real landing spot
+    (Y=80, X=144)."""
+    s = session or fourth_room_free()
+    _hold(s, s.core.KEY_LEFT, 260)  # west, past the documented ~220-frame pause, into the real trigger zone
+    s.run(30)  # settle
+    return s
+
+
 CHECKPOINTS = {
     "courtyard_enemy_engaged": courtyard_enemy_engaged,
     "courtyard_boss_defeated": courtyard_boss_defeated,
@@ -266,6 +308,8 @@ CHECKPOINTS = {
     "second_room_free": second_room_free,
     "third_room_free": third_room_free,
     "fourth_room_free": fourth_room_free,
+    "fifth_room_free": fifth_room_free,
+    "sixth_room_free": sixth_room_free,
 }
 
 
