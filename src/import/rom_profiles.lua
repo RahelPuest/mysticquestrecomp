@@ -887,6 +887,29 @@ RomProfiles.PROFILES = {
         -- the fixed intro page list (a real, confirmed-wrong assumption
         -- corrected, not just "improved").
         victoryLine = "%s ist ein\ntapferer Kaempfer.",
+        -- REAL ROM SOURCE FOUND (task "komplett autark interpretiert"):
+        -- `tools/rom/dump_strings.py --gaps` found the real byte header
+        -- `04 10 14` (bank 14, file `0x03a1bb`) immediately before this
+        -- exact sentence -- `0x14` is the already-VERIFIED hero-name
+        -- substitution token (see Milestone 6's own doc comment), and
+        -- the text tail decodes CLEANLY (zero digraph exceptions) from
+        -- `0x03a1be` to the real terminator at `0x03a1d1`, byte-exact
+        -- match to the string above
+        -- (with the real umlaut "Kämpfer", not the old ASCII
+        -- "Kaempfer" fallback). `%HERO_NAME%` below is a marker, not a
+        -- real ROM byte -- the caller substitutes the real player-
+        -- entered name for it (same real substitution `0x14` itself
+        -- performs in the ROM's own text engine). HONEST SCOPE: this is
+        -- FORMULA-PROVEN and regression-tested
+        -- (`tests/import/dialogue_text_resolver_test.lua`), not yet
+        -- wired into any live UI trigger -- see this table's own doc
+        -- comment above: no real trigger for showing `victoryLine`
+        -- itself has been found/wired yet, only the formula for
+        -- resolving its real text once one is.
+        victoryLineSegments = {
+          { literal = "%HERO_NAME%" },
+          { fromOffset = 0x03a1be, toOffsetExclusive = 0x03a1d1 }, -- real terminator (0x00) sits at 0x03a1d1
+        },
         -- Re-traced live (see `victoryLine`'s own doc comment above for
         -- the full method). Found TWO real issues with the previous
         -- single-page version below: (1) it silently stopped the
@@ -1373,6 +1396,23 @@ RomProfiles.PROFILES = {
           characterA = {
             screenX = 128, screenY = 58,
             dialogue = { "Der Monsterein-\ngang f\195\188hrt nach\ndrau\195\159en." },
+            -- REAL ROM SOURCE FOUND (task "komplett autark
+            -- interpretiert", direct follow-up): `dialogue` above was
+            -- hand-transcribed from a live VRAM capture with no static
+            -- ROM offset ever pinned down -- this project's own
+            -- `tools/rom/dump_strings.py "$ROM" --min-len 8` scan found
+            -- it decodes CLEANLY (zero digraph exceptions) at bank 13,
+            -- file `0x0378aa`-`0x0378c6` (stops at the real terminator
+            -- control byte `0x12`), byte-exact match to the string
+            -- above -- see `tests/import/dialogue_text_resolver_test
+            -- .lua`. `VictorySequence.lua` now resolves this live via
+            -- `DialogueTextResolver` when `romData` is available,
+            -- falling back to the hand-transcribed string above only
+            -- when it isn't (e.g. `NpcCatalog.build`, which has no
+            -- `romData` -- see that module's own doc comment).
+            dialogueSegments = {
+              { { fromOffset = 0x0378aa, toOffsetExclusive = 0x0378c6 } },
+            },
             -- CORRECTED FOR REAL (2026-08-15, direct user report from
             -- actual play: "die npc sprites a und b jeweils 16x16 gross
             -- sind"): this whole `animation` table (and the 2026-08-12
@@ -1487,9 +1527,44 @@ RomProfiles.PROFILES = {
             -- surface as a real name, unlike `characterA`'s own still-
             -- undetermined one.
             dialogue = {
-              "Amanda: Das mit\nWilly tut mir\nleid.",
+              "Amanda:Das mit\nWilly tut mir\nleid.", -- CORRECTED (task
+              -- "komplett autark interpretiert"): no space after the
+              -- speaker colon (`SPEAKER_COLON_BYTE`, `0x2c`) -- the real
+              -- ROM byte stream never inserts one; this project already
+              -- established the SAME "no added space" convention for
+              -- Julia's own line ("Julia:Nun er-\nfahre..."), this was
+              -- just never applied here yet.
               "Wir müssen hier\nraus!", -- see doc comment above: 0x5B locally reads "us" here, not the shared table's "a"
               "Ich möchte nach\nHause zu meinem\nkleinen Bruder.",
+            },
+            -- REAL ROM SOURCE FOUND (task "komplett autark
+            -- interpretiert", direct follow-up to the doc comment
+            -- above's own already-cited `0x03783e`): a full byte-exact
+            -- trace via `tools/rom/dump_strings.py --gaps` found the
+            -- precise real ranges for all 3 pages, bank 13 -- page 1
+            -- decodes CLEANLY end to end (`0x037840`-`0x037859`); pages
+            -- 2 and 3 each need exactly the ONE already-documented
+            -- per-occurrence digraph override from this table's own doc
+            -- comment above (`0x5B`->"us" at file `0x037867`; `0x82`
+            -- ->"me" at file `0x03787b`) spliced in between two real,
+            -- cleanly-decoding ranges -- everything else here is real
+            -- ROM bytes, not a guess. Byte-exact regression:
+            -- `tests/import/dialogue_text_resolver_test.lua`.
+            -- `VictorySequence.lua` now resolves this live via
+            -- `DialogueTextResolver` when `romData` is available (same
+            -- fallback story as `characterA.dialogueSegments` above).
+            dialogueSegments = {
+              { { fromOffset = 0x037840, toOffsetExclusive = 0x037859 } },
+              {
+                { fromOffset = 0x03785b, toOffsetExclusive = 0x037867 },
+                { literal = "us" }, -- real byte 0x5B at file 0x037867, documented local override (see doc comment above)
+                { fromOffset = 0x037868, toOffsetExclusive = 0x037869 },
+              },
+              {
+                { fromOffset = 0x03786b, toOffsetExclusive = 0x03787b },
+                { literal = "me" }, -- real byte 0x82 at file 0x03787b, documented local override (see doc comment above)
+                { fromOffset = 0x03787c, toOffsetExclusive = 0x037889 },
+              },
             },
             -- Real tile set is `characterA`'s own `+0x20` (see this
             -- table's own doc comment) -- confirmed independently from

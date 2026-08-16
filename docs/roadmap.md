@@ -1988,6 +1988,29 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   substantial tooling investment, not pursued further this pass.
   `luajit tests/run_tests.lua`: 519/519 pass.
 
+- **2026-08-16, "komplett autark interpretiert" gap analysis, first
+  concrete step -- real NPC dialogue now live-decoded from ROM at
+  runtime**: found real, static ROM offsets (via `dump_strings.py`) for
+  3 dialogue lines that were only ever hand-transcribed before
+  (`secondRoom.characterA`'s line, `characterB`/Amanda's 3-page
+  monologue, `victoryLine`) -- 2 of them hit exactly the already-
+  documented `0x5B`/`0x82` per-occurrence digraph exceptions this
+  project's own `TextDecoder.lua` already flagged, confirming them
+  precisely. New `src/import/DialogueTextResolver.lua` (pure Lua,
+  general "decode real ROM ranges + splice documented literal
+  overrides" primitive) + `VictorySequence:resolveSceneDialogue`
+  wires this live into actual gameplay (shallow-copies scene data,
+  never mutates the shared profile table `NpcCatalog` also reads with
+  no `romData`). Self-caught 2 real bugs while wiring (an off-by-one
+  terminator-offset mistake; a hand-transcribed string with a space the
+  real ROM bytes never produce). Live-verified via a real `love .`
+  launch + screenshot, not just the test suite. 7 new tests, `luajit
+  tests/run_tests.lua`: 524/524 pass. Honest scope: 2 NPCs' worth of
+  dialogue, not "all dialogue now generalized" -- a proven, reusable
+  pattern for whoever continues finding more real offsets. The other
+  concretely-actionable item from the same gap analysis (cache-pipeline
+  read-side) is still open.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

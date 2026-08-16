@@ -178,6 +178,7 @@ local RoomWipeTransition = require("src.entities.RoomWipeTransition")
 local NpcProximity = require("src.entities.NpcProximity")
 local NpcWander = require("src.entities.NpcWander")
 local TextDecoder = require("src.import.TextDecoder")
+local DialogueTextResolver = require("src.import.DialogueTextResolver")
 local ScriptOpcodeTable = require("src.import.ScriptOpcodeTable")
 local ScriptRuntime = require("src.scripting.ScriptRuntime")
 local BossSequenceInterpreter = require("src.scripting.BossSequenceInterpreter")
@@ -1147,6 +1148,35 @@ function VictorySequence:currentPage()
   return self.pages and self.pages[self.pageIndex]
 end
 
+--- Returns a shallow copy of `sceneData` where every character's
+-- `dialogue` is replaced by its LIVE-DECODED real text (via
+-- `DialogueTextResolver.resolvePages`, see rom_profiles.lua's own
+-- `dialogueSegments` doc comment) wherever `dialogueSegments` is
+-- present -- characters with no `dialogueSegments` (no dialogue at
+-- all, e.g. Willy; or a real line this project hasn't traced a ROM
+-- offset for yet) pass through completely unchanged, hand-transcribed
+-- `dialogue` and all. `self.romData` absent (no real ROM loaded, e.g. a
+-- dev/test construction) also passes everything through unchanged --
+-- the SAME honest "no romData -> keep the static fallback" convention
+-- already used throughout this file/Field.lua.
+function VictorySequence:resolveSceneDialogue(sceneData)
+  if not self.romData then return sceneData end
+  local resolved = {}
+  local anyResolved = false
+  for name, char in pairs(sceneData) do
+    if char.dialogueSegments then
+      local copy = {}
+      for k, v in pairs(char) do copy[k] = v end
+      copy.dialogue = DialogueTextResolver.resolvePages(self.romData, char.dialogueSegments)
+      resolved[name] = copy
+      anyResolved = true
+    else
+      resolved[name] = char
+    end
+  end
+  return anyResolved and resolved or sceneData
+end
+
 --- Lazily builds (and caches) the real background/collision/sprites for
 -- `roomKey` -- called the first time the room graph reaches a room, so
 -- a long chain doesn't need to build every room up front.
@@ -1180,6 +1210,17 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   local sceneData = (self.roomSceneData and self.roomSceneData[roomKey]) or room.scene
   if sceneData then
     self.roomSceneData = self.roomSceneData or {}
+    -- WIRED (task "komplett autark interpretiert", direct follow-up):
+    -- a character with `dialogueSegments` (see rom_profiles.lua's own
+    -- doc comment, e.g. `secondRoom.scene.characterA/characterB`) gets
+    -- its `dialogue` resolved LIVE from real ROM bytes here, via
+    -- `DialogueTextResolver`, instead of using the hand-transcribed
+    -- string. Builds a shallow copy rather than mutating `room.scene`
+    -- in place -- that table is the SHARED `profile.graphics` data
+    -- (also read by `NpcCatalog.build`, which has no `romData` and
+    -- must keep using the plain hand-transcribed strings), and
+    -- `VictorySequence` instances/tests must not leak state into it.
+    sceneData = self:resolveSceneDialogue(sceneData)
     self.roomSceneData[roomKey] = sceneData
     self.roomSprites[roomKey] = {}
     -- ADDED (2026-08-10, see rom_profiles.lua's `secondRoom.scene
