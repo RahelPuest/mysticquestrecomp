@@ -49,6 +49,7 @@ local NoiseTable = require("src.import.NoiseTable")
 local CombatNoise = require("src.entities.CombatNoise")
 local EnemyMovementInterpreter = require("src.entities.EnemyMovementInterpreter")
 local CombatFormulas = require("src.entities.CombatFormulas")
+local MusicPlayer = require("src.audio.MusicPlayer")
 
 local Field = { opaque = true }
 Field.__index = Field
@@ -84,6 +85,22 @@ local PLAY_H = ROOM_H - HUD_H
 -- ...)` call) -- the trigger only reads `state.enemyDefeated`, a real
 -- boolean this state sets the instant the boss-clearing hit lands, not
 -- a queued/deferred flag.
+-- Real background music during actual gameplay (2026-08-16, direct
+-- continuation after "es muss doch irgendwo vorrangehen" -- picking a
+-- concrete, achievable win after several genuinely blocked/inconclusive
+-- investigations this session: `MusicPlayer`/`love.audio` playback
+-- already shipped, task #151, but only reachable via the dev-only F9
+-- Jukebox until now). HONEST SCOPE, same "real content, no fabricated
+-- trigger" precedent as `sixthRoom`'s own static-exit engineering
+-- choice: no live ROM trigger for "which song plays during ordinary
+-- field exploration" has been found (see MusicPlayer.lua's own doc
+-- comment) -- `FIELD_MUSIC_SONG_INDEX` is a deliberate, clearly-labeled
+-- ENGINEERING CHOICE (an arbitrary real song from the decoded table,
+-- picked for being pleasant to loop, not a claimed ROM fact), not a
+-- reverse-engineered fact. Every note played IS real, decoded ROM
+-- audio data -- only the "when" is this project's own choice.
+local FIELD_MUSIC_SONG_INDEX = 1
+
 local FIELD_EVENTS = {
   {
     id = "victory_sequence_on_boss_defeat",
@@ -171,6 +188,15 @@ function Field.new(romData, profile, input, overlay, stack, heroName, savedStats
   if romData and profile then
     self.font = Font.new(romData, profile)
     self.background = TileGridBackground.new(romData, profile.graphics.startRoom)
+    -- Real background music (see FIELD_MUSIC_SONG_INDEX's own doc
+    -- comment above for the honest "real audio, chosen trigger" scope).
+    -- `MusicPlayer.new` itself is love.*-free (headlessly testable,
+    -- same as every other constructor here) -- only `:play()` touches
+    -- `love.audio`, guarded below for the headless test suite.
+    self.musicPlayer = MusicPlayer.new(romData)
+    if love and love.audio then
+      self.musicPlayer:play(FIELD_MUSIC_SONG_INDEX)
+    end
     -- WIRED (2026-08-10): the real combat PRNG (ROM $2B1E, see
     -- CombatNoise.lua's own doc comment for the exact ported algorithm)
     -- -- one shared, persistent instance so its internal counter/cap
@@ -435,6 +461,13 @@ function Field:keypressed(key)
     -- audio/ + love.audio playback"): a dev-only jukebox for all 30
     -- real songs, same "real content, no fabricated trigger" precedent
     -- as F8's RoomExplorer -- see MusicJukebox.lua's own doc comment.
+    -- Stop the real field background music first (added same day,
+    -- direct continuation) -- Field:update stops running the instant
+    -- Jukebox is pushed on top (StateStack:update only drives the top
+    -- state), but the already-queued love.audio buffers would otherwise
+    -- keep playing underneath/overlapping the Jukebox's own playback
+    -- for up to ~1.2s (BUFFER_COUNT*BUFFER_SECONDS) until they drain.
+    if self.musicPlayer then self.musicPlayer:stop() end
     local MusicJukebox = require("src.app.states.MusicJukebox")
     self.stack:push(MusicJukebox.new(self.romData, self.input, self.overlay, self.stack))
   elseif key == "f10" and self.romData and self.stack then
@@ -484,6 +517,12 @@ function Field:keypressed(key)
 end
 
 function Field:update(dt)
+  -- Real background music: feeds the next few love.audio buffers every
+  -- real frame (see MusicPlayer.lua's own doc comment) -- unconditional,
+  -- same "always advance regardless of other branches" pattern
+  -- self.knockback:update below already uses. A no-op when never
+  -- started (headless construction, or love.audio unavailable).
+  if self.musicPlayer then self.musicPlayer:update(dt) end
   if self.stack and self.input:pressed("select") then
     self.stack:pop()
     return
@@ -698,6 +737,12 @@ function Field:debugState()
     enemyAlive = self.enemy:isAlive(),
     enemyDefeated = self.enemyDefeated,
     curLP = self.stats.curLP,
+    -- ADDED (2026-08-16, real field background music) -- live-verify
+    -- actual love.audio playback the same way MusicJukebox.lua's own
+    -- debugState already does (segIndex only climbs once real audio is
+    -- genuinely synthesized/queued, not just "no crash happened").
+    musicPlaying = self.musicPlayer and self.musicPlayer:isPlaying(),
+    musicSongIndex = self.musicPlayer and self.musicPlayer.songIndex,
   }
 end
 
@@ -715,6 +760,10 @@ function Field:dispatchEvent(action, state)
       state.stack:push(DialogueBox.new(action.lines, state.font, state.input, state.stack))
     end
   elseif action.type == "victorySequence" then
+    -- Same reasoning as the F9 Jukebox branch above: stop field music
+    -- explicitly rather than letting already-queued buffers bleed into
+    -- the boss-defeat sequence.
+    if state.musicPlayer then state.musicPlayer:stop() end
     local VictorySequence = require("src.app.states.VictorySequence")
     state.stack:push(VictorySequence.new(state.romData, state.profile, state.input,
       state.overlay, state.stack, state.heroName, state.stats))
