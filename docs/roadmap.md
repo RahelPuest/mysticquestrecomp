@@ -1968,6 +1968,26 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   reachable yet). No production code changed; `luajit
   tests/run_tests.lua`: 519/519 pass.
 
+- **2026-08-16, task #150 CLOSED**: a 5th pass tried the one untried
+  static angle -- decoding a full byte-window (before AND after, not
+  just up to) around each of a fresh 48 distinct shadow-run failure
+  locations. Found essentially none of them sit inside real German
+  prose: one cluster (bank 8) is a systematic font/glyph enumeration
+  TEST table, another (bank 9) is tightly-repetitive non-text binary
+  data (likely misaligned-cursor landings, same root-cause class as
+  task #81's own CHAIN-target findings). A second check -- searching
+  the real, already-confirmed dialogue region for the same 25 byte
+  values in legible context -- also came back empty; every hit was
+  either an already-known opcode byte a pure text scanner can't
+  recognize, or more non-text garbage. This project's own original
+  digraph-closing methodology (find a clean word-fragment, solve it)
+  is now genuinely exhausted against the current corpus from two
+  independent angles. Closed with the same honest reasoning as task
+  #127/#128 today: the one real remaining path (deep live injection to
+  reach genuinely unreached dialogue) is a separately-scoped, known,
+  substantial tooling investment, not pursued further this pass.
+  `luajit tests/run_tests.lua`: 519/519 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
