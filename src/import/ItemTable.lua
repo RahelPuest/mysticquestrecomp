@@ -10,6 +10,23 @@
 -- there. Pure Lua, no love.* calls, so it's headlessly testable like
 -- MapTable/GBTile.
 --
+-- INCONCLUSIVE STATIC PASS, 2026-08-16 (task "Item-/Waffen-Effektformeln
+-- reverse-engineeren", see combat.md's own dated entry for the full
+-- writeup): bytes 9-14 (0-based) remain genuinely undecoded, but this
+-- pass at least narrowed them down. Byte 9 is redundant with
+-- `categoryByte` (mirrors the record's tier: `0x10` basic items,
+-- `0xA0`/`0xB0`/`0x90` the 3 real spell tiers). Byte 10 is the most
+-- promising candidate for a real "power" field, but does NOT converge
+-- to one confident reading: the 4 real status-cure spells (Salbe/Auge/
+-- Bewege/Spruch) show a clean single-bit progression (`01`/`02`/`04`/
+-- `08`, plausibly "which status this cures"), while the elemental
+-- attack items (Flam/Eis/Bliz/Bomb, `08`/`12`/`20`/`40`) look more like
+-- a power scalar -- but `0x12` sets 2 bits, breaking the clean-bitmask
+-- reading. No live item-use trigger exists yet to resolve this
+-- (`Inventory.lua`'s own doc comment: no real WRAM held-item struct has
+-- been traced), so this stays a named, honestly-unresolved candidate,
+-- not a formula -- `Inventory:useItem` still applies no numeric effect.
+--
 -- FOUND, 2026-08-15 (extending the catalog for the monster/npc/item
 -- census): records 8-19 (the real spell section, per
 -- `itemTable.categoryBoundaryRecord=8`) do NOT store their name at
