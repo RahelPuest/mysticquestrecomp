@@ -51,6 +51,51 @@
 -- plain language, exactly as a human would describe the rendered PNG
 -- -- an honest visual impression, not a decoded fact.
 --
+-- EXTENDED AGAIN 2026-08-16, direct follow-up ("mach das gleiche mal
+-- für die map tiles" -- do the same search for MAP/environment tiles
+-- that was just done for monster/NPC tiles). Bank 12 is the one bank
+-- this project's own full 16-bank sweep (above) already confirmed
+-- holds real environment/architecture tileset art, not creatures --
+-- `rom_profiles.lua`'s own `environmentTilesetBank12` entry and the
+-- `tilesetFileOffset = 0x32000` formula MapTable.lua/rom_profiles.lua
+-- already use for real, live rooms. So "search for map tiles" here
+-- means something more precise than the monster search did: check
+-- exactly how much of bank 12's own 1024 tiles are ALREADY wired into
+-- a real, walkable room, vs. genuinely unconfirmed -- not just "does
+-- this look like tileset art" (the whole bank already does).
+--
+-- Rendered the whole bank in 4 natural 256-tile chunks (256 tiles is
+-- exactly one full loadable Game Boy background-tile VRAM page --
+-- 0x30000/0x31000/0x32000/0x33000, a real hardware-meaningful
+-- boundary, not an arbitrary split) and cross-checked each chunk
+-- against every literal ROM-offset tile reference already recorded in
+-- `rom_profiles.lua` (`grep`, not a guess):
+--   - 0x30000-0x30FFF: 57 distinct real, live-disambiguated tile
+--     offsets already in use (e.g. `fourthRoom`'s own tileOffsets
+--     129-147) -- ALREADY wired into real rooms, just via scattered
+--     individual per-tile picks rather than the systematic table, so
+--     NOT re-cataloged as a new "candidate" here (would misrepresent
+--     already-confirmed content as newly found).
+--   - 0x31000-0x31FFF: ZERO confirmed real usage anywhere in this
+--     project. The only mention of this range at all is `secondRoom`'s
+--     own doc comment (rom_profiles.lua ~line 1614) recording
+--     `0x31f80-0x31fb0` as an ambiguous candidate match that was
+--     explicitly NOT chosen (0x32170-0x321a0 was picked instead) --
+--     i.e. the one time this range came up, it was rejected. A clean,
+--     genuinely unconfirmed 256-tile region -- the single new entry
+--     added below, `bank12_environment_b`.
+--   - 0x32000-0x33FFF (chunks 3+4): the real, systematic
+--     `tilesetFileOffset = 0x32000 + tileId*16` table every room using
+--     the generic tileset already resolves through -- confirmed, no
+--     new entry needed, this is what `environmentTilesetBank12.
+--     confirmedFrom` already documents.
+--
+-- Same honest scope as every entry above: `bank12_environment_b` is
+-- real, visually-confirmed tileset-style art (matches its neighbors'
+-- established style -- stone/architecture textures, decorative
+-- borders) with NO live in-game room proven to use it -- not a claim
+-- that it's cut content, unused, or reachable by any specific means.
+--
 -- Pure Lua, no love.* calls, same convention as EnemySpeciesTable/
 -- NpcCatalog. See `tests/import/graphics_candidates_test.lua` for
 -- structural checks (every fileOffset/tileCount is a real, in-bounds
@@ -234,6 +279,29 @@ GraphicsCandidates.ENTRIES = {
       "regions; ends before a real gap that leads into this project's " ..
       "OWN ALREADY-KNOWN, confirmed enemy sprite (rom_profiles.lua's " ..
       "`enemySprite`, fileOffset 0x2FE00, further into the same bank).",
+  },
+  {
+    id = "bank12_environment_b",
+    bank = 12,
+    fileOffset = 0x31000,
+    tileCount = 256,
+    cols = 16,
+    kind = "tileset",
+    note = "A full, real 256-tile environment/architecture block -- a " ..
+      "black crenellated (castle-wall-style) top border repeated " ..
+      "across the sheet, window/door-like building fragments, tree " ..
+      "and vine/waterfall textures, fence sections, and furniture-" ..
+      "like shapes (a dresser/drawer silhouette) near the bottom. " ..
+      "Same general visual family as its neighbors on both sides " ..
+      "(bank12_environment_b sits between the ALREADY-WIRED 0x30000 " ..
+      "block, used piecemeal by real rooms like fourthRoom, and the " ..
+      "ALREADY-WIRED systematic tileset table starting at 0x32000) -- " ..
+      "but, unlike both of those, this exact 256-tile block has NO " ..
+      "confirmed real room using it (see this file's own doc comment " ..
+      "above for the full grep-based evidence). The single cleanest " ..
+      "'new' map-tile candidate this pass found: real ROM pixel data " ..
+      "in visually the right style, honestly unconfirmed as to actual " ..
+      "in-game usage.",
   },
 }
 

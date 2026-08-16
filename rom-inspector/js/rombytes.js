@@ -72,11 +72,63 @@ function gbDecodeTile(bytes) {
   return rows;
 }
 
-// Default DMG grey ramp (0=white..3=black) -- a display choice, same
-// default as src/rendering/TileImage.lua's own DEFAULT_PALETTE/
-// DMG_SHADES (this project's real, live-verified BGP=$E4 confirms the
-// identity mapping for backgrounds).
-const GB_SHADES = ["#fdfdf5", "#a8a89c", "#4a4a44", "#0a0a08"];
+// Palette PRESETS -- a pure viewer/display preference, NOT decoded ROM
+// data. The real, live-verified fact this project has established is
+// just BGP=$E4 (the identity 0->0,1->1,2->2,3->3 shade mapping, see
+// src/rendering/TileImage.lua's own DEFAULT_PALETTE/DMG_SHADES doc
+// comment) -- which of the Game Boy's many real physical screens
+// (original DMG green LCD, Pocket's monochrome LCD, Game Boy Light's
+// amber backlight) actually rendered those 4 shades is a hardware/
+// accessory choice the ROM itself has no opinion on. These 4 presets
+// are well-known reference colors for those real screens (commonly
+// used by GB tile viewers/emulators), offered here purely so the
+// website is easier to look at -- never presented as "the real ROM
+// palette," which does not exist as a single fixed color scheme.
+const GBPalette = {
+  PRESETS: {
+    grey: { label: "Graustufen (Standard)", colors: ["#fdfdf5", "#a8a89c", "#4a4a44", "#0a0a08"] },
+    dmgGreen: { label: "DMG-Grün (Original Game Boy)", colors: ["#9bbc0f", "#8bac0f", "#306230", "#0f380f"] },
+    pocket: { label: "Game Boy Pocket (reines S/W)", colors: ["#ffffff", "#a9a9a9", "#545454", "#000000"] },
+    amber: { label: "Bernstein (Game Boy Light)", colors: ["#f7e7c6", "#dcae57", "#a8702c", "#3f2810"] },
+  },
+  current: "grey",
+  listeners: [],
+
+  colors() { return this.PRESETS[this.current].colors; },
+
+  set(name) {
+    if (!this.PRESETS[name] || name === this.current) return;
+    this.current = name;
+    try { localStorage.setItem("mq_rominspector_palette", name); } catch (e) { /* private mode etc. -- fine, just don't persist */ }
+    GB_SHADES = this.PRESETS[name].colors;
+    this._notify();
+  },
+
+  // Restores a previously-picked preset (if any) before first render.
+  init() {
+    let saved = null;
+    try { saved = localStorage.getItem("mq_rominspector_palette"); } catch (e) { /* ignore */ }
+    if (saved && this.PRESETS[saved]) {
+      this.current = saved;
+      GB_SHADES = this.PRESETS[saved].colors;
+    }
+  },
+
+  onChange(fn) {
+    this.listeners.push(fn);
+    return () => {
+      const i = this.listeners.indexOf(fn);
+      if (i !== -1) this.listeners.splice(i, 1);
+    };
+  },
+  _notify() { for (const fn of this.listeners) fn(); },
+};
+
+// The actually-active 4-shade ramp (0=lightest..3=darkest) `gbDrawTile`
+// reads on every call -- a `let`, not `const`, specifically so
+// `GBPalette.set()` above can swap it and have every canvas pick up
+// the new colors on its next redraw, no per-viz-module wiring needed.
+let GB_SHADES = GBPalette.PRESETS.grey.colors;
 
 // Draws one decoded tile (8x8 array of 0-3) onto a canvas 2D context at
 // (dx, dy), each pixel scaled by `scale`.

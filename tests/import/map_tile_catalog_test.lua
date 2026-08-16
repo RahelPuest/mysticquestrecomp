@@ -1,0 +1,103 @@
+local Harness = require("tests.harness")
+local MapTileCatalog = require("src.import.MapTileCatalog")
+local RomIdentity = require("src.import.RomIdentity")
+local RomProfiles = require("src.import.rom_profiles")
+local DevRomLocator = require("tests.dev_rom_locator")
+
+Harness.test("MapTileCatalog.build: fails loudly without a profile", function()
+  Harness.assertTrue(not pcall(MapTileCatalog.build, nil))
+end)
+
+Harness.test("MapTileCatalog.build: an empty profile yields an empty catalog, not an error", function()
+  local catalog = MapTileCatalog.build({ graphics = {} })
+  Harness.assertEqual(#catalog.entries, 0)
+  Harness.assertEqual(catalog.roomCount, 0)
+end)
+
+Harness.test("MapTileCatalog.build: dedupes a real offset shared by 2 synthetic rooms into one entry with both room names", function()
+  local profile = {
+    graphics = {
+      roomA = { grid = { { 1 } }, tileOffsets = { [1] = 0x30000, [2] = 0x30010 } },
+      roomB = { grid = { { 1 } }, tileOffsets = { [1] = 0x30000, [2] = 0x30020 } },
+      -- Not a real room (no .grid) -- must be skipped, same filter
+      -- export_data.lua's own ROOM_MAPS section uses.
+      notARoom = { tileOffsets = { [1] = 0x99999 } },
+    },
+  }
+  local catalog = MapTileCatalog.build(profile)
+  Harness.assertEqual(catalog.roomCount, 2)
+  Harness.assertEqual(#catalog.entries, 3) -- 0x30000 (shared), 0x30010, 0x30020
+
+  local byOffset = {}
+  for _, e in ipairs(catalog.entries) do byOffset[e.fileOffset] = e end
+
+  Harness.assertEqual(#byOffset[0x30000].rooms, 2)
+  Harness.assertEqual(byOffset[0x30000].rooms[1], "roomA")
+  Harness.assertEqual(byOffset[0x30000].rooms[2], "roomB")
+  Harness.assertEqual(byOffset[0x30000].bank, 12)
+  Harness.assertEqual(#byOffset[0x30010].rooms, 1)
+  Harness.assertEqual(byOffset[0x30010].rooms[1], "roomA")
+end)
+
+Harness.test("MapTileCatalog.build: skips literal (non-ROM-address) tile patterns, same exception as export_data.lua's ROOM_MAPS", function()
+  local profile = {
+    graphics = {
+      roomA = { grid = { { 1 } }, tileOffsets = { [1] = string.rep("\255", 16), [2] = 0x30000 } },
+    },
+  }
+  local catalog = MapTileCatalog.build(profile)
+  Harness.assertEqual(#catalog.entries, 1)
+  Harness.assertEqual(catalog.entries[1].fileOffset, 0x30000)
+end)
+
+Harness.test("MapTileCatalog.forBank: returns only that bank's sorted offsets", function()
+  local profile = {
+    graphics = {
+      roomA = { grid = { { 1 } }, tileOffsets = { [1] = 0x30010, [2] = 0x20000, [3] = 0x30000 } },
+    },
+  }
+  local catalog = MapTileCatalog.build(profile)
+  local bank12 = MapTileCatalog.forBank(catalog, 12)
+  Harness.assertEqual(#bank12, 2)
+  Harness.assertEqual(bank12[1], 0x30000)
+  Harness.assertEqual(bank12[2], 0x30010)
+  local bank8 = MapTileCatalog.forBank(catalog, 8)
+  Harness.assertEqual(#bank8, 1)
+  Harness.assertEqual(bank8[1], 0x20000)
+end)
+
+-- --- ROM-dependent tests -------------------------------------------------
+local romData = DevRomLocator.find()
+
+Harness.testIfAvailable(
+  "MapTileCatalog.build: real ROM profile matches this project's own known 14-room / 243-tile / 3-bank finding",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local catalog = MapTileCatalog.build(profile)
+
+    -- Same "real, decoded room" filter export_data.lua's own ROOM_MAPS
+    -- section uses -- this count must always match ROOM_MAPS.length.
+    Harness.assertEqual(catalog.roomCount, 14)
+    Harness.assertEqual(#catalog.entries, 243)
+
+    -- Real map/environment tiles live in exactly 3 banks (8, 11, 12) --
+    -- NOT just bank 12, the honest finding this whole module exists to
+    -- surface (see this module's own doc comment for the full story).
+    Harness.assertEqual(catalog.byBank[8], 28)
+    Harness.assertEqual(catalog.byBank[11], 85)
+    Harness.assertEqual(catalog.byBank[12], 130)
+
+    -- Every entry's own fileOffset must be inside the real ROM and
+    -- tile-aligned (16-byte stride) -- same non-fabrication check every
+    -- other real ROM-offset catalog in this project already runs.
+    for _, e in ipairs(catalog.entries) do
+      Harness.assertTrue(e.fileOffset >= 0 and e.fileOffset + 16 <= #romData)
+      Harness.assertEqual(e.fileOffset % 16, 0)
+      Harness.assertTrue(#e.rooms > 0)
+    end
+  end)
+
+return true

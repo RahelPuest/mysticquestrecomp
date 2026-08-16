@@ -19,6 +19,7 @@ const SECTIONS = [
   { id: "items", icon: "🗡", label: "Items & Waffen", group: "Katalog" },
   { id: "npcs", icon: "🧑", label: "NPCs", group: "Katalog" },
   { id: "story", icon: "📖", label: "Story & Charaktere", group: "Katalog" },
+  { id: "graphics", icon: "🖼", label: "Grafiken", group: "Katalog" },
   { id: "questions", icon: "?", label: "Offene Fragen", group: "Status" },
 ];
 
@@ -34,6 +35,7 @@ function countFor(id) {
     if (id === "npcs") return String(NPCS.length);
     if (id === "story") return String(STORY.bossDefeats.length + STORY.namedCharacters.length);
     if (id === "music") return String(MUSIC.songCount);
+    if (id === "graphics") return String(GRAPHICS_CANDIDATES.length);
   } catch (e) { /* data not loaded yet */ }
   return "";
 }
@@ -149,8 +151,26 @@ function updateRomLoadStatus() {
   }
 }
 
+function setupPaletteControl() {
+  GBPalette.init(); // restore a previously-picked preset, if any
+  const select = document.getElementById("paletteSelect");
+  select.innerHTML = Object.entries(GBPalette.PRESETS)
+    .map(([id, p]) => `<option value="${id}">${escapeHtml(p.label)}</option>`)
+    .join("");
+  select.value = GBPalette.current;
+  select.addEventListener("change", () => GBPalette.set(select.value));
+  // Every currently-mounted tile canvas was drawn with the OLD colors
+  // -- re-running the current section's own render is the simplest way
+  // to get every one of them (Tile-Viewer, Map-Viewer, Weltkarte,
+  // Monster/NPC/Grafiken cards, ...) to redraw with the new preset
+  // without wiring a bespoke redraw callback into each of those
+  // modules individually.
+  GBPalette.onChange(() => route());
+}
+
 window.addEventListener("hashchange", route);
 window.addEventListener("DOMContentLoaded", () => {
+  setupPaletteControl();
   route();
   const search = document.getElementById("globalSearch");
   search.addEventListener("keydown", (e) => {

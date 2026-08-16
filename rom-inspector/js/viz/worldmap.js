@@ -95,19 +95,27 @@ function actorActionColor(aa, groupOnly) {
 // call (not 64 `fillRect`s), then blit it at the target size with one
 // hardware-accelerated `ctx.drawImage` call per placement -- the same
 // real GB pixel data, ~80-100x fewer, much cheaper draw calls.
-const GB_SHADES_RGB = GB_SHADES.map(hex => {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF];
-});
+// Recomputed on EVERY call (not cached at module load) so a palette
+// switch (GBPalette.set(), see js/rombytes.js) is picked up immediately
+// -- GB_SHADES is a `let` that can change after this module first
+// loads, and freezing the RGB conversion once here would silently keep
+// showing the old preset's colors on this one section.
+function gbShadesRgb() {
+  return GB_SHADES.map(hex => {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF];
+  });
+}
 function tileToOffscreenCanvas(decoded) {
   const c = document.createElement("canvas");
   c.width = 8;
   c.height = 8;
   const cctx = c.getContext("2d");
   const img = cctx.createImageData(8, 8);
+  const shadesRgb = gbShadesRgb();
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
-      const [r, g, b] = GB_SHADES_RGB[decoded[y][x]];
+      const [r, g, b] = shadesRgb[decoded[y][x]];
       const o = (y * 8 + x) * 4;
       img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
     }

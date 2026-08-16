@@ -12,8 +12,12 @@
   <div class="brand"><span class="dot"></span> ROM Inspector</div>
   <div class="subtitle">Mystic Quest (Game Boy, EU) &mdash; interaktive Reverse-Engineering-Dokumentation</div>
   <div class="spacer"></div>
+  <div id="paletteControl">
+    <label for="paletteSelect" class="palette-label" title="Anzeige-Farbschema für alle Kachel-Grafiken auf dieser Seite -- eine reine Darstellungsoption, keine ROM-Daten.">🎨</label>
+    <select id="paletteSelect"></select>
+  </div>
   <div id="romLoadControl">
-    <label class="btn small" for="romFileInput" id="romLoadLabel">ROM laden&hellip;</label>
+    <label class="btn primary small" for="romFileInput" id="romLoadLabel">📂 ROM laden&hellip;</label>
     <input id="romFileInput" type="file" accept=".gb" style="display:none;">
     <span id="romLoadStatus" class="romload-status"></span>
   </div>
@@ -44,6 +48,7 @@
 <script src="js/data/opcode-descriptions.js"></script>
 <script src="js/data/monsters.js"></script>
 <script src="js/data/graphics-candidates.js"></script>
+<script src="js/data/map-tile-catalog.js"></script>
 <script src="js/data/items.js"></script>
 <script src="js/data/npcs.js"></script>
 <script src="js/data/story.js"></script>
@@ -67,6 +72,7 @@
 <script src="js/viz/mapviewer.js"></script>
 <script src="js/viz/worldmap.js"></script>
 <script src="js/viz/monsters.js"></script>
+<script src="js/viz/graphics.js"></script>
 <script src="js/viz/items.js"></script>
 <script src="js/viz/npcs.js"></script>
 <script src="js/viz/story.js"></script>

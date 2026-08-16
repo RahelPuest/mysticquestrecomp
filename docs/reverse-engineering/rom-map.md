@@ -7634,3 +7634,78 @@ hover title, search input still present and functional, zero console
 errors across 40 sampled opcode cells. `luajit tests/run_tests.lua`:
 481/481 still pass (this is a JS-only UI change, Lua suite unaffected,
 re-run anyway per this project's own discipline).
+
+## Map-tile graphics search + dedicated Grafiken tab (task #154)
+
+Direct user follow-up, same day: "mach das gleiche mal für die map
+tiles. und pack diese grafik funde bitte in einen eignen tab" (do the
+same search for MAP tiles, and put these graphics finds into their own
+tab). Unlike the monster/NPC search, bank 12 (this project's own
+already-confirmed environment/architecture tileset bank) was already
+partially investigated -- so "search for map tiles" meant precisely
+checking how much of its 1024 tiles are ALREADY wired into a real room
+vs. genuinely unconfirmed, not "does this look like tileset art" (the
+whole bank already visibly does). Rendered bank 12 in its 4 natural
+256-tile chunks (one full GB background-tile VRAM page each -- a real
+hardware boundary) and grepped every literal ROM-offset tile reference
+already recorded in `rom_profiles.lua`:
+- 0x30000-0x30FFF: 57 distinct real offsets already in use (scattered,
+  per-tile disambiguated picks, e.g. `fourthRoom`'s own tileOffsets) --
+  already confirmed, not re-cataloged.
+- 0x31000-0x31FFF: ZERO confirmed usage anywhere -- the only mention of
+  this range in the whole codebase is `secondRoom`'s own doc comment
+  recording it as a REJECTED ambiguous match. A clean, genuinely new
+  candidate -- added as `GraphicsCandidates.lua`'s `bank12_environment_b`
+  (kind="tileset", 256 tiles).
+- 0x32000-0x33FFF: the real, systematic `tilesetFileOffset = 0x32000 +
+  tileId*16` table every generic-tileset room already resolves through
+  -- confirmed, `environmentTilesetBank12.confirmedFrom` already
+  documents this, no new entry needed.
+
+New dedicated "Grafiken" website tab (`rom-inspector/js/viz/graphics.js`,
+sidebar entry, own route `#graphics`) replacing the old embedded
+"Grafik-Kandidaten" section at the bottom of the Monster page -- now
+filterable by `kind` (monster/npc/fragment/tileset) via pill tabs, with
+a stat-grid summary.
+
+**Self-correcting follow-up, same day**: after this first pass (1 new
+unconfirmed map-tile candidate), direct user pushback: "du musst noch
+viel mehr tile daten kennen, immerhin sind ein paar räume schon
+bekannt und komplett kartiert" (you must already know a lot more tile
+data -- some rooms are already known and completely mapped) -- correct.
+This project has 14 fully-decoded, VERIFIED rooms referencing 243
+distinct REAL map/environment tile offsets, spanning bank 8 (28), bank
+11 (85), and bank 12 (130) -- NOT just bank 12. New `src/import/
+MapTileCatalog.lua` dedupes every real `profile.graphics.<room>.
+tileOffsets` entry across all mapped rooms (same "is this a real room"
+filter `export_data.lua`'s own `ROOM_MAPS` export already uses),
+grouped by bank, with room attribution per tile. Exported as
+`MAP_TILE_CATALOG` (`map-tile-catalog.js`); the Grafiken tab now leads
+with a "Bekannte, bereits kartierte Map-Kacheln" section -- one real
+tile mosaic per bank (8/11/12), each tile clickable to show which real
+room(s) use it -- BEFORE the unconfirmed candidates section, mirroring
+how the Monster page already shows its one confirmed sprite before
+candidates.
+
+Also same day, 2 small standalone UI fixes from the same message:
+- Color-palette presets: `GBPalette` (`js/rombytes.js`) -- 4 sensible
+  display presets (Graustufen/DMG-Grün/Game Boy Pocket/Bernstein),
+  explicitly documented as a pure viewer preference (NOT decoded ROM
+  palette data -- the only real, verified fact is BGP=$E4's identity
+  shade mapping). Selector added to the top bar; switching re-renders
+  the current section (`route()`) so every tile canvas site-wide picks
+  up the new colors, persisted via `localStorage`.
+- ROM-laden button: direct report "das erkennt man kaum" (barely
+  recognizable as a button) -- root cause was CSS scoped to `button.btn`
+  only, but the ROM control is a `<label class="btn">` (required for a
+  hidden native file input to be clickable). Widened the rule to plain
+  `.btn` and made it `primary` styling.
+
+Verification: 6 new `MapTileCatalog` unit tests (incl. a real-ROM
+cross-check asserting the exact 14-room/243-tile/3-bank numbers above)
++ existing `GraphicsCandidates` structural tests auto-covering the new
+entry -- `luajit tests/run_tests.lua`: 487/487 pass. Playwright-verified
+end to end: Grafiken tab renders both sections with real pixels, kind
+filter works, palette switch changes real canvas pixel colors and
+persists across reload, ROM button has visible button chrome, zero
+console errors across graphics/worldmap/tiles/map/monsters/npcs/items.

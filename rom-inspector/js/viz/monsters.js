@@ -11,6 +11,13 @@
 // REAL `flipY` for their down/up phase-2 frame (see rom_profiles.lua's
 // `secondRoom.scene.characterA.animation` doc comment for the live
 // capture + a same-day bug fix that first mis-modeled this as X-flip).
+//
+// Defined here (this module loads before npcs.js/graphics.js in
+// index.html) and reused as a plain global by both -- js/viz/npcs.js's
+// own NPC portraits and js/viz/graphics.js's own graphics-candidate
+// cards all draw through this exact same function, so a palette
+// switch (GBPalette, js/rombytes.js) or a GB-decode fix only needs to
+// happen in one place.
 function drawSpriteGrid(canvas, tileOffsets, cols, rows, scale, flip) {
   const f = (typeof flip === "object" && flip !== null) ? flip : { x: !!flip, y: false };
   canvas.width = cols * 8 * scale;
@@ -49,7 +56,9 @@ function render_monsters(main) {
       als Rohdaten gezeigt, nicht als funktionierender DEF-Wert behauptet.
       Nur 1 der 11 Spezies hat eine bekannte echte Sprite-Grafik (per
       Live-OAM-Tracing während eines echten Kampfes gefunden) &mdash; die
-      anderen 10 sind ehrlich als "Grafik unbekannt" markiert.
+      anderen 10 sind ehrlich als "Grafik unbekannt" markiert. Weitere,
+      noch nicht einer Spezies zugeordnete Grafik-Funde stehen jetzt auf
+      der eigenen <a href="#graphics">Grafiken</a>-Seite.
     </p>
     <div id="monsterRomBanner"></div>
     ${ks ? `
@@ -65,28 +74,12 @@ function render_monsters(main) {
       </div>
     </div>` : ""}
     <div class="card-grid" id="monsterCards" style="margin-top:16px;"></div>
-
-    <h2 class="page-title" style="margin-top:32px; font-size:1.3em;">Grafik-Kandidaten (unbestätigt)</h2>
-    <p class="page-lede">
-      Echte, visuell bestätigte Kreatur-/Charakter-/Icon-Grafikbereiche, gefunden
-      durch ein vollständiges Rendern JEDER ROM-Bank (0&ndash;15) und manuelle
-      Durchsicht &mdash; nicht nur einzelne Treffer eines heuristischen Scans.
-      Banks 8, 9, 10 und 11 enthalten echte, dichte Grafik-Inhalte; alle anderen
-      Banks wurden geprüft und enthalten nachweislich keine (reiner Code/Text/
-      Raumdaten). KEINER dieser Bereiche ist einer bestätigten Spezies, einem
-      Raum oder einem echten Spawn-Trigger zugeordnet. Das sind echte ROM-Pixel
-      (du siehst sie unten direkt aus deiner geladenen ROM gerendert), aber die
-      Identität ist ehrlich unbestätigt &mdash; siehe GraphicsCandidates.lua für
-      die volle Methodik.
-    </p>
-    <div class="card-grid" id="graphicsCandidateCards" style="margin-top:16px;"></div>
   `;
 
   updateRomBanner(document.getElementById("monsterRomBanner"));
   onSectionUnload(RomBytes.onChange(() => {
     updateRomBanner(document.getElementById("monsterRomBanner"));
     if (ks) drawSpriteGrid(document.getElementById("monsterSpriteCanvas"), ks.tileOffsets, ks.cols, ks.rows, 4, false);
-    redrawGraphicsCandidates();
   }));
 
   if (ks) {
@@ -124,32 +117,5 @@ function render_monsters(main) {
       </div>
     `;
     host.appendChild(card);
-  }
-
-  const gcHost = document.getElementById("graphicsCandidateCards");
-  const candidates = (typeof GRAPHICS_CANDIDATES !== "undefined") ? GRAPHICS_CANDIDATES : [];
-  const KIND_LABEL = { monster: "Monster-Kandidat", npc: "NPC-Kandidat", fragment: "Icon-/Fragment-Sammlung" };
-  for (const c of candidates) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <h3>${c.id}</h3>
-      <span class="badge unknown-b">${KIND_LABEL[c.kind] || "unbestätigt"}</span>
-      <div class="meta">
-        Bank ${c.bank} &middot; Datei-Offset ${hex(c.fileOffset, 6)} &middot;
-        ${c.tileCount} Kacheln
-      </div>
-      <canvas id="gc_${c.id}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;"></canvas>
-      <div class="meta" style="margin-top:8px;">${c.note}</div>
-    `;
-    gcHost.appendChild(card);
-  }
-  redrawGraphicsCandidates();
-
-  function redrawGraphicsCandidates() {
-    for (const c of candidates) {
-      const canvas = document.getElementById(`gc_${c.id}`);
-      if (canvas) drawSpriteGrid(canvas, c.tileOffsets, c.cols, c.rows, 3, false);
-    }
   }
 }

@@ -32,6 +32,7 @@ local ItemTable = require("src.import.ItemTable")
 local WeaponTable = require("src.import.WeaponTable")
 local NpcCatalog = require("src.import.NpcCatalog")
 local GraphicsCandidates = require("src.import.GraphicsCandidates")
+local MapTileCatalog = require("src.import.MapTileCatalog")
 local MusicDecoder = require("src.import.MusicDecoder")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
@@ -828,6 +829,24 @@ do
     "one and looking at it (see GraphicsCandidates.lua's own doc comment). NOT tied to any " ..
     "confirmed species/room/NPC/spawn-trigger identity -- shown as real ROM art with an honest " ..
     "visual description, not a decoded fact.")
+end
+
+----------------------------------------------------------------------
+-- 11c. Map tile catalog (MapTileCatalog.lua) -- the OPPOSITE of 11b:
+-- every real map/environment tile this project has ALREADY confirmed
+-- via a fully-decoded, VERIFIED room (not a candidate). Dedupes across
+-- all of profile.graphics's real rooms (same rooms ROOM_MAPS above
+-- exports individually) into one aggregate, grouped by bank.
+----------------------------------------------------------------------
+do
+  local catalog = MapTileCatalog.build(profile)
+  writeJs("map-tile-catalog.js", "MAP_TILE_CATALOG", catalog,
+    "Every real map/environment ROM tile this project has ALREADY confirmed -- deduplicated " ..
+    "across all " .. catalog.roomCount .. " fully-decoded, VERIFIED rooms this project has found " ..
+    "(the same rooms ROOM_MAPS above exports individually; see MapTileCatalog.lua's own doc " ..
+    "comment for why this aggregate view exists). Each entry records which real room(s) use it -- " ..
+    "NOT a candidate/heuristic finding like GRAPHICS_CANDIDATES, every offset here was already " ..
+    "individually matched against a real, live-captured VRAM tile pattern.")
 end
 
 ----------------------------------------------------------------------

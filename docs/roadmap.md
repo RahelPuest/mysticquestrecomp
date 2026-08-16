@@ -1690,6 +1690,29 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   reveals the technical text, a real glossary term's `<abbr>` carries
   its full definition, zero console errors across 40 sampled cells).
   481/481 tests still pass (JS-only change, Lua suite unaffected).
+- **2026-08-16, task #154, map-tile search + Grafiken tab + palette +
+  ROM button**: same-day follow-up ("mach das gleiche mal für die map
+  tiles... pack diese grafik funde bitte in einen eignen tab..."
+  color-palette presets... "ROM laden" button barely recognizable).
+  Bank 12 (already-confirmed environment tileset bank) checked chunk
+  by chunk against every literal ROM-offset already used by a real
+  room -- found exactly ONE genuinely unconfirmed 256-tile region
+  (0x31000, `bank12_environment_b`), the rest already wired (0x30000
+  piecemeal, 0x32000+ via the systematic table). New dedicated
+  "Grafiken" tab/section replaces the old embedded Monster-page
+  subsection, filterable by kind. Direct user correction the same day
+  ("du musst noch viel mehr tile daten kennen, immerhin sind ein paar
+  räume schon bekannt und komplett kartiert") led to `src/import/
+  MapTileCatalog.lua`: dedupes all 243 real, ALREADY-VERIFIED map tiles
+  across this project's 14 fully-mapped rooms (banks 8/11/12, not just
+  12), now the Grafiken tab's own lead section with per-bank mosaics
+  and per-tile room attribution. Plus: 4 GB-palette display presets in
+  the top bar (viewer preference only, not ROM data) that re-render
+  every tile canvas site-wide; ROM-laden control restyled with real
+  button chrome (`.btn` widened from `button.btn`-only). 6 new
+  MapTileCatalog tests (incl. a real-ROM 14-room/243-tile/3-bank
+  cross-check) -- 487/487 tests pass. Playwright-verified end to end,
+  zero console errors.
 
 ## Superseded by this file
 
