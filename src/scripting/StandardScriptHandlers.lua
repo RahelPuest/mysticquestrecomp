@@ -159,7 +159,7 @@ end
 --   EFFECT is modeled here, and it is real, unconditional ROM code
 --   that runs on EVERY real CHAIN dispatch, not scene-specific.
 -- `onChainTarget` (added 2026-08-13, task #86): optional
--- `function(normalizedCursor)`, fired with the real, POST-`$3c4f`-
+-- `function(normalizedCursor, bankOffset)`, fired with the real, POST-
 -- correction jump target (matching what the real persistent cursor
 -- actually becomes) right before this handler returns it. This
 -- project's own `RomScriptStream` is bound to ONE fixed bank per
@@ -170,7 +170,65 @@ end
 -- real "0x0D"/"0x0E" marker is a hint, not a proven general bank
 -- number, so callers should still verify their own real target bank
 -- empirically (see `BossSequenceInterpreter`) rather than trust it
--- blindly.
+-- blindly. `bankOffset` (added 2026-08-16, task #81, see below) is `0`
+-- for the already-VERIFIED `$3c4f` same-window case; a caller that
+-- ignores the 2nd argument (every existing caller does) keeps working
+-- unchanged.
+--
+-- TASK #81 FOLLOW-UP (2026-08-16, "erst 151 dann 81"): the real "7
+-- scripts CHAIN to a cursor that overflows the current bank's own
+-- $4000-$7FFF window" mystery (rom-map.md/events.md, indices 489/530/
+-- 703/879/1141/1324/1325) turned out to be TWO separate things, not
+-- one:
+--
+-- 1. Script 489's own CHAIN (operand `0x53 0x03`) was NEVER actually
+--    cross-bank -- `byte1*256+byte2+0x4000` = `0x9303`, which DOES
+--    fit in 16 bits, so the already-implemented `$3c4f` correction
+--    above applies and resolves it to `0x5303` -- squarely inside the
+--    SAME bank's own `$4000`-`$7FFF` window. Re-shadow-running from
+--    there (this project's own `ScriptRuntime`, real ROM bytes) plays
+--    80 clean real steps through 41 distinct, richly varied real
+--    opcodes with zero errors -- a DECISIVE confirmation (matching
+--    this project's own established "real, sensible opcode content,
+--    not coincidence" standard) that this one script's "mystery" was
+--    simply that the 2026-08-13 scan predates the `$3c4f` discovery,
+--    not a real cross-bank case at all.
+--
+-- 2. The other 6 residual CHAIN operands (530/703/879/1141, plus the
+--    SECOND CHAIN reached from 1324/1325's first) are a genuinely
+--    DIFFERENT case: `byte1*256+byte2` itself is large enough
+--    (>= `0xC000`) that `+0x4000` overflows the Game Boy's own 16-bit
+--    CPU address space entirely -- not just landing in the `$3c4f`
+--    high-byte window, but exceeding `0xFFFF` outright. A real, GB
+--    CPU address can never do that, so the `$3c4f` correction's own
+--    premise (a normal 16-bit address needing a high-byte nudge)
+--    doesn't apply here at all. NEW HYPOTHESIS, tested via static
+--    analysis (not yet live-confirmed -- see below): apply the SAME
+--    "roll into a later real bank" formula this project's own
+--    `ScriptPointerTable.resolve` already uses (and already verified,
+--    independently, via real byte content) for the script table's OWN
+--    entries -- `bankOffset = floor((byte1*256+byte2) / 0x4000)`,
+--    `target = 0x4000 + ((byte1*256+byte2) % 0x4000)`, RELATIVE to
+--    whatever bank the CHAIN itself executed from (this handler has no
+--    way to know the absolute bank, same reasoning as the `$3c4f`
+--    case above). Re-shadow-running all 6 with this hybrid rule (a
+--    scratch probe, not yet a permanent tool) resolved every one of
+--    them into a real, in-window address with ZERO interpreter errors
+--    across the whole real budget -- but the resulting opcode content
+--    is a MUCH weaker confirmation than case 1 above: several land in
+--    long runs of real opcode `0x00` bytes (this project's own
+--    "QUEUE_GATE" opcode, which trivially self-advances under a stub
+--    context and is also this ROM's own unprogrammed-filler byte
+--    value elsewhere -- ambiguous either way, not decisive). CANDIDATE
+--    status, not VERIFIED: structurally plausible (reuses an
+--    independently-proven formula, zero crashes), but genuinely
+--    UNCONFIRMED whether real hardware actually does this for CHAIN's
+--    own operand bytes specifically -- no known live trigger reaches
+--    any of these 7 specific `scriptPointerTable` entries in normal
+--    gameplay, so the honest next step (a live `$2100`-write
+--    watchpoint) still has an unmet prerequisite: finding what, if
+--    anything, actually calls these scripts. See rom-map.md's own
+--    dated task #81 entry for the full trail.
 function StandardScriptHandlers.chain(queue, onChainTarget)
   return function(stream, cursor)
     local byte1, afterByte1 = ScriptInterpreter.fetch(stream, cursor)
@@ -178,15 +236,28 @@ function StandardScriptHandlers.chain(queue, onChainTarget)
     if queue then
       queue:push(true, afterByte2)
     end
-    local target = byte1 * 256 + byte2 + 0x4000
-    -- Real `$3c4f` correction (see doc comment above) -- the high byte
-    -- of `target` is `math.floor(target / 256)`.
-    local highByte = math.floor(target / 256)
-    if highByte >= 0x80 and highByte < 0xC0 then
-      target = target - 0x4000
+    local tableValueLike = byte1 * 256 + byte2
+    local rawTarget = tableValueLike + 0x4000
+    local target, bankOffset
+    if rawTarget <= 0xFFFF then
+      -- Real `$3c4f` correction (see doc comment above) -- the high
+      -- byte of `rawTarget` is `math.floor(rawTarget / 256)`.
+      target = rawTarget
+      local highByte = math.floor(target / 256)
+      if highByte >= 0x80 and highByte < 0xC0 then
+        target = target - 0x4000
+      end
+      bankOffset = 0
+    else
+      -- CANDIDATE, not VERIFIED (see doc comment above, task #81):
+      -- the operand pair itself overflows the 16-bit CPU address
+      -- space -- reuse `ScriptPointerTable.resolve`'s own already-
+      -- proven "roll into a later real bank" formula instead.
+      bankOffset = math.floor(tableValueLike / 0x4000)
+      target = 0x4000 + (tableValueLike % 0x4000)
     end
     if onChainTarget then
-      onChainTarget(target)
+      onChainTarget(target, bankOffset)
     end
     return target
   end

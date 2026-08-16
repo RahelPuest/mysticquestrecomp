@@ -468,15 +468,20 @@ ScriptRuntime.__index = ScriptRuntime
 --                             `StandardScriptHandlers
 --                             .threeWayFlagBitCommand`'s own doc
 --                             comment.
---   ctx.onChainTarget(newCursor) -- fires on EVERY real opcode `0x02`
---                             (CHAIN) dispatch, with the real computed
---                             jump target -- see
+--   ctx.onChainTarget(newCursor, bankOffset) -- fires on EVERY real
+--                             opcode `0x02` (CHAIN) dispatch, with the
+--                             real computed jump target -- see
 --                             `StandardScriptHandlers.chain`'s own doc
---                             comment (added 2026-08-13, task #86) for
---                             why: the real ROM's own cross-bank CHAIN
---                             targets aren't derivable from a formula,
---                             only from empirically knowing the real
---                             ambient bank for a specific real scene --
+--                             comment (added 2026-08-13, task #86;
+--                             `bankOffset` added 2026-08-16, task #81)
+--                             for why: the real ROM's own cross-bank
+--                             CHAIN targets aren't derivable from a
+--                             formula with full confidence, only from
+--                             empirically knowing the real ambient
+--                             bank for a specific real scene (or, for
+--                             the `bankOffset ~= 0` CANDIDATE case, a
+--                             plausible-but-unconfirmed relative-bank
+--                             hypothesis -- see that doc comment) --
 --                             this lets a caller swap which
 --                             `RomScriptStream` it feeds the next
 --                             `:step()` call when that's needed.

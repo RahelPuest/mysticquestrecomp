@@ -99,15 +99,18 @@ Harness.test("StandardScriptHandlers.chain: pushes a real B==2 queue entry (resu
   Harness.assertEqual(resumeCursor, 4) -- right after the opcode's own 2 operand bytes
 end)
 
-Harness.test("StandardScriptHandlers.chain: onChainTarget fires with the real computed jump target (2026-08-13, task #86)", function()
+Harness.test("StandardScriptHandlers.chain: onChainTarget fires with the real computed jump target and bankOffset=0 for an ordinary in-window target (2026-08-13, task #86)", function()
   local chain = ScriptOpcodeTable.CHAIN_HANDLER_ADDRESS
   local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x02] = chain }))
-  local seen
-  interp:registerHandler(chain, StandardScriptHandlers.chain(nil, function(target) seen = target end))
+  local seenTarget, seenBankOffset
+  interp:registerHandler(chain, StandardScriptHandlers.chain(nil, function(target, bankOffset)
+    seenTarget, seenBankOffset = target, bankOffset
+  end))
 
   local stream = { 0x02, 0x01, 0x02 } -- byte1=1, byte2=2 -> 1*256+2+0x4000
   interp:step(stream, 1)
-  Harness.assertEqual(seen, 1 * 256 + 2 + 0x4000)
+  Harness.assertEqual(seenTarget, 1 * 256 + 2 + 0x4000)
+  Harness.assertEqual(seenBankOffset, 0) -- no rollover -- ordinary same-window target
 end)
 
 Harness.test("StandardScriptHandlers.chain: queue is optional (no queue, still jumps correctly)", function()
@@ -117,6 +120,50 @@ Harness.test("StandardScriptHandlers.chain: queue is optional (no queue, still j
 
   local nextCursor = interp:step({ 0x02, 0, 0 }, 1)
   Harness.assertEqual(nextCursor, 0x4000)
+end)
+
+Harness.test("StandardScriptHandlers.chain: real $3c4f high-byte correction (target's own high byte 0x80-0xBF gets -0x4000), bankOffset stays 0 (2026-08-13, task #86; real script 489 case, task #81 2026-08-16)", function()
+  -- Real ROM bytes for scriptPointerTable index 489 (see this
+  -- function's own doc comment in StandardScriptHandlers.lua): operand
+  -- 0x53 0x03 -> raw target 0x53*256+0x03+0x4000 = 0x9303, high byte
+  -- 0x93 (0x80-0xBF) -> corrected to 0x5303, squarely back inside the
+  -- SAME bank's own $4000-$7FFF window -- this was the case that
+  -- turned out to have never been a real cross-bank CHAIN at all.
+  local chain = ScriptOpcodeTable.CHAIN_HANDLER_ADDRESS
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x02] = chain }))
+  local seenTarget, seenBankOffset
+  interp:registerHandler(chain, StandardScriptHandlers.chain(nil, function(target, bankOffset)
+    seenTarget, seenBankOffset = target, bankOffset
+  end))
+
+  local nextCursor = interp:step({ 0x02, 0x53, 0x03 }, 1)
+  Harness.assertEqual(seenTarget, 0x5303)
+  Harness.assertEqual(seenBankOffset, 0)
+  Harness.assertEqual(nextCursor, 0x5303)
+end)
+
+Harness.test("StandardScriptHandlers.chain: operand overflowing the 16-bit CPU address rolls into a later real bank (CANDIDATE, task #81, 2026-08-16; real script 703 case)", function()
+  -- Real ROM bytes for scriptPointerTable index 703's own CHAIN:
+  -- operand 0xcb 0x3f -> byte1*256+byte2 = 0xcb3f, +0x4000 = 0x10b3f,
+  -- which EXCEEDS the Game Boy's own 16-bit CPU address space (max
+  -- 0xffff) -- the $3c4f correction's own premise (a normal 16-bit
+  -- address needing a high-byte nudge) cannot apply here. This
+  -- project's own NEW, CANDIDATE (not live-verified) hypothesis reuses
+  -- ScriptPointerTable.resolve's own already-proven "roll into a later
+  -- real bank" formula instead: bankOffset = floor(0xcb3f / 0x4000) =
+  -- 3, target = 0x4000 + (0xcb3f % 0x4000) = 0x4b3f.
+  local chain = ScriptOpcodeTable.CHAIN_HANDLER_ADDRESS
+  local interp = ScriptInterpreter.new(makeOpcodeTable({ [0x02] = chain }))
+  local seenTarget, seenBankOffset
+  interp:registerHandler(chain, StandardScriptHandlers.chain(nil, function(target, bankOffset)
+    seenTarget, seenBankOffset = target, bankOffset
+  end))
+
+  local nextCursor = interp:step({ 0x02, 0xcb, 0x3f }, 1)
+  Harness.assertEqual(seenBankOffset, 3)
+  Harness.assertEqual(seenTarget, 0x4b3f)
+  Harness.assertTrue(seenTarget >= 0x4000 and seenTarget <= 0x7FFF, "resolved target must land inside a real ROM bank window")
+  Harness.assertEqual(nextCursor, 0x4b3f)
 end)
 
 Harness.test("StandardScriptHandlers.setFlagBit/clearFlagBit: real WRAM $D874 bit1 set/clear opcodes (0xDC/0xDD)", function()

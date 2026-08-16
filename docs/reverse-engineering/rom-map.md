@@ -8014,3 +8014,86 @@ End-to-end live verification (`MYSTICQUEST_WAIT_FOR_MAX=600`, a real
 independently progressing through their own real segment lists with
 buffers staying correctly topped up -- not just "no crash." 8 new unit
 tests, `luajit tests/run_tests.lua`: 501/501 pass.
+
+## Task #81: the real 7-script cross-bank CHAIN mystery, substantially resolved (2026-08-16)
+
+Direct continuation of "erst 151 dann 81" (task #151 above finished
+first). The concrete next step on record (see the "Same-day follow-up"
+section above) was a live `$2100`-write watchpoint -- but before
+attempting one, a static+interpreted re-check of the 7 residual real
+scripts (indices 489/530/703/879/1141/1324/1325, from the 2026-08-13
+"CORRECTION" pass in events.md) against the CURRENT `StandardScriptHandlers
+.chain()` turned up a real, decisive split into two genuinely different
+cases -- enough to close most of the mystery without needing mGBA at
+all, and to surface a real, previously-unnoticed prerequisite gap for
+the live-trace step that WAS still attempted.
+
+**Case 1 -- script 489 was NEVER actually cross-bank.** Its real CHAIN
+operand (`0x53 0x03`) computes `byte1*256+byte2+0x4000 = 0x9303`, which
+DOES fit in 16 bits -- the already-implemented `$3c4f` high-byte
+correction (task #86, found the SAME day as the original 7-script tally,
+possibly after it) resolves it to `0x5303`, squarely back inside the
+SAME bank's own `$4000`-`$7FFF` window. Shadow-running from there (real
+ROM bytes, this project's own `ScriptRuntime`) dispatches 41 distinct,
+richly varied real opcodes before eventually reaching a real, genuinely
+different, ordinary still-undecoded opcode (`0xEE`, handler `$0E7B` --
+one of the already-known `$02AB`-family "known-hard" blockers, same
+family task #152 already fully characterized as needing live
+player-entity WRAM this project doesn't simulate) -- a DECISIVE
+confirmation, matching this project's own established "real, sensible,
+varied opcode content" standard, that this one script's "mystery" was
+simply an artifact of the 2026-08-13 scan predating the `$3c4f` fix,
+not a real cross-bank case.
+
+**Case 2 -- the other 6 (530/703/879/1141, plus the second CHAIN
+reached from 1324/1325's first) genuinely overflow the CPU's own 16-bit
+address space.** Their operand bytes are large enough (`0xCB00`-`0xFEFF`
+range) that `+0x4000` exceeds `0xFFFF` outright -- not a high-byte
+nudge case at all, so the `$3c4f` correction's own premise doesn't
+apply. NEW HYPOTHESIS, tested and wired: reuse the SAME "roll into a
+later real bank" formula `ScriptPointerTable.resolve` already uses
+(and already independently verified via real byte content) for the
+script table's OWN entries -- `bankOffset = floor((byte1*256+byte2) /
+0x4000)`, `target = 0x4000 + ((byte1*256+byte2) % 0x4000)`, relative to
+whatever bank the CHAIN itself executed from. Re-shadow-running all 6
+this way (following the bank switch via `onChainTarget`'s own real,
+new 2nd argument, same pattern `BossSequenceInterpreter` already uses
+for its own, different, live-verified scene) resolves every one of
+them into a real, in-window address with zero interpreter crashes --
+but the confirmation strength is genuinely weaker than case 1: several
+land in long runs of real opcode `0x00` (this project's own
+"QUEUE_GATE" opcode, which is ALSO this ROM's own unprogrammed-filler
+byte value elsewhere -- ambiguous, not decisive either way). **CANDIDATE
+status, not VERIFIED**: structurally plausible, zero crashes, but
+genuinely unconfirmed whether real hardware does this for CHAIN's own
+operand bytes specifically.
+
+**A real prerequisite gap surfaced for the live-trace step**: no known
+live trigger reaches any of these 7 specific `scriptPointerTable`
+entries in normal gameplay -- the originally-recorded "next concrete
+step" (a live `$2100`-write watchpoint across one of these 7 scripts'
+own CHAIN execution) turns out to need its OWN unmet prerequisite
+(finding what, if anything, actually calls these scripts) before it
+can even be attempted. Left honestly open rather than forced.
+
+**Real code changes, not just analysis**: `StandardScriptHandlers.chain()`
+now implements the full hybrid rule above (`onChainTarget`'s own
+signature gained a 2nd argument, `bankOffset`, `0` for the
+already-VERIFIED same-window case -- every existing caller that ignores
+the 2nd argument, e.g. `BossSequenceInterpreter`, keeps working
+unchanged). `scripts/scan_all_scripts.lua` was ALSO updated to actually
+follow a non-zero `bankOffset` by swapping which real `RomScriptStream`
+feeds subsequent steps -- necessary once the interpreter itself stopped
+erroring on these operands, since silently continuing to read the OLD
+(wrong) bank's bytes once an overflowing target happens to land inside
+that bank's own valid address window would have been exactly the kind
+of silent-fallback bug this project's discipline forbids.
+
+**Real, measured corpus-scan impact**: re-ran `scripts/scan_all_scripts.lua`.
+`clean` 875->**884** (+9), `halt_undecoded` 162->**163** (+1, script
+489's own new landing spot), `error_other` 320->**310** (-10, real
+scripts that previously hard-errored on "cursor out of stream bounds").
+10 new/updated tests (`tests/unit/standard_script_handlers_test.lua`,
+new `tests/unit/chain_cross_bank_test.lua` with real-ROM cross-checks
+for scripts 489 and 703 plus a real full-7-script sweep). `luajit
+tests/run_tests.lua`: 506/506 pass.

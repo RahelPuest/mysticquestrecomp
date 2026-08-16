@@ -17,6 +17,18 @@
 -- resolution convention as `tests/dev_rom_locator.lua`, duplicated
 -- rather than required from `tests/` since that module is explicitly
 -- scoped "test-only helper").
+--
+-- UPDATED 2026-08-16 (task #81 follow-up, "erst 151 dann 81"): this
+-- scan now actually FOLLOWS real cross-bank CHAIN targets (swaps which
+-- `RomScriptStream` feeds subsequent steps whenever
+-- `StandardScriptHandlers.chain`'s own new `bankOffset` is non-zero --
+-- see that module's doc comment for the full CANDIDATE-status
+-- reasoning) instead of silently re-reading the wrong bank's bytes
+-- once such a target happens to land inside the OLD bank's own valid
+-- address window. Previously ANY overflowing CHAIN operand loudly
+-- errored (`ERROR_OTHER`, "cursor out of stream bounds") -- necessary
+-- to fix here too, not just in the interpreter, once the interpreter
+-- itself stopped erroring on them.
 package.path = "./?.lua;" .. package.path
 
 local RomIdentity = require("src.import.RomIdentity")
@@ -147,10 +159,34 @@ for index = 0, total - 1 do
   if not resolved then
     statusCounts[FILLER] = statusCounts[FILLER] + 1
   else
-    local stream = RomScriptStream.forFileOffset(romData, resolved.bank * 0x4000)
+    local bank = resolved.bank
+    local stream = RomScriptStream.forFileOffset(romData, bank * 0x4000)
+    -- Real cross-bank CHAIN following (2026-08-16, task #81, see
+    -- StandardScriptHandlers.chain's own doc comment for the full,
+    -- honestly-scoped CANDIDATE reasoning this implements): a real
+    -- CHAIN whose own operand bytes overflow the Game Boy's 16-bit CPU
+    -- address space now resolves to an address in a LATER real bank
+    -- (`bankOffset ~= 0`) that can coincidentally fall inside this
+    -- stream's OWN valid `$4000`-`$7FFF` window -- without switching
+    -- `stream` here too, this scan would silently keep reading bytes
+    -- from the WRONG bank instead of loudly erroring, exactly the kind
+    -- of silent-fallback bug this project's own discipline forbids.
+    -- `runtime:step` (not `:run`) is called manually below so this
+    -- closure's stream swap takes effect on the VERY NEXT step, not
+    -- just at the start of the run.
+    stubCtx.onChainTarget = function(_target, bankOffset)
+      if bankOffset ~= 0 then
+        bank = bank + bankOffset
+        stream = RomScriptStream.forFileOffset(romData, bank * 0x4000)
+      end
+    end
     local runtime = ScriptRuntime.new(opcodeEntries, stubCtx)
+    local cursor = resolved.cpuAddress
     local ok, err = pcall(function()
-      runtime:run(stream, resolved.cpuAddress, stepBudget)
+      for _ = 1, stepBudget do
+        if runtime.stopped or runtime.finished then break end
+        cursor = runtime:step(stream, cursor)
+      end
     end)
     if not ok then
       statusCounts[ERROR_OTHER] = statusCounts[ERROR_OTHER] + 1

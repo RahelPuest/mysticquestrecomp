@@ -28,11 +28,13 @@
 -- HONEST SCOPE: this resolves a script's real STARTING location only.
 -- Whether individual opcodes WITHIN a script (specifically `CHAIN`,
 -- opcode `0x02`) can also jump across this same kind of bank boundary
--- is a separate, still-open, NOT-YET-CONFIRMED question -- see the
--- "real 7-script cross-bank CHAIN mystery" task. `StandardScriptHandlers
--- .chain()`'s own target formula is deliberately NOT changed by this
--- module -- that would be guessing at an unconfirmed mechanism, which
--- this project's own discipline forbids.
+-- was a separate, open question -- see the "real 7-script cross-bank
+-- CHAIN mystery" task, substantially resolved 2026-08-16 (task #81):
+-- `StandardScriptHandlers.chain()` now reuses this SAME "roll into a
+-- later real bank" formula for its own overflowing operand bytes (see
+-- that function's own doc comment for the full, honestly-scoped
+-- CANDIDATE-status reasoning -- not fully live-confirmed, unlike this
+-- module's own decisively-confirmed table-entry rollover).
 
 local ScriptPointerTable = {}
 

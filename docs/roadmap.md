@@ -1837,6 +1837,30 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   `luajit tests/run_tests.lua`: 501/501 pass. Full detail in
   `docs/reverse-engineering/audio.md`.
 
+- **2026-08-16, task #81, real 7-script cross-bank CHAIN mystery,
+  substantially resolved**: direct continuation ("erst 151 dann 81").
+  Found a real, decisive split into two cases. Script 489 was never
+  actually cross-bank at all -- the already-known `$3c4f` correction
+  resolves it in-bank; re-shadow-running it dispatches 41 distinct,
+  richly varied real opcodes before an ordinary, unrelated,
+  already-known-hard blocker -- a decisive confirmation this one was a
+  false alarm predating that correction. The other 6 genuinely overflow
+  the CPU's own 16-bit address space -- a new, wired CANDIDATE
+  hypothesis reuses `ScriptPointerTable.resolve`'s own already-proven
+  "roll into a later real bank" formula for `CHAIN`'s operand bytes
+  too, resolving all 6 with zero interpreter crashes (weaker
+  confirmation than script 489's case -- plausible, not proven). Real
+  code shipped: `StandardScriptHandlers.chain()` implements the full
+  hybrid rule (`onChainTarget` gained a `bankOffset` argument),
+  `scripts/scan_all_scripts.lua` updated to follow it (avoiding a real
+  silent-wrong-bank-data risk the fix would otherwise have introduced).
+  Corpus-scan impact: `clean` 875->884, `error_other` 320->310. A real
+  prerequisite gap surfaced for the originally-planned live
+  `$2100`-write watchpoint: no known live trigger reaches any of these
+  7 script-table entries in normal gameplay. 10 new/updated tests,
+  `luajit tests/run_tests.lua`: 506/506 pass. Full detail in
+  `docs/reverse-engineering/rom-map.md`.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

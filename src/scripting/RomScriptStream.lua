@@ -44,11 +44,18 @@ local RomScriptStream = {}
 -- (see `ScriptPointerTable.resolve`, which correctly computes which
 -- bank a given table index's script actually starts in -- use that
 -- instead of assuming bank 8 for every index). What remains genuinely
--- unmodeled here is a MID-SCRIPT cross-bank jump (a real `CHAIN`,
--- opcode `0x02`, landing outside the bank a `RomScriptStream` was
--- built for) -- 7 real scripts hit exactly this and are left as a real,
--- open, NOT-YET-CONFIRMED question (see events.md's own "real 7-script
--- cross-bank CHAIN mystery" investigation) rather than guessed at.
+-- unmodeled HERE (this module itself never switches banks -- a caller
+-- must build a NEW stream for a new bank) is a MID-SCRIPT cross-bank
+-- jump (a real `CHAIN`, opcode `0x02`, landing outside the bank a
+-- `RomScriptStream` was built for) -- 7 real scripts hit exactly this.
+-- UPDATE 2026-08-16 (task #81): substantially resolved, not fully
+-- live-confirmed -- see `StandardScriptHandlers.chain`'s own doc
+-- comment for the full trail. A caller following a real cross-bank
+-- CHAIN (via `ctx.onChainTarget`'s own `bankOffset` argument) must
+-- build a fresh `RomScriptStream` for the new bank and start feeding
+-- IT to subsequent `ScriptRuntime:step` calls -- see
+-- `BossSequenceInterpreter` and `scripts/scan_all_scripts.lua` for two
+-- real, working examples of this pattern.
 function RomScriptStream.forBank(romData, bankIndex)
   assert(type(romData) == "string", "RomScriptStream.forBank expects a byte string")
   assert(type(bankIndex) == "number" and bankIndex >= 0,
