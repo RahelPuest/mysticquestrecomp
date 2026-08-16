@@ -1731,8 +1731,8 @@ function VictorySequence:update(dt)
     -- progressed (same "unconditional per real frame" pattern the
     -- boss-sequence shadow run above already uses) -- see
     -- `beginTransition`'s own doc comment. A no-op when this exit has
-    -- no `scriptEntry` (every transition except thirdRoom->fourthRoom,
-    -- for now).
+    -- no `scriptEntry` (every transition except thirdRoom->fourthRoom
+    -- and fourthRoom->fifthRoom, for now).
     if self.cutTransitionInterpreter then
       self.cutTransitionInterpreter:tick()
     end

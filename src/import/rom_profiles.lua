@@ -2202,6 +2202,20 @@ RomProfiles.PROFILES = {
             -- resolve to the identical real pixel pair) -- see
             -- `src/import/CutTransitionTable.lua`'s own doc comment.
             -- `(16+1)*8=136`, `(2+2)*8=32` -- exact match.
+            -- LIVE ENTRY POINT FOUND (2026-08-16, same live single-step
+            -- methodology as thirdRoom->fourthRoom's own `scriptEntry`
+            -- below -- see `CutTransitionInterpreter.lua`'s own
+            -- `ENTRY_POINTS.fourthRoomToFifthRoom` doc comment for the
+            -- full trace): real opcode `0xF4` at bank 14, file `0x38c84`
+            -- -- `VictorySequence.lua`'s own `switchToTargetRoom` now
+            -- live-captures and cross-checks this exit's roomSelector
+            -- too, same as thirdRoom->fourthRoom.
+            scriptEntry = {
+              bank = 14,
+              cpuAddress = 0x4C84,
+              transitionKey = "fourthRoomToFifthRoom",
+            },
+            romRoomSelector = 4, -- live-captured cross-check target, matches fifthRoom's own romRoomSelectorConfirmed above
             holdFrames = 64, holdDirection = "down",
           },
           {
@@ -2341,6 +2355,20 @@ RomProfiles.PROFILES = {
       fifthRoom = {
         status = "VERIFIED",
         romRoomSelectors = { 2, 3, 4, 5, 6 },
+        -- RESOLVED (2026-08-16, same live methodology as fourthRoom's
+        -- own `romRoomSelectorConfirmed` above, applied to the
+        -- fourthRoom->fifthRoom transition itself this time): a live
+        -- PC watch on the shared `$026DC` roomSelector-argument
+        -- subroutine, during the real RIGHT/UP/DOWN trigger sequence
+        -- (`fifth_room_free()`'s own documented recipe), caught it once
+        -- with `A=4` -- resolving the `{2,3,4,5,6}` candidate set above
+        -- down to the real, confirmed `4`. Independently cross-checked
+        -- by the SAME trace's own `$11B7` peek (opcode `0xF4`, the real
+        -- entry point now wired in `CutTransitionInterpreter.lua`'s own
+        -- `ENTRY_POINTS.fourthRoomToFifthRoom`): its captured
+        -- `(B,C)=(4,80)` reads B=4 too, byte-exact agreement between
+        -- two completely independent live-execution angles.
+        romRoomSelectorConfirmed = 4,
         cols = 20,
         rows = 16,
         tileOffsets = {

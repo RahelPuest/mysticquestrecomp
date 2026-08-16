@@ -54,16 +54,29 @@
 --    separately-scoped follow-up, not a quick addition).
 --
 -- WHAT THIS MODULE THEREFORE DOES, HONESTLY: drives the real
--- `ScriptRuntime` from the real, live-confirmed entry point (bank 14,
--- `$42F6`) through the ONE peek this project can honestly claim goes
--- through genuine top-level dispatch -- capturing the real
--- roomSelector/subIndexByte pair -- then DELIBERATELY halts itself
--- (`self.done = true`, a documented, intentional stop, not a crash or
--- an undecoded-opcode error). It does NOT capture the landing tile
--- (that peek is real, but not reached the way this module's own
--- abstraction can honestly claim credit for) -- `VictorySequence.lua`
--- keeps using the pre-baked `landingX`/`landingY` constants for that
--- half, clearly labeled as such at the call site.
+-- `ScriptRuntime` from the real, live-confirmed entry point through the
+-- ONE peek this project can honestly claim goes through genuine
+-- top-level dispatch -- capturing the real roomSelector/subIndexByte
+-- pair -- then DELIBERATELY halts itself (`self.done = true`, a
+-- documented, intentional stop, not a crash or an undecoded-opcode
+-- error). It does NOT capture the landing tile (that peek is real, but
+-- not reached the way this module's own abstraction can honestly claim
+-- credit for) -- `VictorySequence.lua` keeps using the pre-baked
+-- `landingX`/`landingY` constants for that half, clearly labeled as
+-- such at the call site.
+--
+-- UPDATE 2026-08-16 (continuation, "wie weiter" -> "Roadmap-Nachtrag
+-- schließen", the discrepancy check surfaced this as an obvious,
+-- well-scoped next step): the exact same live methodology, applied to
+-- fourthRoom->fifthRoom, found the same 3-peek shape (bank 14, HL
+-- $4c85/$4c87/$4c89), the same "only the first peek is genuine
+-- top-level dispatch" narrowing, AND independently cross-confirmed the
+-- captured roomSelector (4) via the shared `$026DC` subroutine already
+-- used to resolve thirdRoom->fourthRoom's own -- see
+-- `ENTRY_POINTS.fourthRoomToFifthRoom`'s own doc comment below for the
+-- full trace. Now 2 of ~186 known real landing records have a live
+-- entry point here, still each only covering its own roomSelector
+-- half, same honest limitation as above.
 --
 -- Pure Lua, no `love.*` calls, headlessly testable like every other
 -- `src/scripting/*` module.
@@ -79,9 +92,7 @@ CutTransitionInterpreter.__index = CutTransitionInterpreter
 -- methodology described in this module's own doc comment above --
 -- `.new` fails loudly for any other key, matching this project's own
 -- "no fabricated ROM behavior" rule: the other ~184 real
--- `CutTransitionTable` records (including the already-known
--- fourthRoom->fifthRoom transition, whose own live entry point has
--- NOT yet been separately traced) simply have no entry here yet, on
+-- `CutTransitionTable` records simply have no entry here yet, on
 -- purpose, not by oversight.
 CutTransitionInterpreter.ENTRY_POINTS = {
   thirdRoomToFourthRoom = {
@@ -90,6 +101,38 @@ CutTransitionInterpreter.ENTRY_POINTS = {
     -- immediately preceding the already-known landing-record's own
     -- `A1`/`A2` (roomSelector/subIndexByte) pair at file `0x382F7`.
     cpuAddress = 0x42F6,
+  },
+  -- Added 2026-08-16, same continuation as the "wie weiter" ->
+  -- "Roadmap-Nachtrag schließen" follow-up: same live single-step
+  -- methodology (`fourth_room_free()` + `fifth_room_free()`'s own
+  -- documented RIGHT/UP/DOWN trigger, single-stepped watching PC
+  -- `$11B7` in any bank -- see `tools/rom`'s trace script for this
+  -- exact run) found 79 real hits, all bank 14, 3 distinct HL values
+  -- ($4c85/$4c87/$4c89) as `$D499` advances -- the SAME 3-peek shape
+  -- as thirdRoom->fourthRoom above, and just as decisively narrowed:
+  -- only the FIRST hit's own preceding ROM byte (file `0x38c84`) is
+  -- literally `0xF4` (the other two, at `0x38c87`/`0x38c89`, precede
+  -- with `0x50`/`0x02` -- not `0xF4`, so not reached via top-level
+  -- dispatch, same internal-jump limitation as before). The first
+  -- peek's own `(B,C)` pair read `(4,80)` -- B=4 independently
+  -- cross-confirmed via the shared `$026DC` roomSelector-argument
+  -- subroutine (same one thirdRoom->fourthRoom's own `romRoomSelector`
+  -- was resolved through): a live PC watch on `$026DC` during this
+  -- exact window caught it once, `A=4` -- resolving fifthRoom's own
+  -- previously-ambiguous `romRoomSelectors={2,3,4,5,6}` down to the
+  -- real, confirmed `4` (see `rom_profiles.lua`'s own updated
+  -- `fifthRoom.romRoomSelectorConfirmed`). The second peek's `(16,2)`
+  -- also matches this exit's ALREADY-documented static landing-tile
+  -- record exactly (`rom_profiles.lua`'s own `fourthRoom.exits[1]`
+  -- doc comment, file `0x38c82`/`0x38c8c`) -- an independent
+  -- confirmation this is genuinely the same real record, from a
+  -- completely different angle (live execution vs. static byte scan).
+  fourthRoomToFifthRoom = {
+    bank = 14,
+    -- Real opcode `0xF4` byte itself, file `0x38c84` -- the byte
+    -- immediately preceding the peeked roomSelector/subIndexByte pair
+    -- at file `0x38c85`.
+    cpuAddress = 0x4C84,
   },
 }
 

@@ -9887,3 +9887,80 @@ Direct instruction, given after being told room transitions run entirely through
 **Honest, explicit scope**: this is genuinely, verifiably the FIRST time the real script interpreter drives visible, real gameplay state (not a shadow run) -- but for exactly 1 of ~186 real known landing records, and only half of even that one (room selection, not landing position). The other 80+ transitions, every scroll transition, and the landing-tile half of even this one confirmed transition remain exactly as hand-authored as before, by explicit, documented choice -- not silently glossed over as "done."
 
 `luajit tests/run_tests.lua`: 546/546 pass (up from 542).
+
+## 2026-08-16, continuation ("wie weiter" -> "Roadmap-Nachtrag schließen" -> second live cut-transition entry point found): fourthRoom->fifthRoom now also runs through the real interpreter
+
+Direct continuation, not a separate user request: after closing the
+roadmap's stale opcode-coverage claim (see the entry above this one),
+the user was asked "was als nächstes" and picked the best-prepared
+remaining candidate -- extending `CutTransitionInterpreter.lua` to the
+second known "cut" transition, `fourthRoom->fifthRoom`, using the exact
+same live methodology already proven for `thirdRoom->fourthRoom`.
+
+**Environment note**: this session's sandbox initially looked like it
+had no ROM at all ($MYSTICQUEST_ROM unset, no `.gb` anywhere under the
+project tree) -- genuinely blocking every live-RE candidate. The user
+corrected this ("natürlich liegt ein rom in den ordnern unter rom, das
+ist halt nicht im github repo"): the real ROM and the locally-built
+mGBA Python bindings both live one level up, in a sibling
+`tools-external/`/`roms/` pair outside the git repo (matching
+`mgba_env.py`'s own already-documented default path) -- simply not
+searched widely enough at first.
+
+**Live trace** (`tools/rom/checkpoints.fourth_room_free()` +
+`fifth_room_free()`'s own already-documented RIGHT 80f / UP 120f / DOWN
+70f trigger, single-stepped watching PC `$11B7` in ANY bank -- same
+"don't assume the bank" discipline as before): 79 real hits, ALL bank
+14, resolving to exactly 3 distinct HL values as `$D499` advances:
+
+- `$4c85` (34 hits, first at step 62292) -- `(B,C)=(4,80)`, preceding
+  ROM byte (file `0x38c84`) is literally `0xF4` -- genuine top-level
+  dispatch, same decisive test as thirdRoom's own case.
+- `$4c87` (14 hits) -- `(B,C)=(16,2)`, preceding byte `0x50` (NOT
+  `0xF4`) -- reached via the `$413C` automaton's own internal jump,
+  same known limitation.
+- `$4c89` (31 hits) -- `(B,C)=(0,11)`, preceding byte `0x02` (NOT
+  `0xF4`) -- record terminator, byte-identical to thirdRoom's own
+  terminator pair.
+
+**Two independent cross-checks, both clean**:
+1. The peeked `(16,2)` landing tile matches `rom_profiles.lua`'s
+   ALREADY-documented static record for this exact exit (file
+   `0x38c82`/`0x38c8c`, decoded via the unrelated static-byte-scan
+   route weeks earlier) -- same record, confirmed from a completely
+   different angle.
+2. A live PC watch on the shared `$026DC` roomSelector-argument
+   subroutine (the same one that resolved fourthRoom's own
+   `romRoomSelectorConfirmed=1`) caught exactly one hit during this
+   window, `A=4` -- byte-identical to the peeked `B=4` above, AND
+   resolving fifthRoom's own previously-ambiguous
+   `romRoomSelectors={2,3,4,5,6}` down to the real, confirmed `4`.
+
+**Shipped**: `CutTransitionInterpreter.ENTRY_POINTS.fourthRoomToFifthRoom
+= {bank=14, cpuAddress=0x4C84}`; `rom_profiles.lua`'s
+`fourthRoom.exits[1]` (the fifthRoom cut) gained the same
+`scriptEntry`/`romRoomSelector` fields thirdRoom's exit already has;
+`fifthRoom.romRoomSelectorConfirmed = 4` added. No `VictorySequence.lua`
+code changes were needed at all -- `beginTransition`/`switchToTargetRoom`
+were already written generically against `exit.scriptEntry.transitionKey`,
+not hardcoded to thirdRoom, so wiring a second transition was purely a
+data change plus tests. 3 new tests added (entry point, tick/capture,
+cross-check against `CutTransitionTable.scanLandingRecords`), plus the
+existing "fails loudly for an untraced transition" test's own example
+key swapped from `fourthRoomToFifthRoom` (now real) to
+`fifthRoomToSixthRoom` (still genuinely untraced).
+
+Live-verified via `love .`, both paths: the dev-teleport shortcut
+(`MYSTICQUEST_VICTORY_START_ROOM=fifthRoom`) lands cleanly with no
+assert failure; the FULL real-gameplay path (dev-teleport into
+fourthRoom, then the real RIGHT/UP/DOWN button sequence into the actual
+exit zone) reaches fifthRoom at frame 290, state log confirming
+`x=136, y=32, room=fifthRoom` -- the exact real landing spot, both
+screenshotted.
+
+**Honest, unchanged scope statement**: now 2 of ~186 known real landing
+records are interpreter-driven, still each only for room selection, not
+landing position. The other 80+ transitions remain exactly as
+hand-authored as before.
+
+`luajit tests/run_tests.lua`: 549/549 pass (up from 546).
