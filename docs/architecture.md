@@ -87,10 +87,6 @@ Nothing under `src/core` or `src/rendering/GBTile.lua` touches ROM bytes or
    the title screen, for this project's many existing Field-focused dev/
    screenshot workflows.
 
-There is currently no generated-cache write step (no `data/generated/*.lua`
-yet) — data is decoded from ROM bytes on demand each run by the states/
-importers that need it (`Field`, `TileViewer`, `MapBlockViewer`, `Menu`).
-
 **This is a real, committed target architecture, not just a loose
 inspiration** (confirmed 2026-08-11, direct user instruction: "das es
 bei uns so funktioniert ist das ziel" — that gen1recomp's own
@@ -114,22 +110,40 @@ user-provided ROM
 `rom_profiles.lua` already plays the role gen1recomp's
 symbol-addressed manifest does (WHERE real data lives in the ROM,
 cited to a VERIFIED/HYPOTHESIS/UNKNOWN rom-map.md entry) — that part of
-the adoption is real and already in place. What's still missing is the
-`RomExtractor`/`LuaWriter`/`ImageWriter`-equivalent write step itself,
-and the runtime switch (`TileImage`/`Font`/every importer) from
-"decode `romData` bytes live, every run" to "load the generated file."
+the adoption is real and already in place.
 
-**Deliberately not started yet** (explicit user decision, same
-instruction: "erstmal nur vormerken" — note the goal, don't build it
-now): the current per-run live-decode approach still works and hasn't
-blocked anything; building the cache writer now, before enough
-normalized game data exists to make it pay for itself (still just one
-real room, partial text, a handful of sprites), would be premature
-plumbing. Build it once there's enough real decoded content that
-re-reading the same ROM bytes on every boot/every state actually costs
-something (startup time, duplicated decode logic across states) —
-tracked as a real, upcoming milestone, not re-litigated each time this
-question comes up.
+**Write half BUILT and tested (2026-08-16, task #34)**: the
+`LuaWriter`/`RomExtractor` half of the pipeline is real and running —
+`src/import/LuaWriter.lua` (pure Lua, serializes any plain decoded
+table into deterministic, diff-stable, loadable Lua source; see its own
+doc comment and `tests/import/lua_writer_test.lua`'s 9 round-trip
+tests) and `src/import/RomExtractor.lua` (orchestrates a bounded, real
+set of this project's own already-existing importers —
+`EnemySpeciesTable`, `ItemTable`, `WeaponTable`, `NpcCatalog` — into one
+data table plus a manifest recording the real ROM SHA-1; see
+`tests/import/rom_extractor_test.lua`, which cross-checks every stage
+against calling the underlying importer directly on the real ROM).
+`scripts/extract_rom_cache.lua` is the thin, untested CLI glue (matching
+`SaveFile.lua`'s own established "pure logic module + thin I/O shell"
+split) that actually runs this against the real ROM and writes
+`data/generated/{monsters,items,weapons,npcs,manifest}.lua` — verified
+to run cleanly and reproduce deterministic output (byte-identical
+except the manifest's own timestamp) on repeated runs.
+
+**Still explicitly NOT done** (a deliberate, separate follow-up, not an
+oversight): no `ImageWriter`/`assets/generated/**/*.png` step yet (no
+importer this pipeline wires produces pixel data — `MapTileCatalog`/
+`GraphicsCandidates` are real candidates for a later pass, see
+`RomExtractor.lua`'s own doc comment); no `RoomFloorLayout` stage
+(needs a per-room selector argument, not a single "decode everything"
+entry point — a different shape than the stages wired so far); and
+critically, **the runtime switch itself has NOT been made** — `Field`,
+`TileViewer`, `MapBlockViewer`, `Menu`, and every other consumer still
+decode `romData` bytes live on every run, exactly as before. Generated
+files are written but nothing yet reads them back at boot. That
+migration is real, valuable follow-up work, deliberately scoped out
+here so this pass stays reviewable — matching this project's own
+"note the goal, don't build it all at once" discipline.
 
 ## ROM-version-specific knowledge is centralized
 

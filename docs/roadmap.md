@@ -1932,6 +1932,23 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   understood; still blocked on the same live-injection wall for
   actually reaching this content. Task #150 stays open.
 
+- **2026-08-16, task #34 -- generated-cache pipeline write half built and
+  running**: `src/import/LuaWriter.lua` (pure Lua, deterministic
+  diff-stable serializer, 9 tests) and `src/import/RomExtractor.lua`
+  (orchestrates `EnemySpeciesTable`/`ItemTable`/`WeaponTable`/
+  `NpcCatalog` into one data table + a real SHA-1-stamped manifest,
+  cross-checked against calling each importer directly on the real
+  ROM). `scripts/extract_rom_cache.lua` (thin CLI glue, matching
+  `SaveFile.lua`'s established pure-core/thin-shell split) actually
+  runs it end to end: `data/generated/{monsters,items,weapons,npcs,
+  manifest}.lua` written from the real ROM, verified deterministic
+  (byte-identical besides the manifest's own timestamp) across repeat
+  runs. Honestly scoped: no `ImageWriter`/pixel-data stage yet, and the
+  runtime switch (states/importers actually reading generated files
+  instead of live-decoding `romData`) is a deliberate, separate
+  follow-up -- nothing consumes these files yet. `luajit
+  tests/run_tests.lua`: 519/519 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
