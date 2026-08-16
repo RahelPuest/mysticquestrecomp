@@ -1640,9 +1640,24 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   different real encounter still needs one of two known, harder paths
   (find the real triggering room, or force one of the 3 scripts via
   live injection -- the same concurrent-script obstacle task #150 hit).
-  Time-boxed at this decisive negative result. Task #127 stays open;
-  no production code changed except the new, reusable
-  `fourth_room_free()` checkpoint.
+  Time-boxed at this decisive negative result.
+
+- **2026-08-16, task #127 CLOSED**: re-assessed the two remaining
+  "harder paths" (live injection to force one of the 3 real trigger
+  scripts; find their real triggering room) against this same
+  session's own task #150 deep dive, which root-caused exactly why
+  live injection is hard (the real bank call-stack is shared by many
+  legitimate subsystems -- any one-off injection gets swept away
+  within ~1 real frame regardless of technique). But the decisive
+  reason to close is independent of that cost: the "second boss" is
+  the EXACT SAME species (`0x16`) as the already-live-tested first
+  boss, so reaching it -- however achieved -- would only re-confirm an
+  ALREADY-established conclusion (DEF is confirmed absent for species
+  `0x16`), not add a new data point. Closed rather than left
+  perpetually open pending infrastructure with no marginal value. A
+  genuinely different-species creature (10 of 11 known real species
+  are still never-confirmed-spawnable) would be the real next DEF
+  target, not this one.
 
 - **2026-08-15, task #135 (bounded monster/NPC graphics search)**: 5
   new, real, visually-confirmed creature/character art regions found
