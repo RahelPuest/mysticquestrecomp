@@ -8,25 +8,31 @@
 </head>
 <body>
 
+<a href="#main" class="skip-link">Zum Inhalt springen</a>
+
 <div id="topbar">
+  <button id="sidebarToggle" type="button" aria-label="Navigation öffnen" aria-expanded="false" aria-controls="sidebar">☰</button>
   <div class="brand"><span class="dot"></span> ROM Inspector</div>
   <div class="subtitle">Mystic Quest (Game Boy, EU) &mdash; interaktive Reverse-Engineering-Dokumentation</div>
   <div class="spacer"></div>
   <div id="paletteControl">
     <label for="paletteSelect" class="palette-label" title="Anzeige-Farbschema für alle Kachel-Grafiken auf dieser Seite -- eine reine Darstellungsoption, keine ROM-Daten.">🎨</label>
-    <select id="paletteSelect"></select>
+    <select id="paletteSelect" aria-label="Farbschema für Kachel-Grafiken"></select>
   </div>
   <div id="romLoadControl">
     <label class="btn primary small" for="romFileInput" id="romLoadLabel">📂 ROM laden&hellip;</label>
-    <input id="romFileInput" type="file" accept=".gb" style="display:none;">
-    <span id="romLoadStatus" class="romload-status"></span>
+    <input id="romFileInput" type="file" accept=".gb" class="visually-hidden">
+    <span id="romLoadStatus" class="romload-status" role="status"></span>
   </div>
+  <label for="globalSearch" class="visually-hidden">Suche über Opcodes, Adressen und Begriffe</label>
   <input id="globalSearch" type="search" placeholder="Suche (Opcode, Adresse, Begriff)&hellip;">
 </div>
 
+<div id="sidebarBackdrop"></div>
+
 <div id="shell">
-  <nav id="sidebar"></nav>
-  <main id="main"></main>
+  <nav id="sidebar" aria-label="Hauptnavigation"></nav>
+  <main id="main" tabindex="-1"></main>
 </div>
 
 <!-- Real, generated + curated data (see rom-inspector/tools/export_data.lua) -->

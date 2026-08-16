@@ -52,14 +52,87 @@ function renderSidebar(activeId) {
       nav.appendChild(label);
       lastGroup = s.group;
     }
-    const item = document.createElement("div");
+    // A real <a href="#id">, not a <div> + click listener (2026-08-16
+    // accessibility audit): natively keyboard-focusable and operable
+    // (Enter activates it, no custom keydown handling needed), gets a
+    // real accessible name from its own text content, and
+    // `aria-current="page"` tells assistive tech which section is
+    // active -- none of that was true for the old plain <div>.
+    const item = document.createElement("a");
+    item.href = "#" + s.id;
     item.className = "navitem" + (s.id === activeId ? " active" : "");
+    if (s.id === activeId) item.setAttribute("aria-current", "page");
     const cnt = countFor(s.id);
-    item.innerHTML = `<span class="icon">${s.icon}</span><span>${s.label}</span>` +
+    item.innerHTML = `<span class="icon" aria-hidden="true">${s.icon}</span><span>${s.label}</span>` +
       (cnt ? `<span class="count">${cnt}</span>` : "");
-    item.addEventListener("click", () => { location.hash = "#" + s.id; });
+    // Navigation itself happens via the real href/hashchange; this
+    // only closes the mobile drawer (a no-op on desktop, see
+    // setupMobileNav's own closeMobileNav definition).
+    item.addEventListener("click", closeMobileNav);
     nav.appendChild(item);
   }
+}
+
+// Retrofits keyboard operability onto this site's own custom
+// click-driven controls (.pill-tab, .bank-cell, .opcode-cell,
+// .hbar-row) -- 2026-08-16 audit finding: none of these ever had
+// `tabindex`/`role`/a keyboard handler, so keyboard-only and screen-
+// reader users could not reach or activate ANY of them (filters,
+// memory-bank cells, the whole opcode grid, scan-result rows). Runs
+// once per render, AFTER a section's own render_*() has already
+// attached its real `click` listeners -- forwarding Enter/Space to a
+// real `.click()` call means every one of those existing listeners
+// keeps working completely unchanged; this only adds the missing
+// keyboard entry point. Elements can opt out by already carrying
+// their own explicit tabindex (none currently do).
+function enhanceKeyboardAccessibility(container) {
+  container.querySelectorAll(".pill-tab, .bank-cell, .opcode-cell, .hbar-row").forEach(el => {
+    if (el.hasAttribute("tabindex")) return;
+    // .hbar-row (scan.js) is only genuinely clickable for entries with
+    // a real matching opcode (see that file's own guard) -- checking
+    // the actually-applied cursor style, not a fragile string match on
+    // the raw `style` attribute, is what tells the two kinds apart.
+    if (el.classList.contains("hbar-row") && getComputedStyle(el).cursor !== "pointer") return;
+    el.setAttribute("tabindex", "0");
+    if (!el.hasAttribute("role")) el.setAttribute("role", "button");
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        el.click();
+      }
+    });
+  });
+}
+
+// --- mobile navigation drawer (2026-08-16 audit: replaces the old
+// "#sidebar{display:none} below 860px, no alternative" dead end) ---
+function isMobileNavOpen() {
+  return document.getElementById("sidebar").classList.contains("open");
+}
+function openMobileNav() {
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("sidebarBackdrop").classList.add("open");
+  document.getElementById("sidebarToggle").setAttribute("aria-expanded", "true");
+}
+function closeMobileNav() {
+  if (!isMobileNavOpen()) return; // no-op on desktop (class never gets added) and when already closed
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebarBackdrop").classList.remove("open");
+  document.getElementById("sidebarToggle").setAttribute("aria-expanded", "false");
+}
+function setupMobileNav() {
+  const toggle = document.getElementById("sidebarToggle");
+  const backdrop = document.getElementById("sidebarBackdrop");
+  toggle.addEventListener("click", () => {
+    if (isMobileNavOpen()) closeMobileNav(); else openMobileNav();
+  });
+  backdrop.addEventListener("click", closeMobileNav);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && isMobileNavOpen()) {
+      closeMobileNav();
+      toggle.focus(); // return focus to the control that opened it, standard dialog/drawer convention
+    }
+  });
 }
 
 function currentSectionId() {
@@ -96,6 +169,24 @@ function route() {
     (siehe dort für Details), oder sind explizit als kuratiert gekennzeichnet.
     Quelle: <code>docs/reverse-engineering/</code> im Hauptprojekt.`;
   main.appendChild(footer);
+  enhanceKeyboardAccessibility(main);
+}
+
+// hashchange-only wrapper around route(): scrolls to the top and moves
+// focus to #main (a real, expected SPA convention -- without it, a
+// keyboard/screen-reader user who navigates from the bottom of a long
+// page lands on the new page still scrolled to where they were, and
+// nothing announces that the content even changed). Deliberately NOT
+// baked into route() itself, since route() also runs for non-
+// navigation refreshes (initial load, a palette switch) where
+// grabbing focus/scrolling away would be a real regression, not a fix
+// -- e.g. picking a new color palette from the top bar must not yank
+// focus and the viewport down to the page body.
+function navigate() {
+  route();
+  closeMobileNav();
+  window.scrollTo(0, 0);
+  document.getElementById("main").focus();
 }
 
 function escapeHtml(s) {
@@ -168,9 +259,10 @@ function setupPaletteControl() {
   GBPalette.onChange(() => route());
 }
 
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", navigate);
 window.addEventListener("DOMContentLoaded", () => {
   setupPaletteControl();
+  setupMobileNav();
   route();
   const search = document.getElementById("globalSearch");
   search.addEventListener("keydown", (e) => {
@@ -178,9 +270,16 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   const romInput = document.getElementById("romFileInput");
+  const romLabel = document.getElementById("romLoadLabel");
   romInput.addEventListener("change", () => {
     if (romInput.files[0]) RomBytes.loadFile(romInput.files[0]);
   });
+  // The real input is visually-hidden (its own <label> is the visible
+  // "button"); mirror ITS focus state onto the label so a keyboard
+  // user tabbing to the real, now-reachable input still sees a focus
+  // ring on the control they can actually see (2026-08-16 audit fix).
+  romInput.addEventListener("focus", () => romLabel.classList.add("focus-ring"));
+  romInput.addEventListener("blur", () => romLabel.classList.remove("focus-ring"));
   RomBytes.onChange(updateRomLoadStatus);
   updateRomLoadStatus();
 });

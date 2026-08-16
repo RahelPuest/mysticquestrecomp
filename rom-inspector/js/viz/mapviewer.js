@@ -59,7 +59,7 @@ function render_map(main) {
     </div>
 
     <div id="mapCatalogNote" style="font-size:12px; color:var(--text-dim); margin:4px 0;"></div>
-    <div id="mapCanvasHost"><canvas id="mapCanvas" width="10" height="10"></canvas></div>
+    <div id="mapCanvasHost"><canvas id="mapCanvas" width="10" height="10" role="img" aria-label="Ausgewählte Raum-Kachelkarte, direkt aus der geladenen ROM gerendert. Einzelne Kacheln per Mausklick inspizierbar."></canvas></div>
     <div id="mapHoverInfo"></div>
   `;
 

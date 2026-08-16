@@ -10,7 +10,16 @@
   --border: #262f3d;
   --text: #d7dde8;
   --text-dim: #8a94a6;
-  --text-faint: #5b6577;
+  /* WCAG AA fix (2026-08-16 audit): the original #5b6577 measured
+     2.81-3.27:1 against this site's own real backgrounds -- fails the
+     4.5:1 minimum for small text (1.4.3), and this token is used
+     exclusively at 9-13px across ~12 real spots (card metadata, table
+     headers, byte-box offsets, sidebar counts, decode-byte labels).
+     #7f89a5 keeps the same hue/role (still visibly quieter than
+     --text-dim) while clearing 4.5:1 against every real background
+     this site uses (measured: 4.44 vs bg-elevated, 4.87 vs bg-panel,
+     5.15 vs bg). */
+  --text-faint: #7f89a5;
 
   --accent: #8fd694;      /* Game Boy screen green */
   --accent-bright: #b8f0bc;
@@ -46,6 +55,56 @@ code, .mono { font-family: var(--mono); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-panel); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+/* ---------- accessibility: focus, skip link, motion ---------- */
+/* A visible focus ring on EVERY focusable element, including the
+   custom div/canvas-based controls (nav links, pill-tabs, bank-cells,
+   opcode-cells) that app.js's `enhanceKeyboardAccessibility()` makes
+   focusable -- `:focus-visible` (not `:focus`) so a mouse click never
+   shows the ring, only real keyboard/AT focus does. 2026-08-16 audit:
+   previously nothing in this codebase used tabindex/role/aria at all,
+   so this rule had no effect on div-based controls; now that they're
+   real focus targets, this is what makes that focus land somewhere
+   visible instead of just "trust me, it's focused." */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 100;
+  background: var(--accent);
+  color: #06120a;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  transition: top .15s ease;
+}
+.skip-link:focus {
+  top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skip-link { transition: none; }
+}
+
+/* Visually hidden but still announced by screen readers -- for labels
+   this site wants present in the accessibility tree without adding
+   visible clutter (e.g. the global search's own real label; the
+   placeholder text alone is not a substitute for a real label). */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ---------- layout shell ---------- */
 #topbar {
@@ -93,7 +152,7 @@ code, .mono { font-family: var(--mono); }
   font-family: var(--sans);
   cursor: pointer;
 }
-#paletteSelect:focus { outline: none; border-color: var(--accent); }
+#paletteSelect:focus-visible { border-color: var(--accent); }
 #romLoadControl { display: flex; align-items: center; gap: 8px; }
 .romload-status { font-size: 11.5px; color: var(--text-faint); font-family: var(--mono); }
 .romload-status.loaded { color: var(--ok); }
@@ -117,7 +176,7 @@ code, .mono { font-family: var(--mono); }
   font-size: 13px;
   font-family: var(--sans);
 }
-#globalSearch:focus { outline: none; border-color: var(--accent); }
+#globalSearch:focus-visible { border-color: var(--accent); }
 
 #shell {
   display: flex;
@@ -152,6 +211,10 @@ code, .mono { font-family: var(--mono); }
   cursor: pointer;
   font-size: 13.5px;
   border-left: 3px solid transparent;
+  text-decoration: none; /* nav items are real <a> tags now (2026-08-16
+    audit: keyboard/screen-reader access) -- override the site-wide
+    `a:hover{text-decoration:underline}` default explicitly, a plain
+    link underline would look broken against this pill-style nav */
 }
 #sidebar .navitem:hover { background: var(--bg-hover); color: var(--text); }
 #sidebar .navitem.active {
@@ -173,6 +236,12 @@ code, .mono { font-family: var(--mono); }
   padding: 30px 34px 80px;
   max-width: 1180px;
 }
+/* #main only ever RECEIVES focus programmatically (app.js's own
+   `navigate()`, tabindex="-1" -- it's never a Tab stop) purely so
+   screen readers announce "moved to page content" after a route
+   change; a full-viewport-width focus ring around the whole content
+   area would just be visual noise, not a useful landmark. */
+#main:focus-visible { outline: none; }
 
 /* ---------- generic building blocks ---------- */
 h1.page-title {
@@ -301,7 +370,7 @@ input[type=text], input[type=search], select, textarea {
   font-size: 13px;
   font-family: var(--sans);
 }
-input[type=text]:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+input[type=text]:focus-visible, textarea:focus-visible, select:focus-visible { border-color: var(--accent); }
 textarea.mono-input { font-family: var(--mono); }
 
 /* `.btn` applies to ANY element (button, label, a, ...) -- not scoped
@@ -329,6 +398,18 @@ textarea.mono-input { font-family: var(--mono); }
 .btn:hover { border-color: var(--accent); color: var(--accent-bright); }
 .btn.primary { background: var(--accent); color: #06120a; border-color: var(--accent); font-weight: 700; }
 .btn.primary:hover { background: var(--accent-bright); color: #06120a; }
+/* 2026-08-16 audit fix (CRITICAL): the real file input this label
+   triggers is visually-hidden (see .visually-hidden / #romFileInput),
+   which is correct -- but that also means the LABEL itself, not the
+   input, is what a sighted mouse user sees and clicks. A <label> is
+   not a native Tab stop, so before this rule a keyboard user could
+   never even REACH the ROM-load control (confirmed via a real tab-
+   order trace: focus jumped straight from the search box to the
+   sidebar, skipping it entirely) -- app.js's own focus/blur listener
+   on #romFileInput toggles this class so the REAL focus (which lands
+   on the input) is still visibly shown on the button people actually
+   see. */
+.btn.focus-ring { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn.small { padding: 5px 10px; font-size: 12px; }
 
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
@@ -476,8 +557,59 @@ footer.site-footer {
   font-size: 12px;
 }
 
+/* ---------- mobile navigation drawer ---------- */
+/* 2026-08-16 audit finding (CRITICAL): the old rule here was
+   `#sidebar { display: none; }` with NO alternative way to switch
+   sections below 860px -- on a phone or a narrow tablet, the site was
+   navigable to whatever section happened to be in the URL at load
+   time and nowhere else. Replaced with a real off-canvas drawer: a
+   hamburger toggle appears in the top bar, the sidebar slides in as
+   an overlay with a dismissible backdrop, and Escape/backdrop-click/
+   picking a section all close it (see app.js's own
+   `setupMobileNav()`). Desktop layout (>860px) is completely
+   unchanged. */
+#sidebarToggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+#sidebarToggle:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+#sidebarBackdrop {
+  display: none;
+  position: fixed;
+  inset: 52px 0 0 0;
+  background: rgba(0, 0, 0, .55);
+  z-index: 18;
+}
+
 @media (max-width: 860px) {
-  #sidebar { display: none; }
+  #sidebarToggle { display: inline-flex; align-items: center; }
+  #topbar .subtitle { display: none; } /* first thing to go for space -- the brand name alone still orients */
+  #globalSearch { width: 130px; }
   #main { padding: 20px; }
-  #globalSearch { width: 150px; }
+
+  #sidebar {
+    position: fixed;
+    top: 52px;
+    left: 0;
+    bottom: 0;
+    z-index: 19;
+    width: 82vw;
+    max-width: 300px;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    box-shadow: 2px 0 24px rgba(0, 0, 0, .5);
+  }
+  #sidebar.open { transform: translateX(0); }
+  #sidebarBackdrop.open { display: block; }
+  @media (prefers-reduced-motion: reduce) {
+    #sidebar { transition: none; }
+  }
 }

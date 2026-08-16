@@ -33,7 +33,7 @@ function render_tiles(main) {
       <button class="btn primary small" id="renderTilesBtn">Anzeigen</button>
     </div>
 
-    <div id="tileCanvasHost"><canvas id="tileCanvas" width="10" height="10"></canvas></div>
+    <div id="tileCanvasHost"><canvas id="tileCanvas" width="10" height="10" role="img" aria-label="Ausgewähltes Kachel-Set, direkt aus der geladenen ROM gerendert. Einzelne Kacheln per Mausklick inspizierbar."></canvas></div>
     <div class="tile-info-strip" id="tileInfo">Kachel anklicken für Details.</div>
   `;
 

@@ -42,12 +42,19 @@ function render_scan(main) {
       <div class="count">${b.count}</div>
     `;
     row.title = (label ? label + " — " : "") + (b.note || "");
-    row.style.cursor = "pointer";
-    row.addEventListener("click", () => {
-      const opcodeNum = parseInt(b.address, 16);
-      const match = OPCODES.find(o => o.handler === opcodeNum);
-      if (match) location.hash = "#opcodes?focus=" + match.opcode;
-    });
+    // Only rows with a REAL matching opcode are actually clickable --
+    // self-caught 2026-08-16 audit fix: every row used to get
+    // cursor:pointer + a click listener regardless, so rows for
+    // handler addresses with no OPCODES match looked interactive but
+    // silently did nothing on click, a real affordance/behavior
+    // mismatch (and would have made enhanceKeyboardAccessibility make
+    // EVERY row keyboard-focusable, not just the genuinely useful ones).
+    const opcodeNum = parseInt(b.address, 16);
+    const match = OPCODES.find(o => o.handler === opcodeNum);
+    if (match) {
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => { location.hash = "#opcodes?focus=" + match.opcode; });
+    }
     list.appendChild(row);
     if (b.note) {
       const note = document.createElement("div");

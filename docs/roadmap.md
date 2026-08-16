@@ -1791,6 +1791,29 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   (watch_graphic_refs) output, Playwright-verified the Speicherkarte
   page renders all 5 new entries with zero HTML-escaping artifacts and
   zero console errors.
+- **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
+  full "elevate this product" brief, scoped to the website (confirmed
+  via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,
+  measured findings: `--text-faint` failed WCAG AA contrast (2.81-
+  3.27:1, needs 4.5:1) across ~12 real usages; zero `tabindex`/`role`/
+  `aria-` anywhere in the codebase, so every custom control (sidebar,
+  10 pill-tab filters, bank-cells, the 256-cell opcode grid) was
+  keyboard-unreachable; `#sidebar{display:none}` below 860px had no
+  mobile alternative at all; a live Playwright tab-order trace found
+  the ROM-load control itself was unreachable by keyboard (hidden
+  native file input + non-tabbable label). Fixed: contrast token,
+  sidebar rebuilt as real `<a>` links, a shared
+  `enhanceKeyboardAccessibility()` retrofit for pill-tabs/bank-cells/
+  opcode-cells (zero changes to the 8 pages' own click logic), a real
+  mobile nav drawer (hamburger + backdrop + Escape/click-away, focus
+  returns to the toggle), a skip link, route-change scroll/focus
+  management (kept out of the shared low-level `route()` so a palette
+  switch doesn't steal focus), the ROM input's own keyboard path,
+  `aria-label`s on all 6 canvas visualizations, and a self-caught
+  `scan.js` "clickable-looking row that does nothing" papercut. No
+  visual/theme redesign (already cohesive, left alone). 487/487 tests
+  pass; every fix independently Playwright-verified, zero regressions
+  across all 18 sections.
 
 ## Superseded by this file
 

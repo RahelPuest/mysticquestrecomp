@@ -65,7 +65,7 @@ function render_monsters(main) {
     <div class="card" style="max-width:260px;">
       <h3>Bekanntes Sprite (Spezies 4)</h3>
       <div class="meta">${ks.cols}&times;${ks.rows} Kacheln &middot; echtes Hardware-X-Flip = 2. Pose</div>
-      <canvas id="monsterSpriteCanvas" width="10" height="10" style="margin-top:8px; image-rendering: pixelated;"></canvas>
+      <canvas id="monsterSpriteCanvas" width="10" height="10" style="margin-top:8px; image-rendering: pixelated;" role="img" aria-label="Echtes Monster-Sprite (Spezies 4), ${ks.cols}×${ks.rows} Kacheln, direkt aus der geladenen ROM gerendert"></canvas>
       <div class="toolbar" style="margin-top:8px;">
         <div class="pill-tabs" id="monsterPoseTabs">
           <div class="pill-tab active" data-flip="0">Pose A</div>

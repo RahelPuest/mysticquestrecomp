@@ -176,7 +176,8 @@ function render_worldmap(main) {
     <div id="worldmapViewport" style="position:relative; overflow:hidden; width:100%; height:75vh;
         border:1px solid var(--border, #333); cursor:grab; touch-action:none; background:#1a1e14;">
       <canvas id="worldmapCanvas" width="10" height="10"
-        style="position:absolute; top:0; left:0; transform-origin:0 0; image-rendering:pixelated;"></canvas>
+        style="position:absolute; top:0; left:0; transform-origin:0 0; image-rendering:pixelated;"
+        role="img" aria-label="Rekonstruierte Weltkarte (16×16- und 8×8-Rastergruppen), direkt aus der geladenen ROM gerendert. Schwenkbar und zoombar per Maus; Details einzelner Räume per Mausklick."></canvas>
     </div>
     <div id="worldmapHoverInfo" style="font-size:12px; margin-top:6px;"></div>
   `;

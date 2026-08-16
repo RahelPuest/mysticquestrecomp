@@ -35,7 +35,7 @@ function render_npcs(main) {
         screen (${n.screenX}, ${n.screenY})
         ${n.palette ? " &middot; Palette " + escapeHtml(n.palette) : ""}
       </div>
-      <canvas id="npcCanvas${idx}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated;"></canvas>
+      <canvas id="npcCanvas${idx}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated;" role="img" aria-label="Echtes NPC-Sprite von ${escapeHtml(n.name)}, direkt aus der geladenen ROM gerendert"></canvas>
       ${hasAnim ? `
       <div class="toolbar" style="margin-top:8px;">
         <div class="pill-tabs" id="npcDirTabs${idx}">

@@ -116,7 +116,7 @@ function render_graphics(main) {
       <h3>Bank ${b}</h3>
       <span class="badge verified">${offsets.length} bestätigte Kacheln</span>
       <div class="meta">${cols}&times;${rows} Raster</div>
-      <canvas id="mtc_bank${b}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%; cursor:pointer;"></canvas>
+      <canvas id="mtc_bank${b}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%; cursor:pointer;" role="img" aria-label="Mosaik aller ${offsets.length} bestätigten Map-Kacheln in Bank ${b}, direkt aus der geladenen ROM gerendert. Einzelne Kacheln per Mausklick inspizierbar (welche Räume sie nutzen); diese Detailansicht ist derzeit nur per Maus erreichbar."></canvas>
     `;
     bankHost.appendChild(card);
   }
@@ -160,7 +160,7 @@ function render_graphics(main) {
           Bank ${c.bank} &middot; Datei-Offset ${hex(c.fileOffset, 6)} &middot;
           ${c.tileCount} Kacheln
         </div>
-        <canvas id="gc_${c.id}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;"></canvas>
+        <canvas id="gc_${c.id}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="Grafik-Kandidat ${c.id}: ${c.tileCount} Kacheln aus Bank ${c.bank}, direkt aus der geladenen ROM gerendert"></canvas>
         <div class="meta" style="margin-top:8px;">${c.note}</div>
       `;
       host.appendChild(card);

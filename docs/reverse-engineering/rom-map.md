@@ -7894,3 +7894,97 @@ real scripts' own CHAIN execution, not more static reading.
 Both findings folded into `OPEN_QUESTIONS`
 (`rom-inspector/js/data/open-questions.js`) with dated updates, not as
 new separate entries where an existing one already covered the topic.
+
+## Task #162: rom-inspector website UX/accessibility audit
+
+Direct user request (a detailed "elevate this product like a senior
+cross-functional team" brief). Given the brief's own SaaS-shaped
+checklist (auth, forms, workflows) doesn't map cleanly onto either of
+this repo's two very different surfaces, first clarified scope with
+the user via AskUserQuestion -- confirmed: `rom-inspector/` (the
+documentation website), NOT the LÖVE2D game (whose own design mandate
+-- fidelity to a real Game Boy ROM -- would conflict with generic UX
+"improvements").
+
+**Phase 1/2 (understand + audit)**: read every CSS/HTML/JS file, then
+measured (not guessed) real issues:
+- Computed WCAG contrast ratios for the entire color system against
+  all 3 real backgrounds this site uses -- `--text-faint` (#5b6577)
+  came back 2.81-3.27:1, failing the 4.5:1 minimum, used at 9-13px
+  across ~12 real spots (card metadata, table headers, sidebar
+  counts, decode-byte labels).
+- `grep`'d the whole codebase for `tabindex`/`role`/`aria-` -- zero
+  hits anywhere. Every custom interactive control (18 sidebar items,
+  10 `.pill-tab` filters across 8 pages, 16 `.bank-cell`s, 256
+  `.opcode-cell`s, `.hbar-row`s) was a plain `<div>` + click listener
+  -- unreachable and inoperable by keyboard or screen reader.
+- `#sidebar { display: none; }` below 860px with NO alternative --
+  confirmed the site has literally no way to switch sections on a
+  phone or narrow tablet.
+- Traced the real keyboard Tab order live (Playwright) and found the
+  ROM-load control itself was unreachable: its real `<input
+  type=file>` was `display:none` (removes it from the tab order
+  entirely) and its `<label>` (the visible "button") is not a native
+  Tab stop -- meaning the control needed to see ~90% of this site's
+  real content (every canvas) had no keyboard path to it at all.
+- Canvas elements (tile/map/monster/NPC/graphics/world-map viewers)
+  carry real, meaningful visual content with zero text alternative.
+
+**Fixes shipped** (each independently Playwright-verified against the
+real ROM, zero console errors, zero regressions across all 18
+sections):
+- `--text-faint` -> `#7f89a5` (4.44-5.15:1 against every real
+  background, keeps the same "quieter than `--text-dim`" role).
+- Sidebar nav rebuilt as real `<a href="#id">` elements (was `<div>` +
+  click listener) -- natively keyboard-operable, `aria-current="page"`
+  on the active one.
+- New `enhanceKeyboardAccessibility()` (`app.js`) retrofits
+  `tabindex`/`role="button"`/Enter-Space handling onto
+  `.pill-tab`/`.bank-cell`/`.opcode-cell`/clickable `.hbar-row`s after
+  every render, by forwarding to each element's own already-attached
+  `click` listener -- zero changes needed to any of the 8 individual
+  page modules' own logic.
+- New mobile navigation drawer: a hamburger toggle in the top bar,
+  sidebar slides in as a dismissible overlay (Escape / backdrop click
+  / picking a section all close it, focus returns to the toggle on
+  Escape) -- desktop layout completely unchanged.
+- Skip-to-content link (first focusable element on the page).
+  Route changes now scroll to top and move focus to `#main` (screen-
+  reader "page changed" convention) -- deliberately NOT baked into the
+  shared low-level `route()` (which also runs on non-navigation
+  refreshes like a palette switch, where stealing focus/scroll would
+  be a regression) -- a separate `navigate()` wrapper used only for
+  real `hashchange` events.
+- ROM-load control: the real `<input type=file>` switched from
+  `display:none` to a proper `.visually-hidden` technique (stays in
+  the tab order); a focus/blur listener mirrors its real focus state
+  onto the visible label the input's own `focus-visible` ring can't
+  reach directly (label precedes input in the DOM).
+- `aria-label`/`role="img"` added to all 6 real canvas-based
+  visualizations; `aria-label` on the palette select and a real
+  `<label>` for the global search input (was placeholder-only).
+  `role="status"` on the ROM-load status text (announces load/unload
+  to screen readers).
+- Self-caught, small: `scan.js`'s `.hbar-row`s used to get
+  `cursor:pointer` + a click listener even for entries with no real
+  matching opcode to jump to -- a real "looks clickable, does nothing"
+  affordance mismatch, and would have made the new keyboard-enhancer
+  focus rows that go nowhere. Fixed at the source (only rows with a
+  real match get the interactive treatment).
+
+**Deliberately NOT done** (documented, not silently skipped): no
+visual/theme redesign (the existing dark GB-green system is already
+cohesive and fits the subject matter -- "if already excellent, leave
+alone"); no roving-tabindex grid navigation for the 256-cell opcode
+grid (AA requires operability, which plain per-cell `tabindex="0"`
+already satisfies -- a roving-tabindex APG grid pattern would be a
+real UX polish item but isn't a compliance gap, flagged as a Medium/
+future item instead of risking a rushed change to a 256-cell grid);
+canvas pixel-click-to-inspect interactions (tile/map/graphics viewers)
+stay mouse-primary -- a defensible scope for a spatial exploration
+tool, same as e.g. a design canvas, now at least given a real
+accessible name via `aria-label` so screen-reader users know what's
+rendered even without pointer access to per-tile detail.
+
+`luajit tests/run_tests.lua`: 487/487 pass (JS/CSS/HTML-only change,
+Lua suite unaffected by design, re-run anyway).
