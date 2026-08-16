@@ -70,7 +70,7 @@ end)
 local romData = DevRomLocator.find()
 
 Harness.testIfAvailable(
-  "MapTileCatalog.build: real ROM profile matches this project's own known 14-room / 243-tile / 3-bank finding",
+  "MapTileCatalog.build: real ROM profile matches this project's own known 15-room / 256-tile / 3-bank finding",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -80,15 +80,23 @@ Harness.testIfAvailable(
 
     -- Same "real, decoded room" filter export_data.lua's own ROOM_MAPS
     -- section uses -- this count must always match ROOM_MAPS.length.
-    Harness.assertEqual(catalog.roomCount, 14)
-    Harness.assertEqual(#catalog.entries, 243)
+    -- UPDATED (2026-08-16, seventhRoom added -- sixthRoom's own new
+    -- north exit): 14->15 rooms, 243->256 distinct tile entries (13 of
+    -- seventhRoom's own 20 real tileOffsets are genuinely NEW ROM
+    -- addresses; the other 7 already existed in the catalog, real
+    -- shared-tileset reuse, same shape as the existing roomA/roomB
+    -- shared-offset test case above).
+    Harness.assertEqual(catalog.roomCount, 15)
+    Harness.assertEqual(#catalog.entries, 256)
 
     -- Real map/environment tiles live in exactly 3 banks (8, 11, 12) --
     -- NOT just bank 12, the honest finding this whole module exists to
     -- surface (see this module's own doc comment for the full story).
+    -- seventhRoom's own tiles are all bank 12 (file 0x32xxx) -- only
+    -- that bank's count moved.
     Harness.assertEqual(catalog.byBank[8], 28)
     Harness.assertEqual(catalog.byBank[11], 85)
-    Harness.assertEqual(catalog.byBank[12], 130)
+    Harness.assertEqual(catalog.byBank[12], 143)
 
     -- Every entry's own fileOffset must be inside the real ROM and
     -- tile-aligned (16-byte stride) -- same non-fabrication check every

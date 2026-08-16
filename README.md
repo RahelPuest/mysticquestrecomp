@@ -83,12 +83,12 @@ milestone-by-milestone breakdown and priority order.
 | Boot → title → name entry → field → combat | ✅ fully playable |
 | Script/event interpreter | all 256 opcode values classified: 201 have a real, tested Lua handler, 49 more are confirmed no-ops, 6 remain known-hard / deliberately open; the interpreter now also drives 2 real room transitions' room selection live (not just a debug-overlay shadow run — see [`docs/reverse-engineering/events.md`](docs/reverse-engineering/events.md)) |
 | Whole-ROM script scan | 883 of the ROM's 1357 real scripts run cleanly end-to-end against the current interpreter |
-| World | 6 real, walkable rooms wired (willyRoom → secondRoom → thirdRoom → fourthRoom → {fifthRoom, sixthRoom}), both real transition mechanisms (hardware scroll + instant "cut") implemented |
+| World | 7 real, walkable rooms wired (willyRoom → secondRoom → thirdRoom → fourthRoom → {fifthRoom, sixthRoom → seventhRoom}), both real transition mechanisms (hardware scroll + instant "cut") implemented, plus a real flag-gated exit (defeat a boss to open a passage) |
 | Combat | real-time contact/action combat, real PRNG-driven damage formulas confirmed for both directions (player↔enemy), real per-species ATK for all 11 enemy species, DEF still partially open |
 | Menu/inventory | real item/equipment use and equip against the real inventory format; no in-ROM item-granting trigger known yet, so a dev-only shortcut grants starting items |
 | Text/dialogue | in-ROM font + 91-entry digraph compression table decoded, full German sentences decode end-to-end |
 | Save/load | fully wired against the real, reverse-engineered nibble-packed save format |
-| Test suite | 549 headless unit/integration tests, 0 ROM required to run (ROM-dependent tests skip cleanly if none is found) |
+| Test suite | 552 headless unit/integration tests, 0 ROM required to run (ROM-dependent tests skip cleanly if none is found) |
 
 ## How this project works
 

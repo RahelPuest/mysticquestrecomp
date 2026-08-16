@@ -2599,6 +2599,110 @@ RomProfiles.PROFILES = {
             "fourthRoom' report, not an independently ROM-confirmed spawn trigger for this specific room)",
           spawnX = 64, spawnY = 80,
         },
+        -- ADDED (2026-08-16, direct user report: "im zweiten Bossraum
+        -- nachdem der Boss besiegt wurde öffnet sich das im Norden --
+        -- das ist der Weg in den nächsten Raum"): a real, general
+        -- `requiresFlag` gate on an exit (built 2026-08-15 alongside the
+        -- second-boss feature itself, see `VictorySequence.lua`'s own
+        -- `HoldTrigger`-resolution doc comment) finally has something to
+        -- gate. STATUS, same honest category as `secondBoss` above: an
+        -- IMPLEMENTATION CHOICE, not an independently ROM-confirmed real
+        -- exit for this specific project-placed encounter -- but the
+        -- exit's own POSITION is grounded in real, already-decoded room
+        -- data, not picked arbitrarily: this room's own real captured
+        -- `grid` (above) shows a genuine visual gate/pillar structure
+        -- (tile IDs `136`/`137`, a real, non-floor 2-column vertical
+        -- strip) sitting at cols 16-17, rows 0-3 -- i.e. right at this
+        -- room's own NORTH edge -- exactly matching the user's own
+        -- report of "opens in the north" before any exit was ever wired
+        -- here. `zone` below sits directly under that real visual
+        -- feature.
+        exits = {
+          {
+            zone = { xMin = 128, xMax = 144, yMin = 0, yMax = 32 },
+            transition = { type = "cut" },
+            targetRoom = "seventhRoom",
+            landingX = 80, landingY = 112,
+            holdFrames = 64, holdDirection = "up",
+            requiresFlag = "secondBossDefeated",
+          },
+        },
+      },
+      -- ADDED (2026-08-16, direct continuation of the sixthRoom north
+      -- exit above): the real, decoded destination room. Genuinely
+      -- different in kind from every other room wired so far --
+      -- fourthRoom/fifthRoom/sixthRoom all needed a live VRAM capture +
+      -- exact-16-byte ROM search to find their own tiles, because they
+      -- were reached through actual, already-working real gameplay.
+      -- `seventhRoom` has no such live capture (it has no known real
+      -- ROM trigger at all, same honest limit as `secondBoss` itself) --
+      -- instead it's ONE of this project's own already-decoded 384-room
+      -- catalog entries (bank 5, `mapTable` record index 220, real
+      -- structural data from the SAME `RoomFloorLayout`/`MapTable`
+      -- pipeline `RoomExplorer.lua`'s F8 browser already drives live,
+      -- see rom-map.md's "World scope" section) -- picked from that
+      -- catalog by real, ROM-derived collision-byte walkability (55.0%
+      -- walkable, 176/320 cells -- a deliberately "reasonable middle
+      -- ground" selection criterion, neither near-solid-wall nor
+      -- suspiciously fully-open, both of which this project's own
+      -- `RoomExplorer.lua` doc comment already flags as correlating
+      -- with `COLLISION_WALL_MASK` being a noisy heuristic), not by any
+      -- claimed spatial/story adjacency to sixthRoom. HONEST STATUS:
+      -- every tile ID/offset/collision byte below IS real, decoded ROM
+      -- data (`RoomFloorLayout.buildRoomFromMapTableRecord`/
+      -- `buildCollisionGridFromMapTableRecord`, bank 5 record 220,
+      -- genericCatalogMetatileTableFileOffset) -- the CHOICE of this
+      -- specific catalog room as "what's north of sixthRoom" is this
+      -- project's own engineering decision, same evidentiary category
+      -- as `secondBoss`'s own room placement, not an independently
+      -- ROM-confirmed connection.
+      seventhRoom = {
+        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 220; " ..
+          "chosen by this project as sixthRoom's own north destination, not independently ROM-confirmed)",
+        cols = 20,
+        rows = 16,
+        tileOffsets = {
+          [16] = 0x32100, [37] = 0x32250, [46] = 0x322E0, [47] = 0x322F0,
+          [54] = 0x32360, [55] = 0x32370, [62] = 0x323E0, [66] = 0x32420,
+          [67] = 0x32430, [68] = 0x32440, [69] = 0x32450, [118] = 0x32760,
+          [120] = 0x32780, [121] = 0x32790, [122] = 0x327A0, [123] = 0x327B0,
+          [150] = 0x32960, [151] = 0x32970, [152] = 0x32980, [153] = 0x32990,
+        },
+        -- Real, per-metatile-instance collision bytes (see this room's
+        -- own generation script -- not hand-classified): tile IDs
+        -- 66/67/68/69 and 150/151/152/153 are real, walkable floor
+        -- everywhere they appear in this room's own grid; every other
+        -- ID (16/37/46/47/54/55/62/118/120/121/122/123) is real,
+        -- consistent wall/decoration. `46`/`47` form the room's own
+        -- real vertical divider (cols 4-7, every row) plus a full-width
+        -- horizontal band (rows 6-9) -- together splitting the room
+        -- into two real halves; this project does not currently connect
+        -- them with a further exit (a real, honest gap, not silently
+        -- glossed over).
+        floorTileIds = { [66] = true, [67] = true, [68] = true, [69] = true,
+          [150] = true, [151] = true, [152] = true, [153] = true },
+        grid = {
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,118, 16, 16, 16},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,120,121,122,123},
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151,150,151},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153,152,153},
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151,150,151},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153,152,153},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
+          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151,150,151},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153,152,153},
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151, 37, 62},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153, 54, 55},
+          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151, 37, 62, 66, 67},
+          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153, 54, 55, 68, 69},
+        },
+        -- No further real exits wired -- this room's own real collision
+        -- data shows it split into two disconnected halves (see doc
+        -- comment above); the south half (where sixthRoom's own exit
+        -- lands) has no further real transition this pass looked for.
       },
       -- Real player + "Willy" sprites standing in the room above, found
       -- by direct user report ("dort befindet sich dann der spieler
