@@ -27,7 +27,10 @@ const SECTIONS = [
 
 function countFor(id) {
   try {
-    if (id === "opcodes") return OPCODES.filter(o => o.status === "undecoded").length + " offen";
+    // Split into a plain number + a nested span for the unit word so
+    // I18n's exact-text-node matching can translate "offen" on its own
+    // without needing to parse it back out of a fused "71 offen" string.
+    if (id === "opcodes") return OPCODES.filter(o => o.status === "undecoded").length + '<span class="count-unit"> offen</span>';
     if (id === "questions") return String(OPEN_QUESTIONS.length);
     if (id === "rooms") return String(ROOMS.length);
     if (id === "map") return String(ROOM_MAPS.length + ROOM_CATALOG.length);
@@ -174,6 +177,12 @@ function route() {
     Quelle: <code>docs/reverse-engineering/</code> im Hauptprojekt.`;
   main.appendChild(footer);
   enhanceKeyboardAccessibility(main);
+  // Chrome-only DE/EN pass (nav, headings, labels, buttons -- see
+  // js/i18n.js's own doc comment for exactly what this does and does
+  // not translate). A no-op while lang is "de", since I18n.apply()
+  // only ever rewrites TOWARD the dictionary's target language and
+  // German is always what route() just rendered from source.
+  I18n.apply(document.body);
 }
 
 // hashchange-only wrapper around route(): scrolls to the top and moves
@@ -246,6 +255,32 @@ function updateRomLoadStatus() {
   }
 }
 
+// DE/EN toggle for the UI chrome -- see js/i18n.js for exactly what's
+// covered. Two mutually-exclusive buttons (not a single "current
+// state" toggle) so both languages are always visible/reachable in one
+// tab stop, same reasoning as a real radio-button pair.
+function setupLanguageControl() {
+  const btnDe = document.getElementById("langToggleDe");
+  const btnEn = document.getElementById("langToggleEn");
+  function reflect() {
+    const isEn = I18n.current === "en";
+    btnDe.setAttribute("aria-pressed", String(!isEn));
+    btnEn.setAttribute("aria-pressed", String(isEn));
+  }
+  document.documentElement.lang = I18n.current;
+  reflect();
+  btnDe.addEventListener("click", () => I18n.setLang("de"));
+  btnEn.addEventListener("click", () => I18n.setLang("en"));
+  I18n.onChange(() => {
+    reflect();
+    // route() re-renders the CURRENT section from its (German) source
+    // and then re-applies I18n.apply() -- the same, single code path
+    // navigation already uses, so a language switch can never drift
+    // from what a real navigation would have rendered.
+    route();
+  });
+}
+
 function setupPaletteControl() {
   GBPalette.init(); // restore a previously-picked preset, if any
   const select = document.getElementById("paletteSelect");
@@ -266,6 +301,7 @@ function setupPaletteControl() {
 window.addEventListener("hashchange", navigate);
 window.addEventListener("DOMContentLoaded", () => {
   setupPaletteControl();
+  setupLanguageControl();
   setupMobileNav();
   route();
   const search = document.getElementById("globalSearch");

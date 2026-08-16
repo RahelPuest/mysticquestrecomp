@@ -19,6 +19,10 @@
     <label for="paletteSelect" class="palette-label" title="Anzeige-Farbschema für alle Kachel-Grafiken auf dieser Seite -- eine reine Darstellungsoption, keine ROM-Daten.">🎨</label>
     <select id="paletteSelect" aria-label="Farbschema für Kachel-Grafiken"></select>
   </div>
+  <div id="langControl" title="Umschaltbare UI-Sprache (Nav, Überschriften, Buttons) -- die eigentlichen Rechercheergebnisse bleiben deutsch, siehe js/i18n.js. / Toggleable UI language (nav, headings, buttons) -- the underlying research findings stay German, see js/i18n.js.">
+    <button id="langToggleDe" type="button" class="lang-btn" aria-pressed="true">DE</button>
+    <button id="langToggleEn" type="button" class="lang-btn" aria-pressed="false">EN</button>
+  </div>
   <div id="romLoadControl">
     <label class="btn primary small" for="romFileInput" id="romLoadLabel">📂 ROM laden&hellip;</label>
     <input id="romFileInput" type="file" accept=".gb" class="visually-hidden">
@@ -64,6 +68,9 @@
 
 <!-- Local-only ROM loading + GB tile decode (never uploaded anywhere) -->
 <script src="js/rombytes.js"></script>
+
+<!-- Toggleable DE/EN UI chrome (nav/headings/buttons only, see its own doc comment) -->
+<script src="js/i18n.js"></script>
 
 <!-- Visualization modules -->
 <script src="js/viz/overview.js"></script>

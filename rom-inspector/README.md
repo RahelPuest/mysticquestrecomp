@@ -29,6 +29,20 @@ python3 -m http.server 8000
 # then open http://localhost:8000/
 ```
 
+## Language
+
+The **DE/EN** switch in the top bar toggles the UI chrome — nav,
+headings, buttons, table columns, form labels — between German and
+English. It's an exact-string dictionary pass (`js/i18n.js`), not
+machine translation, and it deliberately does **not** touch the
+research content itself: every table, description, and finding across
+`js/data/*.js` and the explanatory prose in `js/viz/*.js` stays
+German-only, because translating thousands of verified technical
+claims by hand or by model risks silently shifting what a real finding
+actually says — this project treats that as a correctness bug, not a
+cosmetic one. See `js/i18n.js`'s own doc comment for the exact
+boundary.
+
 ## What's real vs. curated
 
 Every page ends with a note on this. Concretely:

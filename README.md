@@ -39,18 +39,32 @@ believe something here crosses a line, please open an issue.
 Before touching Lua at all, you can explore most of what this project
 has learned about the ROM in your browser: **[`rom-inspector/`](rom-inspector/)**
 is a standalone, dependency-free HTML/CSS/JS site (styled after
-[DeniseBischof/HLV](https://github.com/DeniseBischof/HLV)) with:
+[DeniseBischof/HLV](https://github.com/DeniseBischof/HLV)), currently
+20 sections across 5 groups:
 
-- an interactive **entity-struct** visualizer,
-- all **256 script opcodes** as a searchable, color-coded grid with
-  human-readable descriptions of what each real handler does,
-- a live **whole-corpus scan** chart (every script in the ROM run
-  against the current interpreter, showing exactly what's covered),
-- the known **room graph**, a **Tile-Viewer**, and a **Map-Viewer** that
-  decode real Game Boy graphics client-side from a ROM file you load
-  yourself (never uploaded anywhere),
-- a live **text-encoding decoder**, and an **open-questions** page
-  listing exactly what this project doesn't know yet.
+- **Structure**: memory map, the 20-slot **entity-struct** visualizer,
+  and every known, verified ROM table.
+- **Interpreter**: all **256 script opcodes** as a searchable,
+  color-coded grid with human-readable descriptions of what each real
+  handler does, plus a live **whole-corpus scan** chart (every script
+  in the ROM run against the current interpreter coverage).
+- **World**: the known room graph, room transitions, a **Tile-Viewer**,
+  a **Map-Viewer**, and a full **world map** that decode real Game Boy
+  graphics client-side from a ROM file you load yourself (never
+  uploaded anywhere), plus a live **text-encoding decoder** and the
+  music/sound bank.
+- **Catalog**: monsters, items & weapons, NPCs, the actor table, story
+  & characters, and graphics candidates.
+- **Status**: an **open-questions** page listing exactly what this
+  project doesn't know yet.
+
+The UI chrome (navigation, headings, buttons, table columns) is
+toggleable between German and English via the **DE/EN** switch in the
+top bar; the underlying research content — every table, description,
+and finding — is authored in German and stays that way, since
+translating verified technical claims risks silently changing their
+meaning (see `rom-inspector/js/i18n.js`'s own doc comment for the
+exact scope).
 
 ```
 open rom-inspector/index.html
@@ -67,13 +81,14 @@ milestone-by-milestone breakdown and priority order.
 | Area | Status |
 | --- | --- |
 | Boot → title → name entry → field → combat | ✅ fully playable |
-| Script/event interpreter | 133/256 opcodes have a real, tested Lua handler; 49 more are confirmed no-ops; 71 remain genuinely undecoded |
-| Whole-ROM script scan | 584 of the ROM's 1357 real scripts run cleanly end-to-end against the current interpreter |
-| World | 7 real, walkable rooms wired (willyRoom → secondRoom → thirdRoom → fourthRoom → {fifthRoom, sixthRoom}), both real transition mechanisms (hardware scroll + instant "cut") implemented |
-| Combat | real-time contact/action combat, real per-species ATK for all 11 enemy species, DEF still open |
-| Text/dialogue | in-ROM font + ~90-entry digraph compression table decoded, full German sentences decode end-to-end |
+| Script/event interpreter | all 256 opcode values classified: 201 have a real, tested Lua handler, 49 more are confirmed no-ops, 6 remain known-hard / deliberately open; the interpreter now also drives one real room transition's room selection live (not just a debug-overlay shadow run — see [`docs/reverse-engineering/events.md`](docs/reverse-engineering/events.md)) |
+| Whole-ROM script scan | 883 of the ROM's 1357 real scripts run cleanly end-to-end against the current interpreter |
+| World | 6 real, walkable rooms wired (willyRoom → secondRoom → thirdRoom → fourthRoom → {fifthRoom, sixthRoom}), both real transition mechanisms (hardware scroll + instant "cut") implemented |
+| Combat | real-time contact/action combat, real PRNG-driven damage formulas confirmed for both directions (player↔enemy), real per-species ATK for all 11 enemy species, DEF still partially open |
+| Menu/inventory | real item/equipment use and equip against the real inventory format; no in-ROM item-granting trigger known yet, so a dev-only shortcut grants starting items |
+| Text/dialogue | in-ROM font + 91-entry digraph compression table decoded, full German sentences decode end-to-end |
 | Save/load | fully wired against the real, reverse-engineered nibble-packed save format |
-| Test suite | 381 headless unit/integration tests, 0 ROM required to run (ROM-dependent tests skip cleanly if none is found) |
+| Test suite | 546 headless unit/integration tests, 0 ROM required to run (ROM-dependent tests skip cleanly if none is found) |
 
 ## How this project works
 
