@@ -500,6 +500,23 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       2 of the 82 have a known in-game trigger; the other 80's real
       story/dialog trigger is still unknown (time-boxed live search
       found nothing new).
+      **UPDATE 2026-08-16 (same day, "unknownRoomA-Trigger erneut
+      suchen"): a new, static strategy enumerated ALL 5 real
+      `CALL $026DC` sites in the whole ROM** (previously only 1 was
+      known) and fully decoded each one's own real roomSelector
+      source -- 3 hardcode the unrelated placeholder value 7, 1 is the
+      already-known register-C path behind the 2 live transitions
+      (confirmed reached only via the already-documented `$413C`
+      computed jump table, never a literal call), and 1 NEW site reads
+      the CURRENTLY ACTIVE room's own real `$C3F5` state (a
+      "return-to-current-room-after-dialogue" utility, not a room-
+      selector). This DECISIVELY RULES OUT a hidden static dispatch
+      table as the missing mechanism -- the real remaining path to
+      `unknownRoomA` is finding WHICH of the 1357 real scripts
+      literally contains one of the 36 already-catalogued landing byte
+      sequences in its own body, likely blocked on whole-corpus-scan
+      opcode coverage or live story progression, not a further static
+      search.
       **UPDATE 2026-08-16 (NPC placement mechanism, direct
       continuation, "NPC-Platzierungstabelle suchen")**: the first
       concrete, live-traced mechanism behind this milestone's own
