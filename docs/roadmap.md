@@ -1913,6 +1913,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   invocation -- honestly left open WHY. New `BossSequenceInterpreter
   :rearm()`, 2 new tests, `luajit tests/run_tests.lua`: 508/508 pass.
 
+- **2026-08-16, task #127 CLOSED**: the "second boss" is the exact same
+  species as the already-tested first boss, so the two remaining paths
+  to a live encounter (harder now that task #150's own bank-call-stack
+  work priced out live injection precisely) would not add any new DEF
+  evidence even if built. Closed rather than left open by default.
+
+- **2026-08-16, task #150, 4th pass -- decisive scope reduction**: the
+  corpus scan's own "154 script-hits across 30 byte values" collapses
+  to only **63 genuinely distinct real failure locations** once
+  measured by real ROM file offset instead of by failing script --
+  `scriptPointerTable` indices pointing into overlapping/adjacent byte
+  regions (the same phenomenon task #81 found for CHAIN) inflate the
+  count massively (e.g. `0x05`, the top blocker at "20 scripts", is
+  really only 3 distinct locations). One word-solve attempt on the top
+  real location stayed inconclusive, reported honestly rather than
+  guessed at. Real remaining scope is now much smaller and better
+  understood; still blocked on the same live-injection wall for
+  actually reaching this content. Task #150 stays open.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
