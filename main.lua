@@ -245,6 +245,32 @@ function love.load()
       ") -- falling back to the normal Boot flow")
   end
 
+  -- Dev/CI-only: MYSTICQUEST_ACTORS_DEMO=1 (2026-08-16, direct
+  -- continuation, "Tabelle voll ausmessen" -> "alles konsolidieren
+  -- dokumentieren und in app und website einbauen", same reasoning/
+  -- pattern as MYSTICQUEST_TRANSITIONS_DEMO above -- added to
+  -- screenshot/state-verify ActorExplorer.lua, the new actor-
+  -- definition-table browser) skips the real Boot->TitleScreen->
+  -- Field->F11 flow and pushes a real ActorExplorer directly. Optional
+  -- MYSTICQUEST_ACTORS_INDEX=N starts on entry N (1-based) instead of
+  -- the first one.
+  if os.getenv("MYSTICQUEST_ACTORS_DEMO") == "1" then
+    local RomLocator = require("src.import.RomLocator")
+    local ActorExplorer = require("src.app.states.ActorExplorer")
+    local data, pathOrReason = RomLocator.find()
+    if data then
+      local explorer = ActorExplorer.new(data, input, overlay, stack)
+      local startIndex = tonumber(os.getenv("MYSTICQUEST_ACTORS_INDEX"))
+      if startIndex then
+        explorer.index = startIndex
+      end
+      stack:push(explorer)
+      return
+    end
+    print("MYSTICQUEST_ACTORS_DEMO: could not load a real ROM (" .. tostring(pathOrReason) ..
+      ") -- falling back to the normal Boot flow")
+  end
+
   stack:push(Boot.new(stack, input, overlay))
 end
 

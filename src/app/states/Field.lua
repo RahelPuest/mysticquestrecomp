@@ -377,6 +377,18 @@ end
 -- ordinary exits -- the other 80 (including 36 targeting the long-
 -- mysterious `unknownRoomA` family) are real ROM data with an
 -- honestly-unknown real trigger, not fabricated new doors.
+--
+-- F11 (2026-08-16, direct continuation, "NPC-Platzierungstabelle
+-- suchen" -> "Tabelle voll ausmessen" -> "alles konsolidieren
+-- dokumentieren und in app und website einbauen"): opens
+-- ActorExplorer.lua -- a dev-only browser for the real, RNG-gated
+-- actor-definition table this session found (ActorDefinitionTable
+-- .lua). Same "real content, no fabricated trigger" reasoning as F8-
+-- F10: 218 real records are fully decoded (measured full extent),
+-- but only 2 have a confirmed live spawn behind them -- the index
+-- actually used at runtime is computed via the real combat PRNG, not
+-- a fixed per-room constant, so most entries' own real in-game
+-- relevance stays honestly unknown.
 function Field:keypressed(key)
   if key == "f2" and self.romData and self.profile and self.stack then
     local TileViewer = require("src.app.states.TileViewer")
@@ -427,6 +439,16 @@ function Field:keypressed(key)
     -- own doc comment).
     local TransitionExplorer = require("src.app.states.TransitionExplorer")
     self.stack:push(TransitionExplorer.new(self.romData, self.input, self.overlay, self.stack))
+  elseif key == "f11" and self.romData and self.stack then
+    -- 2026-08-16, direct continuation, "Tabelle voll ausmessen" ->
+    -- "alles konsolidieren dokumentieren und in app und website
+    -- einbauen": a dev-only browser for the real, RNG-gated actor-
+    -- definition table (ActorDefinitionTable.lua) -- same "real
+    -- content, no fabricated trigger" precedent as F8-F10 above: 218
+    -- real records are fully decoded, but only 2 have a confirmed
+    -- live spawn (see ActorExplorer.lua's own doc comment).
+    local ActorExplorer = require("src.app.states.ActorExplorer")
+    self.stack:push(ActorExplorer.new(self.romData, self.input, self.overlay, self.stack))
   end
 end
 

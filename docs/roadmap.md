@@ -543,6 +543,13 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       `ActorDefinitionTable.scanTable`. Still open: the 24-byte field
       semantics beyond the 2 already-decoded fields, and the exact
       RNG-roll -> index derivation.
+      **UPDATE 2026-08-16 (same day, "alles konsolidieren ... in app
+      und website einbauen")**: app parity shipped -- new
+      `ActorExplorer.lua` (F11 from `Field`), matching
+      `TransitionExplorer.lua`'s own precedent exactly. A real
+      overflow bug (long `LIVE_CONFIRMED` labels + control text
+      exceeding the native 160px canvas) caught and fixed via actual
+      `love .` screenshots, not guessed.
 
 - [~] **Milestone 6 — Text and dialogue.** Real in-ROM font rendering,
       a real bordered textbox component with typewriter reveal, real
