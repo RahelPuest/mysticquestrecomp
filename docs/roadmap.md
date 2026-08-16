@@ -1673,6 +1673,25 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   separate `$D499`-indexed `$0ECA` table) stay undecoded, so corpus-
   scan numbers are unchanged (884/163/310) -- honestly reported as
   groundwork, not a closed opcode.
+  **UPDATE 2026-08-16 (same day, "$3213 weiterverfolgen"): DECISIVE
+  structural finding, closing the "what mechanism is this" question
+  even though the corpus-scan count itself stays unchanged.** `$3213`'s
+  own real completion (`$31C7`) is not a separate leaf at all -- it IS
+  `$31AD`'s own already-mapped internal completion/dispatch tail (same
+  3 special-case WRAM fallback buffers, same `$3282`/`$3c4f`/`$3727`
+  resolve-and-dispatch chain, same `$C0A1`/`$C0A2` bit-1+2 re-arm this
+  project's own task #149 already found `$31AD` itself performing).
+  I.e. these top-3 blocking handlers are genuinely, decisively
+  confirmed to be ALTERNATE ENTRY POINTS into the same long-studied
+  cross-actor dispatch mechanism, not an unrelated new system. What
+  remains is exclusively DATA (which real actor/WRAM value each of the
+  132 affected scripts resolves at runtime) -- the SAME honest,
+  structural "can't derive from a static ROM-only shadow-run" category
+  this project's own `scan_all_scripts.lua` already accepts for opcodes
+  `0x08`-`0x0C`. Further static disassembly of this family is
+  genuinely exhausted; closing more of it needs live per-script
+  WRAM-tracing, matching this session's own `unknownRoomA` investigation
+  in scale.
 
 - **2026-08-15, task #150 continuation**: refined the remaining 154
   `tick`-error bytes' static classification -- 10/12 top values fail
