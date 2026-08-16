@@ -310,7 +310,7 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
 | P2 | **6 — Text/dialogue (remainder)** | 🟢 digraph table effectively closed (2026-08-12): 30 → 91 confirmed entries, ~66% real-region coverage, full sentences now decode end to end | Needed for every new dialogue P0 content brings in; not a hard blocker today. Remaining gap is wiring the now-solid decoder into actual gameplay text (still hand-authored `FIELD_EVENTS`/`VictorySequence` strings today), not more decoding work. |
 | P2 | **8 — Menu/inventory (remainder)** | 🟢 items/equipment now usable (2026-08-16) | Real Dinge/Waffe interactivity shipped (use/equip), gated behind a real, non-empty inventory (F12 dev-only grant, since no real ROM item-granting trigger is known). Remaining: no real per-item/weapon effect formula decoded (heal amount, weapon power). |
 | P2 | **NEW — Magic/spell system** | 🔴 not started | Core Seiken Densetsu genre feature; depends on P1's event system and P2/8's item plumbing. |
-| P2 | **NEW — Level/XP system** | 🔴 not started | Well-scoped, not a blocker for anything else. |
+| P2 | **NEW — Level/XP system** | 🔴 not started, genuinely blocked (2026-08-16) | NOT well-scoped as previously claimed — no real WRAM address for experience is known (the earlier candidate was re-identified as gold this same session), and 2 real search angles for a replacement came back negative. See roadmap's own Milestone entry / events.md for the full trace. |
 | P3 | **2 — Graphics extraction (remainder)** | 🟡 partial | On-demand extraction is already working practice; a full sweep only pays off once P0 delivers more content to render. |
 | P3 | **Generated-cache pipeline** (task #34) | 🔴 deliberately deferred | Architecture decision already made 2026-08-11: build once enough normalized data exists to cache — depends on P0. |
 | P3 | **Audio** | 🟢 format DECODED + `love.audio` PLAYBACK shipped (2026-08-16, task #151) | Song table, note/duration/octave encoding, and frequency table all real and verified; `src/audio/` now actually plays all 30 real songs through `love.audio` (dev-only `MusicJukebox.lua`, F9). Only remaining gap: no known real ROM trigger ties a specific song to a specific real game moment. |
@@ -1026,11 +1026,29 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       Milestone 8 (the item/inventory plumbing spells would share with
       usable items).
 
-- [ ] **NEW — Level/XP system.** `Stats`' real `experience`/`level`
-      fields are VERIFIED (Data Crystal cross-check) but read-only
-      today — no XP gain, no level-up logic, no stat growth curve
-      decoded. Well-scoped and independent of other open work; lower
-      priority only because nothing else depends on it.
+- [ ] **NEW — Level/XP system.** `Stats.level` is real (Data Crystal
+      cross-check, `$D7BA`) but read-only today — no XP gain, no
+      level-up logic, no stat growth curve decoded.
+      **CORRECTED 2026-08-16 (direct user selection, "Level/XP-
+      System" — the claim below this line used to say "well-scoped,"
+      that was stale)**: the `experience` WRAM address this entry
+      used to cite (`$D7BB`-`$D7BD`) was only ever weakly "plausible"
+      (a fresh character's all-zero state proves nothing distinctive)
+      and this SAME session already, independently, decisively
+      re-identified that exact address as the real 24-bit GOLD counter
+      (see events.md's own dated entry). **There is currently NO known
+      real WRAM address for experience.** 2 real search angles this
+      session (a live snapshot-diff across the one real, reachable
+      fight; a static search for a sibling "word-counter" opcode
+      targeting a different cell) both came back genuinely negative —
+      see events.md's own dated entry for the full trace. Building
+      this feature now would mean fabricating both the WRAM location
+      and the growth formula — explicitly not done. Real, well-scoped
+      next steps for whoever continues: (a) find a real spawn trigger
+      for one of the other 10 enemy species first (this project's own
+      Bestiary blocker) to get a second, non-tutorial fight to test
+      against; (b) trace deeper into the interpreter-reachable
+      boss-defeat script for a not-yet-modeled reward branch.
 
 - [ ] **NEW — Generated-cache pipeline.** Confirmed 2026-08-11 as a
       real, committed target architecture (not just inspiration) —
