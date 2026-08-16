@@ -1609,3 +1609,120 @@ this pass (diminishing returns: none recur often enough to build a
 Full Lua test suite: 228/228 passing (3 tests updated for now-complete
 decodes; the "0x66 still open" example swapped to `0x82`, the one
 that's still genuinely open after this round).
+
+## The real script-driven typewriter parser (2026-08-16, direct user
+instruction: "da muss es doch einen parser im rom code geben der die
+texte parst. schau doch den mal an")
+
+Everything above this section was reverse-engineered by **dynamic
+observation** (comparing decoded bytes against real on-screen text) --
+nobody had yet disassembled the ROM's own parsing code. This section
+does that, for the specific handler opcode `0x04` (the TICK/"reveal
+one more character") of the real script-driven typewriter effect uses
+-- found at `$333D`:
+
+```
+0x333d  7e        LD A,(HL)
+0x333e  fe 99     CP 0x99
+0x3340  d2 80 34  JP NC,0x3480      ; >=0x99            -> SPECIAL
+0x3343  fe 20     CP 0x20
+0x3345  38 0f     JR C,0x3356       ; <0x20             -> LOW-CONTROL
+0x3347  fe 70     CP 0x70
+0x3349  da a4 34  JP C,0x34a4       ; 0x20-0x6F         -> DIGRAPH (direct)
+0x334c  fe 80     CP 0x80
+0x334e  da 80 34  JP C,0x3480       ; 0x70-0x7F         -> SPECIAL
+0x3351  d6 10     SUB 0x10
+0x3353  c3 a4 34  JP 0x34a4         ; 0x80-0x98         -> DIGRAPH (-0x10 remap)
+```
+
+Real byte classification for THIS handler: `0x00-0x1F` LOW-CONTROL
+(`$3356`), `0x20-0x6F` DIGRAPH direct (`$34A4`), `0x70-0x7F` SPECIAL
+(`$3480`), `0x80-0x98` DIGRAPH via `-0x10` remap (`$34A4`), `0x99-0xFF`
+SPECIAL (`$3480`).
+
+**Decisive finding for the boss-script question** (direct user
+question, "im kontext des bosses macht es aber mehr sinn wenn es ein
+steuerzeichen wäre oder?"): `0xFC` is `>= 0x99`, so in THIS handler it
+never reaches the digraph/character table at all -- it always goes to
+`$3480`. Full disassembly of that path and its 4 callees:
+
+```
+$3480  CALL $36c2   ; throttle gate (see below) -- RET NZ bails out
+$3483  RET NZ       ;   here on 4 of every 5 calls, doing nothing else
+$3484  PUSH HL
+$3485  CALL $3c92   ; reads back a remembered BC from $D8B0/$D8B1,
+                     ;   swaps it into AF via a PUSH BC/POP AF trick
+$3488  POP HL
+$3489  CALL $3777   ; (not yet disassembled)
+$348c  LD A,($D89B) / LD B,A
+$3490  LD A,($D89A) / LD C,A    ; BC = ($D89B:$D89A)
+$3494  CALL $3c7e   ; AF/BC juggle again, writes B,C back into $D8B1/$D8B0
+$3497  DEC HL
+$3498  LD A,H / LD ($D8B7),A
+$349c  LD A,L / LD ($D8B6),A    ; write (HL-1) into the cursor-save pair
+$34a0  CALL $36d0   ; INC HL, write HL back into the SAME pair, then
+                     ;   LD A,4 / LD ($D85A),A
+$34a3  RET
+
+$36c2  LD A,($D864) / DEC A / LD ($D864),A
+       RET NZ                   ; "not yet time" -- 4 of 5 calls exit here
+       LD A,5 / LD ($D864),A    ; counter hits 0 -> reset to 5, keep going
+       RET
+
+$3c92  CALL $3081 (unknown) / PUSH BC
+       LD A,($D8B1) / LD B,A / LD A,($D8B0) / LD C,A
+       PUSH BC / POP AF         ; AF = BC (loads flags register from C)
+       POP BC / RET
+
+$3c7e  PUSH AF / PUSH AF / CALL $3099 (unknown) / POP AF
+       PUSH BC / PUSH AF / POP BC    ; BC = AF (opposite direction)
+       LD A,B / LD ($D8B1),A / LD A,C / LD ($D8B0),A
+       POP BC / POP AF / RET
+
+$36d0  INC HL / LD A,H / LD ($D8B7),A / LD A,L / LD ($D8B6),A
+       LD A,4 / LD ($D85A),A / RET
+```
+
+`$D8B6`/`$D8B7` is NOT a script-cursor-specific concept -- it's already
+documented elsewhere in this project (see the `$326A`/`$3274`
+save/restore utility) as a generic "stash a 16-bit value across a
+call" scratch pair, reused by many unrelated routines. Here, `$3497`'s
+`DEC HL` writes `HL-1` into that pair, then `$36D0` immediately does
+`INC HL` and overwrites it again with the now-restored original `HL`
+-- net effect on the pair: **unchanged**. So `$3480` does **not**
+redirect/jump the script's read cursor, contrary to a first, hasty
+read of just the `DEC HL` half. What it verifiably DOES do: gated by
+a real "every 5th call" counter (`$D864`), it shuffles values through
+`$D89A/$D89B` -> `$D8B0/$D8B1` (via an AF/flags-register round-trip in
+both `$3c92` and `$3c7e`) and unconditionally sets `$D85A = 4`. This
+shape (throttled-every-N-ticks, touches state unrelated to text
+content, doesn't affect what prints next) is most consistent with a
+**visual side effect tied to the typewriter reveal rate** -- the
+leading hypothesis is the blinking "waiting for input" prompt arrow
+these era's dialogue boxes typically show once text is fully revealed,
+but `$3081`/`$3099`/`$3777` and the exact roles of `$D85A`/`$D89A`/
+`$D89B` were not traced further this pass, so that specific purpose is
+NOT confirmed -- only that it is a **non-text control operation**, not
+a printable character, in this handler.
+
+**What this does and doesn't settle**: it decisively confirms `0xFC`
+(and every other byte `>= 0x99`, and `0x70-0x7F`) is a control code,
+not a letter, in the SCRIPT-DRIVEN typewriter-tick context reached via
+opcode `0x04`. It does **not** by itself overturn the static-blob
+`DIGRAPH_PARTIAL`/`UMLAUT_PARTIAL` tables above, which were built from
+a completely different code path: `TextDecoder.decodeString` models
+whatever routine decodes the STATIC message-text blobs, which this
+pass did not locate or disassemble -- and the two domains are already
+known to diverge over this same byte range, not just theorized to: the
+static domain has `0x99`-`0x9B` independently, twice-over VERIFIED as
+Ä/Ö/Ü (see `UMLAUT_PARTIAL` above), while the script-tick domain just
+shown sends that same byte range to the non-text `$3480` path. So
+`0xFC`'s `[0xFC] = "sch"` entry in `TextDecoder.DIGRAPH_PARTIAL`
+(added the same day, from static-blob evidence only) is left in place,
+but its own comment now cross-references this section rather than
+claiming a universal reading -- **the same byte value carries
+different meanings in the two domains, and only the static one is
+what that table encodes.** Extending this `$333D`-style disassembly
+technique to classify the STILL-undecoded digraph-range bytes (`0x27`,
+`0x63`, `0x82`, `0x90`-`0x98`) needs the STATIC decode routine
+specifically, not `$333D` -- that routine has not yet been found.

@@ -380,6 +380,52 @@ TextDecoder.SPEAKER_COLON_BYTE = 0x2C
 -- "Goro O[?]shi" (LANDKARTE/map credit) -- same byte, same 2 letters,
 -- two unrelated names, this project's normal VERIFIED bar.
 TextDecoder.DIGRAPH_PARTIAL = {
+  -- HYPOTHESIS, 2026-08-16 (direct user instruction, "textbyte
+  -- entschlüsseln zur not mach eine statistische analyse", after this
+  -- byte first surfaced as a real stopping point in a live script
+  -- trace): `0xFC` is a real, high-frequency blocker (149 occurrences
+  -- in the main dialogue region, 0x34800-) whose surrounding context
+  -- is unusually noisy (heavily intermixed with still-undecoded
+  -- control-code-shaped bytes), unlike most other entries in this
+  -- table. Ranked all 149 occurrences by "how many neighboring bytes
+  -- already decode cleanly" and tested a TRIGRAPH candidate (not a
+  -- digraph -- genuinely different shape from every other entry here,
+  -- but "sch" is an extremely common German 3-letter combination, a
+  -- real, plausible dedicated compression code) against the cleanest
+  -- results: 2 independent, clean hits, neither needing a borrowed
+  -- letter from an adjacent (still-undecoded) byte --
+  -- `"na" .. [FC] .. "en"` = "naschen" (to snack/nibble, file 0x3a25b)
+  -- and `[FC] .. "au"` = "schau" (look!, file 0x350d2, directly
+  -- preceding a real speaker-tag transition, "Lester:"). No occurrence
+  -- among the 30 cleanest contradicts this reading. NOT promoted to
+  -- VERIFIED: only 2 independent words (this project's usual bar is
+  -- "2+", but every other VERIFIED entry here has stronger,
+  -- often-3+-occurrence support), no live/independent cross-check, and
+  -- a real, unresolved competing observation this same pass found:
+  -- `0xFC` also appears unusually often immediately adjacent to
+  -- speaker-tag transitions across several OTHER occurrences (not just
+  -- the "schau" one), which could ALSO be read as "this byte plays a
+  -- formatting/control role near textbox boundaries" rather than being
+  -- a plain letter -- not ruled out, left honestly unresolved.
+  --
+  -- IMPORTANT DOMAIN CAVEAT (2026-08-16, following a direct user
+  -- request to examine the real ROM's own text parser -- see
+  -- docs/reverse-engineering/text.md's "The real script-driven
+  -- typewriter parser" section for the full disassembly): the real
+  -- SCRIPT-DRIVEN typewriter-tick handler (opcode 0x04, ROM `$333D`)
+  -- decisively sends every byte `>= 0x99` -- including 0xFC -- to a
+  -- separate non-text control path (`$3480`), never the character
+  -- table, in THAT code path. This does NOT retract "sch" here: this
+  -- table models the STATIC message-text blob decode
+  -- (`TextDecoder.decodeString`), a different, not-yet-located ROM
+  -- routine, and the two domains are already independently confirmed
+  -- to diverge over this exact byte range (0x99-0x9B are verified
+  -- umlauts Ä/Ö/Ü in THIS static domain -- see UMLAUT_PARTIAL above --
+  -- while the script-tick domain sends that same range to `$3480`).
+  -- Read: the same byte VALUE can carry different meanings in the two
+  -- domains, and this entry only claims the static one.
+  [0xFC] = "sch",
+
   [0x24] = "en",
   [0x2A] = "ie",
   [0x2F] = "te",
