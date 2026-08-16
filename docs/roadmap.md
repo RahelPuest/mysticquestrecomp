@@ -2068,6 +2068,27 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   documented mechanisms outside this table's scope. `luajit
   tests/run_tests.lua`: 533/533 pass.
 
+- **2026-08-16, direct continuation -- new-transition scope catalogued,
+  live trigger-search time-boxed and honestly negative**: the 186
+  landing records collapse to 82 genuinely distinct real transitions;
+  36 of them (19%) target the `unknownRoomA` family this project has
+  never found a live trigger for despite multiple earlier dedicated
+  searches -- real, ROM-verified proof it's genuine intended content,
+  not dead data. 9 more target roomSelector `14`, matching no
+  currently-known room family at all -- a second, brand-new open
+  mystery. 2 static angles for finding a real trigger both came back
+  clean-negative (no coincidental table reference, no dialogue
+  proximity). A time-boxed live exploration (every wall of willyRoom/
+  secondRoom/thirdRoom/fourthRoom, correctly-scaled 300-frame holds,
+  plus Amanda's full dialogue) found zero new `$D499` activity --
+  self-caught and fixed a real methodology bug first (an
+  instruction-count budget that only covered ~17 real frames, far
+  short of the 64-220-frame real hold thresholds already established).
+  Honest conclusion: real, valuable scope information, but the actual
+  in-game trigger for anything beyond the 2 already-known transitions
+  remains open -- likely gated behind story/quest progression past this
+  project's own current checkpoint chain. No production code changed.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately
