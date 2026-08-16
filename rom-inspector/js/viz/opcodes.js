@@ -97,7 +97,7 @@ function render_script_tracer(container) {
           `(group=${s.actorAction.group}, action=0x${s.actorAction.action.toString(16).padStart(2, "0")}) ` +
           `in die reale Actor-Command-Queue ein (WRAM $C4E0/$C5A0) -- siehe <a href="#worldmap">Weltkarte</a>-Overlay.`;
       } else if (s.desc) {
-        effect = escapeHtml(s.desc.text);
+        effect = escapeHtml(s.desc.summary);
       } else if (status === "default") {
         effect = "Echter, ROM-bestätigter No-Op -- der Interpreter geht direkt zum nächsten Byte über.";
       } else if (status === "undecoded") {
@@ -177,18 +177,54 @@ function render_control_codes(container) {
   `;
 }
 
+// A short, collapsible glossary for the recurring technical jargon in
+// this page's own opcode descriptions (js/data/opcode-descriptions.js's
+// own OPCODE_GLOSSARY -- added 2026-08-15, direct user feedback: "die
+// optcodes seite... ist sehr kryptisch. vor allem die beschreibnbenden
+// texte"). Collapsed by default (a reader who already knows the terms
+// shouldn't have to scroll past it) but easy to find right above the
+// opcode grid.
+function render_glossary(container) {
+  const terms = (typeof OPCODE_GLOSSARY !== "undefined") ? OPCODE_GLOSSARY : [];
+  if (!terms.length) { container.innerHTML = ""; return; }
+  container.innerHTML = `
+    <details class="panel" style="margin:12px 0; padding:10px 14px;">
+      <summary style="cursor:pointer; font-size:13px; font-weight:600;">
+        Begriffs-Glossar (${terms.length} Fachbegriffe erklärt)
+      </summary>
+      <div style="margin-top:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">
+        ${terms.map(t => `
+          <div>
+            <div class="mono" style="color:var(--accent2); font-size:12.5px; font-weight:600;">${escapeHtml(t.term)}</div>
+            <div style="font-size:12.5px; color:var(--text-dim); line-height:1.5; margin-top:2px;">${escapeHtml(t.def)}</div>
+          </div>
+        `).join("")}
+      </div>
+    </details>
+  `;
+}
+
 function render_opcodes(main) {
   const params = new URLSearchParams(location.hash.split("?")[1] || "");
   const focusOpcode = params.has("focus") ? parseInt(params.get("focus"), 10) : null;
 
   main.innerHTML = `
     <h1 class="page-title">Skript-Opcode-Explorer</h1>
+    <p class="page-lede" style="font-size:15px;">
+      Dieses ROM enthält eine eigene kleine „Skriptsprache“ &mdash; eine Folge von
+      Steuer-Bytes (<strong>Opcodes</strong>), die Dialoge, Kämpfe, Ereignisse und
+      NPC-Verhalten steuert. Diese Seite zeigt alle 256 möglichen Opcode-Werte
+      und was dieses Projekt über jeden einzelnen real herausgefunden hat &mdash;
+      per echtem Reverse Engineering der ROM, nicht geraten. Klicke unten auf
+      eine Kachel für Details, oder probiere zuerst das Beispiel-Skript.
+    </p>
     <p class="page-lede">
-      Alle 256 Einträge der primären Opcode-Tabelle (Bank 2, $8576, 2 Bytes/Eintrag,
-      indiziert über das reale WRAM-Register „aktueller Opcode“ $D85A). Status wird nicht
-      von Hand vergeben, sondern durch tatsächliches Bauen eines <code>ScriptRuntime</code>
-      ermittelt: <em>decoded</em> heißt, es existiert eine echte registrierte Lua-Implementierung
-      für die reale ROM-Handler-Adresse.
+      Technisch: alle 256 Einträge der primären Opcode-Tabelle (Bank 2, $8576, 2
+      Bytes/Eintrag, indiziert über das reale WRAM-Register „aktueller Opcode“
+      $D85A). Status wird nicht von Hand vergeben, sondern durch tatsächliches
+      Bauen eines <code>ScriptRuntime</code> ermittelt: <em>decoded</em> heißt,
+      es existiert eine echte registrierte Lua-Implementierung für die reale
+      ROM-Handler-Adresse.
     </p>
 
     <div id="scriptTracerHost"></div>
@@ -199,6 +235,8 @@ function render_opcodes(main) {
       <span><span class="sw" style="background:rgba(240,192,90,.4)"></span>known-hard (${OPCODES.filter(o=>o.status==="known-hard").length})</span>
       <span><span class="sw" style="background:rgba(240,113,90,.4)"></span>undecoded (${OPCODES.filter(o=>o.status==="undecoded").length})</span>
     </div>
+
+    <div id="glossaryHost"></div>
 
     <div class="toolbar">
       <div class="pill-tabs" id="statusTabs">
@@ -216,6 +254,7 @@ function render_opcodes(main) {
 
   render_script_tracer(document.getElementById("scriptTracerHost"));
   render_control_codes(document.getElementById("controlCodesHost"));
+  render_glossary(document.getElementById("glossaryHost"));
 
   const grid = document.getElementById("opcodeGrid");
   const cells = {};
@@ -224,7 +263,7 @@ function render_opcodes(main) {
     cell.className = "opcode-cell " + o.status;
     cell.textContent = o.opcode.toString(16).toUpperCase().padStart(2, "0");
     const desc = lookupOpcodeDescription(o.names);
-    cell.title = `Opcode 0x${cell.textContent}${desc ? " — " + desc.title : ""} -> handler ${hex(o.handler)}`;
+    cell.title = `Opcode 0x${cell.textContent}${desc ? " — " + desc.title + ": " + desc.summary : ""}`;
     cell.addEventListener("click", () => showOpcodeDetail(o));
     grid.appendChild(cell);
     cells[o.opcode] = cell;
@@ -239,7 +278,7 @@ function render_opcodes(main) {
       if (activeStatus !== "all" && o.status !== activeStatus) visible = false;
       if (activeQuery) {
         const desc = lookupOpcodeDescription(o.names);
-        const hay = (o.names ? o.names.join(" ") : "") + " " + hex(o.handler) + " " + o.opcode.toString(16) + " " + (desc ? desc.title + " " + desc.text : "");
+        const hay = (o.names ? o.names.join(" ") : "") + " " + hex(o.handler) + " " + o.opcode.toString(16) + " " + (desc ? desc.title + " " + desc.summary + " " + desc.text : "");
         if (!hay.toLowerCase().includes(activeQuery)) visible = false;
       }
       cell.classList.toggle("dim", !visible);
@@ -263,15 +302,49 @@ function render_opcodes(main) {
     cells[o.opcode].style.outline = "2px solid var(--accent)";
     const detail = document.getElementById("opcodeDetail");
     const desc = lookupOpcodeDescription(o.names);
+    const detailId = "opcodeTechDetail_" + o.opcode;
     detail.innerHTML = `
       <h3 style="margin-top:0;">Opcode 0x${o.opcode.toString(16).toUpperCase().padStart(2, "0")}${desc ? " — " + escapeHtml(desc.title) : ""} <span class="badge ${o.status}">${o.status}</span></h3>
       <div class="mono" style="color:var(--accent2); font-size:14px; margin-bottom:8px;">Handler: ${hex(o.handler)}</div>
-      ${desc ? `<p style="color:var(--text); font-size:13.5px; max-width:680px; line-height:1.6;">${escapeHtml(desc.text)}</p>` : ""}
+      ${desc ? `<p style="color:var(--text); font-size:15px; max-width:680px; line-height:1.6; font-weight:500;">${escapeHtml(desc.summary)}</p>` : ""}
       ${o.names ? `<div style="margin-bottom:8px;">${o.names.map(n => `<span class="badge default" style="margin-right:6px;">${escapeHtml(n)}</span>`).join("")}</div>` : ""}
       ${o.note ? `<p style="color:var(--warn); font-size:13px; max-width:640px;">${escapeHtml(o.note)}</p>` : ""}
       ${(!o.names && o.status === "undecoded") ? `<p style="color:var(--text-dim); font-size:13px;">Kein registrierter Handler, keine bekannte Konstante &mdash; dieser Opcode ist bisher gar nicht untersucht oder nur teilweise disassembliert.</p>` : ""}
       ${(!desc && o.names && o.status === "decoded") ? `<p style="color:var(--text-faint); font-size:12px;">(Noch keine kuratierte Beschreibung für diese Konstante in <code>opcode-descriptions.js</code> &mdash; siehe Konstantennamen oben.)</p>` : ""}
+      ${desc ? `
+        <details style="margin-top:10px;">
+          <summary style="cursor:pointer; color:var(--text-dim); font-size:12.5px;">Technische Details (echte ROM-Adressen &amp; Nachweis)</summary>
+          <p id="${detailId}" style="color:var(--text-dim); font-size:12.5px; max-width:680px; line-height:1.6; margin-top:8px;"></p>
+        </details>` : ""}
     `;
+    if (desc) {
+      // Set via textContent + a small glossary-hover pass, not raw innerHTML,
+      // so the real technical text (containing real hex addresses, WRAM
+      // cells, etc.) can't accidentally be parsed as markup.
+      document.getElementById(detailId).innerHTML = glossarize(desc.text);
+    }
+  }
+
+  // Wraps the FIRST occurrence of each glossary term (js/data/
+  // opcode-descriptions.js's own OPCODE_GLOSSARY) in a real HTML
+  // `<abbr>` with the plain-language definition as a native browser
+  // tooltip -- so a reader hitting unfamiliar jargon INSIDE a
+  // technical-detail paragraph can hover it right there instead of
+  // needing to separately consult the glossary box above.
+  function glossarize(text) {
+    let html = escapeHtml(text);
+    if (typeof OPCODE_GLOSSARY === "undefined") return html;
+    for (const { term, def } of OPCODE_GLOSSARY) {
+      // Multi-word/compound display terms (e.g. "Pin / Pinning",
+      // "Dispatch(er)") match on their own FIRST plain word only --
+      // the glossary box above still shows the full term+definition,
+      // this inline hover is a convenience, not the source of truth.
+      const matchWord = term.split(/[\s/(]/)[0];
+      if (!matchWord) continue;
+      const re = new RegExp("\\b(" + matchWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\w*)\\b");
+      html = html.replace(re, `<abbr title="${escapeHtml(def)}" style="text-decoration-style:dotted; cursor:help;">$1</abbr>`);
+    }
+    return html;
   }
 
   if (focusOpcode !== null) {

@@ -7585,3 +7585,52 @@ pass. Website regenerated and Playwright-verified (13 candidate cards
 -- 12 graphics candidates + the pre-existing known-species canvas --
 render correctly with per-`kind` badges: "Monster-Kandidat"/"NPC-
 Kandidat"/"Icon-/Fragment-Sammlung", zero console errors).
+
+## Opcodes page readability rework (same-day follow-up)
+
+Direct user complaint about the ROM-inspector website's opcodes page:
+"das ist sehr kryptisch. vor allem die beschreibnbenden texte" (very
+cryptic, especially the descriptive texts). The 35 curated entries in
+`rom-inspector/js/data/opcode-descriptions.js` previously showed only
+a single dense technical writeup (real hex addresses, WRAM cells,
+bank numbers, jargon like "gate"/"sentinel byte"/"dispatch" used
+without definition) as both the grid-cell tooltip AND the detail-panel
+body -- readable to someone already deep in this project's own
+disassembly, not to a first-time visitor.
+
+Two-level restructure, data layer first, then UI:
+
+- `opcode-descriptions.js`: every entry now carries a NEW `summary`
+  field (one plain-language sentence, no hex/jargon) alongside the
+  existing `text` field (the original full technical writeup, kept
+  verbatim -- no information removed, only re-leveled). New
+  `OPCODE_GLOSSARY` array, 12 terms this project's own opcode writeups
+  actually use (Opcode, Handler, WRAM, Operand-Byte, Cursor, Bank,
+  Gate, Dispatch(er), Callback, Leaf, Sentinel-Byte, Pin/Pinning) with
+  plain-language definitions.
+- `rom-inspector/js/viz/opcodes.js` (this entry): wired the above into
+  the actual UI. `showOpcodeDetail()` now leads with `desc.summary`
+  (prominent styling) and moves the original `desc.text` into a
+  collapsible `<details><summary>Technische Details (echte ROM-
+  Adressen & Nachweis)</summary>` block -- the real technical evidence
+  stays fully available, just not forced on every visitor by default.
+  New `glossarize(text)` helper wraps recognized glossary terms inside
+  that technical text in `<abbr title="...">` for inline hover
+  definitions (matches on the term's first plain word, e.g. "Dispatch"
+  for "Dispatch(er)", so compound display terms still match real
+  prose). New `render_glossary()` renders a collapsible glossary box
+  (`#glossaryHost`, all 12 terms) above the opcode grid. Grid-cell
+  tooltips and the search filter now also use `desc.summary`; the
+  script-tracer's own per-step effect text switched from `desc.text`
+  to `desc.summary` (the tracer already shows many steps in a row --
+  the full technical text there was more noise than signal).
+
+Playwright-verified against a local static server: glossary box
+renders with all 12 terms, opcode-cell click shows the plain-language
+summary prominently, the "Technische Details" `<details>` toggles open
+and reveals the original technical text, a real glossary term inside
+that text (`abbr` on "WRAM") renders with its full definition as the
+hover title, search input still present and functional, zero console
+errors across 40 sampled opcode cells. `luajit tests/run_tests.lua`:
+481/481 still pass (this is a JS-only UI change, Lua suite unaffected,
+re-run anyway per this project's own discipline).

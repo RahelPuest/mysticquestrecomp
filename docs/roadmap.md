@@ -1674,6 +1674,22 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   bearing banks -- every other bank confirmed to hold none. 481/481
   tests still pass; website re-verified (13 cards, per-kind badges,
   zero console errors).
+- **2026-08-16, task #153, opcodes page readability rework**: direct
+  user complaint that the rom-inspector opcodes page is "sehr
+  kryptisch, vor allem die beschreibnbenden texte". Data layer:
+  `opcode-descriptions.js`'s 35 curated entries each got a new
+  plain-language `summary` field alongside the original dense `text`
+  writeup (kept in full, not trimmed), plus a new 12-term
+  `OPCODE_GLOSSARY`. UI layer: `opcodes.js`'s detail panel now leads
+  with `summary` and tucks the original technical writeup into a
+  collapsible "Technische Details" block whose glossary terms render
+  as hoverable `<abbr>` tooltips; a new collapsible glossary box sits
+  above the grid; grid tooltips, search, and the script-tracer's own
+  step text switched to `summary`. Playwright-verified end to end
+  (glossary box renders, summary shown prominently, details toggle
+  reveals the technical text, a real glossary term's `<abbr>` carries
+  its full definition, zero console errors across 40 sampled cells).
+  481/481 tests still pass (JS-only change, Lua suite unaffected).
 
 ## Superseded by this file
 
