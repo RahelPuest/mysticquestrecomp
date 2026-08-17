@@ -2959,203 +2959,169 @@ RomProfiles.PROFILES = {
       tilesetFileOffset = 0x30000,
     },
 
-    -- A THIRD real map/room-block table -- bank 7, the OTHER real
-    -- encoding this ROM's own per-map header names (`encodingMode=1`,
-    -- "Templated" -- see `MapTable.readMapHeader`'s own doc comment).
-    -- Found the same way as `mapTableBank6` (scan every bank's first 4
-    -- bytes for the documented `[encodingMode, rleLength, h, w]` shape):
-    -- `01 04 08 08` at file `0x1C000`.
+    -- A THIRD map/room-block table -- bank 7, the other encoding this
+    -- ROM's per-map header names (encodingMode=1, "Templated" -- see
+    -- MapTable.readMapHeader's own doc comment). Found the same way as
+    -- mapTableBank6: 01 04 08 08 at file 0x1C000.
     --
-    -- CRACKED end to end (2026-08-14, direct user instruction "weiter
-    -- bohren bis es fertig ist" -- see rom-map.md's own "bank 7
-    -- Templated revisited, CRACKED" section for the full evidence
-    -- trail). Structural shape (all boundaries land exactly, zero slack
-    -- bytes): 4-byte header, then a 2-byte base-room TEMPLATE pointer
-    -- (`0x411e`, CPU addr -> file `0x1C11E`), then a 24-byte per-map
-    -- door-data block (raw bytes captured, semantic bit layout NOT
-    -- decoded), then the usual 64-record `(headerPtr,dataPtr)` pointer
-    -- list starting at file `0x1C01E` (same shape/count as bank 6's own
-    -- table) -- ending EXACTLY at the template pointer's own file
-    -- offset, `0x1C11E`, with zero gap. RLE-decoding the template
-    -- (`MapTable.rleDecode`, this map's own `rleLength=4`) produces
-    -- exactly 80 tiles, consuming exactly enough bytes to land
-    -- precisely on record 0's own header pointer (`0x1C14A`) -- a
-    -- second independently-derived boundary match.
+    -- CRACKED end to end (direct user instruction to keep drilling
+    -- until finished -- see rom-map.md's "bank 7 Templated revisited,
+    -- CRACKED" section). Structural shape (all boundaries land exactly,
+    -- zero slack): 4-byte header, then a 2-byte base-room template
+    -- pointer (0x411e -> file 0x1C11E), then a 24-byte per-map door-
+    -- data block (bytes captured, bit layout not decoded), then the
+    -- usual 64-record (headerPtr,dataPtr) pointer list starting at file
+    -- 0x1C01E -- ending exactly at the template pointer's own file
+    -- offset, zero gap. RLE-decoding the template (rleLength=4)
+    -- produces exactly 80 tiles, landing precisely on record 0's own
+    -- header pointer -- a second independently-derived boundary match.
     --
-    -- Each of the 64 records' own data blob is a real DIFF against that
-    -- shared base template (`MapTable.applyTemplatedDiff`): a 4-byte
-    -- per-record prefix (small values, not yet decoded -- plausibly
-    -- door/exit-flag data) followed by `(value, position)` byte pairs,
-    -- `position = (row<<4)|col`, terminated by position byte `0xFF`.
-    -- VERIFIED against all 64 real records: 566/566 real diff positions
-    -- decode to valid `(row,col)` pairs (zero exceptions), and every one
-    -- of the 64 reconstructed rooms renders as real, structurally
-    -- coherent, VISUALLY DISTINCT dungeon art (`tile_entropy()`
-    -- 1.30-1.40 bits, zero outliers -- plus direct PNG eyeballing of 6
-    -- spot-checked records, each genuinely different room content).
+    -- Each record's data blob is a diff against that shared base
+    -- template (MapTable.applyTemplatedDiff): a 4-byte per-record
+    -- prefix (small values, not decoded -- plausibly door/exit-flag
+    -- data) followed by (value, position) byte pairs, position =
+    -- (row<<4)|col, terminated by 0xFF. Verified against all 64
+    -- records: 566/566 diff positions decode to valid (row,col) pairs
+    -- (zero exceptions), and every reconstructed room renders as
+    -- structurally coherent, visually distinct dungeon art
+    -- (tile_entropy 1.30-1.40 bits, zero outliers).
     --
-    -- Tile ASSIGNMENT uses the same `genericCatalogMetatileTableFileOffset`
-    -- default as `mapTable`/`mapTableBank6` (not independently
-    -- ground-truth-verified against live gameplay -- no playthrough
-    -- reaches these rooms).
+    -- Tile assignment uses the same genericCatalogMetatileTableFileOffset
+    -- default as mapTable/mapTableBank6 (not independently ground-truth-
+    -- verified -- no playthrough reaches these rooms).
     --
-    -- COLLISION CRACKED 2026-08-14 ("ok weiter mit tür und kollision"):
-    -- `RoomFloorLayout.buildCollisionGridFromMapTableRecord` dispatches
-    -- to `buildCollisionGridFromTemplatedMapTableRecord` for this table
-    -- now, same real per-metatile collision-byte lookup as bank 5/6 --
-    -- LIVE-VERIFIED via real `love .` screenshots (see rom-map.md's
-    -- "ok weiter mit tür und kollision" section), same honest
-    -- "extrapolated bank-5/6 rule, not ROM-confirmed" caveat as those
-    -- two tables (no gameplay reaches ANY of these rooms either).
+    -- COLLISION CRACKED (direct user instruction to continue with door
+    -- and collision): RoomFloorLayout.buildCollisionGridFromMapTableRecord
+    -- dispatches to buildCollisionGridFromTemplatedMapTableRecord for
+    -- this table, same per-metatile collision-byte lookup as bank 5/6 --
+    -- live-verified via real love . screenshots, same honest
+    -- "extrapolated bank-5/6 rule, not ROM-confirmed" caveat.
     --
-    -- DOOR BYTES: real structural progress, honestly still not decoded.
-    -- Each record's own 4-byte prefix is a remarkably clean 8-value
-    -- alphabet across all 256 real bytes (`{0,1,2,5,8,9,12,13}`, zero
-    -- outliers): `bits0-1` is ALWAYS 0/1/2 (never the 4th 2-bit
-    -- combination), matching the external FFA-Disassembly doc's own
-    -- claimed "open/closed/wall" 3-state layout; `bits2-7` is ALWAYS
-    -- 0-3 (240/256 bytes are 0). The map-level 24-byte block does NOT
-    -- share this pattern (wider ranges on both fields) -- genuinely
-    -- different data, not the same format repeated. See rom-map.md's
-    -- own dated section for the full statistical breakdown. NOT
-    -- implemented as door/exit behavior: no live bank-7 gameplay exists
-    -- to confirm which byte is which direction or what each state value
-    -- means, and this project does not fabricate ROM behavior past what
-    -- can be checked.
+    -- DOOR BYTES: real structural progress, still not decoded. Each
+    -- record's 4-byte prefix is a clean 8-value alphabet across all 256
+    -- bytes ({0,1,2,5,8,9,12,13}, zero outliers): bits0-1 is always
+    -- 0/1/2 (never the 4th combination), matching the external FFA-
+    -- Disassembly doc's claimed "open/closed/wall" 3-state layout;
+    -- bits2-7 is always 0-3 (240/256 bytes are 0). The map-level 24-byte
+    -- block doesn't share this pattern -- genuinely different data. See
+    -- rom-map.md for the full statistical breakdown. Not implemented as
+    -- door/exit behavior: no live bank-7 gameplay exists to confirm
+    -- which byte is which direction or what each value means.
     mapTableBank7 = {
       status = "VERIFIED end to end (Templated/mode-1 structure + base-template/diff tile decode AND " ..
-        "collision, 2026-08-14); tile ASSIGNMENT uses genericCatalogMetatileTableFileOffset like " ..
+        "collision); tile ASSIGNMENT uses genericCatalogMetatileTableFileOffset like " ..
         "mapTable/mapTableBank6, not independently ground-truth-verified against live gameplay; " ..
         "door-data bytes (map-level 24 + per-record 4) show a real, clean statistical structure " ..
         "(see doc comment) but remain semantically undecoded -- no live gameplay to confirm against",
       bankFileStart = 0x1C000,
       bank = 7,
-      -- The record-pointer list itself starts at +30 (4-byte header + 2-byte
-      -- template pointer + 24-byte door data), NOT +4 like mapTable/mapTableBank6 --
-      -- a real, Templated-mode-specific structural difference (see doc
-      -- comment above), not a typo.
+      -- The record-pointer list itself starts at +30 (4-byte header +
+      -- 2-byte template pointer + 24-byte door data), not +4 like
+      -- mapTable/mapTableBank6 -- a Templated-mode-specific structural
+      -- difference, not a typo.
       pointerTableFileOffset = 0x1C01E,
       recordCount = 64,
-      -- Shares the SAME real tileset as bank 5/6's own tables.
+      -- Shares the same tileset as bank 5/6's tables.
       --
-      -- CORRECTED (2026-08-17): same fix as `mapTable`/`mapTableBank6`
-      -- above -- kept consistent with them (this table was always
-      -- assumed to share their exact tileset, never independently
-      -- derived on its own terms), even though which real roomSelector
-      -- family bank 7 itself corresponds to is honestly less
+      -- CORRECTED: same fix as mapTable/mapTableBank6 above -- kept
+      -- consistent with them (this table was always assumed to share
+      -- their tileset, never independently derived), even though which
+      -- roomSelector family bank 7 corresponds to is honestly less
       -- established than bank 5/6's own roomSelector-0/1 identification.
       tilesetFileOffset = 0x30000,
     },
 
-    -- The REAL room-connectivity table -- see docs/reverse-engineering/
+    -- The real room-connectivity table -- see docs/reverse-engineering/
     -- rom-map.md "BREAKTHROUGH: the real room table, found" and "The
-    -- bank-8 room table, fully documented" (2026-08-10). VERIFIED via
-    -- BOTH a static ROM dump and TWO independent live `CallTracer`
-    -- traces (the post-victory staircase, and a completely separate
-    -- pre-combat transition) hitting the exact same code
-    -- (`$04138->$02B70->$026DC->$01AF3`, bank-resolved). This is a
-    -- real, general, `roomSelector`-indexed table the ROM itself uses
-    -- to load rooms -- NOT this project's own invention, and NOT the
-    -- long-searched-for bank-5 table (which remains unidentified in
-    -- purpose). Table length (16, not a full byte range) is itself a
-    -- real, derived fact: byte 6 of each record must be a valid MBC
-    -- bank number, and this ROM has exactly 16 banks -- record 16
-    -- onward immediately produces impossible bank numbers, confirming
-    -- the table's real end (see rom-map.md for the full reasoning, "a
-    -- table's real length must be independently bounded" as the
-    -- general lesson).
+    -- bank-8 room table, fully documented". VERIFIED via both a static
+    -- ROM dump and two independent live CallTracer traces (the post-
+    -- victory staircase, and a separate pre-combat transition) hitting
+    -- the exact same code ($04138->$02B70->$026DC->$01AF3, bank-
+    -- resolved). A real, general, roomSelector-indexed table the ROM
+    -- uses to load rooms -- not this project's invention, and not the
+    -- long-searched-for bank-5 table (purpose remains unidentified).
+    -- Table length (16, not a full byte range) is itself derived: byte
+    -- 6 of each record must be a valid MBC bank number, and this ROM
+    -- has exactly 16 banks -- record 16 onward immediately produces
+    -- impossible bank numbers, confirming the table's real end.
     --
-    -- `src/import/RoomSelectorTable.lua` is the generic (non-ROM-
-    -- specific) decoder; nothing about the 11-byte stride or field
-    -- meanings is hardcoded here, only real offsets/values.
+    -- src/import/RoomSelectorTable.lua is the generic decoder; nothing
+    -- about the 11-byte stride or field meanings is hardcoded here,
+    -- only real offsets/values.
     roomSelectorTable = {
       status = "VERIFIED",
       bank = 8,
       fileOffset = 0x20000,
       recordLength = 11,
       recordCount = 16,
-      -- Real per-record field layout (byte offsets within each 11-byte
-      -- record), from the live-traced `$026DC` lookup routine:
-      --   bytes 0-1: 16-bit LE offset, added to $4000 to form the `HL`
-      --     parameter to $01AF3 (committed to WRAM $D390/$D391 -- a
-      --     real pointer this project had not named before this pass).
+      -- Per-record field layout (byte offsets within each 11-byte
+      -- record), from the live-traced $026DC lookup routine:
+      --   bytes 0-1: 16-bit LE offset, added to $4000 to form the HL
+      --     parameter to $01AF3 (committed to WRAM $D390/$D391).
       --   byte 2: not consumed by $026DC/$01AF3 -- meaning unknown.
-      --   bytes 3-4: 16-bit LE value, the `DE` parameter to $01AF3 --
-      --     committed to WRAM $D392/$D393, the ALREADY-KNOWN real
-      --     room tile-source pointer (used by this project's whole
-      --     room-chain implementation already).
+      --   bytes 3-4: 16-bit LE value, the DE parameter to $01AF3 --
+      --     committed to WRAM $D392/$D393, the already-known room
+      --     tile-source pointer.
       --   byte 5: not consumed by $026DC/$01AF3 -- meaning unknown.
-      --   byte 6: the real dynamic MBC bank number, committed to WRAM
-      --     $C3F0 (the already-known trampoline bank-select flag).
+      --   byte 6: the dynamic MBC bank number, committed to WRAM $C3F0
+      --     (the already-known trampoline bank-select flag).
       --   bytes 7-8: 16-bit LE pointer, staged to WRAM $C3F2/$C3F3, THEN
-      --     dereferenced by $026DC's own tail: 4 real bytes are copied
-      --     from it into $C3F8-$C3FB (a real stream-cursor read, the
-      --     pointer is advanced past them afterward). CONFIRMED
-      --     (2026-08-10, direct user hypothesis "sind das room states"):
-      --     $C3F8 is the ALREADY-KNOWN gate/enable flag $235B (the
-      --     door-open check, found earlier this session) reads before
-      --     proceeding -- i.e. THIS is the real mechanism giving each
-      --     roomSelector its own per-instance "state" (a real, live
-      --     confirmation of the room-states hypothesis, even though
-      --     $C3F9-$C3FB's own individual roles weren't traced). See
-      --     rom-map.md "Direct user hypothesis, checked and confirmed".
-      --   bytes 9-10: never read by $026DC/$01AF3 in this pass's trace
-      --     -- meaning unknown, real bytes, not guessed at.
+      --     dereferenced by $026DC's own tail: 4 bytes are copied from
+      --     it into $C3F8-$C3FB (a stream-cursor read, pointer advanced
+      --     past them afterward). CONFIRMED (direct user hypothesis
+      --     that these might be "room states"): $C3F8 is the already-
+      --     known gate/enable flag $235B (the door-open check) reads
+      --     before proceeding -- the real mechanism giving each
+      --     roomSelector its own per-instance state, even though
+      --     $C3F9-$C3FB's individual roles weren't traced.
+      --   bytes 9-10: never read by $026DC/$01AF3 in this trace --
+      --     meaning unknown, real bytes, not guessed at.
       --
-      -- FOLLOW-UP (2026-08-11, pure static disassembly, see rom-map.md
-      -- "Following $C3F8's consumers"): $235B(A=direction), when its
-      -- own $C3F8 flag is nonzero, switches to THIS record's `byte 6`
+      -- FOLLOW-UP (pure static disassembly): $235B(A=direction), when
+      -- its own $C3F8 flag is nonzero, switches to this record's byte 6
       -- dynamic bank and reads a small per-direction 16-bit value from
-      -- `ptr+2+selector*2` (selector 0-3, chosen by which bit of A is
-      -- set) -- i.e. a real, traced READ from the dynamic bank (bank 5
-      -- for records 0/9). That value is then fed into $05BB (the
-      -- ALREADY-KNOWN "$D392:$D393 + A*6" source-address formula) as an
-      -- INDEX, not used as tile data directly -- the real tile bytes
-      -- drawn always come from hardcoded bank 8 via $D392/$D393, same
-      -- pipeline as every other confirmed room/patch draw. Reframes
-      -- bank 5's likely purpose: small per-exit index/reference
-      -- metadata selecting which bank-8 tile-patch block to reveal, NOT
-      -- raw room tile art -- a plausible explanation for why bank 5's
-      -- 255 RLE records never matched any known real room's pixels.
-      -- Not live-verified this pass (deliberately static-only); see
-      -- rom-map.md for the full call chain and open ends.
+      -- ptr+2+selector*2 (selector 0-3, chosen by which bit of A is
+      -- set) -- a traced read from the dynamic bank (bank 5 for records
+      -- 0/9). That value is fed into $05BB (the already-known
+      -- "$D392:$D393 + A*6" source-address formula) as an INDEX, not
+      -- used as tile data directly -- the tile bytes drawn always come
+      -- from hardcoded bank 8 via $D392/$D393, same pipeline as every
+      -- other confirmed room/patch draw. Reframes bank 5's likely
+      -- purpose: small per-exit index/reference metadata selecting
+      -- which bank-8 tile-patch block to reveal, not raw room tile art
+      -- -- a plausible explanation for why bank 5's 255 RLE records
+      -- never matched any known room's pixels. Deliberately static-only
+      -- this pass; see rom-map.md for the full call chain and open ends.
       --
-      -- RESOLVED (2026-08-11, same day, "loese die offenen Fragen"):
-      -- $235B/$22FE are a real, confirmed matched "open exit"/"close
-      -- exit" SCRIPT OPCODE pair (found via the project's own
-      -- ScriptOpcodeTable dispatch shape), called with a one-hot
+      -- RESOLVED (same day, direct user instruction to resolve the open
+      -- questions): $235B/$22FE are a confirmed matched "open exit"/
+      -- "close exit" script opcode pair, called with a one-hot
       -- direction arg -- exhaustively found via whole-ROM scan, exactly
-      -- 4 real call sites each: A=0x04->North, A=0x02->West,
-      -- A=0x01->East, A=0x08(default)->South (derived from the fixed
-      -- per-direction screen-cursor tables via $045D's row/col
-      -- formula). This whole mechanism only ever runs from room-script
-      -- bytecode, never generic per-frame code. Also exhaustively
-      -- searched all 5 real callers of $26DC (roomSelectorTable
-      -- dispatch): 3 hardcode index=7; the other 2 derive the index
-      -- DYNAMICALLY from a script/data-cursor byte or an inherited
-      -- register argument -- neither literally hardcodes 0 or 9
-      -- anywhere in the ROM. So index 0/9 selection is genuinely
-      -- script/data-driven, not a fixed code branch -- explains why
-      -- live play never observed it (this project has never triggered
-      -- whichever specific script/event data contains that byte). See
+      -- 4 call sites each: A=0x04->North, A=0x02->West, A=0x01->East,
+      -- A=0x08(default)->South. This mechanism only ever runs from
+      -- room-script bytecode, never generic per-frame code. Also
+      -- exhaustively searched all 5 callers of $26DC: 3 hardcode
+      -- index=7; the other 2 derive the index dynamically from a
+      -- script/data-cursor byte or an inherited register argument --
+      -- neither literally hardcodes 0 or 9 anywhere. So index 0/9
+      -- selection is genuinely script/data-driven, not a fixed code
+      -- branch -- explains why live play never observed it. See
       -- rom-map.md "Resolving the 3 open ends" for the full trace.
       --
-      -- Cross-reference to this project's own already-implemented
-      -- rooms (`graphics` above), live-confirmed (marked "live") or
-      -- inferred from the shared tile-source pointer alone (marked
-      -- "static-only", a real but less rigorously confirmed link --
-      -- see rom-map.md's own honesty note on this distinction):
+      -- Cross-reference to this project's own implemented rooms
+      -- (graphics above), live-confirmed (marked "live") or inferred
+      -- from the shared tile-source pointer alone (marked "static-
+      -- only", a real but less rigorously confirmed link):
       --
-      -- `dynamicBank` (added 2026-08-11, read directly from byte 6 of
-      -- each real 11-byte record via a fresh file-level dump -- NOT
-      -- live-traced, purely static, see rom-map.md "Bank 5 revisited"):
-      -- the real MBC bank each roomSelector switches in before
-      -- resolving its `ptr` field. Full column: 5,6,7,7,7,7,7,7,6,5,6,
-      -- 7,7,7,6,6. Recorded here because it closes an exhaustive static
-      -- search for bank 5's only access point in the whole ROM: indices
-      -- 0 and 9 are the ONLY two places anywhere that ever switch bank
-      -- 5 in (confirmed by two independent whole-ROM byte-pattern
-      -- scans finding zero hardcoded/direct bank-5 switches elsewhere).
+      -- dynamicBank (read directly from byte 6 of each 11-byte record
+      -- via a file-level dump -- not live-traced, purely static): the
+      -- MBC bank each roomSelector switches in before resolving its ptr
+      -- field. Full column: 5,6,7,7,7,7,7,7,6,5,6,7,7,7,6,6. Recorded
+      -- here because it closes an exhaustive static search for bank 5's
+      -- only access point in the whole ROM: indices 0 and 9 are the
+      -- only two places anywhere that ever switch bank 5 in (confirmed
+      -- by two independent whole-ROM byte-pattern scans finding zero
+      -- hardcoded bank-5 switches elsewhere).
       knownRooms = {
         -- roomSelector 0,1 -> tileSourcePointer 0xB040. LIVE-CONFIRMED
         -- (roomSelector=1, via $C3F5, in TWO separate CallTracer
