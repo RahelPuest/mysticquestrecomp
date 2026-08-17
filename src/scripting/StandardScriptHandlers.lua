@@ -2410,35 +2410,32 @@ function StandardScriptHandlers.actorActionWithReadinessParam(group, offset, isR
 end
 
 --- Real "opcode self-mirror, ZERO real operand bytes" handler (opcode
--- `0xCC`, real ROM `$3AA3`, found 2026-08-14 -- the whole-corpus
--- scan's own next real untouched blocker after `0x7A`/`0x7B`).
--- Byte-for-byte, the ENTIRE real handler:
+-- 0xCC, ROM $3AA3, found -- the whole-corpus scan's own next
+-- untouched blocker after 0x7A/0x7B). Byte-for-byte, the entire
+-- handler:
 --   DEC HL / CALL $3727 / RET
--- `$3727` is this project's own already-known general "fetch one byte,
--- remember it in `$D85A`, cache the advanced HL into `$D8B6`/`$D8B7`"
--- primitive (see `ScriptInterpreter.lua`'s own header doc comment --
--- the SAME real routine the interpreter's own dispatch loop uses to
--- fetch every opcode byte in the first place). The leading `DEC HL`
--- rewinds the cursor by exactly 1 byte BEFORE that fetch -- and since
--- `$3727`'s own fetch re-advances HL by 1, the two cancel out: the
--- NET real cursor effect is ZERO, i.e. this opcode consumes no real
--- operand bytes at all. What actually gets (re-)read is the opcode's
--- OWN byte value: on entry, `HL` already points PAST the opcode byte
--- (the interpreter's own standard convention -- see
--- `ScriptInterpreter:step`), so `DEC HL` moves it back ONTO the
--- opcode byte itself. This handler's real, sole effect is therefore
--- to re-mirror its own opcode byte into `$D85A`/`$D8B6`/`$D8B7`.
--- HYPOTHESIS on the real-world PURPOSE (plausibly some generic "last
--- dispatched opcode" bookkeeping a different real routine reads
--- later) -- the MECHANISM itself is fully, decisively traced from
--- real bytes, not guessed. `onMirror(ownOpcodeByte)` is optional,
--- fires once per real dispatch with the real byte read from
--- `stream[cursor - 1]` (the exact same real byte the interpreter's
--- own dispatch already consumed to reach this handler in the first
--- place -- a legitimate lookback, not a guess, since `stream` supports
--- direct indexing by real CPU address per `ScriptInterpreter.fetch`'s
--- own doc comment) -- purely an observability hook, never affects the
--- returned cursor.
+-- $3727 is this project's already-known general "fetch one byte,
+-- remember it in $D85A, cache the advanced HL into $D8B6/$D8B7"
+-- primitive (see ScriptInterpreter.lua's own header doc comment -- the
+-- same routine the interpreter's dispatch loop uses to fetch every
+-- opcode byte in the first place). The leading DEC HL rewinds the
+-- cursor by exactly 1 byte before that fetch -- and since $3727's own
+-- fetch re-advances HL by 1, the two cancel out: the net cursor effect
+-- is zero, this opcode consumes no operand bytes at all. What actually
+-- gets (re-)read is the opcode's own byte value: on entry, HL already
+-- points past the opcode byte (the interpreter's standard convention
+-- -- see ScriptInterpreter:step), so DEC HL moves it back onto the
+-- opcode byte itself. This handler's sole effect is therefore to
+-- re-mirror its own opcode byte into $D85A/$D8B6/$D8B7. HYPOTHESIS on
+-- the real-world purpose (plausibly some generic "last dispatched
+-- opcode" bookkeeping a different routine reads later) -- the
+-- mechanism itself is fully traced from real bytes, not guessed.
+-- onMirror(ownOpcodeByte) is optional, fires once per dispatch with
+-- the byte read from stream[cursor - 1] (the exact same byte the
+-- interpreter's dispatch already consumed to reach this handler --
+-- a legitimate lookback, since stream supports direct indexing by CPU
+-- address per ScriptInterpreter.fetch's own doc comment) -- purely an
+-- observability hook, never affects the returned cursor.
 function StandardScriptHandlers.opcodeByteMirror(onMirror)
   return function(stream, cursor)
     if onMirror then
@@ -2448,65 +2445,61 @@ function StandardScriptHandlers.opcodeByteMirror(onMirror)
   end
 end
 
---- Real "SOFT RESET" handler (opcode `0xC8`, real ROM `$3BA9`, found
--- 2026-08-14 -- the whole-corpus scan's own next real untouched
--- blocker after `0xBE`). The ENTIRE real handler is 3 bytes:
+--- Real "SOFT RESET" handler (opcode 0xC8, ROM $3BA9, found -- the
+-- whole-corpus scan's own next untouched blocker after 0xBE). The
+-- entire handler is 3 bytes:
 --   JP $0150
--- A DECISIVE, byte-for-byte cross-check against the ROM's own real
--- cartridge header confirms this is not a coincidence: `$0100`
--- (the real GB hardware entry vector every cartridge boots through)
--- is `NOP / JP $0150` -- the EXACT SAME 3 target bytes (`C3 50 01`)
--- this opcode jumps to. Following that target one level further:
--- `$0150` is `JP $1FCA`, and `$1FCA` is `DI / LD SP,0xFFFE / CALL
--- $1FF0 / EI / CALL $3153 / HALT` -- a genuine, real COLD-BOOT
--- sequence (disable interrupts, reset the stack pointer, run a real
--- init routine, re-enable interrupts, enter the main loop). **Real,
--- decisive conclusion**: opcode `0xC8` is a genuine, deliberate,
--- real "restart the entire game" script command -- NOT a normal
--- script continuation. Once dispatched, real control leaves the
--- script-interpreter system PERMANENTLY (there is no `RET`, no
--- `$3727` fetch-next-opcode anywhere in this chain) -- plausibly used
--- for a real game-over-into-title-screen flow or similar, though this
--- project doesn't have live evidence of WHICH real script content
--- reaches it, only that ≥1 real script in the corpus does (the
--- whole-corpus scan's own census).
+-- A decisive, byte-for-byte cross-check against the ROM's own
+-- cartridge header confirms this isn't a coincidence: $0100 (the GB
+-- hardware entry vector every cartridge boots through) is NOP / JP
+-- $0150 -- the exact same 3 target bytes (C3 50 01) this opcode jumps
+-- to. Following that target one level further: $0150 is JP $1FCA, and
+-- $1FCA is DI / LD SP,0xFFFE / CALL $1FF0 / EI / CALL $3153 / HALT --
+-- a genuine cold-boot sequence (disable interrupts, reset the stack
+-- pointer, run an init routine, re-enable interrupts, enter the main
+-- loop). Decisive conclusion: opcode 0xC8 is a deliberate "restart the
+-- entire game" script command -- not a normal script continuation.
+-- Once dispatched, control leaves the script-interpreter system
+-- permanently (no RET, no $3727 fetch-next-opcode anywhere in this
+-- chain) -- plausibly used for a game-over-into-title-screen flow or
+-- similar, though there's no live evidence of which script content
+-- reaches it, only that >=1 script in the corpus does (the whole-
+-- corpus scan's census).
 --
--- HONEST MODELING LIMIT: this project's own interpreter model
--- represents an opcode's real effect as "return the next cursor" --
--- it has no way to represent "leave the interpreter forever and jump
--- to unrelated, non-script CPU code" through that same interface.
--- This handler therefore does the most honest thing available: fires
--- `onReset()` (a REQUIRED real side-effect hook -- an actual live
--- caller MUST use this to trigger its own real restart, e.g.
--- re-loading the title screen / resetting game state; there is no
--- sane default), then returns the SAME cursor it received (the real
--- ROM reads zero operand bytes -- `JP` takes none). The returned
--- cursor is a `scan_all_scripts.lua`-classification convenience only
--- (lets this opcode register as `clean` rather than a permanent
--- `halt_undecoded` entry) -- any REAL caller invoking `onReset()`
--- should treat that call as having already ended the script, exactly
--- like the real ROM does, and not attempt further stream processing
--- past this point.
---- Real "budget countdown, SET/CLEAR flag bit" handler (opcode `0xD1`,
--- real ROM `$3A72`, found 2026-08-14 -- the whole-corpus scan's own
--- next real untouched blocker after `0xE7`). Byte-for-byte:
---   LD E,(HL+) / LD D,(HL+)                 ; real operand: DE, LITTLE-endian
---   HL = ($D7BE/$D7BF as 16-bit) - DE       ; a real 16-bit subtract
+-- HONEST MODELING LIMIT: this project's interpreter model represents
+-- an opcode's effect as "return the next cursor" -- it has no way to
+-- represent "leave the interpreter forever and jump to unrelated,
+-- non-script CPU code" through that same interface. This handler does
+-- the most honest thing available: fires onReset() (a required side-
+-- effect hook -- a live caller must use this to trigger its own
+-- restart, e.g. re-loading the title screen / resetting game state;
+-- no sane default), then returns the same cursor it received (the ROM
+-- reads zero operand bytes -- JP takes none). The returned cursor is a
+-- scan_all_scripts.lua-classification convenience only (lets this
+-- opcode register as clean rather than a permanent halt_undecoded
+-- entry) -- any real caller invoking onReset() should treat that call
+-- as having already ended the script, exactly like the ROM does, and
+-- not attempt further stream processing past this point.
+--- Real "budget countdown, SET/CLEAR flag bit" handler (opcode 0xD1,
+-- ROM $3A72, found -- the whole-corpus scan's own next untouched
+-- blocker after 0xE7). Byte-for-byte:
+--   LD E,(HL+) / LD D,(HL+)                 ; operand: DE, little-endian
+--   HL = ($D7BE/$D7BF as 16-bit) - DE       ; a 16-bit subtract
 --   JR NC,<sufficient>                       ; branch on whether it underflowed
 --   <exhausted>: $D7BF/$D7BE = HL (the wrapped result) / CALL $3BF9(A=6)  ; CLEAR flag bit 6
 --   <sufficient>: CALL $3BEF(A=6)                                         ; SET flag bit 6
 --   (both) CALL $3117 / POP HL / CALL $3727 / RET
--- `$3BEF`/`$3BF9` were PREVIOUSLY flagged as untraced (see
--- `.gatedByteLeafCommand`'s own doc comment, which conservatively
--- halts rather than guess at them) -- fully resolved THIS pass: both
--- call a shared resolver (`$3602`) that turns a 0-127 bit INDEX (the
--- fixed `A` parameter) into a real `(address, bitmask)` pair over a
--- 16-byte, 128-bit WRAM flag array at `$D7C6`-`$D7D5` -- `$3BEF` then
--- ORs the bitmask in (SET), `$3BF9` ANDs the complement in (CLEAR).
--- Exactly this project's own already-established "resolve index to
--- (address, bitmask), OR to set / AND-complement to clear" convention
--- (see `.setFlagBit`/`.clearFlagBit`), just a different real base
--- table. `$3117` (the shared tail both branches reach) is a further
+-- $3BEF/$3BF9 were previously flagged as untraced (see
+-- .gatedByteLeafCommand's own doc comment, which conservatively halts
+-- rather than guess at them) -- fully resolved this pass: both call a
+-- shared resolver ($3602) that turns a 0-127 bit index (the fixed A
+-- parameter) into an (address, bitmask) pair over a 16-byte, 128-bit
+-- WRAM flag array at $D7C6-$D7D5 -- $3BEF then ORs the bitmask in
+-- (SET), $3BF9 ANDs the complement in (CLEAR). Exactly this project's
+-- already-established "resolve index to (address, bitmask), OR to set
+-- / AND-complement to clear" convention (see .setFlagBit/
+-- .clearFlagBit), just a different base table. $3117 (the shared tail
+-- both branches reach) is a further
 -- real trampoline into the already-known `$1F06` cross-bank dispatcher
 -- (selector `0x26`, bank 2) -- NOT traced further this pass (its own
 -- real-world meaning is HYPOTHESIS, matching this project's own
