@@ -1033,114 +1033,47 @@ RomProfiles.PROFILES = {
         exits = {
           {
             status = "VERIFIED",
-            -- CORRECTED (2026-08-10, found while re-verifying the
-            -- willyRoom exit above for the same user report): `zone` had
-            -- no `xMin`/`xMax` at all, so ANY x position satisfied it as
-            -- soon as y fell in 60-68 -- harmless by accident while this
-            -- project's own landingY for the north-door exit happened to
-            -- be far outside that band (the old, wrong 136), but exposed
-            -- the instant that was corrected to a real, in-range value
-            -- (96): simply walking straight UP from the door now crossed
-            -- y=60-68 near the WEST wall and immediately (wrongly)
-            -- fired this EAST exit -- live-reproduced via a scripted
-            -- UP-only hold that reached `thirdRoom` without ever
-            -- pressing RIGHT.
-            --
-            -- CORRECTED AGAIN (2026-08-10, direct user report: "ich kann
-            -- jetzt nicht mehr vom npc in den treppen raum laufen"): the
-            -- first fix's `xMin=136` broke the exit entirely instead --
-            -- checked directly against this room's own
-            -- `TileWalkability`/`floorTileIds` and x>=129 is WALL for
-            -- the whole y=60-68 band (a decorative pillar), i.e. the
-            -- player can never physically stand at x=136 there at all.
-            -- `xMin=110` instead: real open floor the whole way from
-            -- there to the room's own reachable maximum (128, confirmed
-            -- via the same `TileWalkability` check) at this y band, and
-            -- still comfortably clear of the door's own landing spot
-            -- (x=72, see willyRoom's own exit above) so a straight walk
-            -- up from the door no longer false-triggers this exit.
+            -- Real working zone (`xMin=110`, y=60-68): an earlier
+            -- unbounded `zone` (no xMin/xMax) let a straight walk up
+            -- from the door false-trigger this east exit; a first fix
+            -- (`xMin=136`) then landed on a wall tile the player can
+            -- never stand on. `xMin=110` is real open floor the whole
+            -- way to this room's own reachable max (128) at this y band.
             zone = { xMin = 110, yMin = 60, yMax = 68 },
-            -- totalPixels=160: CODE-VERIFIED as the ROM's own hardcoded
-            -- horizontal-scroll constant (one full screen width, not a
-            -- per-room field), see the schema comment on willyRoom's
-            -- own exits above.
+            -- totalPixels=160: code-verified as the ROM's own hardcoded
+            -- horizontal-scroll constant (one screen width), see the
+            -- schema comment on willyRoom's own exits above.
             transition = { type = "scroll", axis = "x", totalPixels = 160, pixelsPerFrame = 4 },
             targetRoom = "thirdRoom",
-            -- CORRECTED AGAIN (2026-08-17, direct user report: "die end
-            -- position im third room ist falsch. das sollte nicht die
-            -- mitte des raums sein sondern in dem türdurchgang"): the
-            -- (80,64) below (this project's own prior pass, dated
-            -- 2026-08-10) turned out to be a real methodology bug, not a
-            -- ROM fact -- it was captured by `checkpoints.third_room_
-            -- free()`, which deliberately holds RIGHT for 200 frames
-            -- AFTER the scroll settles, to walk the player clear of the
-            -- landing spot for later, unrelated investigation
-            -- convenience. That extra ~160px of self-inflicted walking
-            -- (well past the scroll's own 40-frame/160px duration) got
-            -- mistakenly recorded as if it were the landing position
-            -- itself, instead of stopping measurement the instant
-            -- control genuinely returns to the player.
+            -- Real landing (0,64), re-measured after an earlier pass
+            -- (80,64) turned out to be a methodology bug: the checkpoint
+            -- used to capture it deliberately walks 200 frames past the
+            -- landing spot for unrelated investigation convenience, and
+            -- that extra walking got recorded as if it were the landing
+            -- position. Re-measured by releasing RIGHT the instant SCX
+            -- settles at 160 and confirming no drift over 40 more
+            -- frames. X=0 is thirdRoom's own real west edge (the door
+            -- threshold), landing on real verified floor tile 151.
             --
-            -- Re-measured properly this pass: released RIGHT on the
-            -- EXACT frame the real SCX shadow (`$C0A6`) reaches its
-            -- settled 160 (same signal used before, just not walked
-            -- past this time), then confirmed via 40 further real
-            -- frames with ZERO input that the real position (`$C245`=X,
-            -- `$C244`=Y) does NOT drift -- a genuine stable settle, not
-            -- a mid-transition reading. Real result: (0,64), not
-            -- (80,64) -- Y=64 was already correct both times; only X
-            -- was wrong. X=0 is thirdRoom's own real west edge (the
-            -- door threshold this room is entered through, scrolling in
-            -- from `secondRoom`), landing cleanly on real, already-
-            -- verified floor tile 151 (see this room's own `grid`/
-            -- `floorTileIds` below) -- exactly matching the user's own
-            -- description, not a coincidence.
-            --
-            -- CODE-VERIFIED (2026-08-17, same pass, direct user follow-
-            -- up "kann das auch mit dem rom code verifiziert werden?"):
-            -- a real `Watcher`+`CallTracer` write-watchpoint trace on
-            -- `$C245`/`$C244` (bank-accurate, single-SM83-instruction
-            -- granularity) across the whole scroll found TWO separate,
-            -- real, corroborating ROM mechanisms, not just one lucky
-            -- measurement:
-            --  1. The SAME generic per-frame position writer (fixed
-            --     bank 0, `$09a1`=Y/`$09a6`=X) that runs during ordinary
-            --     walking keeps running unchanged throughout the whole
-            --     scroll -- and its own real X writes decrement in
-            --     lockstep with `$C0A6` (SCX) climbing, an exact
-            --     `X = 160 - SCX` relationship confirmed frame-by-frame
-            --     the entire way (SCX=4->X=156, SCX=80->X=80, ...,
-            --     SCX=156->X=4->0) -- i.e. X=0 the instant SCX finishes
-            --     at 160 is real ROM arithmetic, not an artifact of
-            --     when the trace happened to sample it.
-            --  2. Immediately after, a SEPARATE, one-shot call chain
-            --     fires -- bank 1 `$4f0d`->`$4f48` into fixed-bank-0
-            --     `$29ba`->`$0611` (bank 1 is the SAME bank this file
-            --     already documents as hosting the real scroll-
-            --     completion routine `$46C4` elsewhere, so this is
-            --     consistent with, and now traces one level deeper
-            --     into, an already-known real mechanism) -- falling
-            --     through to `$0659`/`$065b` (`LD (HL),D` / `LD (HL),E`,
-            --     writing the DE register pair into an entity struct's
-            --     Y/X fields at a real `+4` byte offset), explicitly
-            --     RE-committing Y=64/X=0 via a call path never taken
-            --     during ordinary per-frame movement. This is the real
-            --     ROM's own "landing commit" step -- genuine, deliberate
-            --     ROM code, not a byproduct of generic walk math alone.
+            -- Code-verified via a Watcher+CallTracer write-watchpoint on
+            -- `$C245`/`$C244` across the whole scroll: (1) the generic
+            -- per-frame position writer keeps running throughout, with
+            -- `X = 160 - SCX` holding frame-by-frame the entire way, so
+            -- X=0 the instant SCX finishes at 160 is real ROM
+            -- arithmetic; (2) a separate one-shot call chain (bank 1
+            -- `$4f0d`->`$4f48`->fixed-bank-0 `$29ba`->`$0611`->`$0659`/
+            -- `$065b`) explicitly RE-commits Y=64/X=0 via a path never
+            -- taken during ordinary movement -- the real ROM's own
+            -- "landing commit" step, not a byproduct of walk math alone.
             landingX = 0, landingY = 64,
           },
         },
       },
-      -- VERIFIED (2026-08-09): the real third room, reached through
-      -- `secondRoom`'s own east exit -- see rom-map.md "Yes, it keeps
-      -- going". Reuses most of `secondRoom`'s own tileset (same bank 8
-      -- region) plus 8 real, new tile IDs (`188`-`195`) found the same
-      -- live-VRAM-pattern -> exact-ROM-byte-search way as every other
-      -- tileset here. `188`/`189`/`190`/`191` (real screen cols 16-17,
-      -- rows 2-3 -- this room's own real top-right) are the user-
-      -- reported staircase ("dort befindet sich oben rechts eine
-      -- treppe"). No dialogue or new sprites found in this room (live
-      -- OAM capture showed only the player).
+      -- Real third room, reached through secondRoom's own east exit.
+      -- Reuses most of secondRoom's own tileset plus 8 new tile IDs
+      -- (188-195). 188-191 (real screen cols 16-17, rows 2-3, top-right)
+      -- are the user-reported staircase. No dialogue or new sprites
+      -- found (live OAM capture showed only the player).
       thirdRoom = {
         status = "VERIFIED",
         -- Same real tile-source pointer/family as `willyRoom`/
@@ -1158,25 +1091,16 @@ RomProfiles.PROFILES = {
           [161]=0x324d0,[162]=0x32350,[163]=0x32270,[164]=0x32230,[165]=0x32320,
           [166]=0x32400,[167]=0x32420,[168]=0x32410,[169]=0x32430,[170]=0x32360,
           [171]=0x32370,[176]=0x32ec0,[177]=0x32ed0,[178]=0x32ee0,[179]=0x32ef0,
-          -- Real, NEW tile IDs (2026-08-09), not part of `secondRoom`'s
-          -- own set. 188-191 had 2-3 ambiguous byte-identical ROM
-          -- matches each (ROM offsets `0x31f80-0x31fb0` vs.
-          -- `0x32170-0x321a0`, both real contiguous 4-tile blocks) --
-          -- picked `0x32170-0x321a0` as the more consistent match:
-          -- it's immediately adjacent to 192-195's own unambiguous
-          -- matches (`0x322a0-0x323b0`), the same real "this room's own
-          -- new-tile neighborhood," rather than the more distant
-          -- alternative -- a real disambiguation, not the first hit.
+          -- Real, NEW tile IDs, not part of secondRoom's own set. 188-191
+          -- had 2 ambiguous byte-identical ROM matches each -- picked
+          -- `0x32170-0x321a0`, immediately adjacent to 192-195's own
+          -- unambiguous matches, over the more distant alternative.
           [188]=0x32170,[189]=0x32180,[190]=0x32190,[191]=0x321a0,
           [192]=0x322a0,[193]=0x322b0,[194]=0x323a0,[195]=0x323b0,
         },
-        -- HYPOTHESIS, same status/method as every other room's own
-        -- floorTileIds here. `188`-`191` (the staircase itself) are
-        -- included as walkable -- found live, correcting an initial
-        -- implementation gap this pass: without it the player can
-        -- never physically reach the staircase's own exit `zone` at
-        -- all (real live testing did stand ON it, so it must be
-        -- walkable).
+        -- HYPOTHESIS, same status/method as other rooms. 188-191 (the
+        -- staircase) included as walkable -- live testing confirmed
+        -- standing on it, and the exit zone is unreachable otherwise.
         floorTileIds = { [151] = true, [152] = true, [153] = true, [154] = true,
           [188] = true, [189] = true, [190] = true, [191] = true },
         grid = {
@@ -1197,36 +1121,25 @@ RomProfiles.PROFILES = {
           {130,162,165,166,165,166,165,166,165,166,168,165,168,165,168,165,168,165,170,147},
           {163,164,167,164,167,164,167,164,167,164,164,169,164,169,164,169,164,169,164,171},
         },
-        -- VERIFIED (2026-08-09): the real staircase -- a real, FOURTH,
-        -- DIFFERENT transition mechanism: not a scroll. `$D392`/`$D393`
-        -- actually change here (live-read `$B0`/`$46` -> `$B0`/`$40`, a
-        -- real different source pointer) and `SCX`/`SCY` both snap
-        -- straight to 0 -- an instant cut via the ORIGINAL relocatable-
-        -- pointer pipeline this project found first (the courtyard ->
-        -- willyRoom transition), now confirmed for a real third use.
-        -- `zone` is the staircase's own real screen position (cols
-        -- 16-17/rows 2-3 -> pixel 128-143/16-31); the exact trigger
-        -- boundary within that zone was not swept as precisely as the
-        -- other two exits' (found via a coarser live walk-and-watch,
-        -- not a position sweep) -- the whole visible staircase tile
-        -- block is used as the trigger zone, a reasonable superset.
+        -- Real staircase -- a fourth, different transition mechanism:
+        -- not a scroll. `$D392`/`$D393` actually change (`$B0`/`$46` ->
+        -- `$B0`/`$40`) and SCX/SCY both snap to 0 -- an instant cut via
+        -- the same relocatable-pointer pipeline the courtyard ->
+        -- willyRoom transition uses. `zone` is the staircase's own real
+        -- screen position; the whole visible tile block is used as the
+        -- trigger zone (a coarser sweep than the other two exits, a
+        -- reasonable superset).
         --
-        -- CODE-TRACED (2026-08-10, see rom-map.md "BREAKTHROUGH: the
-        -- real room table, found"): this `cut` is real, general, DATA-
-        -- DRIVEN infrastructure, not a one-off. The ROM's own "commit
-        -- new room" routine (`$01AF3`, bank 0) is fed by a genuine
-        -- table lookup (`$026DC`, bank 1): a real 11-byte-stride record
-        -- table at bank 8 file offset `0x20000`, indexed by a literal
-        -- `roomSelector` byte baked into a tiny bytecode instruction
-        -- (this specific staircase uses `roomSelector=1`; its real,
-        -- static record -- confirmed live -- is
-        -- `00 00 00 b0 40 80 06 00 40 0e 11`, whose bytes 3-4 (`b0 40`)
-        -- are exactly this room's `$D392`/`$D393` target). This
-        -- project's engine does not read that table at runtime (it's a
-        -- reimplementation, not a ROM interpreter) -- recorded here so
-        -- `targetRoom`/the underlying `$D392`/`$D393` pointer for this
-        -- exit is understood as real, table-verified ROM data, not an
-        -- empirical guess, same upgrade as `totalPixels` above.
+        -- Code-traced: this `cut` is real, general, data-driven
+        -- infrastructure. The ROM's "commit new room" routine (`$01AF3`,
+        -- bank 0) is fed by a real table lookup (`$026DC`, bank 1): an
+        -- 11-byte-stride record table at bank 8 file `0x20000`, indexed
+        -- by a literal `roomSelector` byte (this staircase uses
+        -- selector 1; its real record is `00 00 00 b0 40 80 06 00 40 0e
+        -- 11`, bytes 3-4 = this room's own `$D392`/`$D393` target).
+        -- This project's engine doesn't read that table at runtime --
+        -- recorded here so `targetRoom` is understood as table-verified
+        -- ROM data, not an empirical guess.
         exits = {
           {
             status = "VERIFIED",
