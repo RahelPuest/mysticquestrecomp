@@ -10055,3 +10055,58 @@ Direct user instruction, picked up immediately (no further investigation asked f
 **7 real, walkable rooms now wired** (willyRoom -> secondRoom -> thirdRoom -> fourthRoom -> {fifthRoom, sixthRoom -> seventhRoom}), up from 6.
 
 `luajit tests/run_tests.lua`: 552/552 pass (up from 549).
+
+## Real-ROM test of the sixthRoom gate mechanic -- honest negative result (2026-08-17)
+
+Direct user instruction ("ja schau dir das an"), following up on the
+"Marsh Cave was wrong, this is the Glaive Castle arena intro" finding
+above. Important clarification first: every earlier "live-verified"
+claim for `secondBoss`/`sixthRoom.gate` (see "seventhRoom" entry
+above, "the FULL real path... real melee combat defeating the actual
+second boss") tested THIS PROJECT'S OWN Lua reimplementation under
+`love .`, not the original Game Boy cartridge under an emulator --
+those two are different claims, and this was the first pass to
+actually test the second one.
+
+**Method**: `sixth_room_free()` (real ROM, real navigation via
+fourthRoom's own west corridor) -> held UP into the real boss -> real
+melee combat (68 real `A` taps, real WRAM `$D3F5` dead-sentinel hit,
+same recipe as `courtyard_boss_defeated`) -> generous real settle
+(2700+ frames total, several times the ~900 frames the FIRST boss's
+own real black-wipe/dialogue sequence needed) -> walked to the exact
+documented gate zone (X 128-144) and probed north, comparing real
+screenshots taken at the identical real position before and after the
+fight.
+
+**Result**: the real gate/bars tile pattern looks visually IDENTICAL
+before and after (still fully barred, not half-open), and the player
+gets blocked at the exact same real Y position (56) in both cases --
+no detectable real change from defeating this specific boss at this
+specific room. (A first attempt also diffed raw VRAM tilemap bytes at
+the documented gate offset and found EVERY byte different before/
+after -- a red herring: that read ignored real hardware SCX/SCY
+scroll offsets, so it was comparing unrelated/off-screen tilemap
+cells, not the visible gate at all; the screenshot comparison above is
+the trustworthy result.)
+
+**Honest interpretation**: this is a real, if not 100%-exhaustive
+(didn't test every possible extra trigger condition, e.g. leaving and
+re-entering the room, a specific item/story-flag prerequisite),
+NEGATIVE result against "sixthRoom is the real ROM location this
+specific gate-opens-after-second-boss mechanic lives at." Combined
+with the newly-found story context (gamesurge.com's own walkthrough
+places the real second-Jackal/gate event immediately, tightly, after
+the FIRST fight -- within the same short arena/escape sequence, not
+after a multi-room corridor reached via fourthRoom's own west exit),
+this suggests the real event this project has been chasing since the
+"three corrections" above may sit at a DIFFERENT, likely EARLIER room
+in this project's own chain (`secondRoom`/`thirdRoom`, matching the
+walkthrough's own "north door... meet Amanda and another man...
+approach the arena again" sequence) rather than `sixthRoom`. NOT
+re-investigated further this pass -- a real, concrete, well-evidenced
+open question for whoever continues, not silently dropped or
+force-resolved either way. `sixthRoom.gate`/`secondBoss`'s own status
+in `rom_profiles.lua` already said "IMPLEMENTATION CHOICE, not
+independently ROM-confirmed" -- this pass adds real, if imperfect,
+evidence pointing AGAINST that specific placement, not just noting the
+absence of confirmation.

@@ -2619,10 +2619,31 @@ RomProfiles.PROFILES = {
         -- edge) -- NOT a decoded ROM position (no live trigger was ever
         -- found to read a real position from, same honest limit as the
         -- original `fifthRoom` placement had).
+        -- REAL-ROM TEST, 2026-08-17 (direct user instruction "ja schau
+        -- dir das an", after finding this project's own room chain is
+        -- really the Glaive Castle prison ARENA intro, not Marsh
+        -- Cave -- see docs/references.md): fought and defeated the
+        -- REAL boss here under real ROM emulation (not this project's
+        -- own reimplementation -- see events.md's own dated entry for
+        -- the full method) and found a real, honest NEGATIVE result:
+        -- the gate below shows no visible/collision change before vs.
+        -- after, at the same real position, even after a very
+        -- generous real settle (2700+ frames, several times the first
+        -- boss's own real black-wipe sequence length). Combined with
+        -- the newly-found story context (the real walkthrough places
+        -- the real second-Jackal/gate event immediately after the
+        -- FIRST fight, within the same short arena sequence, not past
+        -- a multi-room corridor), this is real evidence AGAINST
+        -- `sixthRoom` being the right real location for this
+        -- mechanic -- not proof it's wrong, but a real, honest data
+        -- point this project didn't have before. See events.md's own
+        -- "Real-ROM test of the sixthRoom gate mechanic" entry.
         secondBoss = {
           status = "IMPLEMENTATION CHOICE, evidence-based (species-byte + structural-family match to the " ..
             "real first-boss record; room placement itself matches the user's own live-confirmed 'west of " ..
-            "fourthRoom' report, not an independently ROM-confirmed spawn trigger for this specific room)",
+            "fourthRoom' report, not an independently ROM-confirmed spawn trigger for this specific room) -- " ..
+            "REAL-ROM gate test 2026-08-17 found NO detectable gate change after defeating this boss, real " ..
+            "evidence AGAINST this specific placement, see events.md",
           spawnX = 64, spawnY = 80,
         },
         -- ADDED (2026-08-16, direct user report: "im zweiten Bossraum
