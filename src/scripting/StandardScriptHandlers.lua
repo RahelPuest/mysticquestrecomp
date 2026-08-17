@@ -438,26 +438,23 @@ function StandardScriptHandlers.tick(onTick, onControlCode)
 end
 
 --- Real "0xF0 -> hands off into 0xFF's own sub-opcode 3" wrapper
--- (opcode `0xF0`, ROM `$3C04`, see `ScriptOpcodeTable
--- .START_TEXTBOX_WAIT_HANDLER_ADDRESS`'s own doc comment for the full,
--- VERIFIED byte-for-byte disassembly). Consumes ONE real operand byte
--- (the real ROM uses it, via two undecoded helper calls, to set up
--- WRAM `$D84D` -- the exact condition sub-opcode 3 itself tests --
--- HYPOTHESIS on the precise meaning, same honesty status as
--- `textboxWait`'s own doc comment), then behaves exactly like
--- `textboxWait` from that point on -- real, confirmed, not a guess:
--- the ROM's own `$3C74` reschedule call at the end of `$3C04` is
--- BYTE-IDENTICAL to how opcode `0xFF` itself reaches sub-opcode 3.
+-- (opcode 0xF0, ROM $3C04, see ScriptOpcodeTable
+-- .START_TEXTBOX_WAIT_HANDLER_ADDRESS's own doc comment for the full
+-- disassembly). Consumes one operand byte (the ROM uses it, via two
+-- undecoded helper calls, to set up WRAM $D84D -- the exact condition
+-- sub-opcode 3 tests -- HYPOTHESIS on the precise meaning, same honesty
+-- status as textboxWait's own doc comment), then behaves exactly like
+-- textboxWait from that point on -- confirmed: the ROM's own $3C74
+-- reschedule call at the end of $3C04 is byte-identical to how opcode
+-- 0xFF itself reaches sub-opcode 3.
 --
--- Per-occurrence state (keyed by the real cursor position right after
--- this opcode's own byte, i.e. one real WRAM-`$D84D`-setup instance per
--- real script position) -- NOT a single shared closure counter, so two
--- separate real uses of this opcode (in the same or a different script
--- run through the same `ScriptInterpreter`) don't corrupt each other's
--- state. Assumes cursor positions are unique per real occurrence within
--- whatever `stream` this interpreter instance is currently driving --
--- true for this project's own "one interpreter instance drives one
--- script execution" convention.
+-- Per-occurrence state (keyed by the cursor position right after this
+-- opcode's byte, one WRAM-$D84D-setup instance per script position) --
+-- not a single shared closure counter, so two separate uses of this
+-- opcode don't corrupt each other's state. Assumes cursor positions are
+-- unique per occurrence within whatever stream this interpreter
+-- instance is driving -- true for this project's "one interpreter
+-- instance drives one script execution" convention.
 function StandardScriptHandlers.startTextboxWait(onTick, isDone)
   local states = {}
   return function(stream, cursor)
@@ -482,42 +479,38 @@ function StandardScriptHandlers.startTextboxWait(onTick, isDone)
   end
 end
 
---- Real "0xFF textbox driver" handler (opcode `0xFF`, ROM `$38E6` ->
--- an 11-entry real sub-table keyed by WRAM `$D86B`, see
--- `ScriptOpcodeTable.SUBTABLE_DISPATCH_HANDLER_ADDRESS`'s own doc
--- comment for the full evidence trail). No operand bytes.
+--- Real "0xFF textbox driver" handler (opcode 0xFF, ROM $38E6 -> an
+-- 11-entry sub-table keyed by WRAM $D86B, see ScriptOpcodeTable
+-- .SUBTABLE_DISPATCH_HANDLER_ADDRESS's own doc comment for the full
+-- evidence trail). No operand bytes.
 --
--- HONEST SCOPE: this does NOT reproduce the real ROM's own byte-exact
--- `$D86B` sub-opcode state machine (which of sub-opcodes 1/2/3/4 runs
--- on a given tick, and the exact WRAM condition that flips sub-opcode
--- 3 or 4's own halt) -- that level of detail isn't pinned down even in
--- this project's own disassembly (events.md marks the real 3/4 halt
--- conditions HYPOTHESIS, not VERIFIED). What IS real and VERIFIED,
--- and is what this implements: the whole {1,2,3,4} family together
--- forms one observable unit -- "pace the reveal forward one tick at a
--- time, at the real 5-frame/letter cadence, then release once the box
--- is fully revealed" -- confirmed by two independent live traces (see
--- the doc comment above). Rather than guess at internal sub-opcode
--- transitions this project hasn't verified, this reproduces that
--- OUTER, confirmed behavior directly: halt (re-dispatch `0xFF` next
--- tick, via `ScriptInterpreter`'s own real halt support) until
--- `isDone()` says the current box's reveal is finished, calling
--- `onTick` once per real pacing tick along the way (the SAME callback
--- opcode `0x04`'s own `.tick()` handler uses -- the real ROM's own
--- sub-opcode 1 hands off to the identical typewriter mechanism, per
--- events.md, so reusing that one callback here is not a guess, it's
--- the documented real hand-off point). `isDone` is the CALLER's own
--- responsibility (e.g. DialogueBox.lua already tracks its own reveal
--- state) -- this module does not track WRAM `$D853`/`$D84D`/etc.
--- itself, matching this project's own "don't reimplement a subsystem
--- that already exists elsewhere" convention (see `.tick()`'s doc
--- comment for the same reasoning).
+-- HONEST SCOPE: this does not reproduce the ROM's byte-exact $D86B
+-- sub-opcode state machine (which of sub-opcodes 1/2/3/4 runs on a
+-- given tick, and the exact WRAM condition that flips sub-opcode 3 or
+-- 4's own halt) -- that detail isn't pinned down even in this
+-- project's own disassembly (events.md marks the 3/4 halt conditions
+-- HYPOTHESIS, not VERIFIED). What is verified, and what this
+-- implements: the whole {1,2,3,4} family together forms one observable
+-- unit -- "pace the reveal forward one tick at a time, at the 5-frame/
+-- letter cadence, then release once the box is fully revealed" --
+-- confirmed by two independent live traces. Rather than guess at
+-- internal sub-opcode transitions, this reproduces that outer,
+-- confirmed behavior directly: halt (re-dispatch 0xFF next tick, via
+-- ScriptInterpreter's halt support) until isDone() says the current
+-- box's reveal is finished, calling onTick once per pacing tick (the
+-- same callback opcode 0x04's .tick() handler uses -- the ROM's
+-- sub-opcode 1 hands off to the identical typewriter mechanism, so
+-- reusing that callback here is the documented hand-off point, not a
+-- guess). isDone is the caller's own responsibility (e.g. DialogueBox
+-- .lua already tracks its own reveal state) -- this module doesn't
+-- track WRAM $D853/$D84D itself, matching this project's "don't
+-- reimplement a subsystem that already exists elsewhere" convention.
 --
--- Per-occurrence state (keyed by cursor -- see `startTextboxWait`'s
--- own doc comment for why: fixed 2026-08-12 after a real, self-caught
--- design flaw -- the original version shared one counter across every
--- real use of this opcode for the interpreter's whole lifetime, which
--- would have subtly misaligned pacing across separate real textboxes).
+-- Per-occurrence state (keyed by cursor -- see startTextboxWait's own
+-- doc comment for why: fixed after a self-caught design flaw -- the
+-- original version shared one counter across every use of this opcode
+-- for the interpreter's whole lifetime, which would have subtly
+-- misaligned pacing across separate textboxes).
 function StandardScriptHandlers.textboxWait(onTick, isDone)
   local states = {}
   return function(_stream, cursor)
@@ -537,17 +530,16 @@ function StandardScriptHandlers.textboxWait(onTick, isDone)
   end
 end
 
---- Real "sound/timing parameter" handler (opcodes `0xF8`/`0xF9`, ROM
--- `$119B`/`$1194`, see `ScriptOpcodeTable.SOUND_PARAM_1_HANDLER_ADDRESS`'s
--- own doc comment for the full disassembly). Consumes ONE real operand
--- byte and calls back with it -- what it means (this project has no
--- real sound emulation, see audio.md) is entirely the caller's
--- business, exactly mirroring `.message()`'s own "interpreter doesn't
--- render, it calls back" shape. Register the SAME factory at both
--- `SOUND_PARAM_1_HANDLER_ADDRESS` and `SOUND_PARAM_2_HANDLER_ADDRESS`
--- with two different callbacks -- the real ROM handlers are
--- byte-for-byte independent (0xF8 also caches into 2 real WRAM cells
--- this project has no reason to shadow), not a shared implementation.
+--- Real "sound/timing parameter" handler (opcodes 0xF8/0xF9, ROM
+-- $119B/$1194, see ScriptOpcodeTable.SOUND_PARAM_1_HANDLER_ADDRESS's
+-- own doc comment for the full disassembly). Consumes one operand byte
+-- and calls back with it -- what it means (this project has no real
+-- sound emulation, see audio.md) is entirely the caller's business,
+-- mirroring .message()'s "interpreter doesn't render, it calls back"
+-- shape. Register the same factory at both SOUND_PARAM_1_HANDLER_ADDRESS
+-- and SOUND_PARAM_2_HANDLER_ADDRESS with two different callbacks -- the
+-- ROM handlers are byte-for-byte independent (0xF8 also caches into 2
+-- WRAM cells this project has no reason to shadow), not shared.
 function StandardScriptHandlers.soundParam(onParam)
   return function(stream, cursor)
     local value, nextCursor = ScriptInterpreter.fetch(stream, cursor)
@@ -558,11 +550,11 @@ function StandardScriptHandlers.soundParam(onParam)
   end
 end
 
---- Real "trigger fixed event" handler (opcode `0xE0`, ROM `$0FB4`, see
--- `ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS`'s own doc comment
+--- Real "trigger fixed event" handler (opcode 0xE0, ROM $0FB4, see
+-- ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS's own doc comment
 -- for the disassembly). No operand bytes -- immediately calls back,
--- same shape as `.tick()`. What the real event actually does (`$235B`'s
--- own effect) is HYPOTHESIS, not modeled here -- the caller decides.
+-- same shape as .tick(). What the event actually does ($235B's own
+-- effect) is HYPOTHESIS, not modeled here -- the caller decides.
 function StandardScriptHandlers.triggerEvent(onTrigger)
   return function(_stream, cursor)
     if onTrigger then
@@ -572,26 +564,24 @@ function StandardScriptHandlers.triggerEvent(onTrigger)
   end
 end
 
---- Real "typewriter cursor command" handler (opcode `0x03`, ROM
--- `$332F`, see `ScriptOpcodeTable.TYPEWRITER_COMMAND_HANDLER_ADDRESS`'s
--- own doc comment for the disassembly). Consumes TWO real operand
--- bytes -- the first is a real, meaningful command value (calls back
--- with it, `onCommand(value)`); the second is consumed but its real
--- value is never read by the ROM itself (a genuine skip, `INC HL`, not
--- an omission here either) so it's dropped, not passed to the
--- callback. What the command value actually does (`$36DF`'s own real
+--- Real "typewriter cursor command" handler (opcode 0x03, ROM $332F,
+-- see ScriptOpcodeTable.TYPEWRITER_COMMAND_HANDLER_ADDRESS's own doc
+-- comment for the disassembly). Consumes two operand bytes -- the
+-- first is a meaningful command value (calls back with it,
+-- onCommand(value)); the second is consumed but its value is never
+-- read by the ROM itself (a genuine skip, INC HL, not an omission
+-- here) so it's dropped. What the command value does ($36DF's own
 -- effect) is HYPOTHESIS -- the caller decides.
 --
--- EXTENDED (2026-08-12, resolving opcode `0x00`'s own real WRAM queue
--- -- see `ScriptContinuationQueue.lua`): the real ROM handler ALSO
--- pushes a real entry onto the SAME queue opcode `0x00` pops from
--- (`CALL $36DF`, always with `B=3`) -- confirmed to have NO further
--- observable effect on its own (every real `0x00` dispatch that pops a
--- `B=3` entry just halts, discarding it -- see
--- `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s own doc comment),
--- but reproduced faithfully anyway since it's real, confirmed ROM
--- behavior with a real (if inert) effect on the queue's own length/
--- ordering. `queue` is optional, same convention as `.chain()`.
+-- EXTENDED (resolving opcode 0x00's WRAM queue -- see
+-- ScriptContinuationQueue.lua): the ROM handler also pushes an entry
+-- onto the same queue opcode 0x00 pops from (CALL $36DF, always with
+-- B=3) -- confirmed to have no further observable effect on its own
+-- (every 0x00 dispatch that pops a B=3 entry just halts, discarding it
+-- -- see ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS's own doc
+-- comment), but reproduced faithfully anyway since it's confirmed ROM
+-- behavior with a real (if inert) effect on the queue's length/
+-- ordering. queue is optional, same convention as .chain().
 function StandardScriptHandlers.typewriterCommand(onCommand, queue)
   return function(stream, cursor)
     local value, afterValue = ScriptInterpreter.fetch(stream, cursor)
@@ -606,37 +596,34 @@ function StandardScriptHandlers.typewriterCommand(onCommand, queue)
   end
 end
 
---- Real "actor-ready action" handler (opcodes `0x10`/`0x11`/`0x14`/
--- `0x1B`/`0x20`/`0x25`/`0x30`/`0x3A`/`0x40`/`0x60`/`0x70`/`0x7B`, real
--- ROM handlers `$125C`/`$1268`/`$128C`/`$12C4`/`$12D0`/`$130C`/`$1344`/
--- `$13A0`/`$13B8`/`$14A0`/`$1514`/`$157C` -- see `ScriptOpcodeTable
--- .ACTOR_ACTION_HANDLER_ADDRESS_*`'s own doc comment for the full,
--- byte-for-byte disassembled chain: a whole family of structurally-
--- identical real opcodes, each just passing a different fixed "group"
--- constant). No operand bytes.
+--- Real "actor-ready action" handler (opcodes 0x10/0x11/0x14/0x1B/
+-- 0x20/0x25/0x30/0x3A/0x40/0x60/0x70/0x7B, ROM handlers $125C/$1268/
+-- $128C/$12C4/$12D0/$130C/$1344/$13A0/$13B8/$14A0/$1514/$157C -- see
+-- ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_*'s own doc comment
+-- for the full disassembled chain: a family of structurally-identical
+-- opcodes, each just passing a different fixed "group" constant). No
+-- operand bytes.
 --
--- HONEST SCOPE: the real gating CONDITION is fully VERIFIED (halt
--- while WRAM actor-record #7's own state field, `$C272`, has a high
--- nibble other than `0xD0` -- confirmed by disassembling the entire
--- real dispatch chain down to the actual bank-3 handler that sets the
--- tested flag). What the real ACTION itself does (`$4AF9`, called once
--- the condition holds) is HYPOTHESIS, not decoded further. `isReady()`
--- is the caller's own responsibility (this project has no live WRAM
--- actor-record array modeled yet, same honest-scope status as
--- `textboxWait`'s own `isDone`). `onAction(group)` fires once, right
--- before continuing, with this opcode's own real group value -- what
--- to actually DO with it is entirely the caller's business.
+-- HONEST SCOPE: the gating condition is fully verified (halt while
+-- WRAM actor-record #7's state field, $C272, has a high nibble other
+-- than 0xD0 -- confirmed by disassembling the dispatch chain down to
+-- the bank-3 handler that sets the tested flag). What the action
+-- itself does ($4AF9, called once the condition holds) is HYPOTHESIS,
+-- not decoded further. isReady() is the caller's own responsibility
+-- (this project has no live WRAM actor-record array modeled yet, same
+-- honest-scope status as textboxWait's own isDone). onAction(group)
+-- fires once, right before continuing, with this opcode's group value
+-- -- what to do with it is entirely the caller's business.
 --
--- `group` is normally a fixed real constant (true for every opcode
--- this family shares its own real gate with) -- but EXTENDED
--- (2026-08-12, "mach erstmal 2", opcodes `0x80`/`0x85`, a DIFFERENT
--- real gate reusing this SAME shape -- see `ScriptOpcodeTable
--- .ACTOR_ACTION_HANDLER_ADDRESS_80/_85`'s own doc comment): those two
--- real opcodes compute their own group DYNAMICALLY, live, from a
--- DIFFERENT WRAM actor record's own current state (not a compile-time
--- constant baked into the ROM code the way the other 12 opcodes'
--- groups are) -- so `group` may also be a plain Lua FUNCTION, called
--- fresh on every real release (`group()`), for exactly that case.
+-- group is normally a fixed constant (true for every opcode this
+-- family shares its gate with) -- but EXTENDED (opcodes 0x80/0x85, a
+-- different gate reusing this same shape -- see ScriptOpcodeTable
+-- .ACTOR_ACTION_HANDLER_ADDRESS_80/_85's own doc comment): those two
+-- opcodes compute their group dynamically, live, from a different WRAM
+-- actor record's current state (not a compile-time constant baked into
+-- the ROM code the way the other 12 opcodes' groups are) -- so group
+-- may also be a plain Lua function, called fresh on every release
+-- (group()), for exactly that case.
 function StandardScriptHandlers.actorAction(group, isReady, onAction)
   return function(_stream, cursor)
     if not isReady() then
