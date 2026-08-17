@@ -814,65 +814,54 @@ function StandardScriptHandlers.dualGateLeafCommand(isGateClear, onLeaf)
   end
 end
 
---- Real "zero-terminated flag-test list" handler (opcode `0x08`, ROM
--- `$3370`, see `ScriptOpcodeTable.ACTOR_FLAG_LIST_HANDLER_ADDRESS`'s
--- own doc comment) -- structurally traced in task #83, its real
--- per-item leaf (`$35EF`/`$3602`) fully live-confirmed the same day,
--- and its real "list exhausted" continuation FINALLY pinned down live
--- in task #86 (2026-08-13, direct instruction "weiter machen, das muss
--- stehen").
+--- Real "zero-terminated flag-test list" handler (opcode 0x08, ROM
+-- $3370, see ScriptOpcodeTable.ACTOR_FLAG_LIST_HANDLER_ADDRESS's own
+-- doc comment) -- structurally traced in task #83, its per-item leaf
+-- ($35EF/$3602) live-confirmed the same day, and its "list exhausted"
+-- continuation finally pinned down live in task #86.
 --
--- Real, VERIFIED structure: reads a zero-terminated byte list from the
--- script stream. Each NONZERO byte is a real "flag index" -- calls the
--- opaque `onFlagTest(byte)` leaf (this project's own "interpreter
--- doesn't render, it calls back" convention, matching `$35EF`'s own
--- real Z/NZ-returning shape) to decide which of TWO real, structurally
--- DIFFERENT continuations happens next:
---   Z (`onFlagTest` returns true): loops back and reads the NEXT list
+-- Verified structure: reads a zero-terminated byte list from the
+-- script stream. Each nonzero byte is a "flag index" -- calls the
+-- opaque onFlagTest(byte) leaf (this project's "interpreter doesn't
+-- render, it calls back" convention, matching $35EF's Z/NZ-returning
+-- shape) to decide which of two structurally different continuations
+-- happens next:
+--   Z (onFlagTest returns true): loops back and reads the next list
 --     byte normally (the common per-item case).
---   NZ (`onFlagTest` returns false -- the DEFAULT, matching the ONE
---     real, live-confirmed case this project has actually observed:
---     input byte `0x08` during the real boss-defeat sequence): a
---     ONE-WAY exit -- scans raw bytes (no further flag tests, no real
---     `$D85A` writes along the way) until a real zero terminator, then
---     FORCES the interpreter's own "current opcode" cell to `0x01`
---     WITHOUT a normal fetch (the real `$D85A` direct-overwrite trick).
--- An IMMEDIATELY zero first byte (empty list) is a THIRD, simpler real
--- case (`$338B`): consumes the terminator and skips ONE MORE real byte
--- (a real, confirmed `INC HL`) before continuing normally -- NOT the
--- same as the NZ-path's own forced-opcode-1 trick.
+--   NZ (onFlagTest returns false -- the default, matching the one
+--     live-confirmed case actually observed: input byte 0x08 during
+--     the boss-defeat sequence): a one-way exit -- scans raw bytes (no
+--     further flag tests, no $D85A writes) until a zero terminator,
+--     then forces the interpreter's "current opcode" cell to 0x01
+--     without a normal fetch (the $D85A direct-overwrite trick).
+-- An immediately zero first byte (empty list) is a third, simpler case
+-- ($338B): consumes the terminator and skips one more byte (a
+-- confirmed INC HL) before continuing normally -- not the NZ-path's
+-- forced-opcode-1 trick.
 --
--- HONEST SCOPE, CORRECTED (2026-08-13, live single-stepped via this
--- session's own `trace_08_singlestep.py`, direct follow-up to "das
--- muss stehen"): an EARLIER pass here (see events.md's "task #82"
--- section) guessed the real forced-opcode-1 continuation was "a real
--- WRAM block-clear loop over ~20 bytes at $C480" -- that guess is
--- WRONG, decisively disproven this pass by two independent checks:
--- (1) the forced dispatch does NOT reach `$32F3`
--- (`SKIP_HANDLER_ADDRESS`'s own real, independently-verified code) --
--- `$32F3`'s own formula (cursor-after-operand + unsigned operand)
--- predicts cursor `$4803` for the real boss-sequence's own live case,
--- but the real next script-level dispatch lands at `$472a` instead, a
--- real, decisive mismatch; (2) single-stepping the REAL CPU from the
--- forced write onward shows execution actually LEAVING `$3370`'s own
--- bank entirely -- through `$3274`-`$327d` (bank 13), `$2a0a`-`$2a16`
--- (bank 13, ends with a REAL MBC bank switch to bank 1), then
--- `$3280`-`$49ac`-`$1fc2`+ (bank 1, resembling the ALREADY-documented
--- `$1F35` cross-bank selector dispatcher used elsewhere in this
--- project), landing around `$043b` before eventually returning to
--- real script-level dispatch. This is a genuinely deep, cross-bank
--- subsystem -- NOT a simple WRAM clear, and NOT chased to a full
--- understanding this pass (diminishing returns against this project's
--- current, narrower goal: making ONE specific real scene's dispatch
--- sequence work, not a general theory of opcode `0x01`-when-forced).
--- `onExhausted(cursorAfterTerminator)` is exposed as an OPAQUE,
--- REQUIRED-in-practice callback for this real leaf effect (asserts
--- loudly if missing and actually reached, per this project's own "no
--- silent fallbacks" rule) -- callers without real, live-verified
--- knowledge of where it lands should NOT guess; `BossSequenceInterpreter`
--- supplies the real, empirically-traced continuation for its own known
--- occurrence(s) rather than reusing `.skip()`'s own (proven-wrong-here)
--- formula.
+-- HONEST SCOPE, CORRECTED (live single-stepped, direct follow-up): an
+-- earlier pass guessed the forced-opcode-1 continuation was "a WRAM
+-- block-clear loop over ~20 bytes at $C480" -- wrong, decisively
+-- disproven by two independent checks: (1) the forced dispatch does
+-- not reach $32F3 (SKIP_HANDLER_ADDRESS's own independently-verified
+-- code) -- $32F3's formula (cursor-after-operand + unsigned operand)
+-- predicts cursor $4803 for the boss-sequence's own live case, but the
+-- next script-level dispatch lands at $472a instead, a decisive
+-- mismatch; (2) single-stepping the CPU from the forced write onward
+-- shows execution actually leaving $3370's bank entirely -- through
+-- $3274-$327d (bank 13), $2a0a-$2a16 (bank 13, ends with an MBC bank
+-- switch to bank 1), then $3280-$49ac-$1fc2+ (bank 1, resembling the
+-- already-documented $1F35 cross-bank selector dispatcher), landing
+-- around $043b before eventually returning to script-level dispatch.
+-- A genuinely deep, cross-bank subsystem -- not a simple WRAM clear,
+-- and not chased to a full understanding this pass. onExhausted
+-- (cursorAfterTerminator) is exposed as an opaque, required-in-
+-- practice callback for this leaf effect (asserts loudly if missing
+-- and actually reached, per "no silent fallbacks") -- callers without
+-- live-verified knowledge of where it lands should not guess;
+-- BossSequenceInterpreter supplies the empirically-traced continuation
+-- for its known occurrence(s) rather than reusing .skip()'s own
+-- (proven-wrong-here) formula.
 function StandardScriptHandlers.zeroTerminatedFlagList(onFlagTest, onExhausted)
   return function(stream, cursor)
     while true do
@@ -909,52 +898,48 @@ function StandardScriptHandlers.zeroTerminatedFlagList(onFlagTest, onExhausted)
 end
 
 --- Real "adjust 3 fixed WRAM timer/cooldown arrays, then a zero-
--- terminated list-search against ONE of them" handler pair (opcodes
--- `0x09`/`0x0A`, ROM `$3390`/`$33B0`, CLOSED 2026-08-14 -- direct
--- follow-up disassembling `$33CF`/`$3411`/`$3430`/`$343F`, the real
--- shared open question ("what does `$33CF` do with this WRAM-queued
--- pointer+type pair") this project's own docs had left unresolved
--- since an earlier session, and this session's own top remaining
--- combined blocker on the whole-corpus scan, 72 real scripts).
+-- terminated list-search against one of them" handler pair (opcodes
+-- 0x09/0x0A, ROM $3390/$33B0, CLOSED -- direct follow-up disassembling
+-- $33CF/$3411/$3430/$343F, a shared open question left unresolved
+-- since an earlier session, and this session's top remaining combined
+-- blocker on the whole-corpus scan, 72 scripts).
 --
--- Real, VERIFIED structure: BOTH opcodes unconditionally INCREMENT 3
--- real fixed WRAM byte arrays (`$D6E9` x6, `$D6DD` x12, `$D6C5` x16)
--- by fixed amounts (`0x41`/`0x41`/`0x08`), skipping any byte already
--- `0x80` (a real "maxed out" sentinel) or already `0` -- via `$33CF`
--- calling `$343F` three times -- THEN unconditionally DECREMENT the
--- SAME 3 arrays by the SAME amounts (`$3411`/`$3430`, the exact
--- mirror of `$343F`) -- THEN read a real zero-terminated list of bytes
--- DIRECTLY FROM THE SCRIPT STREAM, searching each (masked `0x7F`)
--- against ONE target array: `0x09`'s own list searches the 6-byte
--- `$D6E9` array with a real loop bound of 7 (`$D870=0x07`); `0x0A`'s
--- own list searches the 16-byte `$D6C5` array with a real loop bound
--- of 43 (`$D870=0x2B`).
+-- Verified structure: both opcodes unconditionally increment 3 fixed
+-- WRAM byte arrays ($D6E9 x6, $D6DD x12, $D6C5 x16) by fixed amounts
+-- (0x41/0x41/0x08), skipping any byte already 0x80 (a "maxed out"
+-- sentinel) or already 0 -- via $33CF calling $343F three times --
+-- then unconditionally decrement the same 3 arrays by the same amounts
+-- ($3411/$3430, the exact mirror of $343F) -- then read a zero-
+-- terminated list of bytes directly from the script stream, searching
+-- each (masked 0x7F) against one target array: 0x09's list searches
+-- the 6-byte $D6E9 array with a loop bound of 7 ($D870=0x07); 0x0A's
+-- list searches the 16-byte $D6C5 array with a loop bound of 43
+-- ($D870=0x2B).
 --
--- STRUCTURALLY IDENTICAL, byte-for-byte, to opcode `0x08`'s own
--- `.zeroTerminatedFlagList` (the SAME real "immediately-empty list"
--- leaf, the SAME real "force `$D85A=1`" exit the moment one list byte
--- ISN'T found in the target array, the SAME terminator handling) --
--- confirmed by direct comparison, not assumed: `found in the array`
--- maps to `.zeroTerminatedFlagList`'s own `isZero`/loop-back case,
--- `not found` maps to its own NZ/exhausted case. Reuses that exact
--- factory for the list-search half, prefixed with the real
--- (increment, then decrement) side effect `0x08` itself doesn't have.
+-- Structurally identical, byte-for-byte, to opcode 0x08's own
+-- .zeroTerminatedFlagList (the same "immediately-empty list" leaf, the
+-- same "force $D85A=1" exit the moment one list byte isn't found in
+-- the target array, the same terminator handling) -- confirmed by
+-- direct comparison: "found in the array" maps to
+-- .zeroTerminatedFlagList's own isZero/loop-back case, "not found"
+-- maps to its own NZ/exhausted case. Reuses that exact factory for the
+-- list-search half, prefixed with the (increment, then decrement) side
+-- effect 0x08 itself doesn't have.
 --
--- HONEST SCOPE: this project has no simulated model of the 3 real
--- WRAM timer arrays (plausibly a per-item cooldown/status-effect
--- countdown table -- HYPOTHESIS, not confirmed) -- `onAdjustTimers`
--- is an opaque, optional callback for the real increment-then-
--- decrement pair, which (taken together, every real dispatch) are a
--- real NO-OP on the arrays' own FINAL values UNLESS a byte hits the
--- `0x80`/`0` skip-sentinel boundary during the increment half,
--- preventing the decrement from perfectly reversing it -- HYPOTHESIS:
--- the real, useful side effect is plausibly THAT boundary-clamping
--- behavior, not the arithmetic itself; not confirmed further.
--- `onFlagTest`/`onExhausted` follow the EXACT SAME "REQUIRED in
--- practice, no guessing" contract `.zeroTerminatedFlagList` already
--- documents for `0x08` -- this project does NOT assume the same real
--- continuation address applies here without independent live
--- confirmation, even though the static shape is identical.
+-- HONEST SCOPE: this project has no simulated model of the 3 WRAM
+-- timer arrays (plausibly a per-item cooldown/status-effect countdown
+-- table -- HYPOTHESIS, not confirmed) -- onAdjustTimers is an opaque,
+-- optional callback for the increment-then-decrement pair, which
+-- (taken together, every dispatch) are a no-op on the arrays' final
+-- values unless a byte hits the 0x80/0 skip-sentinel boundary during
+-- the increment half, preventing the decrement from perfectly
+-- reversing it -- HYPOTHESIS: the useful side effect is plausibly that
+-- boundary-clamping behavior, not the arithmetic itself; not confirmed
+-- further. onFlagTest/onExhausted follow the exact same "required in
+-- practice, no guessing" contract .zeroTerminatedFlagList documents
+-- for 0x08 -- this project does not assume the same continuation
+-- address applies here without independent live confirmation, even
+-- though the static shape is identical.
 function StandardScriptHandlers.timerListSearch(onAdjustTimers, onFlagTest, onExhausted)
   local search = StandardScriptHandlers.zeroTerminatedFlagList(onFlagTest, onExhausted)
   return function(stream, cursor)
@@ -963,43 +948,40 @@ function StandardScriptHandlers.timerListSearch(onAdjustTimers, onFlagTest, onEx
   end
 end
 
---- Real "search an IN-LINE list embedded in the script stream itself
+--- Real "search an in-line list embedded in the script stream itself
 -- for an entry matching an external WRAM byte, then skip past it"
--- handler pair (opcodes `0x0B`/`0x0C`, ROM `$344E`/`$345B`, CLOSED
--- 2026-08-14, direct follow-up to the `0x09`/`0x0A` pass -- this
--- session's own next-largest combined blocker, 71 real scripts).
+-- handler pair (opcodes 0x0B/0x0C, ROM $344E/$345B, CLOSED, direct
+-- follow-up to the 0x09/0x0A pass -- this session's own next-largest
+-- combined blocker, 71 scripts).
 --
--- Real, VERIFIED structure -- genuinely DIFFERENT from every other
--- "zero-terminated list" shape this project has already decoded
--- (`0x08`, `0x09`/`0x0A`): the list being searched is NOT a fixed WRAM
--- array, and NOT a list of single bytes -- it's a real sequence of
--- `[idByte, payload byte(s)..., 0 terminator]` ENTRIES living directly
--- IN THE SCRIPT STREAM at the current cursor. Both opcodes read the
--- SAME 2 real WRAM cells first (`C = *($D871)`, the real byte to
--- search for; bit 7 of `*($D873)`, a real gate) but with OPPOSITE
--- polarity: `0x0B` only performs the search when bit 7 is CLEAR,
--- `0x0C` only when it's SET -- when the gate doesn't match, both
--- skip straight to the same "scan to the next real 0, then force
--- `$D85A=1`" leaf `0x08`'s own NZ-exit and `0x09`/`0x0A`'s own
--- not-found exit ALSO use (same real opcode-1-forcing trick, a
--- different address each time but the same technique). When the gate
--- DOES allow a search: reads one script byte at a time -- a real `0`
--- before any match means "not found," same force-opcode-1 exit;
--- `CP C` matching means found -- skips forward past that entry's own
--- remaining nonzero payload bytes, then ONE more (the real terminator
--- byte itself, via `INC HL`), then continues normally.
+-- Verified structure -- genuinely different from every other "zero-
+-- terminated list" shape already decoded (0x08, 0x09/0x0A): the list
+-- being searched is not a fixed WRAM array, and not a list of single
+-- bytes -- it's a sequence of [idByte, payload byte(s)..., 0
+-- terminator] entries living directly in the script stream at the
+-- current cursor. Both opcodes read the same 2 WRAM cells first (C =
+-- *($D871), the byte to search for; bit 7 of *($D873), a gate) but
+-- with opposite polarity: 0x0B only performs the search when bit 7 is
+-- clear, 0x0C only when it's set -- when the gate doesn't match, both
+-- skip straight to the same "scan to the next 0, then force $D85A=1"
+-- leaf 0x08's own NZ-exit and 0x09/0x0A's own not-found exit also use
+-- (same opcode-1-forcing trick, a different address each time but the
+-- same technique). When the gate does allow a search: reads one script
+-- byte at a time -- a 0 before any match means "not found," same
+-- force-opcode-1 exit; CP C matching means found -- skips forward past
+-- that entry's remaining nonzero payload bytes, then one more (the
+-- terminator byte itself, via INC HL), then continues normally.
 --
--- HONEST SCOPE: this project has no simulated model of the real WRAM
--- cells `$D871`/`$D873` -- `matchByte`/`isGateSet` are REQUIRED
--- callbacks (asserts loudly if reached without them, same "no silent
--- fallbacks" rule as everywhere else) rather than defaulted, since
--- there is no real "safe default" for a byte comparison the way
--- "always ready"/"always clear" is for a halt gate. `onExhausted`
--- follows the EXACT SAME "REQUIRED in practice, no guessing" contract
--- already established for `0x08`/`0x09`/`0x0A` -- this project does
--- NOT assume the same real continuation address applies here without
--- independent live confirmation, even though it's reached via the
--- same real `$D85A`-force-1 technique.
+-- HONEST SCOPE: this project has no simulated model of WRAM cells
+-- $D871/$D873 -- matchByte/isGateSet are required callbacks (asserts
+-- loudly if reached without them, same "no silent fallbacks" rule as
+-- everywhere else) rather than defaulted, since there's no safe
+-- default for a byte comparison the way "always ready"/"always clear"
+-- is for a halt gate. onExhausted follows the exact same "required in
+-- practice, no guessing" contract already established for 0x08/0x09/
+-- 0x0A -- this project does not assume the same continuation address
+-- applies here without independent live confirmation, even though it's
+-- reached via the same $D85A-force-1 technique.
 function StandardScriptHandlers.runListSearch(searchWhenGateSet, matchByte, isGateSet, onExhausted)
   return function(stream, cursor)
     assert(matchByte, "StandardScriptHandlers.runListSearch: matchByte is required -- " ..
