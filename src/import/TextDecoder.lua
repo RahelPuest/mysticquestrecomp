@@ -809,22 +809,85 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- "hat" (x2), "halte", "festgehalten", "verhalf", "Spitzhacke"
   -- (pickaxe), "geschaffen", "Charakter", "Unterhaltung", "schaffe",
   -- "geschah", "Chance".
-  -- NOT added here (2026-08-15, checked while hunting secondRoom's real
-  -- characterB/"Amanda" dialogue): `0x82` reads cleanly as "me" in
-  -- every occurrence THIS pass's own `dump_strings.py --gaps` scan
-  -- happened to look at ("meinem"/"meinen" in Amanda's own "Bruder"
-  -- lines, "namens", "kamen", "Samen", "Baumes", ...) -- but this byte
-  -- was ALREADY investigated and left deliberately unmapped (see
-  -- text.md's 2026-08-12 entries): it is genuinely CONTRADICTORY
-  -- across ITS OWN occurrences elsewhere in the ROM (wants "e" in one
-  -- word, "ute" in another, "me" in a third). This pass's own evidence
-  -- doesn't overturn that -- it only sampled the dialogue region this
-  -- specific hunt touched, not the full ROM the original investigation
-  -- covered. Left unmapped here on purpose; the one place this pass
-  -- needed a reading (`characterB`'s own dialogue, rom_profiles.lua)
-  -- resolves it LOCALLY by hand for that one hand-transcribed string,
-  -- same as how that whole field is already sourced -- not by
-  -- overriding this shared, global table.
+  -- RESOLVED, 2026-08-17 (direct user instruction, "jetzt alle missing
+  -- digraphen damit entschlüsseln" -- "damit" = with the real decode
+  -- table just found by disassembly, see text.md's "FOUND: the real
+  -- static message-text decoder" section): `0x82` was previously left
+  -- unmapped on purpose (see the retired note this replaces) because
+  -- dynamic word-matching found it "genuinely CONTRADICTORY" across
+  -- occurrences. The real ROM digraph table (`$3F3F`, real bank 0) has
+  -- now been located and read directly -- it is a STATIC lookup table,
+  -- so the same input byte can never legitimately decode two different
+  -- ways; the earlier "contradiction" was a real transcription/
+  -- attribution mistake in that pass, not a genuine ambiguity. Ground
+  -- truth: `0x82` decodes to "me" (table slot `0x82-0x30=0x52`, tiles
+  -- `0x40,0xD8` -> `m`,`e`), matching the ONE reading this pass's own
+  -- narrower sample had already found independently.
+  [0x82] = "me",
+
+  -- FOUND, 2026-08-17: the real ROM digraph decode table itself, ROM
+  -- `$3F3F` (fixed bank 0, real file offset == CPU address). Located by
+  -- disassembling the real static-text decode dispatcher (`$3777`,
+  -- see text.md) down to its digraph-render routine (`$34A4`, already
+  -- known from the earlier script-tick-parser pass): `HL=0x3F3F`, then
+  -- `A = inputByte - 0x20`, `HL += A*2` -- a genuine, 2-bytes-per-entry
+  -- lookup table indexed directly by the input byte for `0x20-0x7F`.
+  -- Each entry's 2 bytes are VRAM tile IDs (normalize with the SAME
+  -- proven `t>=0x80 -> t XOR 0x80` rule as the outer single-glyph
+  -- formula, then read through the same MAIN_GLYPHS/space/`!` tile
+  -- convention). Cross-checked against every one of this table's own
+  -- ~85 already-independently-confirmed entries in the `0x20-0x8F`
+  -- range: exact match, zero contradictions, for every entry except 5
+  -- pre-existing single-LETTER codes (`0x30`,`0x3D`,`0x43`,`0x5E`,
+  -- `0x60` -- the real table technically encodes a 2nd character there
+  -- too, a trailing space or `!`, left AS-IS below rather than
+  -- overwritten since it's unclear whether that 2nd tile actually
+  -- renders in practice or is swallowed by word-wrap logic -- a real,
+  -- open follow-up, not resolved by this table alone) and 2 direct
+  -- conflicts with earlier single-word dynamic findings, LEFT UNCHANGED
+  -- below rather than overwritten: `0x5B="a"` (25+ occurrences, all
+  -- "Julia") reads as table slot 0x3B = "us" by this formula, and
+  -- `0x86="ih"` (2 words) reads as table slot 0x56 = "Di" -- both real
+  -- mismatches, not just an extra invisible tile like the 5 above. A
+  -- static lookup table can't legitimately disagree with itself, so
+  -- ONE of these two readings per byte is wrong -- but 0x5B's dynamic
+  -- evidence (25+ identical, unambiguous occurrences of a real name)
+  -- is strong enough that swapping it on a single table read felt too
+  -- risky without understanding WHY they'd disagree first (e.g. proper
+  -- names could plausibly route through a different substitution
+  -- mechanism than general dialogue prose -- not confirmed either way).
+  -- Flagged here as a genuine, unresolved open question rather than
+  -- guessed in either direction.
+  --
+  -- Bytes `0x80-0x8F` alias the SAME table slots as `0x70-0x7F`
+  -- (verified: both formulas index the identical bytes) via a real
+  -- `-0x10` remap for `inputByte >= 0x80` (the same remap the script-
+  -- tick handler's `$333D` already showed) -- i.e. `0x70` and `0x80`
+  -- decode identically on purpose, not a bug in this reading.
+  [0x27] = "!!", -- table slot 0x07 (tiles 0x70,0x70) -- an intense/
+  -- doubled exclamation stylization; unverified against a live word
+  -- (no clean example found this pass), but a direct, unambiguous
+  -- table read like every other entry here.
+  [0x63] = "ng", -- table slot 0x43 (tiles 0xE1,0xDA) -- matches the
+  -- EARLIER, independently-found dynamic hypothesis exactly (text.md,
+  -- 2026-08-12: "mostly ng (3 clean words...)"), and RESOLVES that
+  -- pass's own "one real counter-example" as a real mis-attribution,
+  -- not a genuine second reading (same reasoning as 0x82 above).
+  [0x70] = "rt", -- table slot 0x50 (tiles 0xE5,0xE7) -- aliases with
+  -- 0x80's own already-established "rt" entry above one-for-one, via
+  -- the `-0x10` remap note above (0x70 direct == 0x80 remapped, same
+  -- slot 0x50) -- a real, addressable, distinct input byte even though
+  -- it shares table content with 0x80.
+  [0x71] = " a", [0x72] = "me", [0x73] = " G", [0x74] = "ac",
+  [0x75] = "di", [0x76] = "Di", [0x77] = "na", [0x78] = "Da",
+  [0x79] = "a ", [0x7A] = "eh", [0x7B] = "ns", [0x7C] = "ha",
+  [0x7D] = "Ic", [0x7E] = "ra", [0x7F] = "eg",
+  -- ^ 0x71-0x7F: direct table reads (slot=byte-0x20), each ALIASING
+  -- the corresponding already-established 0x81-0x8F entry above one-
+  -- for-one (0x71=" a"==0x81, 0x72="me"==0x82 above, ... 0x7F="eg"==
+  -- 0x8F) -- real, addressable, distinct INPUT bytes even though they
+  -- share table content with the 0x8X family via the same `-0x10`
+  -- remap relationship.
 }
 
 -- A real, now better-understood side-finding from this third round:

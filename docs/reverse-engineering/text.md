@@ -1788,3 +1788,81 @@ real digraph mechanism for `< 0x99` is located (this same `$3777`/
 `$37DC` call tree, real ROM, real bank 0) but not yet fully traced to
 a concrete lookup -- a good, concrete next continuation point, not a
 dead end.
+
+## FOUND: the real digraph lookup table, `$3F3F` -- nearly every missing digraph resolved (2026-08-17, same day, direct user instruction: "jetzt alle missing digraphen damit entschlüsseln")
+
+Continued the `$37DC` trail from the section above. Watched real WRAM
+`$D8DC`/`$D8DD` (a "digraph 2nd character" scratch pair, already
+observed feeding the glyph-draw entries during the story-box trace)
+for writes, and landed on `$34A4` -- the SAME digraph-render routine
+`$333D`'s script-tick handler already called in the earlier pass, now
+confirmed shared by the static-text decoder too:
+
+```
+$34A4  LD B,A / PUSH BC
+       CALL $36C2          ; the same "every 5th tick" throttle as $3480
+       POP BC / RET NZ
+       LD A,B
+       PUSH HL / PUSH AF / CALL $3C92 / POP AF
+       LD HL,0x3F3F        ; *** the real digraph table's own base address ***
+       SUB 0x20             ; index = inputByte - 0x20
+       ADD A,A               ; *2 (2 bytes/entry)
+       LD C,A / LD B,0x00
+       ADD HL,BC             ; HL = 0x3F3F + (inputByte-0x20)*2
+       LD BC,0xd8db
+       LD A,(HL+) / LD (BC),A / INC BC   ; entry byte 1 -> $D8DB (1st char)
+       LD A,(HL+) / LD (BC),A / INC BC   ; entry byte 2 -> $D8DC (2nd char)
+       XOR A / LD (BC),A                  ; $D8DD = 0 (terminator, always)
+```
+
+Real, disassembly-proven mechanism: **a genuine 2-bytes-per-entry
+lookup table at ROM `$3F3F`** (fixed bank 0), indexed directly by
+`inputByte - 0x20`, each entry's 2 bytes being VRAM tile IDs (same
+`t >= 0x80 -> t XOR 0x80` normalization as the single-glyph formula,
+then the same `MAIN_GLYPHS`/space/umlaut tile convention -- plus tile
+`0x70`, newly identified as `!`, cross-confirmed against the already-
+VERIFIED `0x66 = "! "` entry).
+
+Cross-checked this table against every one of `DIGRAPH_PARTIAL`'s own
+~85 already-independently-confirmed entries in the `0x20-0x8F` range:
+**exact match for ~78 of them**, with two real, honestly-flagged
+exceptions:
+- 5 pre-existing single-LETTER codes (`0x30`,`0x3D`,`0x43`,`0x5E`,
+  `0x60`) where the real table technically encodes a 2nd character
+  too (a trailing space or `!`) -- left as-is, since it's unclear
+  whether that 2nd tile actually renders in practice or is swallowed
+  by word-wrap logic; a real, open follow-up.
+- 2 direct conflicts (`0x5B` wanted "a" from 25+ occurrences of the
+  name "Julia", table reads "us"; `0x86` wanted "ih" from 2 words,
+  table reads "Di") -- left UNCHANGED rather than guessed either way;
+  a static lookup table can't legitimately disagree with itself, so
+  one of the two readings must be wrong, but which one isn't resolved
+  by this pass (proper names could plausibly route through a
+  different substitution mechanism -- not confirmed).
+
+**Also decisively resolves a real, previously-flagged contradiction**:
+`0x82` was deliberately left unmapped (2026-08-15 note, since retired)
+because dynamic word-matching found it "genuinely CONTRADICTORY"
+across occurrences. The real table has exactly one, unambiguous
+answer -- `"me"` -- matching the ONE reading a narrower, independent
+sample had already found; the earlier "contradiction" was a real
+mis-attribution in that pass, not a genuine byte-level ambiguity.
+
+**Net result**: `TextDecoder.DIGRAPH_PARTIAL` gained real, disassembly-
+proven entries for `0x27`, `0x63`, `0x70`-`0x7F`, and `0x82` -- closing
+almost the entire previously-"~55 distinct low-frequency byte values...
+remain genuinely unmapped" gap from the earlier dynamic-only pass.
+`0x71`-`0x7E` alias the SAME table slots as `0x81`-`0x8E` (a real
+`-0x10` remap for `inputByte >= 0x80`, matching the identical remap
+`$333D`'s script-tick handler already showed) -- both input byte
+ranges are real, addressable, and now decoded, even though they share
+underlying table content.
+
+**Still genuinely open**: table slots for `0x2C` and `0x90`,
+`0x92`-`0x98` don't land on any recognized glyph by this same formula
+(neither `MAIN_GLYPHS` nor the umlaut/space/`!` set) -- left unmapped,
+not guessed. `0x5B`/`0x86`'s conflict (above) is also unresolved.
+
+`tests/import/text_decoder_test.lua`'s "unmapped bytes return nil"
+test updated: `0x82` (now resolved) replaced by `0x92` (still
+genuinely open) as its example. 557/557 tests passing.

@@ -22,12 +22,18 @@ end)
 Harness.test("TextDecoder.decodeByte: unmapped bytes return nil, not a guess", function()
   Harness.assertEqual(TextDecoder.decodeByte(0x00), nil)
   -- 0x50/0x66 were "ordinary low byte, not text" until the 2026-08-12
-  -- digraph-closing passes confirmed them (see DIGRAPH_PARTIAL) --
-  -- 0x82 is one of the few bytes still genuinely open after all of
-  -- that (a real, honest CONTRADICTION across its own occurrences,
-  -- see TextDecoder.lua's own note), so it keeps this test's original
-  -- job of proving a real unmapped byte still returns nil.
-  Harness.assertEqual(TextDecoder.decodeByte(0x82), nil)
+  -- digraph-closing passes confirmed them (see DIGRAPH_PARTIAL). 0x82
+  -- was this test's own former "still genuinely open" example until
+  -- 2026-08-17, when the real ROM digraph table itself was located by
+  -- disassembly ($3F3F, see TextDecoder.lua's own note) and read
+  -- directly -- a static lookup table can't legitimately disagree with
+  -- itself, so "me" is now a disassembly-PROVEN reading, not a guess.
+  -- 0x92 takes over as the "still genuinely open" example: even that
+  -- same real table doesn't resolve it -- its own tile bytes (0x48,
+  -- 0x96) include one that doesn't land on any known glyph, still a
+  -- real, honest unknown (see DIGRAPH_PARTIAL's own note on the
+  -- 0x90-0x98 sub-range).
+  Harness.assertEqual(TextDecoder.decodeByte(0x92), nil)
   Harness.assertEqual(TextDecoder.decodeByte(0x90), nil) -- unconfirmed umlaut slot
 end)
 
