@@ -10,6 +10,7 @@ Harness.test("Inventory.new: with no ROM/profile, starts real-empty and has no e
   Harness.assertEqual(#inv.spells, 0)
   Harness.assertEqual(#inv.itemCatalog, 0)
   Harness.assertEqual(#inv.weaponCatalog, 0)
+  Harness.assertEqual(#inv.weaponStatCatalog, 0)
   Harness.assertEqual(#inv.heldWeapons, 0)
   Harness.assertEqual(inv:equippedWeapon(), nil)
 end)
@@ -50,6 +51,14 @@ Harness.testIfAvailable(
     local weapon = inv:equippedWeapon()
     Harness.assertTrue(weapon ~= nil, "a fresh character should have a real equipped weapon")
     Harness.assertEqual(weapon.name, "Breit")
+
+    -- Real WeaponStatTable catalog (2026-08-17, see that module's own
+    -- doc comment) -- 16 real weapons, own separate catalog from
+    -- weaponCatalog above (not merged, real row-order correspondence
+    -- between the two tables not yet confirmed).
+    Harness.assertEqual(#inv.weaponStatCatalog, 16)
+    Harness.assertEqual(inv.weaponStatCatalog[1].power, 4) -- Broad Sword, real external-reference-confirmed value
+    Harness.assertEqual(inv.weaponStatCatalog[1].price, 60)
   end
 )
 

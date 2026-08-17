@@ -4691,6 +4691,33 @@ RomProfiles.PROFILES = {
       recordCount = 48, -- extended 2026-08-15, see doc comment above
     },
 
+    -- FOUND, 2026-08-17 (external-reference-driven search, same day
+    -- and method as `enemyStatTable` above -- see
+    -- src/import/WeaponStatTable.lua's own doc comment for the full
+    -- evidence trail). A real, SEPARATE table from `weaponTable`
+    -- above (own file offset doesn't land on a shared record
+    -- boundary with it -- see WeaponStatTable.lua for why these stay
+    -- two independent decoders): 16 real records, 16-byte stride,
+    -- bank 2. Every record's own 7-byte stat signature matched the US
+    -- "Final Fantasy Adventure" disassembly's own documented weapon
+    -- list BYTE-FOR-BYTE.
+    weaponStatTable = {
+      status = "VERIFIED (table location + stride + power/price fields, via exact external-reference byte match); other fields real but unconfirmed against this EU ROM",
+      bank = 2,
+      fileOffset = 0xA1FD,
+      rowCount = 16,
+      -- Real English names from the external US disassembly, in real
+      -- ROM record order -- see WeaponStatTable.lua's own doc comment
+      -- for the gamesurge.com cross-check that independently confirms
+      -- `power`/`price` for several of these by name.
+      externalReferenceNames = {
+        "Broad Sword", "Battle Axe", "Sickle", "Chain Flail",
+        "Silver Sword", "Wind Spear", "Were Axe", "Morning Star",
+        "Blood Sword", "Dragon Sword", "Flame Flail", "Ice Blade",
+        "Zeus Axe", "Rusty Sword", "Thunder Spear", "Excalibur",
+      },
+    },
+
     -- NEW (2026-08-15, direct user request "suchen alle monster und
     -- npcs mit allen daten, texten und grafiken aus dem rom"): a real
     -- ROM-wide TEXT census, found via `tools/rom/dump_strings.py`'s

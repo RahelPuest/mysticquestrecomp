@@ -9,6 +9,12 @@
 -- find one name, with nowhere real for a granted item to go once
 -- milestone-7 event data exists (item grants, shop purchases, etc.).
 --
+-- ALSO wires `WeaponStatTable` (2026-08-17, real power/price data
+-- found via external-reference byte matching, see that module's own
+-- doc comment) as `weaponStatCatalog` -- kept as its OWN, separate
+-- catalog rather than merged per-weapon into `weaponCatalog`, since
+-- the two tables' real row order correspondence isn't confirmed yet.
+--
 -- VERIFIED (rom-map.md "The in-game menu system"): a fresh character's
 -- Dinge/Magie (items/spells) lists are empty, and Waffe shows exactly
 -- one already-equipped weapon ("Breit") -- live-tested directly, not
@@ -36,6 +42,7 @@
 
 local ItemTable = require("src.import.ItemTable")
 local WeaponTable = require("src.import.WeaponTable")
+local WeaponStatTable = require("src.import.WeaponStatTable")
 
 local Inventory = {}
 Inventory.__index = Inventory
@@ -67,6 +74,7 @@ function Inventory.new(romData, profile)
     itemCatalog = {}, -- every real ItemTable record whose categoryByte marks it a consumable
     spellCatalog = {}, -- every real ItemTable record whose categoryByte marks it a spell
     weaponCatalog = {}, -- every real WeaponTable record (the full in-ROM catalog, not what the player owns)
+    weaponStatCatalog = {}, -- every real WeaponStatTable record (power/price, see below) -- a SEPARATE catalog, not merged into weaponCatalog
     heldWeapons = {}, -- the weapons this character actually HAS -- starts with just the real starting weapon
     equippedWeaponIndex = nil,
   }, Inventory)
@@ -93,6 +101,19 @@ function Inventory.new(romData, profile)
         self.equippedWeaponIndex = starting.index
         self.heldWeapons[1] = starting
       end
+    end
+
+    -- NOT merged into `weaponCatalog`/`heldWeapons` records: the two
+    -- tables' own real row orders are NOT confirmed to correspond
+    -- 1-for-1 (see WeaponStatTable.lua's own doc comment -- e.g.
+    -- `weaponCatalog`'s German "Streit" sitting right where a naive
+    -- shared-order guess would expect "Were Axe" doesn't obviously fit
+    -- that name, a real, open discrepancy, not silently papered over).
+    -- Exposed as its own real, honestly-separate catalog instead of
+    -- guessing a per-weapon merge that could misattribute power/price
+    -- to the wrong named weapon.
+    if profile.weaponStatTable then
+      self.weaponStatCatalog = WeaponStatTable.decode(romData, profile.weaponStatTable)
     end
   end
 
