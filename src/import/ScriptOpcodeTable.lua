@@ -961,131 +961,122 @@ ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_28 = 0x1318
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_46 = 0x13D0 -- group 0x1C
 ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_58 = 0x1474
 
--- `0x49` ($140A): FOUND live, 2026-08-13, direct instruction "ok einen
--- interpreter start bitte" -> a real, live `ScriptRuntime` shadow run
--- against the real boss-defeat script correctly halted on this exact
--- opcode (a genuinely undecoded handler address, per this project's own
--- "no silent fallbacks" rule) rather than misreading past it -- the
--- direct trigger for decoding it. Full disassembly:
+-- 0x49 ($140A): FOUND live, direct instruction to start an interpreter
+-- -> a live ScriptRuntime shadow run against the boss-defeat script
+-- correctly halted on this exact opcode (a genuinely undecoded handler
+-- address, per this project's "no silent fallbacks" rule) rather than
+-- misreading past it -- the direct trigger for decoding it. Full
+-- disassembly:
 --   $140A: CALL $28C2 / ADD A,3 / LD C,A / CALL $123E / RET
---   $123E: PUSH HL / PUSH BC / CALL $289B (the already-known real
---     WRAM-$C5A0 8-byte OR-reduce "any nonzero?" helper, see
---     QUEUED_ACTION_HANDLER_ADDRESS_38's own doc comment) / POP BC / POP
---     HL / RET NZ  -- SAME real halt gate as the queued-action family,
---     checked BEFORE any operand byte is read.
---   Once ready: LD A,(HL+) [[real operand byte 1]] / INC A / ADD A,A x3
---     [[A = (byte1+1)*8]] / LD E,A -- then LD A,(HL+) [[real operand
---     byte 2]] / INC A / INC A / ADD A,A x3 [[A = (byte2+2)*8]] / LD
---     D,A -- DE = the transformed pair. THIS IS THE FIRST real member of
---     the whole actor-action/queued-action opcode family this project
---     has found that consumes ANY real operand bytes -- every other
---     sibling (`0x10`-`0x85`, `0x18`-`0x78`) has zero.
---   CALL $28AA -- a real `$1F35` trampoline, `LD A,0x0D / JP $1F35` --
---     tail-dispatches to selector `0x0D`'s own already-mapped real
---     target, `$4AF9` (see events.md's "system connectivity" writeup for
---     how that table was fully mapped), passing DE (the transformed
---     operand pair) AND C (the `$28C2`-derived "actor slot index" from
---     $140A's own prologue) as real parameters.
---   $4AF9: computes HL = $C4E0 + C*24 (the SAME real per-slot "actor
---     table" stride this whole subsystem shares -- see events.md), LD
---     C,(HL) [[reads that slot's own first byte, a NEW C]], then CALL
---     $0C99 with DE/C, then `OR 0x10` on the result and CALLs $0611 --
---     the SAME real low-level routine selector `0x0B`'s own trampoline
---     calls (`$0611` -- a real, concrete NEW cross-link between
---     selectors `0x0D` and `0x0B`, found as a side effect of this
---     trace). RET.
+--   $123E: PUSH HL / PUSH BC / CALL $289B (the already-known WRAM-
+--     $C5A0 8-byte OR-reduce "any nonzero?" helper, see QUEUED_ACTION_
+--     HANDLER_ADDRESS_38's own doc comment) / POP BC / POP HL / RET NZ
+--     -- same halt gate as the queued-action family, checked before
+--     any operand byte is read.
+--   Once ready: LD A,(HL+) [[operand byte 1]] / INC A / ADD A,A x3
+--     [[A = (byte1+1)*8]] / LD E,A -- then LD A,(HL+) [[operand byte
+--     2]] / INC A / INC A / ADD A,A x3 [[A = (byte2+2)*8]] / LD D,A --
+--     DE = the transformed pair. This is the first member of the
+--     whole actor-action/queued-action opcode family found that
+--     consumes any operand bytes -- every other sibling (0x10-0x85,
+--     0x18-0x78) has zero.
+--   CALL $28AA -- a $1F35 trampoline, LD A,0x0D / JP $1F35 -- tail-
+--     dispatches to selector 0x0D's own already-mapped target, $4AF9
+--     (see events.md's "system connectivity" writeup for how that
+--     table was fully mapped), passing DE (the transformed operand
+--     pair) and C (the $28C2-derived "actor slot index" from $140A's
+--     prologue) as parameters.
+--   $4AF9: computes HL = $C4E0 + C*24 (the same per-slot "actor table"
+--     stride this whole subsystem shares -- see events.md), LD C,(HL)
+--     [[reads that slot's first byte, a new C]], then CALL $0C99 with
+--     DE/C, then OR 0x10 on the result and CALLs $0611 -- the same
+--     low-level routine selector 0x0B's own trampoline calls ($0611 --
+--     a concrete new cross-link between selectors 0x0D and 0x0B,
+--     found as a side effect of this trace). RET.
 --   Back in $123E: CALL $3727 (fetch next opcode) / RET.
--- CLOSED (2026-08-13, task #85 follow-up, direct instruction "ja mach
--- das"): `$0C99` and `$0611` -- the real leaf action, left undecoded by
--- the pass above -- are now both disassembled. `$0C99`: `HL = $C200 +
--- C*16` (the ALREADY-known real 20-slot entity struct this project's
--- own `EntityStructLayout.lua` already models), `A = *(HL)` -- reads
--- that entity's own struct byte 0. `$0611`: bounds-checks the slot
--- index against 20 (`CP 0x14 / RET NC`, an EXACT match to
--- `EntityStructLayout.SLOT_COUNT`), writes the NEW state byte (the
--- `OR 0x10`-modified value from `$4AF9`) into that SAME entity's own
--- struct byte 0, clears bit 7, then continues into the ALREADY-traced
--- real OAM-commit chain this project fully disassembled for the
--- gate-creature sprite investigation this same session (`$0651 ->
--- CALL $088A`, see rom_profiles.lua's `enemyDescent` doc comment and
--- events.md's "root cause of the 16px gap mystery" section). **Real,
--- decisive conclusion**: opcode `0x49`/`0x19`'s real leaf action is
--- "write a new state byte into entity slot C's own struct, then commit
--- its OAM/position" -- i.e. this genuinely IS a real sprite/position
--- update primitive, strengthening (not just hypothesizing) the
--- `(n+K)*8` tile-to-pixel transform's own plausibility, though the
--- transform's exact real consumer inside the OAM-commit chain is still
--- not traced byte-for-byte. `StandardScriptHandlers.actorSlotPosition`
--- is unchanged (still correctly exposes the leaf as an opaque
--- callback, per this project's "interpreter doesn't render, it calls
--- back" convention) -- this is documentation-only, closing an honest
--- gap, not a behavior change.
+-- CLOSED (task #85 follow-up, direct instruction to go ahead): $0C99
+-- and $0611 -- the leaf action, left undecoded above -- are now both
+-- disassembled. $0C99: HL = $C200 + C*16 (the already-known 20-slot
+-- entity struct EntityStructLayout.lua already models), A = *(HL) --
+-- reads that entity's struct byte 0. $0611: bounds-checks the slot
+-- index against 20 (CP 0x14 / RET NC, an exact match to
+-- EntityStructLayout.SLOT_COUNT), writes the new state byte (the OR
+-- 0x10-modified value from $4AF9) into that same entity's struct byte
+-- 0, clears bit 7, then continues into the already-traced OAM-commit
+-- chain this project fully disassembled for the gate-creature sprite
+-- investigation this same session ($0651 -> CALL $088A, see
+-- rom_profiles.lua's enemyDescent doc comment and events.md's "root
+-- cause of the 16px gap mystery" section). Decisive conclusion: opcode
+-- 0x49/0x19's leaf action is "write a new state byte into entity slot
+-- C's own struct, then commit its OAM/position" -- a genuine sprite/
+-- position update primitive, strengthening (not just hypothesizing)
+-- the (n+K)*8 tile-to-pixel transform's plausibility, though the
+-- transform's exact consumer inside the OAM-commit chain still isn't
+-- traced byte-for-byte. StandardScriptHandlers.actorSlotPosition is
+-- unchanged (still correctly exposes the leaf as an opaque callback)
+-- -- this is documentation-only, closing an honest gap.
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_49 = 0x140A
 
--- `0x19` ($12AE): FOUND 2026-08-13, direct continuation of Milestone 7
--- ("mach bitte 7") -- a real, live `ScriptRuntime` shadow run against
--- the boss-defeat script halted here next (opcode `0x19` genuinely
--- undecoded), same "no silent fallbacks" discipline as `0x49` above.
--- Full disassembly:
+-- 0x19 ($12AE): FOUND, direct continuation of Milestone 7 -- a live
+-- ScriptRuntime shadow run against the boss-defeat script halted here
+-- next (opcode 0x19 genuinely undecoded), same "no silent fallbacks"
+-- discipline as 0x49 above. Full disassembly:
 --   $12AE: CALL $28C2 / ADD A,0x00 / LD C,A / CALL $123E / RET
--- This is the EXACT SAME real `$123E` chain already fully decoded and
--- documented above for opcode `0x49` -- same WRAM-$C5A0 gate-before-
--- fetch, same real 2-operand-byte `(n+K)*8` transform, same `$1F35`
--- selector `0x0D` -> `$4AF9` dispatch. The only real difference from
--- `0x49` is the trampoline's own base (`ADD A,0x00` here vs `ADD A,3`
--- for `0x49`), which only changes the derived actor-slot index (`C`)
--- passed into `$123E` -- not the mechanism. Reuses
--- `StandardScriptHandlers.actorSlotPosition` directly, no new Lua
--- handler needed.
+-- This is the exact same $123E chain already fully decoded and
+-- documented above for opcode 0x49 -- same WRAM-$C5A0 gate-before-
+-- fetch, same 2-operand-byte (n+K)*8 transform, same $1F35 selector
+-- 0x0D -> $4AF9 dispatch. The only difference from 0x49 is the
+-- trampoline's base (ADD A,0x00 here vs ADD A,3 for 0x49), which only
+-- changes the derived actor-slot index (C) passed into $123E -- not
+-- the mechanism. Reuses StandardScriptHandlers.actorSlotPosition
+-- directly, no new Lua handler needed.
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_19 = 0x12AE
 
--- `0xC4` ($39A3): `LD A,(HL+) / PUSH HL / CALL $312F / LD B,9 / CALL
--- $3D10 / POP HL / RET` -- one real operand byte, no conditional
--- branch visible, relies on `$3D10` to call `$3727` internally (the
--- SAME real pattern already confirmed for opcode `0xF6` above).
--- Reuses `soundParam` directly (identical real shape: 1 operand byte,
--- callback, continue -- the specific real helper/HRAM register it
--- invokes doesn't matter to this project's own implementation).
+-- 0xC4 ($39A3): LD A,(HL+) / PUSH HL / CALL $312F / LD B,9 / CALL
+-- $3D10 / POP HL / RET -- one operand byte, no conditional branch
+-- visible, relies on $3D10 to call $3727 internally (the same pattern
+-- already confirmed for opcode 0xF6 above). Reuses soundParam directly
+-- (identical shape: 1 operand byte, callback, continue -- the specific
+-- helper/HRAM register it invokes doesn't matter to this project's
+-- implementation).
 ScriptOpcodeTable.SOUND_PARAM_HANDLER_ADDRESS_C4 = 0x39A3
 
--- Three more real opcodes found this round, structurally traced,
--- honestly NOT wired:
--- `0x39` ($1396): `CALL $28C2 / ADD A,2 / LD C,A / CALL $123E / RET`
--- -- LOOKS like the Family A/B shape but calls a THIRD, different real
--- helper (`$123E`, neither `$2879` nor `$2859`) -- not assumed to
--- share their same real gating condition without independent
--- verification, not chased down this pass.
--- `0xBC` ($10DC): real arithmetic on WRAM `$D499`/`$D49A` -- the SAME
--- already-flagged palette/fade-counter family behind `0xFC`/`0xFD`.
--- `0xCB` ($392C): reads a real, BIG-endian 16-bit operand (`LD D,A ...
--- LD E,A`, no byte-swap trick), then `CALL $3937 / RET` with no
--- visible `CALL $3727` -- unlike `0xF6`/`0xC4` above, NOT confirmed
--- whether `$3937` calls `$3727` internally (making this either another
--- always-continuing opcode, or a genuine, undiscovered conditional/
--- unconditional halt) -- left unresolved rather than guessed.
+-- Three more opcodes found this round, structurally traced, honestly
+-- not wired:
+-- 0x39 ($1396): CALL $28C2 / ADD A,2 / LD C,A / CALL $123E / RET --
+-- looks like the Family A/B shape but calls a third, different helper
+-- ($123E, neither $2879 nor $2859) -- not assumed to share their same
+-- gating condition without independent verification, not chased down
+-- this pass.
+-- 0xBC ($10DC): arithmetic on WRAM $D499/$D49A -- the same already-
+-- flagged palette/fade-counter family behind 0xFC/0xFD.
+-- 0xCB ($392C): reads a big-endian 16-bit operand (LD D,A ... LD E,A,
+-- no byte-swap trick), then CALL $3937 / RET with no visible CALL
+-- $3727 -- unlike 0xF6/0xC4 above, not confirmed whether $3937 calls
+-- $3727 internally (making this either another always-continuing
+-- opcode, or a genuine, undiscovered halt) -- left unresolved rather
+-- than guessed.
 
--- Real opcodes `0x09`/`0x0A` (ROM `$3390`/`$33B0`) -- CLOSED
--- 2026-08-14 (direct follow-up: "$33CF disassemblieren" -- this
--- session's own top remaining combined blocker on the whole-corpus
--- scan, 72 real scripts). Both share byte-for-byte the SAME real
--- shape (`LD DE,<fixed pointer> / cache into $D891/$D890 / LD
--- A,<fixed constant> / LD ($D870),A / CALL $33CF`), just different
--- fixed constants -- `0x0A` uses `0xD6C5`/`0x2B`, `0x09` uses
--- `0xD6E9`/`0x07`. See `StandardScriptHandlers.timerListSearch`'s own
--- doc comment for the complete real disassembly of `$33CF`/`$3411`/
--- `$3430`/`$343F` -- the real answer to this project's own
--- long-standing open question ("what does `$33CF` do with this
--- WRAM-queued pointer+type pair"): a real WRAM-array increment/
+-- Opcodes 0x09/0x0A (ROM $3390/$33B0) -- CLOSED (direct follow-up to
+-- disassemble $33CF -- this session's top remaining combined blocker
+-- on the whole-corpus scan, 72 scripts). Both share byte-for-byte the
+-- same shape (LD DE,<fixed pointer> / cache into $D891/$D890 / LD
+-- A,<fixed constant> / LD ($D870),A / CALL $33CF), just different
+-- fixed constants -- 0x0A uses 0xD6C5/0x2B, 0x09 uses 0xD6E9/0x07. See
+-- StandardScriptHandlers.timerListSearch's own doc comment for the
+-- complete disassembly of $33CF/$3411/$3430/$343F -- the answer to
+-- this project's long-standing open question of what $33CF does with
+-- this WRAM-queued pointer+type pair: a WRAM-array increment/
 -- decrement pair, then a zero-terminated list-search structurally
--- IDENTICAL to opcode `0x08`'s own `zeroTerminatedFlagList`.
+-- identical to opcode 0x08's own zeroTerminatedFlagList.
 ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_09 = 0x3390
 ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A = 0x33B0
 
--- Opcode `0x00`'s own real handler (`$3297`) -- resolved 2026-08-12,
--- direct instruction "löse 1" (the single largest remaining blocker
--- from this session's own opcode-frequency scan, 275/1357 scripts).
--- Full byte-for-byte disassembly (see events.md's "Opcode 0x00,
--- resolved" section for the complete chain):
+-- Opcode 0x00's own handler ($3297) -- resolved, direct instruction to
+-- solve "1" (the single largest remaining blocker from this session's
+-- opcode-frequency scan, 275/1357 scripts). Full byte-for-byte
+-- disassembly (see events.md's "Opcode 0x00, resolved" section for
+-- the complete chain):
 --   LD A,($D874) / BIT 0,A / RET NZ        ; halt #1: a real, general
 --                                            flag byte's bit 0 (bit 1
 --                                            of the SAME byte is the
