@@ -1242,26 +1242,26 @@ end
 
 --- Checks the current room's real `exits` (rom_profiles.lua) against
 -- the player's current position -- returns the first matching exit, or
--- nil. A `zone` field may omit any of xMin/xMax/yMin/yMax, meaning
--- "unbounded on that side." The actual matching (`ZoneMatch.first`) is
+-- nil. A zone field may omit any of xMin/xMax/yMin/yMax, meaning
+-- "unbounded on that side." The actual matching (ZoneMatch.first) is
 -- a pure, headlessly-tested module (see src/entities/ZoneMatch.lua,
--- extracted 2026-08-10 -- this exact logic is where the same-day
--- secondRoom east-exit regressions lived, undetected by the test suite
--- because this whole file needs love.graphics to even require()).
+-- extracted -- this exact logic is where the secondRoom east-exit
+-- regressions lived, undetected by the test suite because this whole
+-- file needs love.graphics to even require()).
 --
--- EXTENDED (2026-08-13, "fourthRoom->fifthRoom-Lücken schließen"): an
--- exit MAY declare a real `holdFrames`/`holdDirection` pair (see
--- `fourthRoom.exits`'s own doc comment in rom_profiles.lua for the real
--- ROM evidence: a real cut-transition that needs the player held
--- against a wall for ~64 real frames, not firing the instant the zone
--- is entered) -- an exit WITHOUT these fields behaves exactly as
--- before, firing the instant `ZoneMatch` matches (every other real exit
--- found so far). The actual hold-tracking decision (`HoldTrigger.step`)
--- is, same as `ZoneMatch`, a pure, headlessly-tested module --
--- `self.holdTriggerState` is the only love-side state this method owns,
--- keyed by the real exit table itself (stable identity across frames,
--- reset to `{}` the instant the player isn't standing in ANY zone, so a
--- partial hold doesn't silently carry over into an unrelated exit).
+-- EXTENDED (task to close the fourthRoom->fifthRoom gaps): an exit may
+-- declare a holdFrames/holdDirection pair (see fourthRoom.exits's own
+-- doc comment in rom_profiles.lua for the ROM evidence: a cut-
+-- transition that needs the player held against a wall for ~64 frames,
+-- not firing the instant the zone is entered) -- an exit without these
+-- fields behaves exactly as before, firing the instant ZoneMatch
+-- matches (every other exit found so far). The actual hold-tracking
+-- decision (HoldTrigger.step) is, same as ZoneMatch, a pure,
+-- headlessly-tested module -- self.holdTriggerState is the only love-
+-- side state this method owns, keyed by the exit table itself (stable
+-- identity across frames, reset to {} the instant the player isn't
+-- standing in any zone, so a partial hold doesn't silently carry over
+-- into an unrelated exit).
 function VictorySequence:matchedExit()
   local room = self.profile.graphics[self.currentRoomKey]
   if not room then return nil end
@@ -1270,18 +1270,17 @@ function VictorySequence:matchedExit()
     self.holdTriggerState = nil
     return nil
   end
-  -- ADDED (2026-08-15, second-boss feature): a real, general capability
-  -- for "gate this exit behind some state flag" (an exit naming a real
-  -- field on `self` via `requiresFlag` simply never matches while that
-  -- field isn't true yet, same as standing outside the zone entirely --
-  -- no partial hold progress accumulates while gated), mirroring
-  -- willyRoom's own real door-after-boss pattern in general shape.
-  -- HONEST STATUS: no `exits` entry in rom_profiles.lua actually sets
-  -- `requiresFlag` right now -- `sixthRoom` (where the second boss
-  -- actually lives, see that room's own `secondBoss` doc comment) has
-  -- no further real exit recorded at all yet to gate -- so this is
-  -- real, tested infrastructure ready for whenever one is found, not
-  -- something currently wired to a live gate.
+  -- ADDED (second-boss feature): a general capability for "gate this
+  -- exit behind some state flag" (an exit naming a field on self via
+  -- requiresFlag simply never matches while that field isn't true yet,
+  -- same as standing outside the zone entirely -- no partial hold
+  -- progress accumulates while gated), mirroring willyRoom's own door-
+  -- after-boss pattern in general shape. HONEST STATUS: no exits entry
+  -- in rom_profiles.lua actually sets requiresFlag right now --
+  -- sixthRoom (where the second boss actually lives, see that room's
+  -- own secondBoss doc comment) has no further exit recorded yet to
+  -- gate -- so this is tested infrastructure ready for whenever one is
+  -- found, not something currently wired to a live gate.
   if exit.requiresFlag and not self[exit.requiresFlag] then
     self.holdTriggerState = nil
     return nil
@@ -1309,26 +1308,25 @@ function VictorySequence:matchedExit()
 end
 
 --- Checks the current room's named scene characters (rom_profiles.lua's
--- `scene.<name>.dialogue`) for a real, one-shot proximity trigger --
--- returns `(lines, name)` for the first matched, not-yet-shown NPC, or
--- nil. ADDED 2026-08-10 (direct user report: "der dialog wird beim
--- betreten des raums getriggert"): the general room-graph engine's
--- existing `exits.dialoguePages` mechanism (room-ENTRY-triggered) was
--- being reused for NPC dialogue too, but a fresh live re-trace disproved
--- that entirely for `secondRoom`'s own two NPCs -- idling 900 real
--- frames with zero input right after landing produced no dialogue at
--- all, while walking up to one of the NPCs did, instantly, with no
--- button press needed. This is a genuinely different trigger shape
+-- scene.<name>.dialogue) for a one-shot proximity trigger -- returns
+-- (lines, name) for the first matched, not-yet-shown NPC, or nil.
+-- ADDED (direct user report the dialogue triggers on room entry): the
+-- room-graph engine's existing exits.dialoguePages mechanism (room-
+-- entry-triggered) was being reused for NPC dialogue too, but a fresh
+-- live re-trace disproved that entirely for secondRoom's two NPCs --
+-- idling 900 frames with zero input right after landing produced no
+-- dialogue at all, while walking up to one of the NPCs did, instantly,
+-- with no button press needed. A genuinely different trigger shape
 -- (per-character proximity, not a room-wide zone), so it's its own
--- method rather than bent to fit `matchedExit`'s. The proximity box
--- (`pad` below) is a reasonable approximation, same "not independently
+-- method rather than bent to fit matchedExit's. The proximity box
+-- (pad below) is a reasonable approximation, same "not independently
 -- pixel-verified" honesty status as KnockbackFlicker.lua's own
--- knockback-direction extrapolation -- the real trigger radius wasn't
+-- knockback-direction extrapolation -- the trigger radius wasn't
 -- separately bracketed this pass.
--- The actual matching (`NpcProximity.match`) is a pure, headlessly-
+-- The actual matching (NpcProximity.match) is a pure, headlessly-
 -- tested module (see src/entities/NpcProximity.lua) -- this method is
 -- just the love-side plumbing (this room's live scene/wander-state
--- tables, the one-shot `npcDialogueShown` set).
+-- tables, the one-shot npcDialogueShown set).
 function VictorySequence:matchedNpcDialogue()
   local sceneData = self.roomSceneData and self.roomSceneData[self.currentRoomKey]
   local wanderState = self.roomNpcState[self.currentRoomKey]
@@ -1338,46 +1336,44 @@ function VictorySequence:matchedNpcDialogue()
   end)
 end
 
---- Starts a real transition along `exit` -- a hardware scroll (real
--- per-frame pixel rate, either axis) or a real "cut" (jump-cut) --
--- see rom_profiles.lua's `exits` schema doc comment for what each real
+--- Starts a transition along exit -- a hardware scroll (per-frame
+-- pixel rate, either axis) or a "cut" (jump-cut) -- see
+-- rom_profiles.lua's exits schema doc comment for what each
 -- transition type means.
 --
--- CORRECTED (2026-08-14, direct user instruction: "bei jump cut
--- übergängen gibt es entweder einen wipecut von oben und unten oder
--- eine blende auf schwarz. bitte suche im rom nach den algorithmen
--- dafür und implementiere es"): a real "cut" used to complete
--- INSTANTLY, with zero visual effect -- a real gap, since a live trace
--- of the real thirdRoom->fourthRoom staircase cut found a genuine,
--- real, ROM-timed visual (the old room closing to a thin horizontal
--- band, symmetric top+bottom, then the new room reopening the same
--- way) -- see `RoomWipeTransition.lua`'s own doc comment for the full
--- live-trace evidence. `"cutClosing"`/`"cutOpening"` are the two new
--- real phases driving this.
+-- CORRECTED (direct user instruction: jump-cut transitions either
+-- wipe-cut from top and bottom or fade to black -- search the ROM for
+-- the algorithms and implement it): a "cut" used to complete
+-- instantly, with zero visual effect -- a real gap, since a live trace
+-- of the thirdRoom->fourthRoom staircase cut found a genuine, ROM-
+-- timed visual (the old room closing to a thin horizontal band,
+-- symmetric top+bottom, then the new room reopening the same way) --
+-- see RoomWipeTransition.lua's own doc comment for the full live-trace
+-- evidence. "cutClosing"/"cutOpening" are the two new phases driving
+-- this.
 function VictorySequence:beginTransition(exit)
   self:ensureRoomLoaded(exit.targetRoom)
   if self.currentRoomKey == "willyRoom" then
-    -- Real tile-patch precursor (the door itself flipping open) --
-    -- willyRoom-specific, see `backgroundFor`. CORRECTED (2026-08-10):
-    -- used to be additionally gated on `exit.dialoguePages` (true for
-    -- willyRoom's only exit at the time) -- that field is now removed
-    -- (see this room's own `exits` doc comment in rom_profiles.lua, a
-    -- real, unrelated dialogue-trigger correction), so the door-opening
-    -- itself is now keyed on the room alone, matching what it actually
-    -- represents (a real visual precursor to willyRoom's own exit, not
-    -- something that should depend on whether that exit happens to also
-    -- carry dialogue).
+    -- Tile-patch precursor (the door itself flipping open) --
+    -- willyRoom-specific, see backgroundFor. CORRECTED: used to be
+    -- additionally gated on exit.dialoguePages (true for willyRoom's
+    -- only exit at the time) -- that field is now removed (see this
+    -- room's own exits doc comment in rom_profiles.lua, an unrelated
+    -- dialogue-trigger correction), so the door-opening itself is now
+    -- keyed on the room alone, matching what it actually represents (a
+    -- visual precursor to willyRoom's own exit, not something that
+    -- should depend on whether that exit also carries dialogue).
     self.doorOpened = true
   end
   self.pendingExit = exit
-  -- REAL interpreter-driven room-selector capture (2026-08-16, direct
-  -- user instruction "es soll alles komplett über den interpreter
-  -- laufen" -- see `CutTransitionInterpreter.lua`'s own doc comment
-  -- and `rom_profiles.lua`'s own `scriptEntry` doc comment for the
-  -- full live-trace evidence and honest scope). Only built when this
-  -- specific exit has a real, live-confirmed entry point -- every
-  -- other exit (including every scroll transition, which is genuinely
-  -- NOT script-driven in the real ROM) is completely unaffected.
+  -- Interpreter-driven room-selector capture (direct user instruction
+  -- that everything should run through the interpreter -- see
+  -- CutTransitionInterpreter.lua's own doc comment and
+  -- rom_profiles.lua's own scriptEntry doc comment for the full live-
+  -- trace evidence and honest scope). Only built when this specific
+  -- exit has a live-confirmed entry point -- every other exit
+  -- (including every scroll transition, which is genuinely not
+  -- script-driven) is completely unaffected.
   if exit.scriptEntry then
     self.cutTransitionInterpreter = CutTransitionInterpreter.new(self.romData, exit.scriptEntry.transitionKey, {})
   end
@@ -1399,24 +1395,23 @@ end
 -- only once the closing wipe has fully covered the screen for a cut,
 -- matching the real ROM's own room-pointer commit timing).
 function VictorySequence:switchToTargetRoom(exit)
-  -- REAL interpreter cross-check (2026-08-16, see `beginTransition`'s
-  -- own doc comment above and `CutTransitionInterpreter.lua`'s own doc
-  -- comment for the full evidence). By the time this runs (only once
-  -- `RoomWipeTransition.CLOSE_FRAMES` real frames have passed, per
-  -- `update`'s own `"cutClosing"` handling), the real interpreter has
-  -- had ample opportunity to reach its own real, live-confirmed peek
-  -- (observed live in a single real tick) -- if it somehow hasn't,
-  -- that's a real, honest gap worth failing loudly on rather than
+  -- Interpreter cross-check (see beginTransition's own doc comment
+  -- above and CutTransitionInterpreter.lua's own doc comment for the
+  -- full evidence). By the time this runs (only once RoomWipeTransition
+  -- .CLOSE_FRAMES frames have passed, per update's own "cutClosing"
+  -- handling), the interpreter has had ample opportunity to reach its
+  -- own live-confirmed peek (observed live in a single tick) -- if it
+  -- somehow hasn't, that's a gap worth failing loudly on rather than
   -- silently proceeding as if the interpreter path didn't exist.
-  -- HONEST SCOPE: only `roomSelector` is interpreter-CAPTURED and
-  -- cross-checked here -- `targetRoom` itself stays the hand-authored
-  -- Lua room key (see `rom_profiles.lua`'s own `scriptEntry` doc
-  -- comment for why: `CutTransitionTable.FAMILY_BY_ROOM_SELECTOR` is
-  -- deliberately coarse, not an injective selector->room-key map), and
-  -- `landingX`/`landingY` stay the pre-baked, already ROM-table-
-  -- verified constants (the landing-tile peek is real but reached via
-  -- the `$413C` automaton's own internal jump, not top-level dispatch
-  -- -- this project's interpreter does not yet model that).
+  -- HONEST SCOPE: only roomSelector is interpreter-captured and cross-
+  -- checked here -- targetRoom itself stays the hand-authored Lua room
+  -- key (see rom_profiles.lua's own scriptEntry doc comment for why:
+  -- CutTransitionTable.FAMILY_BY_ROOM_SELECTOR is deliberately coarse,
+  -- not an injective selector->room-key map), and landingX/landingY
+  -- stay the pre-baked, already ROM-table-verified constants (the
+  -- landing-tile peek is real but reached via the $413C automaton's
+  -- own internal jump, not top-level dispatch -- this project's
+  -- interpreter doesn't yet model that).
   if exit.scriptEntry then
     local interp = self.cutTransitionInterpreter
     assert(interp, "VictorySequence:switchToTargetRoom: exit.scriptEntry is set but no " ..
