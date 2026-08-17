@@ -1093,7 +1093,7 @@ ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A = 0x33B0
 --                                            whenever the $C5A0 8-slot
 --                                            actor-command table (see
 --                                            task #85's own $4B70
---                                            finding) still has real
+--                                            finding) still has
 --                                            genuinely-pending entries
 --                                            (checked via $28B0 -> the
 --                                            already-known $1F35
@@ -1104,209 +1104,191 @@ ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A = 0x33B0
 --                                            project -- an honest,
 --                                            known gap, not a guess.
 --   LD A,($D865) / AND A / JR NZ,<queue-not-empty>
---   ; real $D865 == 0 (queue empty):
+--   ; $D865 == 0 (queue empty):
 --   XOR A / LD ($D85A),A                    ; re-arms opcode 0 itself
---                                            for the next real tick
---                                            (this project's own halt
---                                            semantics already do this
+--                                            for the next tick (this
+--                                            project's halt semantics
+--                                            already do this
 --                                            implicitly -- no explicit
 --                                            $D85A write needed here)
 --   <real $D86E -> $C0A0 copy, $C0A1/$C0A2 bit-clears>  ; HYPOTHESIS,
 --                                            not modeled -- exposed as
 --                                            an optional callback
 --   RET                                      ; halt #2
---   ; real $D865 != 0 (queue not empty):
---   CALL $3705                               ; real POP -- see
+--   ; $D865 != 0 (queue not empty):
+--   CALL $3705                               ; pop -- see
 --                                            ScriptContinuationQueue.lua
 --   LD A,B / CP 3 / RET Z                    ; halt #3: popped B==3
 --                                            (the exact value opcode
---                                            `0x03`'s own real pushes
---                                            use)
+--                                            0x03's own pushes use)
 --   CP 2 / JR NZ,<halt #4, bare RET>          ; halt #4: popped B is
 --                                            neither 2 nor 3
---   ; real B==2 (the exact value opcode `0x02` CHAIN's own real
---   ; pushes use): redirect the persistent cursor to the popped DE,
---   ; then continue
+--   ; B==2 (the exact value opcode 0x02 CHAIN's own pushes use):
+--   ; redirect the persistent cursor to the popped DE, then continue
 --   <persistent cursor = popped DE> / CALL $3727
 --   RET
--- Real, confirmed producers of the queue this pops from: opcode `0x02`
--- (CHAIN, always pushes B=2 -- i.e. every CHAIN is a real "jump away,
--- remember to come back here" bookmark) and opcode `0x03` (always
--- pushes B=3 -- i.e. every real use just makes a LATER opcode-0x00
--- dispatch halt once, consuming the entry, for a real reason this
--- pass didn't chase further).
+-- Confirmed producers of the queue this pops from: opcode 0x02 (CHAIN,
+-- always pushes B=2 -- every CHAIN is a "jump away, remember to come
+-- back here" bookmark) and opcode 0x03 (always pushes B=3 -- every use
+-- just makes a later opcode-0x00 dispatch halt once, consuming the
+-- entry, for a reason this pass didn't chase further).
 --
--- RETRACTED (2026-08-14, "dann mach jetzt die 86" -- a direct live
--- RE-trace of the exact same courtyard_boss_defeated block this doc
--- comment's own "halt #1" claim above was based on): re-ran the live
--- trace with a DIRECT watchpoint on `$D874` itself (the earlier pass
--- inferred the bit-0 gate indirectly, from `$D85A` never being
--- rewritten during the block -- never actually watched `$D874`'s own
--- bit 0 changing). Real result: **bit 0 of `$D874` never changes at
--- all across the entire ~200,000-step block** (only bits 1 and 7 do,
--- both AFTER the block already starts releasing) -- so "halt #1"
--- above is NOT what gates this specific real occurrence. Also
--- DIRECTLY watched the real `$C5A0` 8-slot known-list this whole
--- explanation depends on: **it stays all-zero for the ENTIRE window**
--- (before, during, and after) -- selector `0x0E`'s own entry (`$4B4F`)
--- IS reached (103 times), but its own per-entry helper (`$4B19`) is
--- NEVER reached (0 times), because the scan never finds a nonzero
--- byte to act on. The whole `$C5A0`/actor-command-queue explanation
--- for "halt #1" does not hold up under direct live re-verification.
+-- RETRACTED (direct continuation of task #86, a direct live re-trace
+-- of the exact same courtyard_boss_defeated block this doc comment's
+-- "halt #1" claim above was based on): re-ran the live trace with a
+-- direct watchpoint on $D874 itself (the earlier pass inferred the
+-- bit-0 gate indirectly, from $D85A never being rewritten during the
+-- block -- never actually watched $D874's own bit 0 changing).
+-- Result: bit 0 of $D874 never changes at all across the entire
+-- ~200,000-step block (only bits 1 and 7 do, both after the block
+-- already starts releasing) -- so "halt #1" above isn't what gates
+-- this specific occurrence. Also directly watched the $C5A0 8-slot
+-- known-list this explanation depends on: it stays all-zero for the
+-- entire window (before, during, and after) -- selector 0x0E's own
+-- entry ($4B4F) is reached (103 times), but its per-entry helper
+-- ($4B19) is never reached (0 times), because the scan never finds a
+-- nonzero byte to act on. The whole $C5A0/actor-command-queue
+-- explanation for "halt #1" doesn't hold up under direct live re-
+-- verification.
 --
--- What DOES real-time-correlate with the block's actual end (step
--- 221345 of 400,000, matching the original trace's own ~200,000-step
--- figure -- the block DURATION itself is real and reproduced, just
--- not this specific cause): a real write of `$D874` bit 7, from
--- `$31AD` -- this project's OWN already-fully-understood (task #85)
--- cross-actor dispatch mechanism, not a new routine. `$31AD`'s own
--- gate (`BIT 1,(HL)` on `$C0A1` / `RET NZ`) was also live-watched: an
--- unrelated periodic flicker/tick pulses `$C0A1` bit 1 on and off
--- constantly throughout (bank-0 `$080C`/`$0818`, plausibly a cosmetic
--- animation timer, not investigated further), but the pulse timing
--- itself doesn't explain why `$31AD` only succeeds once ~200,000 steps
--- in -- an honest, sharpened but still-OPEN question (this project's
--- own already-published "genuinely depends on passage of real game
--- time" conclusion still stands, just now pointing at `$31AD`'s own
--- real trigger condition instead of the `$C5A0` queue). See events.md's
--- own dated entry for the complete trace data.
+-- What does correlate with the block's actual end (step 221345 of
+-- 400,000, matching the original trace's ~200,000-step figure -- the
+-- block duration itself is real and reproduced, just not this
+-- specific cause): a write of $D874 bit 7, from $31AD -- this
+-- project's own already-fully-understood (task #85) cross-actor
+-- dispatch mechanism, not a new routine. $31AD's own gate (BIT
+-- 1,(HL) on $C0A1 / RET NZ) was also live-watched: an unrelated
+-- periodic flicker/tick pulses $C0A1 bit 1 on and off constantly
+-- throughout (bank-0 $080C/$0818, plausibly a cosmetic animation
+-- timer, not investigated further), but the pulse timing itself
+-- doesn't explain why $31AD only succeeds once ~200,000 steps in --
+-- a sharpened but still-open question (this project's own already-
+-- published "genuinely depends on passage of game time" conclusion
+-- still stands, just now pointing at $31AD's own trigger condition
+-- instead of the $C5A0 queue). See events.md's own dated entry.
 --
--- CLOSED FOR REAL (2026-08-14, same day, direct continuation, "dann
--- mach da weiter"): traced `$31AD`'s own single real hit (there is
--- exactly ONE across the whole 400,000-step window) back through its
--- real call chain, live-verifying every link:
---   `$31AD` (step 221303) <- called from inside `$24A7`'s own body
---   (step 221259) -- a real, previously-untraced helper (this session's
---   own earlier "connecting systems" pass had flagged `$24A7` as one
---   of the still-open `$1F35`-selector leaf helpers) that reads the
---   player's own CURRENT FACING NIBBLE (`CALL $02AB / AND 0x0F`, the
---   same already-cracked accessor from task 10) and combines it with
---   a small per-block constant to select which real `$C3F0`/`$C3FE`/
---   `$C3FF`-indexed script to activate via `$31AD` -- a real, concrete
---   structural clue for task #85's own still-open "what is that
---   record's general schema" question (this specific block reads a
---   pointer from `$C3FE`/`$C3FF`, dereferences it, offsets by 0-2
---   bytes depending on which of 5 sibling blocks runs, then further
---   indexes by the player's own facing).
---   `$24A7` <- called from EXACTLY ONE real static site, `$1F35`
---   selector `0x13`'s own body (file `0xCC30`): `CALL $4BE0 / RET NZ /
---   CALL $24A7 / RET`.
---   Selector `0x13` itself fires **71 times** across the trace, at
---   regular ~2500-3500-step intervals (a real, periodic background
---   tick) -- but only on the LAST of those 71 ticks does it proceed
---   past `RET NZ` to reach `$24A7` at all.
---   **`$4BE0`'s own full tail, fully disassembled**: it recomputes a
---   real classified-actor count (the same `PARAM2` high-nibble
---   `0x90`/`0xB0`/`0x10` scan already documented) and compares it
---   against a CACHED previous count at `$C5AF`. It returns "ready"
---   (Z) ONLY on the specific tick where the count TRANSITIONS from
---   nonzero to exactly 0 (plus one further real gate, `CALL $28C2`,
---   not traced further) -- an EDGE-triggered completion signal, not a
---   level check; every other tick (including every later one, if any)
---   returns "busy" (NZ) unconditionally.
---   **Live-confirmed the transition directly**: `$C5AF` sits at `0x01`
---   from the checkpoint through the ENTIRE block, then flips to `0x00`
---   at step 221251 -- immediately before `$24A7`/`$31AD` fire in
---   sequence. Exact match.
+-- CLOSED FOR REAL (same day, direct continuation): traced $31AD's
+-- single hit (there is exactly one across the whole 400,000-step
+-- window) back through its call chain, live-verifying every link:
+--   $31AD (step 221303) <- called from inside $24A7's own body (step
+--   221259) -- a previously-untraced helper (an earlier "connecting
+--   systems" pass had flagged $24A7 as one of the still-open $1F35-
+--   selector leaf helpers) that reads the player's current facing
+--   nibble (CALL $02AB / AND 0x0F, the same already-cracked accessor
+--   from task 10) and combines it with a small per-block constant to
+--   select which $C3F0/$C3FE/$C3FF-indexed script to activate via
+--   $31AD -- a concrete structural clue for task #85's still-open
+--   "what is that record's general schema" question (this specific
+--   block reads a pointer from $C3FE/$C3FF, dereferences it, offsets
+--   by 0-2 bytes depending on which of 5 sibling blocks runs, then
+--   further indexes by the player's facing).
+--   $24A7 <- called from exactly one static site, $1F35 selector
+--   0x13's own body (file $CC30): CALL $4BE0 / RET NZ / CALL $24A7 /
+--   RET.
+--   Selector 0x13 itself fires 71 times across the trace, at regular
+--   ~2500-3500-step intervals (a periodic background tick) -- but only
+--   on the last of those 71 ticks does it proceed past RET NZ to
+--   reach $24A7 at all.
+--   $4BE0's own full tail, fully disassembled: it recomputes a
+--   classified-actor count (the same PARAM2 high-nibble 0x90/0xB0/
+--   0x10 scan already documented) and compares it against a cached
+--   previous count at $C5AF. It returns "ready" (Z) only on the
+--   specific tick where the count transitions from nonzero to exactly
+--   0 (plus one further gate, CALL $28C2, not traced further) -- an
+--   edge-triggered completion signal, not a level check; every other
+--   tick returns "busy" (NZ) unconditionally.
+--   Live-confirmed the transition directly: $C5AF sits at 0x01 from
+--   the checkpoint through the entire block, then flips to 0x00 at
+--   step 221251 -- immediately before $24A7/$31AD fire in sequence.
+--   Exact match.
 --
--- **Real, decisive, now-CLOSED conclusion**: the boss-defeat block
--- genuinely IS "wait for actor cleanup," as this project's own
--- earlier sessions always suspected -- just via a real, different,
--- previously-undocumented mechanism than either prior hypothesis (not
--- today's `$C5A0`/`$4B70` actor-COMMAND queue, not a raw `$D874`-bit0
--- flag): a periodic (`$1F35` selector `0x13`, ~71 ticks) EDGE-
--- triggered "did my own classified-actor count just drop to 0"
--- detector (`$4BE0`/`$C5AF`), gating a facing-driven story-activation
--- call (`$24A7` -> `$31AD`). The real ~1.7-second delay is the boss's
--- own entity slot genuinely taking that long to finish despawning
--- after its HP hits the dead sentinel -- not an arbitrary timer, and
--- not (contrary to this doc's own retracted claim above) the actor-
--- COMMAND queue.
+-- Decisive, now-closed conclusion: the boss-defeat block genuinely is
+-- "wait for actor cleanup," as earlier sessions always suspected --
+-- just via a different, previously-undocumented mechanism than either
+-- prior hypothesis (not the $C5A0/$4B70 actor-command queue, not a
+-- raw $D874-bit0 flag): a periodic ($1F35 selector 0x13, ~71 ticks)
+-- edge-triggered "did my classified-actor count just drop to 0"
+-- detector ($4BE0/$C5AF), gating a facing-driven story-activation
+-- call ($24A7 -> $31AD). The ~1.7-second delay is the boss's own
+-- entity slot genuinely taking that long to finish despawning after
+-- its HP hits the dead sentinel -- not an arbitrary timer, and not
+-- (contrary to this doc's own retracted claim above) the actor-
+-- command queue.
 --
--- **`$3297`'s own real body, fully disassembled for the first time
--- (2026-08-16, task #149, "generalize the one-shot $31AD trigger into
--- a re-armable one")**: `LD A,($D874) / BIT 0,A / RET NZ` (the
--- already-modeled `isBlocked` gate) `/ LD A,($D865) / AND A / JR
--- NZ,<queue-has-content path>`. **`$D865` is a real, previously
--- undocumented WRAM cell -- 0 means the real queue is genuinely
--- empty** (this project's own `queue:isEmpty()` already models the
--- OBSERVABLE effect correctly; this is the real underlying byte). The
--- genuinely-empty path: `XOR A / LD ($D85A),A` (clears the current-
--- opcode byte) `/ LD A,($D86E) / LD ($C0A0),A` (restores a saved
--- value) `/` then **unconditionally clears bits 1, 2, and 3 of BOTH
--- `$C0A1` and `$C0A2`** `/ RET`.
+-- $3297's own body, fully disassembled for the first time (task #149,
+-- generalizing the one-shot $31AD trigger into a re-armable one): LD
+-- A,($D874) / BIT 0,A / RET NZ (the already-modeled isBlocked gate) /
+-- LD A,($D865) / AND A / JR NZ,<queue-has-content path>. $D865 is a
+-- previously undocumented WRAM cell -- 0 means the queue is genuinely
+-- empty (this project's own queue:isEmpty() already models the
+-- observable effect correctly; this is the underlying byte). The
+-- genuinely-empty path: XOR A / LD ($D85A),A (clears the current-
+-- opcode byte) / LD A,($D86E) / LD ($C0A0),A (restores a saved value)
+-- / then unconditionally clears bits 1, 2, and 3 of both $C0A1 and
+-- $C0A2 / RET.
 --
--- **This is the real "re-arm" event `$31AD` (`$0x31AD`, this
--- project's own already-documented cross-actor dispatcher, tasks
--- #85/#111) depends on.** Full disassembly of `$31AD` itself: it
--- opens with `PUSH HL / LD HL,$C0A1 / BIT 1,(HL) / POP HL / RET NZ`
--- -- i.e. **`$31AD` self-gates against re-firing via bit 1 of
--- `$C0A1`**, and is a genuine no-op while that bit is set. Its own
--- real completion (after computing a new script cursor via a real
--- `0x0B`/`0x04`/`0x08` special-case branch already independently
--- decoded by task #52, correcting it via the already-known `$3c4f`,
--- committing it to `$D8B7`/`$D8B6`, fetching via `$3727`, and popping
--- the bank via `$2a0a`) **SETS bits 2 and 1 of both `$C0A1` and
--- `$C0A2`** -- re-gating itself. So `$31AD` is NOT hardware one-shot
--- in the sense of "fires at most once, ever" -- it fires at most once
--- PER busy period, and the real ROM itself clears that gate at the
--- EXACT SAME real moment `$3297`'s own real "queue genuinely empty"
--- halt above already happens (matching `StandardScriptHandlers
--- .queueGate`'s own already-modeled `kind == "halted"` state, real
--- opcode byte `0x00`). `src/scripting/BossSequenceInterpreter.lua`'s
--- own `:rearm()` method (task #149) uses exactly this real, decisive
--- precondition, not a guess.
+-- This is the "re-arm" event $31AD (this project's already-documented
+-- cross-actor dispatcher, tasks #85/#111) depends on. Full
+-- disassembly of $31AD itself: it opens with PUSH HL / LD HL,$C0A1 /
+-- BIT 1,(HL) / POP HL / RET NZ -- $31AD self-gates against re-firing
+-- via bit 1 of $C0A1, and is a genuine no-op while that bit is set.
+-- Its own completion (after computing a new script cursor via a
+-- 0x0B/0x04/0x08 special-case branch already independently decoded by
+-- task #52, correcting it via the already-known $3c4f, committing it
+-- to $D8B7/$D8B6, fetching via $3727, and popping the bank via $2a0a)
+-- sets bits 2 and 1 of both $C0A1 and $C0A2 -- re-gating itself. So
+-- $31AD isn't hardware one-shot in the sense of "fires at most once,
+-- ever" -- it fires at most once per busy period, and the ROM itself
+-- clears that gate at the exact same moment $3297's own "queue
+-- genuinely empty" halt above already happens (matching
+-- StandardScriptHandlers.queueGate's own already-modeled kind ==
+-- "halted" state, opcode byte 0x00). src/scripting/
+-- BossSequenceInterpreter.lua's own :rearm() method (task #149) uses
+-- exactly this decisive precondition, not a guess.
 --
--- **Live cross-check**: a `$D8B6`/`$D8B7` write watchpoint across
--- `checkpoints.courtyard_boss_defeated()` found a real SECOND commit
--- (PC `$31f2`/`$31f6`, inside `$31AD`'s own real tail above, bank 0)
--- at real step 221397 -- matching task #86's own already-documented
--- `$C5AF` edge-transition timing (step 221251) almost exactly, i.e.
--- this is very likely THE SAME real event task #86 already found the
--- TRIGGER condition for, now with `$31AD`'s own internal real logic
--- fully decoded too. It commits the EXACT SAME real entry point
--- (`bank=13`, `$470F`) this module's own `START_BANK`/
--- `START_CPU_ADDRESS` already use for the FIRST invocation -- honestly
--- flagged as NOT yet explained WHY the real ROM reinvokes the exact
--- same real entry a second time (a deliberate real repeat vs. this
--- project's own model simply not diverging where live hardware with
--- different WRAM state would) -- see events.md's own dated task #149
--- entry for the full trail.
+-- Live cross-check: a $D8B6/$D8B7 write watchpoint across checkpoints
+-- .courtyard_boss_defeated() found a second commit (PC $31f2/$31f6,
+-- inside $31AD's own tail above, bank 0) at step 221397 -- matching
+-- task #86's own already-documented $C5AF edge-transition timing
+-- (step 221251) almost exactly, very likely the same event task #86
+-- already found the trigger condition for, now with $31AD's internal
+-- logic fully decoded too. It commits the exact same entry point
+-- (bank=13, $470F) this module's own START_BANK/START_CPU_ADDRESS
+-- already use for the first invocation -- honestly flagged as not yet
+-- explained why the ROM reinvokes the exact same entry a second time
+-- -- see events.md's own dated task #149 entry for the full trail.
 ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS = 0x3297
 
--- `0x08` ($3370) -- structurally traced in task #83 (2026-08-13), its
--- real per-item leaf (`$35EF`/`$3602`) fully live-confirmed the same
--- day, and its real "list exhausted" continuation FINALLY pinned down
--- live in task #86 (2026-08-13, direct instruction "weiter machen, das
--- muss stehen" -- this was the concrete, immediate blocker for
--- `BossSequenceInterpreter`). See `StandardScriptHandlers
--- .zeroTerminatedFlagList`'s own doc comment for the full real
--- disassembly, the corrected "NOT a WRAM block-clear" finding, and the
--- honest scope of what remains unmodeled.
+-- 0x08 ($3370) -- structurally traced in task #83, its per-item leaf
+-- ($35EF/$3602) fully live-confirmed the same day, and its "list
+-- exhausted" continuation finally pinned down live in task #86 (this
+-- was the concrete, immediate blocker for BossSequenceInterpreter).
+-- See StandardScriptHandlers.zeroTerminatedFlagList's own doc comment
+-- for the full disassembly, the corrected "not a WRAM block-clear"
+-- finding, and the honest scope of what remains unmodeled.
 ScriptOpcodeTable.ACTOR_FLAG_LIST_HANDLER_ADDRESS = 0x3370
 
--- `0x29` ($1322) -- FOUND 2026-08-13, task #86, live shadow-run's next
--- real stopper against `BossSequenceInterpreter` itself (the FIRST
--- opcode encountered past the newly-wired `0x08`, deep enough into the
--- real sequence that the earlier whole-corpus census hadn't surfaced
--- it at all). Real bytes: `CALL $28C2 / ADD A,1 / LD C,A / CALL $123E
--- / RET` -- the SAME real `$123E` mechanism already known from
--- `0x19`/`0x39`/`0x49`/`0x59`, base=1.
+-- 0x29 ($1322) -- FOUND, task #86, live shadow-run's next stopper
+-- against BossSequenceInterpreter itself (the first opcode encountered
+-- past the newly-wired 0x08, deep enough into the sequence that the
+-- earlier whole-corpus census hadn't surfaced it at all). Bytes: CALL
+-- $28C2 / ADD A,1 / LD C,A / CALL $123E / RET -- the same $123E
+-- mechanism already known from 0x19/0x39/0x49/0x59, base=1.
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_29 = 0x1322
 
--- `0xD4`/`0xD6`/`0xD8` ($3AA8/$3ABA/$3ACC) -- FOUND 2026-08-13, task
--- #86, live shadow-run's next real stopper past `0x29`. See
--- `StandardScriptHandlers.gatedByteLeafCommand`'s own doc comment for
--- the full disassembly and the honest scope of what's NOT modeled
--- (the real `$D86F`-bit-1-SET path, `$3ADE`).
+-- 0xD4/0xD6/0xD8 ($3AA8/$3ABA/$3ACC) -- FOUND, task #86, live shadow-
+-- run's next stopper past 0x29. See StandardScriptHandlers
+-- .gatedByteLeafCommand's own doc comment for the full disassembly and
+-- the honest scope of what's not modeled (the $D86F-bit-1-set path,
+-- $3ADE).
 ScriptOpcodeTable.GATED_BYTE_LEAF_HANDLER_ADDRESS_D4 = 0x3AA8
 ScriptOpcodeTable.GATED_BYTE_LEAF_HANDLER_ADDRESS_D6 = 0x3ABA
 ScriptOpcodeTable.GATED_BYTE_LEAF_HANDLER_ADDRESS_D8 = 0x3ACC
 
--- `0xD5`/`0xD7`/`0xD9` ($3B3A/$3B45/$3B50) -- FOUND 2026-08-13, same
--- pass, immediately adjacent to `0xD4`/`0xD6`/`0xD8`. See
--- `StandardScriptHandlers.byteLeafCommand`'s own doc comment: the same
--- real shape, but WITHOUT the `$D86F` gate check.
+-- 0xD5/0xD7/0xD9 ($3B3A/$3B45/$3B50) -- FOUND, same pass, immediately
+-- adjacent to 0xD4/0xD6/0xD8. See StandardScriptHandlers
+-- .byteLeafCommand's own doc comment: the same shape, but without the
+-- $D86F gate check.
 ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D5 = 0x3B3A
 ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D7 = 0x3B45
 ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D9 = 0x3B50
