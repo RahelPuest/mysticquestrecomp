@@ -1866,3 +1866,57 @@ not guessed. `0x5B`/`0x86`'s conflict (above) is also unresolved.
 `tests/import/text_decoder_test.lua`'s "unmapped bytes return nil"
 test updated: `0x82` (now resolved) replaced by `0x92` (still
 genuinely open) as its example. 557/557 tests passing.
+
+## Follow-up pass on everything left open above (2026-08-17, same day, direct user instruction: "mach das was du offen gelassen hast!")
+
+**Resolved**: rendered the real font tile bitmaps directly from ROM
+(`0x22900 + (vramTile-0x10)*16`, same formula the umlaut tiles used)
+for tiles `0x70`-`0x7E`. Visually unambiguous: `0x70`=period, `0x71`=
+colon, `0x72`=hyphen, `0x73`=exclamation mark, `0x74`=question mark.
+This CORRECTED a same-day mistake: `0x70` had been read as `!` via a
+cross-check against the existing `[0x66]="! "` entry, but the real
+bitmap is clearly a single dot (period), not an exclamation mark.
+`[0x27]` (which uses tile `0x70` twice) corrected from `"!!"` to
+`".."`; `[0x66]` revised from `"! "` to `". "` -- its own ORIGINAL
+note already admitted "a plain '.' or '?' would also read fine there"
+(never a strong claim), and now two independent new lines of evidence
+(the real table, the real bitmap) both say period, not exclamation.
+Tiles `0x76`-`0x7E` turned out to be fragments of ONE larger image
+(diagonal lines, box-drawing bars), not individual glyphs at all --
+ruled out as text; no real digraph entry lands on them anyway.
+
+**Explained, not just left blank**: `0x90`-`0x98`'s table slots
+(`0x60`-`0x68`) land at ROM addresses `0x3FFF`-`0x400F` -- PAST the
+fixed bank-0 boundary (`0x4000`) the table's own code lives in and can
+access unconditionally. Reading past that boundary is bank-dependent
+(whatever's paged into the switchable window at that exact moment),
+which is exactly why those slots looked like inconsistent garbage
+earlier -- they're not real table data at all, just whatever ROM/bank
+happens to be mapped there. This also means real dialogue almost
+certainly never emits source bytes `0x90`-`0x98` in practice (nothing
+in `$3777`'s own code guards against it, but no sane text compressor
+would emit an input that reads out-of-bounds bank-dependent garbage).
+
+**Attempted, real effort, inconclusive**: live-injected custom text
+strings into WRAM ($D8DC/$D8DD region, `$DFF0` scratch buffer) and
+redirected the persistent cursor to force the real decoder to process
+them, reusing the same-bank injection trick that avoids the deep
+script-injection eviction problem documented elsewhere in this file.
+The very first injected character decoded correctly in one run ('J'
+from `0xC3`), but subsequent captured `$384C` hits turned out
+unreliable to interpret: `$384C` is a generic "draw glyph at cursor"
+primitive called from MANY places in the `$3777`/`$37DC`/`$34A4` call
+tree (blank-fill loops, the digraph table's own throttled render, the
+single-glyph `XOR 0x80` path) -- filtering only by the shared
+grandparent return address (`$3799`) wasn't enough to isolate which
+specific caller produced each hit, so the single-letter-code question
+(does the real table's technically-encoded 2nd character for `0x30`/
+`0x3D`/`0x43`/`0x5E`/`0x60` actually render, or get suppressed by
+word-wrap logic?) and the `0x5B`/`0x86` conflict (see the section
+above) were NOT settled by this attempt. A real, honest stopping
+point -- would need per-call-site disambiguation (the immediate
+caller, not the shared grandparent) to push further, a bigger
+investment than this pass's own scope.
+
+Full Lua test suite still 557/557 passing after the `0x27`/`0x66`
+corrections.

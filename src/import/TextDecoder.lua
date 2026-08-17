@@ -781,11 +781,22 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- "nur ein", "Meer nordoestlich", "So nimm".
   [0x62] = "nn", -- "Sensenmann" (Grim Reaper monster), "Mann" (man),
   -- "koennen"/"konnten" (can/could).
-  [0x66] = "! ", -- exclaim+space: clearest from "RAUS!" (all-caps
-  -- shout) and "das Boese! Halte durch" (an imperative command
-  -- chain) -- several other contexts are compatible but not as
-  -- decisive (a plain "." or "?" would also read fine there); used as
-  -- this table's value since nothing found actively CONTRADICTS "! ".
+  -- REVISED, 2026-08-17: was "! " (exclaim+space), based on plausible-
+  -- but-explicitly-uncertain context ("nothing found actively
+  -- CONTRADICTS", per this entry's own original note -- "RAUS!" and
+  -- "das Boese! Halte durch" fit, but so would a plain "." or "?").
+  -- The real digraph table (`$3F3F`, see this table's own header note)
+  -- reads slot 0x46 as tiles (0xF0,0xFF) -> period+space, and the real
+  -- font tile bitmap for tile `0x70` is now visually confirmed as a
+  -- period, not an exclamation mark (see the punctuation-tiles note
+  -- above) -- both independent lines of NEW evidence agree on ". ",
+  -- overturning the old admittedly-uncertain guess.
+  [0x66] = ". ", -- period+space: "RAUS." (a shouted, all-caps
+  -- declaration -- the capitalization alone already carries the
+  -- emphasis) and "das Boese. Halte durch" both read naturally; the
+  -- real ROM digraph table plus the real font tile bitmap for `0x70`
+  -- (see above) now agree independently, superseding the earlier
+  -- context-only guess.
   [0x67] = "ef", -- "Gefuehle" (feelings), "Gefahr" (danger) -- the
   -- SAME value this session's earlier "Saph[50][4A][67]unden" cluster
   -- already flagged as an unconfirmed lead, now promoted.
@@ -864,10 +875,25 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- `-0x10` remap for `inputByte >= 0x80` (the same remap the script-
   -- tick handler's `$333D` already showed) -- i.e. `0x70` and `0x80`
   -- decode identically on purpose, not a bug in this reading.
-  [0x27] = "!!", -- table slot 0x07 (tiles 0x70,0x70) -- an intense/
-  -- doubled exclamation stylization; unverified against a live word
-  -- (no clean example found this pass), but a direct, unambiguous
-  -- table read like every other entry here.
+  -- PUNCTUATION TILES IDENTIFIED, 2026-08-17: rendered the real font
+  -- tile bitmaps directly from ROM (same `0x22900 + (vramTile-0x10)*16`
+  -- formula the umlaut tiles above were confirmed with -- see
+  -- text.md). Visually unambiguous: tile `0x70`=period (a single small
+  -- dot), `0x71`=colon (two dots), `0x72`=hyphen (one flat bar),
+  -- `0x73`=exclamation mark, `0x74`=question mark. This CORRECTS an
+  -- earlier same-day guess in this table's own history that read tile
+  -- `0x70` as `!` (cross-checked, wrongly, against the existing
+  -- `0x66="! "` entry below -- see that entry's own note for the
+  -- resulting flagged conflict). Tiles `0x76`-`0x7E` are NOT
+  -- punctuation or letters at all -- their bitmaps are clearly
+  -- fragments of ONE larger image (diagonal lines, box-drawing bars)
+  -- spanning multiple tiles, not individual glyphs; no digraph entry
+  -- in this table actually lands on any of them, so this doesn't
+  -- change any decode, just rules out ever reading them as text.
+  [0x27] = "..", -- table slot 0x07 (tiles 0x70,0x70) -- a doubled
+  -- period; unverified against a live word (no clean example found
+  -- this pass), but a direct, unambiguous table read like every other
+  -- entry here, now using the visually-confirmed tile identification.
   [0x63] = "ng", -- table slot 0x43 (tiles 0xE1,0xDA) -- matches the
   -- EARLIER, independently-found dynamic hypothesis exactly (text.md,
   -- 2026-08-12: "mostly ng (3 clean words...)"), and RESOLVES that
