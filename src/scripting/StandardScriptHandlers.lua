@@ -642,11 +642,10 @@ end
 -- .QUEUED_ACTION_HANDLER_ADDRESS_*`'s own doc comment for the
 -- disassembled chain). No operand bytes. A real, DIFFERENT halt
 -- condition from `actorAction`'s own (found in the SAME investigation
--- pass): halts while ANY of 8 real WRAM bytes at `$C5A0` is nonzero,
--- releasing once they're all zero. Same honest scope as `actorAction`:
--- the real ACTION (`$27E3`, reading a real WRAM table at `$C4E0`) is
--- HYPOTHESIS, not modeled -- `isReady()`/`onAction()` are the caller's
--- own responsibility.
+-- pass): halts while any of 8 WRAM bytes at $C5A0 is nonzero, releasing
+-- once they're all zero. Same honest scope as actorAction: the action
+-- ($27E3, reading a WRAM table at $C4E0) is HYPOTHESIS, not modeled --
+-- isReady()/onAction() are the caller's own responsibility.
 function StandardScriptHandlers.queuedAction(isReady, onAction)
   return function(_stream, cursor)
     if not isReady() then
@@ -659,42 +658,40 @@ function StandardScriptHandlers.queuedAction(isReady, onAction)
   end
 end
 
---- Real "actor-slot position command" handler (opcode `0x49`, ROM
--- `$140A` -> `$123E` -> the already-mapped `$1F35` selector `0x0D` ->
--- `$4AF9`, see `ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_49`'s
--- own doc comment for the full, byte-for-byte disassembled chain --
--- found 2026-08-13 by a live `ScriptRuntime` shadow run against the real
--- boss-defeat script, which correctly STOPPED here rather than
--- misreading the next bytes, per this project's own "no silent
--- fallbacks" rule).
+--- Real "actor-slot position command" handler (opcode 0x49, ROM $140A
+-- -> $123E -> the already-mapped $1F35 selector 0x0D -> $4AF9, see
+-- ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_49's own doc
+-- comment for the full disassembled chain -- found by a live
+-- ScriptRuntime shadow run against the real boss-defeat script, which
+-- correctly stopped here rather than misreading the next bytes, per
+-- this project's "no silent fallbacks" rule).
 --
--- Real, VERIFIED structure, genuinely DIFFERENT from every other member
--- of the actor-action/queued-action families this project has decoded
--- so far: this is the FIRST one that consumes real operand bytes (TWO
--- of them) -- every sibling opcode (`0x10`.."0x85`, `0x18`.."0x78`) has
--- zero. Real, VERIFIED ordering: the SAME halt gate the queued-action
--- family shares (`$289B`, ANY of WRAM `$C5A0`-`$C5A7` nonzero) is
--- checked BEFORE the two operand bytes are read (`RET NZ` precedes the
--- first real `LD A,(HL+)`) -- a real halt leaves the cursor pointing at
--- the STILL-UNCONSUMED operand bytes, re-checking the same gate next
--- tick rather than having already read past them. `isReady()` mirrors
--- this exactly: checked BEFORE `ScriptInterpreter.fetch` runs at all.
+-- Verified structure, genuinely different from every other member of
+-- the actor-action/queued-action families decoded so far: this is the
+-- first one that consumes operand bytes (two of them) -- every sibling
+-- opcode (0x10.."0x85, 0x18.."0x78) has zero. Verified ordering: the
+-- same halt gate the queued-action family shares ($289B, any of WRAM
+-- $C5A0-$C5A7 nonzero) is checked before the two operand bytes are
+-- read (RET NZ precedes the first LD A,(HL+)) -- a halt leaves the
+-- cursor pointing at the still-unconsumed operand bytes, re-checking
+-- the same gate next tick rather than having already read past them.
+-- isReady() mirrors this exactly: checked before ScriptInterpreter
+-- .fetch runs at all.
 --
--- HONEST SCOPE: once ready, the real ROM transforms each operand byte
--- via `(n+K)*8` (K=1 for the first, K=2 for the second) before
--- dispatching (through selector `0x0D`'s own real `$C4E0 + index*24`
--- actor-slot lookup) to a further, still-undecoded leaf helper (`$0C99`,
--- then `$0611` -- the SAME real low-level routine selector `0x0B`'s own
--- trampoline calls, a genuine new cross-link found this pass). The `*8`
--- shape is a real, well-evidenced HYPOTHESIS for a tile-to-pixel
--- conversion (GB tiles are 8px) -- i.e. this opcode plausibly sets a
--- real actor slot's on-screen POSITION -- but that is NOT proven by
--- tracing `$0C99`/`$0611` themselves, which remain undecoded. Per this
--- project's own "interpreter doesn't render, it calls back" convention
--- (same as `.message()`/`.soundParam()`), `onSetPosition(byte1, byte2)`
--- fires with the RAW real operand bytes, NOT the `*8`-transformed
--- values -- reproducing the transform here would overstate confidence
--- in a hypothesis this project hasn't independently confirmed.
+-- HONEST SCOPE: once ready, the ROM transforms each operand byte via
+-- (n+K)*8 (K=1 for the first, K=2 for the second) before dispatching
+-- (through selector 0x0D's own $C4E0 + index*24 actor-slot lookup) to
+-- a further, still-undecoded leaf helper ($0C99, then $0611 -- the
+-- same low-level routine selector 0x0B's trampoline calls, a new
+-- cross-link found this pass). The *8 shape is a well-evidenced
+-- HYPOTHESIS for a tile-to-pixel conversion (GB tiles are 8px) -- this
+-- opcode plausibly sets an actor slot's on-screen position -- but
+-- that's not proven by tracing $0C99/$0611 themselves, which remain
+-- undecoded. Per this project's "interpreter doesn't render, it calls
+-- back" convention (same as .message()/.soundParam()),
+-- onSetPosition(byte1, byte2) fires with the raw operand bytes, not
+-- the *8-transformed values -- reproducing the transform here would
+-- overstate confidence in an unconfirmed hypothesis.
 function StandardScriptHandlers.actorSlotPosition(isReady, onSetPosition)
   return function(stream, cursor)
     if not isReady() then
@@ -709,60 +706,54 @@ function StandardScriptHandlers.actorSlotPosition(isReady, onSetPosition)
   end
 end
 
---- Real "one-shot trigger + dual-gate wait" handler (opcodes `0xFC`/
--- `0xFD`, ROM `$27F9`/`$2820`, see `ScriptOpcodeTable
--- .TRIGGER_EVENT_HANDLER_ADDRESS_FC`/`_FD`'s own doc comment for the
--- full disassembly -- first structurally traced in task #83, wired
--- 2026-08-13 in task #86 after a real live trace resolved the one
--- remaining open question).
+--- Real "one-shot trigger + dual-gate wait" handler (opcodes 0xFC/
+-- 0xFD, ROM $27F9/$2820, see ScriptOpcodeTable
+-- .TRIGGER_EVENT_HANDLER_ADDRESS_FC/_FD's own doc comment for the full
+-- disassembly -- first structurally traced in task #83, wired in task
+-- #86 after a live trace resolved the one remaining open question).
 --
--- Real, VERIFIED structure: a WRAM latch (`$D499`) gates whether the
--- ONE real operand byte gets consumed at all -- fired exactly once per
--- real "activation" (`getLatch()`/`setLatch(resumeCursor)`), dispatched
--- through `$1F35`'s own selector system via `onFire(operand,
--- selectorGroup)` (this project's own "interpreter doesn't render, it
--- calls back" convention, same as `.message()`). AFTER that
--- (unconditionally, whether or not this dispatch was the one that
--- fired it), checks two more real WRAM gates (`$C8E0`/`$CEE8`) --
--- `RET NZ` on either, matching this whole project's real conditional-
--- halt convention (return `nil`, caller re-dispatches next tick).
--- Once BOTH clear, resets the latch (`getLatch()` returns `false`
+-- Verified structure: a WRAM latch ($D499) gates whether the one
+-- operand byte gets consumed at all -- fired exactly once per
+-- "activation" (getLatch()/setLatch(resumeCursor)), dispatched through
+-- $1F35's own selector system via onFire(operand, selectorGroup) (this
+-- project's "interpreter doesn't render, it calls back" convention,
+-- same as .message()). After that (unconditionally, whether or not
+-- this dispatch was the one that fired it), checks two more WRAM gates
+-- ($C8E0/$CEE8) -- RET NZ on either, matching this project's
+-- conditional-halt convention (return nil, caller re-dispatches next
+-- tick). Once both clear, resets the latch (getLatch() returns false
 -- again) and continues normally.
 --
--- `$C8E0` CRACKED 2026-08-16 (task #160, live mGBA read-watchpoints
--- during real combat + full disassembly of bank 0 `$2D57`-`$2E31`,
--- see `rom-map.md`'s "the real graphics-loading mechanism" section):
--- it's the real queue depth of a ROM->VRAM tile-streaming DMA system
--- -- this gate is the real ROM genuinely waiting for pending graphics
--- tile transfers to finish before letting the script continue. This
--- project's own `isGateClear` still correctly defaults to "always
--- ready" (see the HONEST SCOPE note below) -- knowing WHAT the real
--- ROM waits for doesn't change that this project's rendering has no
--- VRAM-transfer latency to wait for in the first place; the value is
--- purely documentary. `$CEE8`'s own real meaning is still untraced.
+-- $C8E0 CRACKED (task #160, live mGBA read-watchpoints during real
+-- combat + full disassembly of bank 0 $2D57-$2E31, see rom-map.md's
+-- "the real graphics-loading mechanism" section): it's the queue depth
+-- of a ROM->VRAM tile-streaming DMA system -- this gate is the ROM
+-- genuinely waiting for pending graphics tile transfers to finish
+-- before letting the script continue. isGateClear still correctly
+-- defaults to "always ready" (see HONEST SCOPE below) -- knowing what
+-- the ROM waits for doesn't change that this project's rendering has
+-- no VRAM-transfer latency to wait for; the value is purely
+-- documentary. $CEE8's real meaning is still untraced.
 --
--- HONEST SCOPE, NARROWED (2026-08-13): a live trace of the real post-
--- boss sequence caught a genuine, real `0xFC` dispatch consuming its
--- own operand byte and landing DIRECTLY on the very next real opcode
--- two bytes later (cursor `$625B` -> `$625D`, `0xFD` immediately after)
--- -- i.e. a real case where BOTH gates were already clear on the very
--- first activation, confirming the cursor commits normally when
--- nothing blocks. What real hardware does to the ALREADY-consumed
--- operand byte's own cursor advance on a GENUINE block (gates NOT
--- clear on the first activation) was not independently observed this
--- pass -- `isGateClear` defaults to "always ready" here (same
--- established convention as `.actorAction`/`.actorSlotPosition`'s own
--- `isReady`), which reproduces exactly the real, live-observed case.
--- CORRECTED (2026-08-13, self-caught via this module's own new test):
--- the first version tracked only a boolean "have I fired yet," which
--- loses the real resume position across a genuine halt-then-retry --
--- on a re-dispatch with `isTriggered()` already true, the handler has
--- no way to recover "how far past the operand byte" the FIRST call
--- had already gotten, since a real interpreter halt resets the cursor
--- PARAMETER back to right after the opcode byte (pointing AT the
--- operand again, not past it) every retry. Fixed by having the latch
--- itself carry the real resume CURSOR (or `false` when not yet
--- fired), not just a bare boolean -- `getLatch()`/`setLatch(cursor)`.
+-- HONEST SCOPE, NARROWED: a live trace of the real post-boss sequence
+-- caught a 0xFC dispatch consuming its operand byte and landing
+-- directly on the very next opcode two bytes later (cursor $625B ->
+-- $625D, 0xFD immediately after) -- a case where both gates were
+-- already clear on the first activation, confirming the cursor commits
+-- normally when nothing blocks. What real hardware does on a genuine
+-- block (gates not clear on the first activation) wasn't independently
+-- observed -- isGateClear defaults to "always ready" here (same
+-- convention as .actorAction/.actorSlotPosition's own isReady), which
+-- reproduces exactly the live-observed case.
+-- CORRECTED (self-caught via this module's own new test): the first
+-- version tracked only a boolean "have I fired yet," which loses the
+-- resume position across a halt-then-retry -- on a re-dispatch with
+-- isTriggered() already true, the handler has no way to recover "how
+-- far past the operand byte" the first call had gotten, since an
+-- interpreter halt resets the cursor parameter back to right after the
+-- opcode byte every retry. Fixed by having the latch carry the resume
+-- cursor (or false when not yet fired), not just a bare boolean --
+-- getLatch()/setLatch(cursor).
 function StandardScriptHandlers.oneShotTriggerGate(selectorGroup, getLatch, setLatch, isGateClear, onFire)
   return function(stream, cursor)
     local nextCursor = getLatch()
@@ -783,39 +774,36 @@ function StandardScriptHandlers.oneShotTriggerGate(selectorGroup, getLatch, setL
 end
 
 --- Real "wait for the dual WRAM gate, then an opaque leaf, always
--- continue" handler (opcodes `0xE8`/`0xE9`, ROM `$0F5A`/`$0F71`,
--- CLOSED 2026-08-14 -- this project's own `ScriptOpcodeTable.lua` had
--- already flagged these as "structurally traced, real CONDITIONAL
--- HALT found, NOT wired... condition not characterized" pending the
--- `$1ED7` dispatcher this session separately fully mapped while
--- tracing the real cut-transition tile-coordinate mechanism).
+-- continue" handler (opcodes 0xE8/0xE9, ROM $0F5A/$0F71, CLOSED --
+-- ScriptOpcodeTable.lua had already flagged these as "structurally
+-- traced, conditional halt found, not wired... condition not
+-- characterized" pending the $1ED7 dispatcher this session separately
+-- fully mapped while tracing the cut-transition tile-coordinate
+-- mechanism).
 --
--- Real, VERIFIED chain: both opcodes call TWO real `$1ED7`-selector
--- trampolines in sequence -- `$0232` (always selector `1`, real
--- target `$48BE`) unconditionally first, then `$049E`/`$0F71`'s own
--- sibling (selector `0x18`, real target `$44D8`) -- whose OWN return
--- value is what the outer `CP 0x00 / RET NZ` actually tests. `$48BE`
--- turns out to be the SAME real routine this project already traced
--- (and initially misread as a room-transition wipe before self-
--- correcting) while investigating the thirdRoom->fourthRoom cut --
--- the real VRAM tile-PATTERN rewrite subsystem. `$44D8`'s own first 2
--- real instructions, byte-for-byte, are the EXACT SAME dual-WRAM gate
--- (`$C8E0`/`$CEE8`, `RET NZ` on either) already modeled by
--- `.oneShotTriggerGate` for opcodes `0xFC`/`0xFD` -- confirmed by
--- direct comparison, not assumed to match (see that handler's own doc
--- comment for `$C8E0`'s now-CRACKED real meaning, task #160: the real
--- ROM->VRAM tile-streaming DMA queue's own depth counter). Once BOTH
--- real gates clear,
--- the real leaf goes on to do the real VRAM tile-pattern update itself
--- (branching on the opcode's own literal `case` parameter, `4` for
--- `0xE8` vs `8` for `0xE9`, real bytes `0x0F5A`/`$0F71`).
+-- Verified chain: both opcodes call two $1ED7-selector trampolines in
+-- sequence -- $0232 (always selector 1, target $48BE) unconditionally
+-- first, then $049E/$0F71's own sibling (selector 0x18, target $44D8)
+-- -- whose own return value is what the outer CP 0x00 / RET NZ
+-- actually tests. $48BE turns out to be the same routine already
+-- traced (and initially misread as a room-transition wipe before
+-- self-correcting) while investigating the thirdRoom->fourthRoom cut
+-- -- the VRAM tile-pattern rewrite subsystem. $44D8's own first 2
+-- instructions, byte-for-byte, are the exact same dual-WRAM gate
+-- ($C8E0/$CEE8, RET NZ on either) already modeled by
+-- .oneShotTriggerGate for opcodes 0xFC/0xFD -- confirmed by direct
+-- comparison (see that handler's doc comment for $C8E0's now-cracked
+-- meaning, task #160: the ROM->VRAM tile-streaming DMA queue's depth
+-- counter). Once both gates clear, the leaf goes on to do the VRAM
+-- tile-pattern update itself (branching on the opcode's literal case
+-- parameter, 4 for 0xE8 vs 8 for 0xE9, real bytes 0x0F5A/$0F71).
 --
--- HONEST SCOPE: this project's own rendering pipeline draws via pre-
+-- HONEST SCOPE: this project's rendering pipeline draws via pre-
 -- decoded sprite/tile assets, not a simulated raw VRAM tile-pattern
--- buffer, so the real leaf's own effect is exposed as an opaque
--- `onLeaf()` callback rather than reimplemented -- same "interpreter
--- doesn't render, it calls back" convention as every other opaque
--- leaf in this file. No operand bytes.
+-- buffer, so the leaf's effect is exposed as an opaque onLeaf()
+-- callback rather than reimplemented -- same "interpreter doesn't
+-- render, it calls back" convention as every other opaque leaf in
+-- this file. No operand bytes.
 function StandardScriptHandlers.dualGateLeafCommand(isGateClear, onLeaf)
   return function(_stream, cursor)
     if isGateClear and not isGateClear() then
