@@ -690,12 +690,12 @@ ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_EF = 0x0E7F
 -- caller's behalf" pattern already confirmed for `$2879` itself).
 ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS = 0x3CA2
 
--- Round 5 (2026-08-12, same "mach erstmal 2" pass, a 4th re-scan):
--- 6 MORE Family-A actor-flag opcodes, 1 more `$1588`-gated opcode
--- (the same family as 0x80/0x85), 1 more always-continuing
--- `triggerEvent`-shaped opcode. Script counts are now consistently
--- small (10-15 each, down from the 100+ counts round 1 found) --
--- a real, measurable sign this family is close to fully mined.
+-- Round 5 (same "do 2 first" pass, a 4th re-scan): 6 more Family-A
+-- actor-flag opcodes, 1 more $1588-gated opcode (the same family as
+-- 0x80/0x85), 1 more always-continuing triggerEvent-shaped opcode.
+-- Script counts are now consistently small (10-15 each, down from the
+-- 100+ counts round 1 found) -- a measurable sign this family is close
+-- to fully mined.
 --   0x16 ($1274): base 0x00, group 0x1C
 --   0x1A ($12B8): base 0x00, group 0x0E
 --   0x26 ($12E8): base 0x01, group 0x1C
@@ -709,123 +709,114 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_2A = 0x132C -- group 0x0E
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_44 = 0x13E8 -- group 0x1E
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_57 = 0x1450 -- group 0x1D
 
--- `0x27` ($12F4) -- FOUND 2026-08-13, direct continuation of Milestone
--- 7 ("mach bitte 7"): found while investigating the dense opcode-
--- handler cluster right around `0x19`'s own real handler (see that
--- constant's own doc comment below) -- real, byte-for-byte IDENTICAL
--- shape to every other Family-A member above (`CALL $28C2 / ADD A,1 /
--- LD C,A / LD A,0x1D / CALL $2879 / RET`), fixed group `0x1D`.
+-- 0x27 ($12F4) -- FOUND, direct continuation of Milestone 7: found
+-- while investigating the dense opcode-handler cluster right around
+-- 0x19's own handler (see that constant's own doc comment below) --
+-- byte-for-byte identical shape to every other Family-A member above
+-- (CALL $28C2 / ADD A,1 / LD C,A / LD A,0x1D / CALL $2879 / RET),
+-- fixed group 0x1D.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_27 = 0x12F4 -- group 0x1D
 
--- `0x50` ($142C) -- FOUND 2026-08-13: the live shadow-run's next real
--- stopper after wiring 0x19/0x27 above (stepCount 7 -> 9, halted on
--- this genuinely-undecoded opcode next). Real bytes: `CALL $28C2 / ADD
--- A,0x04 / LD C,A / LD A,0x04 / CALL $2879 / RET` -- another
--- byte-for-byte Family-A member, base=4, fixed group=0x04.
+-- 0x50 ($142C) -- FOUND: the live shadow-run's next stopper after
+-- wiring 0x19/0x27 above (stepCount 7 -> 9, halted on this genuinely-
+-- undecoded opcode next). Bytes: CALL $28C2 / ADD A,0x04 / LD C,A /
+-- LD A,0x04 / CALL $2879 / RET -- another byte-for-byte Family-A
+-- member, base=4, fixed group=0x04.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_50 = 0x142C -- group 0x04
 
--- `0x51` ($1438) -- FOUND 2026-08-13, immediate live shadow-run
--- follow-up to `0x50` above: the very next handler in the same dense
--- run of Family-A trampolines (`$1438` immediately follows `0x50`'s
--- own `RET` at `$1437`). Real bytes: `CALL $28C2 / ADD A,0x04 / LD
--- C,A / LD A,0x05 / CALL $2879 / RET` -- same base=4 as `0x50`, fixed
--- group=0x05.
+-- 0x51 ($1438) -- FOUND, immediate live shadow-run follow-up to 0x50
+-- above: the very next handler in the same dense run of Family-A
+-- trampolines ($1438 immediately follows 0x50's own RET at $1437).
+-- Bytes: CALL $28C2 / ADD A,0x04 / LD C,A / LD A,0x05 / CALL $2879 /
+-- RET -- same base=4 as 0x50, fixed group=0x05.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_51 = 0x1438 -- group 0x05
 
--- `0x61` ($14AC) -- FOUND 2026-08-13, live shadow-run's next real
--- stopper after wiring 0x50/0x51 (opcode 0x60 itself was already
--- known and stepped through automatically). Real bytes: `CALL $28C2 /
--- ADD A,0x05 / LD C,A / LD A,0x05 / CALL $2879 / RET` -- Family-A
--- again, base=5, fixed group=0x05.
+-- 0x61 ($14AC) -- FOUND, live shadow-run's next stopper after wiring
+-- 0x50/0x51 (opcode 0x60 itself was already known and stepped through
+-- automatically). Bytes: CALL $28C2 / ADD A,0x05 / LD C,A / LD A,0x05
+-- / CALL $2879 / RET -- Family-A again, base=5, fixed group=0x05.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_61 = 0x14AC -- group 0x05
 
--- `0x64` ($14D0) -- FOUND 2026-08-13, task #86 (mapping the real,
--- bank-accurate post-boss sequence live). Real bytes: `CALL $28C2 /
--- ADD A,5 / LD C,A / LD A,0x1E / CALL $2879 / RET` -- Family-A,
--- base=5, fixed group=0x1E.
+-- 0x64 ($14D0) -- FOUND, task #86 (mapping the bank-accurate post-boss
+-- sequence live). Bytes: CALL $28C2 / ADD A,5 / LD C,A / LD A,0x1E /
+-- CALL $2879 / RET -- Family-A, base=5, fixed group=0x1E.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_64 = 0x14D0 -- group 0x1E
 
--- `0x87` ($15D7) -- FOUND 2026-08-13, same pass. Real bytes: `CALL
--- $1588 / RET NZ / LD A,0x02 / LD C,0xFF / CALL $2879 / RET` -- the
--- SAME real `$1588`-gated shape already documented for `0x84`/`0x85`
--- above (WRAM `$C240` bit 7, not the more common `$C272` actor-ready
--- gate) -- reuses the SAME generic `actorAction` wiring/honest-limit
--- as those two, fixed `C=0xFF`, group `0x02`.
+-- 0x87 ($15D7) -- FOUND, same pass. Bytes: CALL $1588 / RET NZ / LD
+-- A,0x02 / LD C,0xFF / CALL $2879 / RET -- the same $1588-gated shape
+-- already documented for 0x84/0x85 above (WRAM $C240 bit 7, not the
+-- more common $C272 actor-ready gate) -- reuses the same generic
+-- actorAction wiring/honest-limit as those two, fixed C=0xFF, group 0x02.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_87 = 0x15D7 -- group 0x02, $1588 gate
 
--- `0x86` ($15CB, added 2026-08-14, whole-corpus scan -- found right
--- next to `0x81`'s own known-hard `$02AB`-dependent neighbor below):
--- `CALL $1588 / RET NZ / LD A,0x01 / LD C,0xFF / CALL $2879 / RET` --
--- the SAME real `$1588`-gated shape as `0x84`/`0x85`/`0x87` above,
--- just group `0x01`. Reuses the same generic `actorAction` wiring/
--- honest-limit as those three.
+-- 0x86 ($15CB, whole-corpus scan -- found right next to 0x81's own
+-- known-hard $02AB-dependent neighbor below): CALL $1588 / RET NZ /
+-- LD A,0x01 / LD C,0xFF / CALL $2879 / RET -- the same $1588-gated
+-- shape as 0x84/0x85/0x87 above, just group 0x01. Reuses the same
+-- generic actorAction wiring/honest-limit as those three.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_86 = 0x15CB -- group 0x01, $1588 gate
 
--- `0x81` ($15B7) -- CRACKED for real (2026-08-14, direct instruction
--- "die gesammte gamemap entschlüsseln... das hat absolute prio",
--- continuing the whole-corpus-scan sweep): `CALL $1588 / RET NZ / PUSH
--- HL / CALL $02AB / CALL $29E4 / POP HL / OR 0xB0 / LD C,0xFF / CALL
--- $2879 / RET` -- the FOURTH real sibling of the `$02AB` family
--- (`0x80`/`0xEC`/`0xED`/`0xEE`), and the SECOND to close for real (see
--- `EntityStructLayout.lua`'s own `PLAYER_FACING_BIT` doc comment for
--- `0x80`'s own earlier closure -- the same 0x02AB leaf this one reuses).
+-- 0x81 ($15B7) -- CRACKED for real (direct instruction to decode the
+-- whole game map, absolute priority, continuing the whole-corpus-scan
+-- sweep): CALL $1588 / RET NZ / PUSH HL / CALL $02AB / CALL $29E4 /
+-- POP HL / OR 0xB0 / LD C,0xFF / CALL $2879 / RET -- the fourth
+-- sibling of the $02AB family (0x80/0xEC/0xED/0xEE), and the second to
+-- close for real (see EntityStructLayout.lua's own PLAYER_FACING_BIT
+-- doc comment for 0x80's own earlier closure -- the same $02AB leaf
+-- this one reuses).
 --
--- `$29E4`, disassembled: `AND 0x0F` then a real bit trick -- XOR 0x03
--- on the low pair (bits 0-1) whenever it's not already zero, XOR 0x0C
--- on the high pair (bits 2-3) whenever it's not already zero. Worked
--- out by truth table against every real one-hot input `$02AB` can
--- produce (per the 0x80 investigation, `$02AB`'s own low nibble is
--- ALWAYS one-hot): `0x01<->0x02` (right<->left), `0x04<->0x08`
--- (up<->down), `0x00->0x00` -- i.e. `$29E4` is a real, general "flip to
--- the OPPOSITE facing direction" helper. `0x81`'s real group is
--- therefore `flip(player's own current facing) | 0xB0` -- an "opposite-
--- facing" counterpart to `0x80`'s own "same-facing" `... + 0x90`
--- formula (both read the exact same `$02AB` leaf, just combined
+-- $29E4, disassembled: AND 0x0F then a bit trick -- XOR 0x03 on the
+-- low pair (bits 0-1) whenever it's not already zero, XOR 0x0C on the
+-- high pair (bits 2-3) whenever it's not already zero. Worked out by
+-- truth table against every one-hot input $02AB can produce (per the
+-- 0x80 investigation, $02AB's low nibble is always one-hot):
+-- 0x01<->0x02 (right<->left), 0x04<->0x08 (up<->down), 0x00->0x00 --
+-- $29E4 is a general "flip to the opposite facing direction" helper.
+-- 0x81's group is therefore flip(player's current facing) | 0xB0 --
+-- an "opposite-facing" counterpart to 0x80's own "same-facing" ... +
+-- 0x90 formula (both read the exact same $02AB leaf, just combined
 -- differently afterward).
 --
--- Same `$1588` gate as `0x84`-`0x87` above (WRAM `$C240` bit 7, already
--- approximated via `ctx.isActorReady`) -- note `$1588` ITSELF calls
--- `$02AB` internally as part of its own gate check (see `0x84`'s doc
--- comment above), a real, harmless double-read of the same byte, not a
--- bug. Implemented via `EntityStructLayout.OPPOSITE_FACING` (a plain
--- lookup table -- exactly as correct as reproducing `$29E4`'s own bit
--- trick, since every real input is one-hot) and an explicit dynamic-
--- group registration in `ScriptRuntime.lua`, same pattern as `0x80`'s
--- own (excluded from the generic `^ACTOR_ACTION_HANDLER_ADDRESS_`
--- sweep for the same reason).
-ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, opposite-facing | 0xB0 (CRACKED 2026-08-14)
+-- Same $1588 gate as 0x84-0x87 above (WRAM $C240 bit 7, already
+-- approximated via ctx.isActorReady) -- note $1588 itself calls $02AB
+-- internally as part of its own gate check (see 0x84's doc comment
+-- above), a harmless double-read of the same byte, not a bug.
+-- Implemented via EntityStructLayout.OPPOSITE_FACING (a plain lookup
+-- table -- exactly as correct as reproducing $29E4's own bit trick,
+-- since every input is one-hot) and an explicit dynamic-group
+-- registration in ScriptRuntime.lua, same pattern as 0x80's own
+-- (excluded from the generic ^ACTOR_ACTION_HANDLER_ADDRESS_ sweep for
+-- the same reason).
+ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, opposite-facing | 0xB0 (CRACKED)
 --
--- `0xA4` ($01C1, TRACED, DELIBERATELY NOT WIRED, 2026-08-14, whole-
--- corpus scan's own next real untouched blocker after `0x86`):
--- `PUSH HL / CALL $01CA / POP HL / CALL $3727 / RET` -- reaches the
--- $02AB family through a NEW indirection path: `$01CA` is `PUSH AF /
--- LD A,0x08 / JP $1ED7` (a real trampoline into the already-mapped
--- `$1ED7` bank-1 dispatcher, selector `0x08`), and selector `0x08`'s
--- own real code (`$50F9`) is a substantial routine that eventually
--- `PUSH DE / CALL $02AB / CALL $28F0 / POP DE / RET NZ` -- a genuine
--- real CONDITIONAL HALT gated on `$02AB`'s own result. **A FIFTH
--- confirmed real sibling of the same known-hard family**, reached via
--- yet another indirection layer -- needs the same live player-entity
--- WRAM state this project doesn't simulate. Left deliberately
--- unwired, no constant assigned.
+-- 0xA4 ($01C1, TRACED, DELIBERATELY NOT WIRED, whole-corpus scan's
+-- next untouched blocker after 0x86): PUSH HL / CALL $01CA / POP HL /
+-- CALL $3727 / RET -- reaches the $02AB family through a new
+-- indirection path: $01CA is PUSH AF / LD A,0x08 / JP $1ED7 (a
+-- trampoline into the already-mapped $1ED7 bank-1 dispatcher,
+-- selector 0x08), and selector 0x08's own code ($50F9) is a
+-- substantial routine that eventually PUSH DE / CALL $02AB / CALL
+-- $28F0 / POP DE / RET NZ -- a genuine conditional halt gated on
+-- $02AB's result. A fifth confirmed sibling of the same known-hard
+-- family, reached via yet another indirection layer -- needs the same
+-- live player-entity WRAM state this project doesn't simulate. Left
+-- deliberately unwired, no constant assigned.
 --
--- `0x8A` ($15FB, TRACED, DELIBERATELY NOT WIRED, 2026-08-15, direct
--- user request "ok dann mal die fehlenden opcodes dekodieren"): `CALL
--- $1588 / RET NZ / CALL $120B / CALL $3727 / RET` -- **a SIXTH
--- confirmed real sibling of the same $02AB known-hard family**, this
--- time reached MOST directly of all of them: `$1588` itself is `PUSH
--- HL / CALL $02AB / POP HL / BIT 7,A / RET Z` (real halt gated
--- straight on `$02AB`'s own bit 7, no further indirection) followed by
--- a real conditional leaf call (`$2938`-gated `CALL $02AB` again then
--- `$2879`, the SAME "queue an actor command" primitive the
--- `actorAction` family already uses) before returning NZ. The OUTER
--- wrapper's own `RET NZ` means: **opcode `0x8A` genuinely HALTS
--- (never reaches `$3727`) for as long as `$02AB`'s own real bit 7
--- stays SET**, only continuing once it clears -- exactly the same real
--- shape (a live, per-frame-reconfirmed gate on the player's own real
--- entity state) as `0x80`/`0xEC`/`0xED`/`0xEE`/`0xA4` above. Left
--- deliberately unwired for the SAME reason as those -- no constant
--- assigned.
+-- 0x8A ($15FB, TRACED, DELIBERATELY NOT WIRED, direct user request to
+-- decode the missing opcodes): CALL $1588 / RET NZ / CALL $120B /
+-- CALL $3727 / RET -- a sixth confirmed sibling of the same $02AB
+-- known-hard family, this time reached most directly of all of them:
+-- $1588 itself is PUSH HL / CALL $02AB / POP HL / BIT 7,A / RET Z
+-- (real halt gated straight on $02AB's own bit 7, no further
+-- indirection) followed by a conditional leaf call ($2938-gated CALL
+-- $02AB again then $2879, the same "queue an actor command" primitive
+-- the actorAction family already uses) before returning NZ. The outer
+-- wrapper's own RET NZ means: opcode 0x8A genuinely halts (never
+-- reaches $3727) for as long as $02AB's own bit 7 stays set, only
+-- continuing once it clears -- exactly the same shape (a live, per-
+-- frame-reconfirmed gate on the player's own entity state) as
+-- 0x80/0xEC/0xED/0xEE/0xA4 above. Left deliberately unwired for the
+-- same reason as those -- no constant assigned.
 
 -- `0xFC`/`0xFD` ($27F9/$2820) -- structurally traced in task #83
 -- (2026-08-13), the real "cursor commit" ambiguity resolved live in
