@@ -121,21 +121,36 @@ function render_monsters(main) {
       // 2026-08-17, direct instruction "die müssen nicht verified sein,
       // bau auch die grafiken in die website ein" -- show every boss's
       // own real sprite tiles regardless of arrangement-confirmation
-      // status (only index 16, "Jackal", is individually live-OAM-
-      // verified; the other 20 use the same real ROM pixels in the
-      // ROM's own raw DMA copy order -- honestly badged, not hidden).
-      const cols = hasSprite ? (b.spriteArrangementConfirmed ? 4 : 8) : 4;
+      // status. Direct follow-up "versuche daraus die tatsächlichen
+      // monster mit den animationsphasen zu rekonstruieren wie du es
+      // bei spezies 4 gemacht hast": `spriteChunksReordered`/
+      // `spriteChunksTotal` (see export_data.lua's own doc comment)
+      // tell us how many of THIS boss's own real 16-tile animation-
+      // phase chunks got a confident real arrangement -- render at
+      // cols=4 (the real creature-pose width) whenever at least one
+      // chunk was reconstructed, since even a partial reconstruction
+      // is more readable at the real width than a generic 8-wide strip.
+      const anyReordered = b.spriteChunksReordered > 0;
+      const cols = hasSprite ? (anyReordered ? 4 : 8) : 4;
       const rows = hasSprite ? Math.ceil(b.spriteTileOffsets.length / cols) : 4;
+      let spriteBadge = "";
+      if (hasSprite) {
+        if (b.spriteArrangementConfirmed) {
+          spriteBadge = `<span class="badge verified">Sprite-Anordnung bestätigt</span>`;
+        } else if (b.spriteChunksReordered === b.spriteChunksTotal && b.spriteChunksTotal > 0) {
+          spriteBadge = `<span class="badge partial" title="Jede echte 16-Kachel-Pose stimmt strukturell exakt mit dem einen live bestätigten Referenz-Monster (Jackal) überein -- real, aber nicht einzeln live geprüft.">Alle Posen rekonstruiert (${b.spriteChunksReordered}/${b.spriteChunksTotal})</span>`;
+        } else if (b.spriteChunksReordered > 0) {
+          spriteBadge = `<span class="badge partial" title="Nur ein Teil der echten 16-Kachel-Posen stimmt strukturell mit dem Referenz-Monster überein -- der Rest bleibt in roher Kopierreihenfolge.">Teilweise rekonstruiert (${b.spriteChunksReordered}/${b.spriteChunksTotal})</span>`;
+        } else {
+          spriteBadge = `<span class="badge unknown-b" title="Echte ROM-Pixel, aber keine der echten 16-Kachel-Posen stimmt strukturell mit dem Referenz-Monster überein -- rohe Kopierreihenfolge.">Anordnung unbekannt</span>`;
+        }
+      }
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
         <h3>${b.name || ("Boss " + b.index)}</h3>
         <span class="badge verified">Stats byte-genau bestätigt</span>
-        ${hasSprite
-          ? (b.spriteArrangementConfirmed
-              ? `<span class="badge verified">Sprite-Anordnung bestätigt</span>`
-              : `<span class="badge partial" title="Echte ROM-Pixel, aber die Bildschirm-Anordnung ist für diesen Boss nicht einzeln live geprüft -- rohe Kopierreihenfolge.">Sprite-Anordnung unbestätigt</span>`)
-          : ""}
+        ${spriteBadge}
         <table class="data-table" style="margin-top:10px;">
           <tr><th>Speed</th><td class="num">${b.speed}</td></tr>
           <tr><th>hpBase</th><td class="num">${b.hpBase}</td><td class="desc">Formel-Eingabe, kein fester HP-Wert</td></tr>
@@ -144,7 +159,7 @@ function render_monsters(main) {
           <tr><th>speciesByte</th><td class="num">${b.speciesByte}</td><td class="desc">nicht eindeutig pro Boss</td></tr>
           <tr><th>defeatBehaviorId</th><td class="num">${hex(b.defeatBehaviorId, 4)}</td><td class="desc">unbestätigt</td></tr>
         </table>
-        ${hasSprite ? `<canvas id="bossSprite${b.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="Echtes Sprite von ${escapeHtml(b.name || ("Boss " + b.index))}, Bank ${b.spriteBank}, ${b.spriteTileOffsets.length} Kacheln, direkt aus der geladenen ROM gerendert (${b.spriteArrangementConfirmed ? "Bildschirm-Anordnung bestätigt" : "Bildschirm-Anordnung unbestätigt, rohe Kopierreihenfolge"})"></canvas>` : ""}
+        ${hasSprite ? `<canvas id="bossSprite${b.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="Echtes Sprite von ${escapeHtml(b.name || ("Boss " + b.index))}, Bank ${b.spriteBank}, ${b.spriteTileOffsets.length} Kacheln, direkt aus der geladenen ROM gerendert (${b.spriteChunksReordered}/${b.spriteChunksTotal} echte Posen rekonstruiert)"></canvas>` : ""}
         <div class="meta" style="margin-top:8px;">
           raw: ${b.rawBytes.map(x => hex(x, 2)).join(" ")}
         </div>

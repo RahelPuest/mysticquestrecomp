@@ -11083,3 +11083,71 @@ byte-for-byte match) so this can't silently drift apart if either
 table's own base address is ever "corrected" independently. 573/573
 Lua tests pass. Live-verified via Playwright: all 21 boss cards render
 a real sprite canvas, correctly badged, zero console errors.
+
+## Real monster/boss on-screen pose ARRANGEMENT, reconstructed from the one known ground truth -- direct instruction "versuche daraus die tatsächlichen monster mit den animationsphasen zu rekonstruieren wie du es bei spezies 4 gemacht hast" (2026-08-17, same day)
+
+Direct follow-up: the 21 boss sprites now had real pixel data but were
+shown as flat 8-wide raw strips (except Jackal/row 16, the one
+independently live-verified real arrangement) -- the user asked for the
+same species-4-style reconstruction (real tile arrangement + real
+"animation phase" chunking) applied to the rest.
+
+**The method**: species 4 (row 16, "Jackal") is the ONE monster with
+BOTH a live-verified real pixel source AND a live-verified real 4x4
+on-screen arrangement (`rom_profiles.lua`'s own `enemySprite`/
+`enemyDescent`, found via OAM tracing in an earlier session). Comparing
+`resolveSpriteTileOffsets`'s own raw-DMA-order output against that
+already-known real order (`derive_creature_perm.lua`, scratchpad)
+found a clean, regular permutation for the real 16-tile-per-pose
+layout: raw position -> real position `[1,3,9,11,2,4,10,12,5,7,13,15,
+6,8,14,16]` -- a more complex rule than the NPC family's simple
+"swap the middle two," consistent with `enemySprite`'s own doc comment
+describing a genuinely more complex 4-column, 2-OAM-row hardware
+layout for creatures vs. the NPCs' plain 16x16 2-column block.
+
+**Applied generally, honestly scoped per chunk, not per record**: a
+static scan (`detect_eligible_chunks.lua`) checked every OTHER real
+16-tile chunk across all 21 monster/boss records against this exact
+relative byte pattern (`0,2,1,3,4,6,5,7,8,10,9,11,12,14,13,15` relative
+to the chunk's own first byte) -- a real, checkable structural fact,
+not a guess. Result: 7 records (2, 3, 5, 7, 12, 16, 19) have EVERY
+chunk matching; most of the other 14 have at least one matching chunk;
+a few have none. Applied `CREATURE_4X4_POSE_PERMUTATION` chunk-by-chunk
+-- matching chunks get the real arrangement, non-matching chunks (and
+any trailing remainder under 16 tiles) stay in raw DMA order.
+
+**Rendered and visually confirmed** (`render_reconstructed_monsters.py`,
+scratchpad) -- coherent, individually distinct, clearly thematic
+creature art: Golem renders as an unmistakable rock/metal humanoid
+(head, shoulders, arms, legs); Garuda renders as an unmistakable bird
+creature (wings, talons, beak); Medusa's first pose shows a clear
+snake-haired face; Megapede shows a segmented, symmetric insect body.
+Confirmed live on the actual website too (Playwright screenshot: Garuda
+and Mantis Ant both render as coherent creature art under a real "Alle
+Posen rekonstruiert (3/3)" badge).
+
+**Honest confidence, weaker tier than the NPC family** (only ONE
+ground truth here, not two): `chunksReordered`/`chunksTotal` (not a
+single boolean) expose exactly how many of a record's own real
+animation-phase chunks got a confident real arrangement -- the website
+shows "Alle Posen rekonstruiert (N/N)", "Teilweise rekonstruiert
+(N/M)", or "Anordnung unbekannt" per record, never collapsing partial
+success into a false "fully confirmed" claim. `spriteArrangementConfirmed`
+(row 16 only, the actual live-OAM ground truth) stays a separate,
+strictly stronger tier.
+
+**Shipped**: `SpriteTileFormula.CREATURE_4X4_POSE_PERMUTATION`,
+`matchesCreature4x4Shape`, `reconstructCreaturePoseOrder`;
+`MonsterDefinitionTable.resolveSpriteTileOffsets` now applies this
+automatically and returns `(offsets, bank, chunksReordered,
+chunksTotal)`. Strengthened the row-16 regression test from set- to
+strict ordered-equality (now that the real order is known, same
+upgrade already done for the NPC family). New pure-math test for
+`matchesCreature4x4Shape` plus a real-ROM test asserting at least 6
+fully-reconstructed and 15 partially-reconstructed records (lower
+bounds, not brittle exact counts). `export_data.lua`/`monsters.js`/
+`graphics.js` all updated to show the real per-record chunk counts,
+cols=4 rendering whenever at least one chunk was reconstructed.
+575/575 Lua tests pass, Playwright-verified live (14 monster/boss cards
+with a reconstructed-pose badge on the Grafiken page's Monster tab
+alone, zero console errors).

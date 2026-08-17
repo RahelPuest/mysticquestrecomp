@@ -46,6 +46,8 @@ function render_graphics(main) {
   const spriteFamilyDistinct = new Set(
     spriteNpcs.filter(e => e.arrangementFamily === "humanoid4pose").map(e => e.kindByte)
   ).size;
+  const monsterFullyReconstructed = spriteMonsters.filter(e => e.chunksTotal > 0 && e.chunksReordered === e.chunksTotal).length;
+  const monsterAnyReconstructed = spriteMonsters.filter(e => e.chunksReordered > 0).length;
 
   main.innerHTML = `
     <h1 class="page-title">Grafiken</h1>
@@ -120,23 +122,37 @@ function render_graphics(main) {
       Kopierreihenfolge wie characterA/characterB &mdash; ihre Kacheln
       werden automatisch in die echte, logische Pose-Reihenfolge
       umsortiert (nicht mehr die rohe DMA-Reihenfolge).
-      <strong>Ehrlicher Umfang, 3 Vertrauensstufen:</strong> die
+      Direkter Folge-Auftrag "versuche daraus die tatsächlichen monster
+      mit den animationsphasen zu rekonstruieren wie du es bei spezies 4
+      gemacht hast": das eine live bestätigte Referenz-Monster (Jackal,
+      Index 16) lieferte eine reale, prüfbare Kachel-Anordnungs-Regel
+      pro 16-Kachel-Pose &mdash; angewendet auf jeden Monster/Boss-
+      Eintrag, dessen eigene rohe Kachel-Bytes strukturell exakt zu
+      dieser Regel passen: ${monsterFullyReconstructed} Einträge mit
+      JEDER Pose rekonstruiert, ${monsterAnyReconstructed} mit
+      mindestens einer.
+      <strong>Ehrlicher Umfang, mehrere Vertrauensstufen:</strong> die
       gezeigten Kacheln sind für JEDEN Eintrag echte, einzeln korrekte
       ROM-Pixel. Die Bildschirm-ANORDNUNG ist für
       ${spriteConfirmedCount} Einträge mit
       <span class="badge verified">Anordnung bestätigt</span> individuell
-      live verifiziert; für ${spriteFamilyCount} Einträge mit
+      live verifiziert; für ${spriteFamilyCount} NPC-Einträge mit
       <span class="badge partial">Anordnung wahrscheinlich (Familie)</span>
-      per Familien-Zugehörigkeit übernommen (echt, aber nicht einzeln
-      live geprüft); alle anderen zeigen
-      <span class="badge unknown-b">Anordnung unbekannt</span> in roher
-      ROM-Kopierreihenfolge, kein geratenes Raster.
+      per Familien-Zugehörigkeit übernommen und für
+      ${monsterAnyReconstructed} Monster/Boss-Einträge mit
+      <span class="badge partial">(Teilweise) rekonstruiert</span>
+      per struktureller Übereinstimmung mit dem EINEN Referenz-Monster
+      übernommen (beides echt, aber nicht einzeln live geprüft); alle
+      anderen zeigen <span class="badge unknown-b">Anordnung unbekannt</span>
+      in roher ROM-Kopierreihenfolge, kein geratenes Raster.
     </p>
     <div class="stat-grid">
       <div class="stat-card"><div class="value">${spriteNpcs.length}</div><div class="label">NPC-Einträge</div></div>
       <div class="stat-card"><div class="value">${spriteMonsters.length}</div><div class="label">Monster/Boss-Einträge</div></div>
       <div class="stat-card"><div class="value">${spriteConfirmedCount}</div><div class="label">Anordnung individuell bestätigt</div></div>
-      <div class="stat-card"><div class="value">${spriteFamilyCount} (${spriteFamilyDistinct} Designs)</div><div class="label">Anordnung wahrscheinlich (Familie)</div></div>
+      <div class="stat-card"><div class="value">${spriteFamilyCount} (${spriteFamilyDistinct} Designs)</div><div class="label">NPC: Anordnung wahrscheinlich (Familie)</div></div>
+      <div class="stat-card"><div class="value">${monsterFullyReconstructed}</div><div class="label">Monster/Boss: alle Posen rekonstruiert</div></div>
+      <div class="stat-card"><div class="value">${monsterAnyReconstructed}</div><div class="label">Monster/Boss: mind. 1 Pose rekonstruiert</div></div>
     </div>
     <div class="toolbar" style="margin-top:18px;">
       <div class="pill-tabs" id="spriteCatalogTabs">
@@ -243,15 +259,17 @@ function render_graphics(main) {
   let activeSpriteKind = "npcs";
 
   function spriteCols(entry) {
-    // The 3 individually-confirmed entries AND the 172 humanoid4pose
-    // family members (2026-08-17, "du sollst mehr npcs suchen") use
-    // their own real, known shape (4 wide, tileOffsets already
-    // reordered into real logical pose order by resolveSpriteTileOffsets
-    // -- see that function's own doc comment). Every other entry has an
-    // honestly unknown arrangement, so a neutral 8-wide strip is used
-    // purely for compact display -- NOT a claimed layout (see this
-    // section's own page-lede text).
-    return (entry.arrangementConfirmed || entry.arrangementFamily === "humanoid4pose") ? 4 : 8;
+    // The 3 individually-confirmed entries, the 172 humanoid4pose
+    // family members (2026-08-17, "du sollst mehr npcs suchen"), AND
+    // any monster/boss with at least one reconstructed creature-pose
+    // chunk (same day, "versuche daraus die tatsächlichen monster mit
+    // den animationsphasen zu rekonstruieren") use their own real,
+    // known shape (4 wide, tileOffsets already reordered by
+    // resolveSpriteTileOffsets -- see that function's own doc comment).
+    // Every other entry has an honestly unknown arrangement, so a
+    // neutral 8-wide strip is used purely for compact display -- NOT a
+    // claimed layout (see this section's own page-lede text).
+    return (entry.arrangementConfirmed || entry.arrangementFamily === "humanoid4pose" || entry.chunksReordered > 0) ? 4 : 8;
   }
 
   function renderSpriteCards() {
@@ -270,6 +288,10 @@ function render_graphics(main) {
       } else if (entry.arrangementFamily === "humanoid4pose") {
         badge = `<span class="badge partial" title="Teilt characterA/characterBs eigene, live bestätigte Kopierreihenfolge -- dieselbe Vertrauensstufe wie andere Familien-Funde dieses Projekts, keine individuelle Live-Verifikation.">Anordnung wahrscheinlich (Familie)</span>`;
         ariaLayout = "Bildschirm-Anordnung wahrscheinlich, per Familien-Zugehörigkeit zu characterA/characterB übernommen";
+      } else if (entry.chunksReordered > 0) {
+        const allDone = entry.chunksReordered === entry.chunksTotal;
+        badge = `<span class="badge partial" title="Jede rekonstruierte 16-Kachel-Pose stimmt strukturell exakt mit dem einen live bestätigten Referenz-Monster (Jackal) überein -- real, aber nicht einzeln live geprüft.">${allDone ? "Alle Posen" : "Teilweise"} rekonstruiert (${entry.chunksReordered}/${entry.chunksTotal})</span>`;
+        ariaLayout = `${entry.chunksReordered} von ${entry.chunksTotal} echten Posen anhand des Referenz-Monsters rekonstruiert`;
       } else {
         badge = `<span class="badge unknown-b">Anordnung unbekannt</span>`;
         ariaLayout = "Bildschirm-Anordnung unbekannt";

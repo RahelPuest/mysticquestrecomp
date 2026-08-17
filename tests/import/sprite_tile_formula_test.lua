@@ -138,18 +138,27 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "MonsterDefinitionTable.resolveSpriteTileOffsets: row 16 exactly reproduces enemySprite (16) + enemyDescent (16), all 32 already-known real tileOffsets (as a set)",
+  "MonsterDefinitionTable.resolveSpriteTileOffsets: row 16 exactly reproduces enemySprite (16) + enemyDescent (16), all 32 already-known real tileOffsets, IN THE REAL ON-SCREEN 4x4 POSE ORDER",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local record = MonsterDefinitionTable.readRecord(romData, 16)
-    local offsets = MonsterDefinitionTable.resolveSpriteTileOffsets(romData, record)
+    local offsets, bank, chunksReordered, chunksTotal = MonsterDefinitionTable.resolveSpriteTileOffsets(romData, record)
+    Harness.assertEqual(chunksReordered, 2)
+    Harness.assertEqual(chunksTotal, 2)
 
     local expected = {}
     for _, o in ipairs(profile.graphics.enemySprite.tileOffsets) do expected[#expected + 1] = o end
     for _, o in ipairs(profile.graphics.enemyDescent.tileOffsets) do expected[#expected + 1] = o end
-    assertSameOffsetSet(offsets, expected, "boss")
+    -- STRICT ordered match now (this record's permutation was DERIVED
+    -- from this exact ground truth, see SpriteTileFormula
+    -- .CREATURE_4X4_POSE_PERMUTATION's own doc comment) -- not just a set.
+    Harness.assertEqual(#offsets, #expected)
+    for i = 1, #expected do
+      Harness.assertEqual(offsets[i], expected[i],
+        string.format("boss tile %d: formula=%s known=%s", i, tostring(offsets[i]), tostring(expected[i])))
+    end
   end
 )
 
@@ -193,6 +202,44 @@ Harness.testIfAvailable(
     Harness.assertEqual(monsterRow16.raw:byte(2), bossRow16.hpBase)
     Harness.assertEqual(monsterRow16.raw:byte(3), bossRow16.xp)
     Harness.assertEqual(monsterRow16.raw:byte(4), bossRow16.gold)
+  end
+)
+
+Harness.test("SpriteTileFormula.matchesCreature4x4Shape: pure-math check against the reference shape, relative to the chunk's own first byte", function()
+  Harness.assertTrue(SpriteTileFormula.matchesCreature4x4Shape({ 0x40, 0x42, 0x41, 0x43, 0x44, 0x46, 0x45, 0x47, 0x48, 0x4A, 0x49, 0x4B, 0x4C, 0x4E, 0x4D, 0x4F }))
+  -- same relative shape, different base -- still matches (the rule is relative, not absolute)
+  Harness.assertTrue(SpriteTileFormula.matchesCreature4x4Shape({ 0x10, 0x12, 0x11, 0x13, 0x14, 0x16, 0x15, 0x17, 0x18, 0x1A, 0x19, 0x1B, 0x1C, 0x1E, 0x1D, 0x1F }))
+  -- a plain sequential 0..15 chunk (the NPC family's OWN shape) must NOT match -- these are genuinely different real patterns
+  local sequential = {}
+  for i = 0, 15 do sequential[i + 1] = i end
+  Harness.assertTrue(not SpriteTileFormula.matchesCreature4x4Shape(sequential))
+  Harness.assertTrue(not SpriteTileFormula.matchesCreature4x4Shape({ 1, 2, 3 })) -- wrong length
+end)
+
+Harness.testIfAvailable(
+  "MonsterDefinitionTable: at least 6 of the 21 monster/boss records have EVERY 16-tile chunk matching the real creature-pose shape",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local fullyReconstructed = 0
+    local anyReconstructed = 0
+    for index = 0, MonsterDefinitionTable.TABLE_COUNT - 1 do
+      local record = MonsterDefinitionTable.readRecord(romData, index)
+      local _, _, chunksReordered, chunksTotal = MonsterDefinitionTable.resolveSpriteTileOffsets(romData, record)
+      if chunksTotal > 0 and chunksReordered == chunksTotal then fullyReconstructed = fullyReconstructed + 1 end
+      if chunksReordered > 0 then anyReconstructed = anyReconstructed + 1 end
+    end
+    -- Real, measured counts (2026-08-17, direct instruction "versuche
+    -- daraus die tatsächlichen monster... rekonstruieren"): rows 2, 3,
+    -- 5, 7, 12, 16, 19 have every chunk matching (7 total, including
+    -- the already-known row 16); most of the other 14 have at least one
+    -- matching chunk. Asserted as lower bounds (>=), not exact counts,
+    -- since a ROM revision with a genuinely different table shouldn't
+    -- make this test flaky over an incidental exact number.
+    Harness.assertTrue(fullyReconstructed >= 6,
+      "expected at least 6 fully-reconstructed monster/boss records, got " .. fullyReconstructed)
+    Harness.assertTrue(anyReconstructed >= 15,
+      "expected at least 15 monster/boss records with at least one reconstructed pose, got " .. anyReconstructed)
   end
 )
 

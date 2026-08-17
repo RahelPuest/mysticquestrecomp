@@ -2406,6 +2406,30 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   New regression test locks the table-identity finding. 573/573 Lua
   tests pass, Playwright-verified (21 boss cards, each with a real
   sprite canvas, zero console errors).
+- **2026-08-17, same day, direct instruction "versuche daraus die
+  tatsächlichen monster mit den animationsphasen zu rekonstruieren wie
+  du es bei spezies 4 gemacht hast": real monster/boss pose
+  arrangement reconstructed**: species 4 (row 16, "Jackal") is the ONE
+  monster with both a live-verified pixel source AND a live-verified
+  real 4x4 arrangement -- comparing the raw-DMA-order formula output
+  against that already-known real order found a clean, checkable
+  16-tile permutation (more complex than the NPC family's own "swap
+  the middle two", consistent with `enemySprite`'s own doc comment
+  describing a genuinely different hardware layout for creatures).
+  Applied PER-CHUNK (not per-record) to all 21 monster/boss records,
+  only where a chunk's own raw bytes structurally match the reference
+  shape -- 7 records fully reconstructed, most of the rest partially,
+  a few not at all, all honestly counted (`chunksReordered`/
+  `chunksTotal`, not one boolean). Rendered and visually confirmed:
+  Golem renders as an unmistakable rock humanoid, Garuda as an
+  unmistakable bird creature (wings, talons, beak), both live on the
+  actual website too. Honest confidence kept explicitly WEAKER than
+  the NPC family tier (one ground truth here, not two) -- 3-state
+  website badges ("Alle Posen rekonstruiert (N/N)" / "Teilweise
+  rekonstruiert (N/M)" / "Anordnung unbekannt"), never collapsed into a
+  false blanket claim. Strengthened the row-16 regression test to
+  strict ordered equality. 575/575 Lua tests pass, Playwright-verified
+  live.
 - **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
   full "elevate this product" brief, scoped to the website (confirmed
   via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,

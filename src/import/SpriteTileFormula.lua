@@ -116,6 +116,9 @@ end
 -- `tableBank` is which bank the outer record itself (and therefore its
 -- own `innerPtr` list) lives in -- 4 for `MonsterDefinitionTable`, 3
 -- for `ActorDefinitionTable` (see each module's own `BANK` constant).
+-- Third return value is the raw GFX-tile index bytes themselves (same
+-- length/order as `offsets`) -- needed by `reconstructCreaturePoseOrder`
+-- to detect which chunks are safe to reorder.
 function SpriteTileFormula.resolveTileOffsets(romData, outerRecord, tableBank)
   local innerPtr = outerRecord.innerPtr
   local listOff = tableBank * 0x4000 + (innerPtr - 0x4000)
@@ -128,7 +131,7 @@ function SpriteTileFormula.resolveTileOffsets(romData, outerRecord, tableBank)
     offsets[i] = fileOffset
     spriteBank = bank
   end
-  return offsets, spriteBank
+  return offsets, spriteBank, rawBytes
 end
 
 -- REAL ON-SCREEN POSE ARRANGEMENT, found 2026-08-17, direct follow-up
@@ -198,6 +201,101 @@ function SpriteTileFormula.reconstructPoseOrder(offsets)
     i = i + groupLen
   end
   return reordered
+end
+
+-- REAL MONSTER/BOSS POSE ARRANGEMENT, found 2026-08-17, direct follow-up
+-- (direct user instruction: "versuche daraus die tatsächlichen monster
+-- mit den animationsphasen zu rekonstruieren wie du es bei spezies 4
+-- gemacht hast" -- reconstruct the actual monsters with their
+-- animation phases from the tilesets, the way species 4 already was).
+--
+-- Species 4 (`MonsterDefinitionTable` row 16, the real first-boss/gate-
+-- creature) is the ONE monster this project has independently live-
+-- verified, both its real pixel source AND its real on-screen 4x4
+-- arrangement (`rom_profiles.lua`'s own `enemySprite`/`enemyDescent`,
+-- found via live OAM tracing well before this session). Deriving the
+-- exact raw-DMA-order -> real-4x4-position permutation from that ONE
+-- ground truth (comparing `resolveSpriteTileOffsets`'s own raw-order
+-- output against `enemySprite.tileOffsets`/`enemyDescent.tileOffsets`'s
+-- own already-known real order, `derive_creature_perm.lua`, scratchpad)
+-- found a clean, regular 16-tile permutation:
+--   raw position ->  real on-screen position (1-based, within one
+--   16-tile pose):
+--     1->1, 3->2, 9->3, 11->4, 2->5, 4->6, 10->7, 12->8,
+--     5->9, 7->10, 13->11, 15->12, 6->13, 8->14, 14->15, 16->16
+-- (equivalently: real position i is fed by raw position
+-- CREATURE_4X4_POSE_PERMUTATION[i]). This is a DIFFERENT, more complex
+-- permutation than the NPC family's own simple "swap the middle two"
+-- rule -- consistent with `rom_profiles.lua`'s own doc comment on
+-- `enemySprite`, which describes a genuinely more complex 4-column,
+-- 2-OAM-row hardware layout for this creature than the NPCs' simple
+-- 16x16 2-column block.
+--
+-- HONEST CONFIDENCE, WEAKER than the NPC family tier: this rests on
+-- exactly ONE independently live-verified ground truth (not two), so
+-- it is applied ONLY where a 16-raw-tile CHUNK's own relative byte
+-- pattern (`0,2,1,3,4,6,5,7,8,10,9,11,12,14,13,15` relative to its own
+-- first byte) is a byte-for-byte match to species 4's own real chunks
+-- -- a real, checkable structural fact, not a guess -- and left in raw
+-- DMA order for any chunk (or trailing remainder shorter than 16) that
+-- doesn't match. A per-record scan (`detect_eligible_chunks.lua`,
+-- scratchpad) found most of the 21 monster/boss records have AT LEAST
+-- one matching chunk; several (rows 2, 3, 5, 7, 12, 16, 19) have EVERY
+-- chunk matching -- those are the strongest candidates. Rendered a
+-- sample of newly-reconstructed rows and confirmed coherent, distinct,
+-- creature-shaped sprites (not scrambled blobs) -- see events.md's own
+-- dated entry for the rendered examples.
+SpriteTileFormula.CREATURE_4X4_POSE_PERMUTATION = { 1, 3, 9, 11, 2, 4, 10, 12, 5, 7, 13, 15, 6, 8, 14, 16 }
+
+--- True when `rawByteChunk` (a 16-entry array of raw GFX-tile index
+-- bytes) matches species 4's own real relative byte pattern -- i.e. is
+-- a real "4x4 creature pose" chunk, safe to reorder with
+-- `CREATURE_4X4_POSE_PERMUTATION`.
+local CREATURE_4X4_REF_SHAPE = { 0, 2, 1, 3, 4, 6, 5, 7, 8, 10, 9, 11, 12, 14, 13, 15 }
+function SpriteTileFormula.matchesCreature4x4Shape(rawByteChunk)
+  if #rawByteChunk ~= 16 then return false end
+  local base = rawByteChunk[1]
+  for i = 1, 16 do
+    if bit.band(rawByteChunk[i] - base, 0xFF) ~= CREATURE_4X4_REF_SHAPE[i] then return false end
+  end
+  return true
+end
+
+--- Reorders a flat, raw-DMA-order tile-offset list into the real
+-- on-screen 4x4 pose order, chunk by chunk (16 tiles per chunk) --
+-- ONLY for chunks whose own raw GFX-tile bytes (`rawBytes`, a Lua
+-- string, same length as `offsets`) match `matchesCreature4x4Shape`;
+-- every other chunk (and any trailing remainder under 16) is left in
+-- raw DMA order, honestly unreconstructed. Returns the reordered
+-- offsets plus `chunksReordered`/`chunksTotal` (whole 16-tile chunks
+-- only -- a trailing remainder never counts as a "total" chunk) so
+-- callers can show an honest per-record confidence, not a single
+-- blanket claim.
+function SpriteTileFormula.reconstructCreaturePoseOrder(rawBytes, offsets)
+  local reordered = {}
+  local chunksReordered, chunksTotal = 0, 0
+  local n = #offsets
+  local i = 1
+  while i <= n do
+    local chunkLen = math.min(16, n - i + 1)
+    if chunkLen == 16 then
+      chunksTotal = chunksTotal + 1
+      local chunk = {}
+      for k = 1, 16 do chunk[k] = rawBytes:byte(i + k - 1) end
+      if SpriteTileFormula.matchesCreature4x4Shape(chunk) then
+        chunksReordered = chunksReordered + 1
+        for outPos = 1, 16 do
+          reordered[#reordered + 1] = offsets[i + SpriteTileFormula.CREATURE_4X4_POSE_PERMUTATION[outPos] - 1]
+        end
+      else
+        for k = 0, 15 do reordered[#reordered + 1] = offsets[i + k] end
+      end
+    else
+      for k = 0, chunkLen - 1 do reordered[#reordered + 1] = offsets[i + k] end
+    end
+    i = i + chunkLen
+  end
+  return reordered, chunksReordered, chunksTotal
 end
 
 return SpriteTileFormula

@@ -928,8 +928,24 @@ do
       -- 1 (row 16, "Jackal") this project independently live-verified.
       -- Shown regardless of arrangementConfirmed status, per the direct
       -- instruction above -- honestly badged, not hidden.
+      --
+      -- REAL POSE ARRANGEMENT, same day, direct follow-up ("versuche
+      -- daraus die tatsächlichen monster mit den animationsphasen zu
+      -- rekonstruieren wie du es bei spezies 4 gemacht hast"):
+      -- `resolveSpriteTileOffsets` now also reorders every real 16-tile
+      -- chunk that structurally matches species 4's own already-known
+      -- real pose shape (see SpriteTileFormula.CREATURE_4X4_POSE_
+      -- PERMUTATION's own doc comment) -- `spriteChunksReordered`/
+      -- `spriteChunksTotal` expose exactly how many of this boss's own
+      -- real animation-phase chunks got a confident real arrangement,
+      -- so the website can show an honest per-boss confidence instead
+      -- of one blanket claim.
       local monsterRecord = MonsterDefinitionTable.readRecord(romData, i - 1)
-      local spriteOffsets = monsterRecord and MonsterDefinitionTable.resolveSpriteTileOffsets(romData, monsterRecord)
+      local spriteOffsets, spriteBank, chunksReordered, chunksTotal
+      if monsterRecord then
+        spriteOffsets, spriteBank, chunksReordered, chunksTotal =
+          MonsterDefinitionTable.resolveSpriteTileOffsets(romData, monsterRecord)
+      end
       bosses[i] = {
         index = i - 1,
         name = names[i],
@@ -942,8 +958,10 @@ do
         defeatBehaviorId = r.defeatBehaviorId,
         rawBytes = bytesToArray(r.raw),
         spriteTileOffsets = spriteOffsets,
-        spriteBank = monsterRecord and monsterRecord.spriteSource.bank,
+        spriteBank = spriteBank,
         spriteArrangementConfirmed = (i - 1 == 16), -- the one row this project independently live-verified (see MonsterDefinitionTable.LIVE_CONFIRMED)
+        spriteChunksReordered = chunksReordered or 0,
+        spriteChunksTotal = chunksTotal or 0,
       }
     end
   end
@@ -1037,7 +1055,13 @@ do
   local function buildSpriteEntries(records, resolveFn, confirmedIndices)
     local entries = {}
     for _, record in ipairs(records) do
-      local offsets = resolveFn(romData, record)
+      -- `chunksReordered`/`chunksTotal` are only meaningful for
+      -- MonsterDefinitionTable's own creature-4x4-pose reconstruction
+      -- (2026-08-17, "versuche daraus die tatsächlichen monster mit den
+      -- animationsphasen zu rekonstruieren") -- nil for
+      -- ActorDefinitionTable/NPCs, which use `arrangementFamily`
+      -- instead (a whole-record flag, not a per-chunk count).
+      local offsets, _, chunksReordered, chunksTotal = resolveFn(romData, record)
       entries[#entries + 1] = {
         index = record.index,
         bank = record.spriteSource.bank,
@@ -1046,6 +1070,8 @@ do
         tileOffsets = offsets,
         arrangementConfirmed = confirmedIndices[record.index] or false,
         arrangementFamily = record.spriteSource.arrangementFamily,
+        chunksReordered = chunksReordered,
+        chunksTotal = chunksTotal,
       }
     end
     return entries
@@ -1071,9 +1097,16 @@ do
     "characterA/characterB), a real but not individually live-verified confidence tier, distinct " ..
     "from arrangementConfirmed. HONEST SCOPE: tileOffsets are real, individually-correct ROM " ..
     "pixel data for every entry -- the on-screen ARRANGEMENT (which tile goes where) is only " ..
-    "independently confirmed for the 3 arrangementConfirmed=true entries; every other entry's " ..
+    "independently confirmed for the 3 arrangementConfirmed=true entries; every other NPC entry's " ..
     "tileOffsets are shown in the ROM's own raw DMA copy order, an HONESTLY UNKNOWN on-screen " ..
-    "layout, not a guessed grid.")
+    "layout, not a guessed grid. Monster/boss entries carry `chunksReordered`/`chunksTotal` " ..
+    "instead (2026-08-17, direct follow-up \"versuche daraus die tatsächlichen monster mit den " ..
+    "animationsphasen zu rekonstruieren wie du es bei spezies 4 gemacht hast\") -- each real " ..
+    "16-tile chunk (one real animation pose) that structurally matches species 4's own already-" ..
+    "known real pose shape is reordered into the real on-screen layout; chunks that don't match " ..
+    "stay in raw DMA order. `chunksReordered==chunksTotal` is the strongest tier (every pose " ..
+    "reconstructed); `chunksReordered>0` means at least one real pose is confidently arranged; " ..
+    "`chunksReordered==0` means nothing could be confidently reordered for that entry.")
 end
 
 ----------------------------------------------------------------------

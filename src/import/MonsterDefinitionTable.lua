@@ -122,9 +122,24 @@ end
 -- of real ROM file offsets for every raw GFX-tile this entity's sprite
 -- actually uses. See `SpriteTileFormula.lua`'s own doc comment for the
 -- formula and its live validation.
+--
+-- 2026-08-17, direct follow-up ("versuche daraus die tatsächlichen
+-- monster mit den animationsphasen zu rekonstruieren wie du es bei
+-- spezies 4 gemacht hast"): also applies
+-- `SpriteTileFormula.reconstructCreaturePoseOrder`, chunk by chunk (see
+-- that function's own doc comment for the real, checkable per-chunk
+-- eligibility test and its honest confidence tier). Returns
+-- `(offsets, bank, chunksReordered, chunksTotal)` -- `chunksReordered`
+-- is how many of this record's own 16-tile chunks (real animation
+-- poses) got a confident real arrangement; `chunksTotal` is how many
+-- whole 16-tile chunks exist at all (a trailing remainder under 16
+-- never counts). `chunksReordered == 0` means nothing could be
+-- reordered -- the result is identical to the raw DMA order.
 function MonsterDefinitionTable.resolveSpriteTileOffsets(romData, record)
   local SpriteTileFormula = require("src.import.SpriteTileFormula")
-  return SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
+  local offsets, bank, rawBytes = SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
+  local reordered, chunksReordered, chunksTotal = SpriteTileFormula.reconstructCreaturePoseOrder(rawBytes, offsets)
+  return reordered, bank, chunksReordered, chunksTotal
 end
 
 --- The one row whose real identity AND on-screen arrangement are BOTH
