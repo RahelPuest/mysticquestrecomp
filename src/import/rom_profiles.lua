@@ -1219,94 +1219,53 @@ RomProfiles.PROFILES = {
           },
         },
       },
-      -- VERIFIED (2026-08-09): the real fourth room, reached through
-      -- `thirdRoom`'s own staircase -- see rom-map.md "Yes, it keeps
-      -- going". Visually and structurally different from the whole
-      -- willyRoom/secondRoom/thirdRoom chain: a simple, repetitive
-      -- 8-tile set. 6 of its 8 tile IDs matched the ALREADY-KNOWN
-      -- `startRoom`/environment tileset (bank 12) byte-for-byte (a
-      -- real cross-confirmation, not a coincidence) -- reused directly
-      -- below rather than re-searched. Its dominant tile (`128`, fills
-      -- the whole top of the room) is a real, solid all-`0xFF` pattern
-      -- -- the SAME real "solid tile" signature already found for the
-      -- courtyard gate's open state (see `startRoom.door` /
-      -- GateAnimation.lua) -- confirmed here via a genuinely different
-      -- room, reinforcing it as a deliberate ROM convention. It had 11
-      -- real, ambiguous byte-identical ROM matches (ordinary for a
-      -- common solid-fill pattern) -- used as a literal tile pattern
-      -- (see `TileImage.sheetFromOffsets`'s own doc comment) rather
-      -- than picking one arbitrarily. Reads, structurally, like the
-      -- real entrance to a much bigger open/outdoor area (the
-      -- overworld) rather than another contained interior room -- a
-      -- plausible, NOT yet confirmed, interpretation.
+      -- Real fourth room, reached through thirdRoom's own staircase.
+      -- Visually/structurally different from the willyRoom chain: a
+      -- simple, repetitive 8-tile set. 6 of 8 tile IDs matched the
+      -- known startRoom/environment tileset byte-for-byte, reused
+      -- directly. Dominant tile 128 (fills the top) is a real solid
+      -- all-0xFF pattern, same signature as the courtyard gate's open
+      -- state -- reads structurally like an entrance to a bigger
+      -- outdoor area, not confirmed.
       --
-      -- CORRECTED (2026-08-12, "fourthRoom systematisch flutfüllen"):
-      -- this room DOES have a further real exit -- an earlier, wrong
-      -- "no exits, dead end" conclusion from a straight-line-only probe
-      -- was retracted after a proper systematic exploration (see
-      -- `fifthRoom`'s own doc comment below and events.md's "Correction
-      -- and a real find" section for the complete live-trace evidence).
+      -- CORRECTED: this room DOES have a further real exit -- an
+      -- earlier "dead end" conclusion from a straight-line-only probe
+      -- was retracted after systematic exploration (see fifthRoom's
+      -- own doc comment below).
       fourthRoom = {
         status = "VERIFIED",
-        -- Real tile-source pointer $40B0, roomSelectors 0-1 in
-        -- `roomSelectorTable` above -- LIVE-CONFIRMED (via $C3F5, in
-        -- two separate `CallTracer` traces) to be the EXACT SAME
-        -- pointer as `startRoom`'s own real pre-combat state. This
-        -- room's own captured tiles only partially overlap `startRoom`
-        -- 's (6/8 exact matches) -- plausibly the same underlying
-        -- source rendered through a different per-byte `$D070` remap
-        -- at each use, not literally identical output; NOT merged into
-        -- one definition since the two captures genuinely differ
-        -- visually. See rom-map.md's cross-check section for the full
-        -- reasoning -- an honest, unreconciled structural note, not
-        -- silently resolved either way.
+        -- Real tile-source pointer $40B0, roomSelectors 0-1 -- live-
+        -- confirmed (via $C3F5) to be the exact same pointer as
+        -- startRoom's own pre-combat state. This room's own captured
+        -- tiles only partially overlap startRoom's (6/8 exact matches)
+        -- -- plausibly the same source rendered through a different
+        -- per-byte $D070 remap, not merged into one definition since
+        -- the captures genuinely differ visually.
         romRoomSelectors = { 0, 1 },
-        -- RESOLVED (2026-08-16, task "komplett autark
-        -- interpretiert"/blocker resolution): live-traced the real
-        -- thirdRoom->fourthRoom transition's own `$4395` (`CALL
-        -- $026DC`) call site directly -- `A=0x1` at that exact real
-        -- moment, and `$026DC`'s own `A` argument IS the real target
-        -- `roomSelectorTable` index, unmodified (see
-        -- `CutTransitionTable.lua`'s own doc comment for the full
-        -- derivation). **fourthRoom's own real roomSelector is `1`**,
-        -- not `0` -- resolving the "0 or 1" ambiguity above for good
-        -- (plausibly meaning `startRoom` below, sharing the same
-        -- `{0,1}` candidate pair, is `0` -- a reasonable inference,
-        -- NOT itself separately live-confirmed, so left as `{0,1}`
-        -- there rather than asserted).
+        -- RESOLVED: live-traced the real thirdRoom->fourthRoom
+        -- transition's own `$4395` call site directly -- A=0x1 at that
+        -- exact moment, and that's the real target roomSelectorTable
+        -- index unmodified. fourthRoom's own real roomSelector is 1,
+        -- not 0 (implying startRoom, sharing the same {0,1} candidate
+        -- pair, is 0 -- a reasonable inference, not separately
+        -- confirmed, so left as {0,1} there).
         romRoomSelectorConfirmed = 1,
-        -- CONFIRMED (2026-08-17, direct user report: "der bossraum sowie
-        -- der raum vorm boss sind jeweils auf der weltmap... 7-4 ist der
-        -- bossraum, 7-5 der raum davor"): this room is NOT an isolated,
-        -- disconnected capture -- it is directly present in the bank6
-        -- (8x8) world-map catalog at grid (row=7,col=5), i.e.
-        -- `mapTableBank6` record index `row*8+col=61` (see `startRoom`'s
-        -- own doc comment below for the sibling record 60/(7,4)).
-        -- Verified via
-        -- `RoomFloorLayout.buildRoomFromMapTableRecord(romData,
-        -- profile.mapTableBank6, 61, opts)` ->
-        -- `RoomFloorLayout.toTileGridBackgroundData(...)`, then resolving
-        -- EACH cell's fresh tile ID through `fresh.tileOffsets[id]` (NOT
-        -- comparing raw local tile IDs directly -- those differ between
-        -- a fresh per-record decode and this room's own already-captured
-        -- table, a real bug hit and fixed during this exact
-        -- investigation) and comparing the resulting real ROM file
-        -- offset against this room's own `tileOffsets` below, cell by
-        -- cell: 216/320 cells (67.5%) match exactly -- far above the
-        -- ~15-17% baseline this project established for two genuinely
-        -- different rooms sharing one tileset family by coincidence.
-        -- Also directly WEST of `startRoom`'s own (row=7,col=4) record --
-        -- matching this room's already-independently-confirmed real
-        -- `fourthRoom->sixthRoom`(=startRoom) west exit direction, a
-        -- second, structurally independent piece of corroboration. See
-        -- events.md's "startRoom and fourthRoom are on the 8x8 world map"
-        -- entry for the full trace including the neighbor-record sweep.
-        -- `table` here uses the rom-inspector website's own source label
-        -- ("bank6", matching `ROOM_CATALOG[*].source` /
-        -- `WORLDMAP_SOURCES` in worldmap.js), NOT this Lua module's own
-        -- field name `mapTableBank6` -- the two names refer to the same
-        -- underlying table, kept distinct here so the export can do a
-        -- direct string match against the already-exported catalog.
+        -- CONFIRMED (direct user report the boss room and the room
+        -- before it are both on the world map): this room is directly
+        -- present in the bank6 (8x8) world-map catalog at grid
+        -- (row=7,col=5) -- record index 61 (see startRoom's own doc
+        -- comment for sibling record 60/(7,4)). Verified by resolving
+        -- each cell's fresh tile ID through its own real file offset
+        -- (not comparing raw local tile IDs directly) and comparing
+        -- cell-by-cell against this room's own `tileOffsets`: 216/320
+        -- cells (67.5%) match, far above the ~15-17% coincidental
+        -- baseline. Also directly WEST of startRoom's own (7,4) record,
+        -- matching the already-confirmed fourthRoom->sixthRoom(=
+        -- startRoom) west exit direction -- independent corroboration.
+        -- `table` here uses the rom-inspector website's own source
+        -- label ("bank6"), not this module's own field name
+        -- (`mapTableBank6`) -- same underlying table, kept distinct so
+        -- export can string-match the already-exported catalog.
         worldMapCatalogRecord = { table = "bank6", recordIndex = 61, row = 7, col = 5 },
         cols = 20,
         rows = 16,
@@ -1314,80 +1273,43 @@ RomProfiles.PROFILES = {
           [128] = string.rep("\255", 16), -- real solid tile, literal pattern (see doc comment above)
           [129] = 0x30300, [130] = 0x30310, [131] = 0x30D10, [132] = 0x30D20,
           [133] = 0x302E0, [134] = 0x302F0,
-          [135] = 0x307F0, -- disambiguated the same way as thirdRoom's 188-191: picked the match inside the same environment-tileset bank12 neighborhood as this room's other real offsets, over a more distant bank8 alternative
-          -- Real, NEW tile IDs (2026-08-14, task #75 "reconcile live zone
-          -- coords with static grid" -- see this room's `exits` doc
-          -- comment below for the full live-trace evidence). Found via
-          -- the same live-VRAM-pattern -> exact-ROM-byte-search method
-          -- as every other room's tileOffsets here: these are the
-          -- corridor's real wall/border decoration tiles that only
-          -- scroll into the visible screen once SCX genuinely moves
-          -- away from 0 (i.e. NOT visible at the original landing-spot
-          -- capture, which is why this room's own original 8-tile set
-          -- never had them). 136-140/143/144/147 each had exactly ONE
-          -- real ROM match, all clustered immediately next to this
-          -- room's own already-known 131/132 offsets (0x30D10/0x30D20)
-          -- -- high-confidence, same-neighborhood matches, not
-          -- coincidental. 145/146 had 2 candidate matches each (same
-          -- ambiguity shape as 135 above) -- picked the closer
-          -- same-neighborhood match over the more distant one.
+          [135] = 0x307F0, -- disambiguated like thirdRoom's 188-191: picked the match in the same bank12 neighborhood as this room's other offsets
+          -- Real, NEW tile IDs -- the corridor's own wall/border tiles
+          -- that only scroll into view once SCX moves off 0 (not
+          -- visible at the original landing-spot capture). 136-140/
+          -- 143/144/147 each had exactly one real ROM match, clustered
+          -- next to this room's own known 131/132. 145/146 had 2
+          -- candidates each, picked the closer same-neighborhood match.
           [136] = 0x30D70, [137] = 0x30DC0, [138] = 0x30E50, [139] = 0x30DB0,
           [140] = 0x30D40, [143] = 0x30D90, [144] = 0x30DA0, [145] = 0x30B20,
           [146] = 0x30B30, [147] = 0x30D30,
         },
-        -- CORRECTED (2026-08-12, direct user report: "vor allem nach der
-        -- treppe spawned der player in der wand"): 129/130 (the "border
-        -- pattern" trim between the solid wall and the open floor) used
-        -- to be excluded here on a pure, never-tested visual guess --
-        -- and the staircase exit's own real, live-verified landing spot
-        -- (`thirdRoom.exits[1].landingX/Y` = 120,112) puts the TOP HALF
-        -- of the player's own 16x16 real footprint exactly on top of
-        -- 130/129 (confirmed both statically against this grid and live
-        -- against real VRAM at the settled position -- BG tiles under
-        -- the player's own top-left/top-right corners read back as
-        -- 130/129 exactly). With 129/130 excluded, this project's own
-        -- `TileWalkability`/`canMoveTo` blocked the player from moving
-        -- away from that overlap at all, which combined with 129/130's
-        -- own dark trim art reads exactly like "stuck inside the wall"
-        -- -- the reported symptom.
+        -- CORRECTED (direct user report of spawning inside the wall
+        -- after the staircase): 129/130 (the border trim) used to be
+        -- excluded on a never-tested visual guess -- the staircase's
+        -- own real landing spot (120,112) puts the player's top-half
+        -- footprint exactly on 130/129, confirmed both statically and
+        -- against live VRAM. With them excluded, `TileWalkability`
+        -- blocked the player from moving away from that overlap at all
+        -- -- exactly the reported symptom.
         --
-        -- LIVE RE-VERIFIED (mgba, held UP from the real settled landing
-        -- spot): real screen Y walked 112 -> 102 -> 95 -> 88 over 30
-        -- real frames with ZERO hesitation crossing the 129/130 trim
-        -- row -- the real ROM does not treat it as a wall at all. Only
-        -- genuinely open floor behaves like that; a real wall would have
-        -- stopped movement dead on first contact, the way it does at
-        -- the real boundary found beyond Y=88 (not further characterized
-        -- this pass -- this room's own exits, if any exist past that
-        -- point, are still unexplored; not needed to fix the reported
-        -- landing-spot bug). 129/130 promoted from "not floor" to
-        -- VERIFIED real floor/decoration.
+        -- Live re-verified: holding UP from the settled landing spot
+        -- walks real screen Y 112->102->95->88 over 30 frames with zero
+        -- hesitation crossing the 129/130 row -- real open floor, not a
+        -- wall. Promoted to verified real floor/decoration.
         --
-        -- CLOSED (2026-08-14, direct user report: "der spawn ist immer
-        -- noch off / der übergang geht nicht" for this exact room):
-        -- 135 promoted from HYPOTHESIS to VERIFIED real floor. Root
-        -- cause, found via a new `MYSTICQUEST_VICTORY_START_ROOM` debug
-        -- hook (VictorySequence.lua) that jumps straight to a room at
-        -- its own real landing spot: `TileWalkability.build`'s footprint
-        -- check at the real landing spot (120,112) touches tile 135
-        -- (the 2x2 feature block at native rows 12-13, cols 14-15 --
-        -- pixel range x=112-127, y=96-111) the INSTANT the player moves
-        -- even 1px in EITHER vertical direction (up OR down), because
-        -- the 16px-tall footprint's own row window shifts the moment Y
-        -- leaves its exact spawn-time multiple-of-8 alignment. With 135
-        -- excluded from `floorTileIds`, this made the player's own
-        -- vertical movement completely frozen from the instant of
-        -- landing -- confirmed live (`MYSTICQUEST_SCRIPT=up@3-60`, 60
-        -- real frames, Y never changed) -- explaining BOTH halves of the
-        -- user's report at once (spawn "feels" wrong because the player
-        -- can never leave it, and the fifthRoom exit "doesn't work"
-        -- because it's unreachable if you can't move vertically at
-        -- all). Directly contradicted by THIS SAME room's own already-
-        -- recorded live evidence just above ("real screen Y walked 112
-        -- -> 102 -> 95 -> 88 over 30 real frames with ZERO hesitation")
-        -- -- that trace already proved this exact path is real, open
-        -- floor in the actual ROM; 135 was simply never added to
-        -- `floorTileIds` to match it, an oversight now corrected.
+        -- CLOSED (direct user report the spawn/transition were still
+        -- broken): 135 promoted from hypothesis to verified real floor.
+        -- Root cause: the player's 16px-tall footprint touches tile 135
+        -- the instant Y moves even 1px off its spawn-time alignment;
+        -- with 135 excluded from `floorTileIds`, vertical movement was
+        -- completely frozen from the instant of landing (confirmed
+        -- live, Y never changed over 60 frames) -- explaining both the
+        -- "spawn feels wrong" and "fifthRoom exit doesn't work" reports
+        -- at once (unreachable if you can't move vertically at all).
+        -- Directly contradicted by this room's own already-recorded
+        -- live evidence above (Y walks freely 112->88) -- 135 was
+        -- simply never added to `floorTileIds` to match it.
         floorTileIds = { [129] = true, [130] = true, [131] = true, [132] = true,
           [133] = true, [134] = true, [135] = true },
         grid = {
