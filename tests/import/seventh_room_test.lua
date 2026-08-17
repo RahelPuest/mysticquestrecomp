@@ -5,12 +5,14 @@ local DevRomLocator = require("tests.dev_rom_locator")
 
 -- Real room wired 2026-08-16, direct user report: "im zweiten
 -- Bossraum nachdem der Boss besiegt wurde öffnet sich das im Norden --
--- das ist der Weg in den nächsten Raum". See rom_profiles.lua's own
--- doc comment on `sixthRoom.exits`/`seventhRoom` for the full honest
--- provenance: seventhRoom is a real, decoded bank-5 room-catalog entry
--- (mapTable record 220) this project chose as sixthRoom's own north
--- destination -- not an independently ROM-confirmed connection, same
--- evidentiary category as `secondBoss` itself.
+-- das ist der Weg in den nächsten Raum". SUPERSEDED 2026-08-17, direct
+-- follow-up report of the real destination ("kommt er auf der kleinen
+-- weltmap an 6.3 raus") -- seventhRoom is now bank6 (world-map
+-- catalog) record 51, grid (row=6,col=3), not the earlier bank5-
+-- record-220 engineering placeholder. See rom_profiles.lua's own doc
+-- comment on `sixthRoom.exits`/`seventhRoom` for the full honest
+-- provenance chain, including the RETRACTED seventhRoom->eighthRoom
+-- exit (byte-matched against data that no longer exists).
 local romData = DevRomLocator.find()
 
 Harness.testIfAvailable(
@@ -51,15 +53,6 @@ local function assertRoomStructurallySound(room, romData, label)
     Harness.assertTrue(offset >= 0 and offset + 16 <= #romData,
       label .. ": expected tile " .. id .. "'s offset to be a real, in-bounds ROM address")
   end
-  -- NOTE: earlier rooms' own tests also checked "not all-zero bytes"
-  -- as a rough not-garbage heuristic -- dropped here after a real,
-  -- direct ROM byte read confirmed eighthRoom's own tile 17 (file
-  -- 0x32110) genuinely IS all-zero in the real ROM (a real blank/void
-  -- decoration tile, consistent with this room's own maze-corridor
-  -- content) -- not a fabricated/wrong offset. The in-bounds check
-  -- above is the real, always-valid guarantee; "non-trivial bytes" was
-  -- never a guaranteed property of real ROM data, just a heuristic
-  -- that happened to hold for earlier rooms' own specific tile sets.
   for r = 1, 16 do
     for c = 1, 20 do
       local id = room.grid[r][c]
@@ -70,12 +63,56 @@ local function assertRoomStructurallySound(room, romData, label)
 end
 
 Harness.testIfAvailable(
-  "seventhRoom: real bank-5 catalog data (mapTable record 220), structurally sound",
+  "seventhRoom: real bank6 world-map catalog data (record 51, row=6/col=3), structurally sound",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     assertRoomStructurallySound(profile.graphics.seventhRoom, romData, "seventhRoom")
+    local ref = profile.graphics.seventhRoom.worldMapCatalogRecord
+    Harness.assertTrue(ref ~= nil, "expected seventhRoom to carry a worldMapCatalogRecord")
+    Harness.assertEqual(ref.table, "bank6")
+    Harness.assertEqual(ref.recordIndex, 51)
+    Harness.assertEqual(ref.row, 6)
+    Harness.assertEqual(ref.col, 3)
+  end
+)
+
+Harness.testIfAvailable(
+  "seventhRoom: matches a real, freshly-decoded bank6 record 51 exactly (regression lock for the 2026-08-17 swap)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local RoomFloorLayout = require("src.import.RoomFloorLayout")
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local mapTable = profile.mapTableBank6
+    local opts = {
+      metatileTableFileOffset = profile.roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset,
+      tilesetFileOffset = mapTable.tilesetFileOffset,
+      metatileGridRows = 8, metatileGridCols = 10,
+    }
+    local fileOffsetGrid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, 51, opts)
+    local fresh = RoomFloorLayout.toTileGridBackgroundData(fileOffsetGrid, opts.tilesetFileOffset)
+    local stored = profile.graphics.seventhRoom
+
+    local matches, total = 0, 0
+    for r = 1, #stored.grid do
+      for c = 1, #stored.grid[r] do
+        local freshId = fresh.grid[r] and fresh.grid[r][c]
+        local freshOff = freshId ~= nil and fresh.tileOffsets[freshId]
+        local storedOff = stored.tileOffsets[stored.grid[r][c]]
+        total = total + 1
+        if freshOff ~= nil and storedOff ~= nil and freshOff == storedOff then
+          matches = matches + 1
+        end
+      end
+    end
+    -- Should be a near-exact match -- this is the SAME room, just
+    -- hand-copied into rom_profiles.lua once rather than decoded live
+    -- each time. Not asserting 100% because a couple of ambiguous
+    -- tile-ID ties are possible, same category as other rooms here.
+    Harness.assertTrue(matches / total > 0.9,
+      string.format("expected seventhRoom to closely match a fresh bank6 record 51 decode, got %d/%d", matches, total))
   end
 )
 
@@ -96,28 +133,23 @@ Harness.testIfAvailable(
   end
 )
 
--- Real chain continuation, 2026-08-16, same continuation ("an dem
--- neuem raum sind noch mehr räume angeschlossen explorire weiter").
--- SELF-CORRECTED the same pass: a first attempt wired seventhRoom's
--- own exit WEST (into a since-abandoned "eighthRoom" candidate,
--- mapTable record 219) purely on an edge-collision-pattern match,
--- without checking whether that edge was actually REACHABLE from the
--- landing spot -- it wasn't (seventhRoom's own internal wall divider
--- seals the west edge off entirely), caught by a real `love .`
--- playthrough getting stuck. Every exit below is now verified with a
--- real BFS reachability check over each room's own live collision
--- grid FIRST, not just an edge-pattern match -- see
--- rom_profiles.lua's own doc comments for the full corrected trail.
--- The real chain is now: seventhRoom (220) --south--> eighthRoom
--- (236) --east--> ninthRoom (237).
+Harness.testIfAvailable(
+  "seventhRoom: has NO outgoing exits (RETRACTED 2026-08-17 -- the old south exit into eighthRoom was byte-matched against data that no longer exists)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local seventh = profile.graphics.seventhRoom
+    Harness.assertTrue(seventh.exits ~= nil and #seventh.exits == 0,
+      "expected seventhRoom's own exits to be empty -- the old eighthRoom connection was retracted, not silently left pointing at stale geometry")
+  end
+)
 
 --- Real BFS reachability over `grid` (a position-aware collision
 -- grid, e.g. from RoomFloorLayout.buildCollisionGridFromMapTableRecord),
 -- 4-directional, 1-based (row,col). Returns a `visited[row][col]`
--- table. Same algorithm this project's own live investigation used to
--- catch the west-exit mistake -- reused here so the test suite itself
--- enforces "every wired exit's own zone must be reachable," not just
--- "the destination room decodes without error."
+-- table. Reused below to test eighthRoom's own still-real, still-
+-- unaffected connection to ninthRoom.
 local function reachableFrom(grid, startRow, startCol)
   local rows, cols = #grid, #grid[1]
   local visited = {}
@@ -152,40 +184,7 @@ local function collisionGridFor(profile, romData, recordIndex)
 end
 
 Harness.testIfAvailable(
-  "seventhRoom: has a real south exit into eighthRoom, zone reachable from the real landing spot",
-  romData ~= nil,
-  "no development ROM found",
-  function()
-    local profile = RomProfiles.match(RomIdentity.identify(romData))
-    local seventh = profile.graphics.seventhRoom
-    Harness.assertTrue(seventh.exits ~= nil and #seventh.exits == 1)
-    local exit = seventh.exits[1]
-    Harness.assertEqual(exit.targetRoom, "eighthRoom")
-    Harness.assertEqual(exit.holdDirection, "down")
-
-    -- Real reachability check: the sixthRoom exit's own landing spot
-    -- (80,112) must reach every cell inside seventhRoom's own new exit
-    -- zone (64-128, 112-128) via real, position-aware collision -- the
-    -- exact check that would have caught the retracted west-exit
-    -- mistake before it ever got reported as done.
-    local g220 = collisionGridFor(profile, romData, 220)
-    local sixthExit = profile.graphics.sixthRoom.exits[1]
-    local startRow = math.floor(sixthExit.landingY / 8) + 1
-    local startCol = math.floor(sixthExit.landingX / 8) + 1
-    local visited = reachableFrom(g220, startRow, startCol)
-    local zone = exit.zone
-    for y = zone.yMin, zone.yMax - 8, 8 do
-      for x = zone.xMin, zone.xMax - 8, 8 do
-        local r, c = math.floor(y / 8) + 1, math.floor(x / 8) + 1
-        Harness.assertTrue(visited[r] and visited[r][c],
-          string.format("seventhRoom exit zone cell (row %d, col %d) must be reachable from the real landing spot", r, c))
-      end
-    end
-  end
-)
-
-Harness.testIfAvailable(
-  "eighthRoom: real bank-5 catalog data (record 236), structurally sound, has a real east exit into ninthRoom",
+  "eighthRoom: real bank-5 catalog data (record 236), structurally sound, has a real east exit into ninthRoom -- its own connection to seventhRoom is RETRACTED (2026-08-17), unaffected here",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -197,17 +196,23 @@ Harness.testIfAvailable(
     Harness.assertEqual(exit.targetRoom, "ninthRoom")
     Harness.assertEqual(exit.holdDirection, "right")
 
+    -- Fixed literal (88,8), NOT derived from seventhRoom's own exit
+    -- anymore (that connection is retracted -- seventhRoom.exits is
+    -- empty). This is eighthRoom's own designated north-entry tile
+    -- regardless of what, if anything, real gameplay ever lands here
+    -- from -- kept as a fixed internal BFS starting point purely to
+    -- test THIS room's own east connectivity to ninthRoom, which is
+    -- untouched by the seventhRoom retraction.
     local g236 = collisionGridFor(profile, romData, 236)
-    local seventhExit = profile.graphics.seventhRoom.exits[1]
-    local startRow = math.floor(seventhExit.landingY / 8) + 1
-    local startCol = math.floor(seventhExit.landingX / 8) + 1
+    local startRow = math.floor(8 / 8) + 1
+    local startCol = math.floor(88 / 8) + 1
     local visited = reachableFrom(g236, startRow, startCol)
     local zone = exit.zone
     for y = zone.yMin, zone.yMax - 8, 8 do
       for x = zone.xMin, zone.xMax - 8, 8 do
         local r, c = math.floor(y / 8) + 1, math.floor(x / 8) + 1
         Harness.assertTrue(visited[r] and visited[r][c],
-          string.format("eighthRoom exit zone cell (row %d, col %d) must be reachable from the real landing spot", r, c))
+          string.format("eighthRoom exit zone cell (row %d, col %d) must be reachable from its own north-entry tile", r, c))
       end
     end
   end
@@ -229,14 +234,14 @@ Harness.testIfAvailable(
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
-    local seventh = profile.graphics.seventhRoom
     local eighth = profile.graphics.eighthRoom
 
-    local exit1 = seventh.exits[1]
-    local row1 = math.floor(exit1.landingY / 8) + 1
-    local col1 = math.floor(exit1.landingX / 8) + 1
+    -- eighthRoom's own north-entry tile (88,8) -- same fixed literal
+    -- as the reachability test above, see that test's own comment.
+    local row1 = math.floor(8 / 8) + 1
+    local col1 = math.floor(88 / 8) + 1
     Harness.assertTrue(eighth.floorTileIds[eighth.grid[row1][col1]],
-      "expected eighthRoom's own landing spot to be real floor")
+      "expected eighthRoom's own north-entry tile to be real floor")
 
     local exit2 = eighth.exits[1]
     local ninth = profile.graphics.ninthRoom
@@ -248,25 +253,18 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "seventhRoom<->eighthRoom<->ninthRoom: shared edges are byte-exact collision matches (the real evidence behind each exit)",
+  "eighthRoom<->ninthRoom: shared edge is a byte-exact collision match (the real evidence behind this exit) -- seventhRoom<->eighthRoom half RETRACTED 2026-08-17, no longer tested",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
-    local g220 = collisionGridFor(profile, romData, 220)
     local g236 = collisionGridFor(profile, romData, 236)
     local g237 = collisionGridFor(profile, romData, 237)
 
-    -- seventhRoom (220) south row == eighthRoom (236) north row, at
-    -- the real reachable columns only (8-15, 0-based -- see
-    -- rom_profiles.lua's own doc comment: the rest of the room is a
-    -- disconnected pocket, not a claim about the WHOLE edge).
-    for c = 9, 16 do
-      Harness.assertEqual(g220[16][c], g236[1][c],
-        "col " .. c .. ": seventhRoom south row vs eighthRoom north row")
-    end
     -- eighthRoom (236) east column == ninthRoom (237) west column, at
-    -- the real reachable rows only (rows 1-6).
+    -- the real reachable rows only (rows 1-6). Untouched by the
+    -- seventhRoom swap -- both records are exactly what they always
+    -- were.
     for r = 1, 6 do
       Harness.assertEqual(g236[r][20], g237[r][1],
         "row " .. r .. ": eighthRoom east col vs ninthRoom west col")

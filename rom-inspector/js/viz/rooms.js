@@ -54,13 +54,20 @@ function render_rooms(main) {
       <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige Tabelle.
     </p>
     <p class="page-lede">
-      <span style="color:#e0a030;">&#9888; <code>startRoom</code></span> (amber gestrichelter
-      Rahmen unten): ein echter, VERIFIED Raum &mdash; hostet den echten ersten Bosskampf
-      (<code>BattleIntro.lua</code>s reale „Kaempfe!“-Sequenz, das Startbild von
-      <code>Field.lua</code>) &mdash; aber OHNE live gefundene Verbindung zur
-      <code>willyRoom</code>-Kette (die nur über den separaten VictorySequence/RoomExplorer-
-      Debug-Walker erreichbar ist, nicht über den normalen Spielfluss). Ehrlich als
-      eigenständiger, unverbundener Knoten gezeigt statt weggelassen.
+      <span style="color:#9d6fe0;">&equiv; <code>startRoom</code></span> (violetter Rahmen
+      unten, UPDATE 2026-08-17): ein echter, VERIFIED Raum &mdash; hostet den echten ersten
+      Bosskampf (<code>BattleIntro.lua</code>s reale „Kaempfe!“-Sequenz, das Startbild von
+      <code>Field.lua</code>). Dieser Graph-Knoten selbst hat keinen eigenen live erfassten
+      Exit (er wird nur über die separate Bosskampf-Einleitung erreicht, nicht über den
+      normalen <code>willyRoom</code>-Spielfluss) &mdash; aber die echten ROM-Identitätsregister
+      sind byte-identisch mit <code>sixthRoom</code>, das SEHR WOHL verbunden ist
+      (<code>fourthRoom</code> &rarr; <code>sixthRoom</code> &rarr; <code>seventhRoom</code>).
+      Zusätzlich direkt bestätigt (Nutzer-Hinweis "der Bossraum... sind jeweils auf der
+      Weltmap"): dieser Raum ist ein echter Eintrag im 8&times;8-Weltkarten-Katalog, Position
+      (7,4) &mdash; siehe das <span style="color:#5ac0a0;">&#128506;</span>-Badge unten. Die
+      violette „gleiche Identität"-Rahmenfarbe hat jetzt Vorrang vor der schwächeren amber
+      „isoliert"-Markierung (die als sekundärer Hinweis-Text weiterhin mit angezeigt wird) &mdash;
+      genauer als vorher, wo dieser Knoten schlicht als unverbunden erschien.
     </p>
     <p class="page-lede">
       <span style="color:#9d6fe0;">&equiv; <code>fifthRoom</code></span> (violetter Rahmen unten):
@@ -87,6 +94,27 @@ function render_rooms(main) {
       erkennbar unterschiedliche Außenbereich-Szenen (Bäume, Gras, Felsen, Wasser, ein Weg) statt der
       generischen, wiederverwendeten Dungeon-Optik von vorher. Siehe events.md 2026-08-17 für die
       vollständige Formel/Herleitung.
+    </p>
+    <p class="page-lede">
+      <strong><code>seventhRoom</code> ist jetzt der echte Weltkarten-Landepunkt nach dem
+      2. Boss.</strong> Direkter Nutzer-Hinweis (2026-08-17: "nach dem zweiten boss nachdem
+      sich das tor geöffnet hat und der player durchgegangen ist kommt er auf der kleinen
+      weltmap an 6.3 raus") ersetzt die alte, rein heuristisch gewählte Platzhalter-Raumwahl
+      (Bank 5, Katalog-Record 220 &mdash; nur nach „plausibler Begehbarkeits-Prozentzahl"
+      ausgesucht, ohne echten räumlichen Bezug). <code>seventhRoom</code> ist jetzt Bank-6-
+      Weltkarten-Record 51, Position (6,3) &mdash; siehe das
+      <span style="color:#5ac0a0;">&#128506;</span>-Badge unten. <strong>Zurückgezogen:</strong>
+      der alte Süd-Exit von <code>seventhRoom</code> nach <code>eighthRoom</code> beruhte auf
+      einem Byte-für-Byte-Kantenabgleich gegen die jetzt ersetzten alten Daten &mdash; dieser
+      Abgleich gilt nicht mehr, der Exit wurde entfernt statt auf veralteter Geometrie stehen
+      gelassen. <code>eighthRoom</code>/<code>ninthRoom</code> bleiben als eigene, echte
+      Katalog-Räume bestehen (ihre gegenseitige Ost/West-Kante ist unabhängig und weiterhin
+      byte-exakt bestätigt) &mdash; sie sind nur nicht mehr von <code>sixthRoom</code>/
+      <code>seventhRoom</code> aus erreichbar, ein ehrlicher Rückschritt in der bekannten
+      Konnektivität, nicht stillschweigend widersprüchlich belassen. Kein unabhängiger Live-
+      VRAM-Beleg wie bei <code>startRoom</code>/<code>fourthRoom</code> &mdash; diese Platzierung
+      stützt sich auf den direkten Nutzer-Hinweis plus einen kohärenten Decode, nicht auf einen
+      Pixel-Abgleich.
     </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
@@ -246,8 +274,21 @@ function render_rooms(main) {
     // the other real-but-different findings above (a credible dispute
     // is a stronger flag than "not independently confirmed" alone).
     const disputed = !!(roomEntry && roomEntry.tilesetDisputed);
-    const borderStyle = disputed ? "2px dashed #e05a5a" : (isIsolated ? "2px dashed #e0a030" : (sameAs ? "2px solid #9d6fe0" : "1px solid var(--border)"));
-    const tooltip = disputed ? roomEntry.tilesetDisputedNote : (isIsolated ? roomEntry.note : (sameAs ? roomEntry.sameRomIdentityNote : ""));
+    // Priority REORDERED (2026-08-17, direct user instruction "der
+    // startraum muss im raumsystem auch anders dargestellt werden"):
+    // `sameAs` now outranks `isIsolated`. Real reason: startRoom now
+    // carries BOTH flags at once (its own graph node has no traced
+    // exit -- isIsolated -- but it's the exact same real ROM room as
+    // sixthRoom, which IS connected -- sameAs). The OLD order showed
+    // amber "isoliert" for that case, which reads as "this room is not
+    // really connected to anything" -- misleading once the real
+    // same-identity link is known. `sameAs` is the stronger, more
+    // specific real finding (a live-confirmed WRAM identity match, not
+    // just "no traced exit yet") so it wins the border/tooltip slot;
+    // the isolated badge text below still renders alongside it as
+    // secondary context, just no longer the PRIMARY framing.
+    const borderStyle = disputed ? "2px dashed #e05a5a" : (sameAs ? "2px solid #9d6fe0" : (isIsolated ? "2px dashed #e0a030" : "1px solid var(--border)"));
+    const tooltip = disputed ? roomEntry.tilesetDisputedNote : (sameAs ? roomEntry.sameRomIdentityNote : (isIsolated ? roomEntry.note : ""));
     // Real, live-confirmed presence in the bank6 8x8 world-map catalog
     // (currently: startRoom at (7,4), fourthRoom at (7,5) -- see
     // rom_profiles.lua's own `worldMapCatalogRecord` doc comment,

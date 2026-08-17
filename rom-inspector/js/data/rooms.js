@@ -95,24 +95,16 @@ const ROOMS = [
     "widthTiles": 20
   },
   {
-    "exits": [
-      {
-        "landingX": 88,
-        "landingY": 8,
-        "reverse": false,
-        "targetRoom": "eighthRoom",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 128,
-          "xMin": 64,
-          "yMax": 128,
-          "yMin": 112
-        }
-      }
-    ],
+    "exits": [],
     "heightTiles": 16,
     "name": "seventhRoom",
-    "widthTiles": 20
+    "widthTiles": 20,
+    "worldMapCatalogRecord": {
+      "col": 3,
+      "recordIndex": 51,
+      "row": 6,
+      "table": "bank6"
+    }
   },
   {
     "exits": [
@@ -144,6 +136,10 @@ const ROOMS = [
     "heightTiles": 16,
     "name": "startRoom",
     "note": "Echter, VERIFIED Raum (rom_profiles.lua) -- hostet den echten ersten Bosskampf (BattleIntro.lua's reale \"Kaempfe!\"-Sequenz). Keine live entdeckte Verbindung zur willyRoom-Kette (die ihrerseits nur ueber den separaten VictorySequence/RoomExplorer-Debug-Walker erreichbar ist, nicht ueber den normalen Field.lua-Spielfluss) -- ehrlich als eigenstaendiger Knoten ohne Pfeile gezeigt, nicht weggelassen. Direkt bestaetigt (2026-08-17, direkter Nutzerhinweis) als echter Eintrag im 8x8-Weltkarten-Katalog (mapTableBank6, Position 7,4) -- isoliert im Raum-Graphen (keine bekannte Spielfluss-Verbindung), aber KEIN erfundener/losgeloester Raum.",
+    "sameRomIdentityAs": [
+      "sixthRoom"
+    ],
+    "sameRomIdentityNote": "Reale ROM-Identitaetsregister sind byte-identisch mit sixthRoom (live bestaetigt 2026-08-17, siehe sixthRoom's eigenen Kommentar) -- derselbe reale ROM-Raum. Dieser Graph-Knoten selbst hat keinen eigenen live erfassten Exit (er wird nur ueber die separate Bosskampf-Einleitung erreicht), aber der reale Raum dahinter IST verbunden (fourthRoom -> sixthRoom -> seventhRoom).",
     "widthTiles": 20,
     "worldMapCatalogRecord": {
       "col": 4,

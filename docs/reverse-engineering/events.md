@@ -10799,3 +10799,83 @@ correct) -- this is a pure connectivity/provenance finding: these two
 "isolated" rooms (see `startRoom`'s own isolated-node badge on the
 Room-System graph) are, in the real ROM's own world-map catalog, not
 disconnected at all.
+
+## startRoom's Room-System display corrected + seventhRoom replaced with the real world-map landing spot (2026-08-17, same day, direct follow-up)
+
+Two direct instructions in one message: "ok jetzt muss der startraum
+aber im raumsystem auch anders dargestellt werden. und ja nach dem
+zweiten boss nachdem sich das tor geöffnet hat und der player
+durchgegangen ist kommt er auf der kleinen weltmap an 6.3 raus."
+
+**startRoom's own display**: it already carried an amber "isoliert"
+badge (no traced exit of its own) alongside the fact -- confirmed
+earlier this session -- that it's the exact same real ROM room as
+`sixthRoom` (byte-identical WRAM identity registers), which DOES have
+live-traced connections. The amber framing was misleading once that
+identity was known: it read as "not really connected to anything,"
+when the real room behind this node very much is. Fix: added the
+reciprocal `sameRomIdentityAs = {"sixthRoom"}` to `startRoom` (mirroring
+what `sixthRoom` already carried the other way), and reordered
+`rooms.js`'s own border-style priority so `sameAs` (a stronger, more
+specific real finding -- a live-confirmed identity match) outranks
+`isIsolated` (weaker -- "no traced exit yet"). `startRoom` now renders
+with the same violet border `sixthRoom` uses, plus BOTH text badges
+(isolated + same-identity + world-map) still shown as secondary
+context underneath -- nothing removed, just correctly prioritized.
+
+**seventhRoom's real destination, replacing a pure heuristic guess**:
+`seventhRoom` used to be an engineering CHOICE with NO spatial/story
+basis at all (bank5 `mapTable` record 220, picked purely by a
+"reasonable middle ground" walkable-percentage heuristic -- see the
+2026-08-16 entry for that history, kept unedited as a record). The
+user's direct claim -- the exact landing spot after defeating the
+second boss and walking through the gate -- points to a real,
+identifiable place instead: the bank6 (8x8) world-map catalog, record
+51, grid (row=6,col=3).
+
+**Verification**: decoded record 51 via the same corrected `0x30000`
+pipeline used everywhere else this session
+(`RoomFloorLayout.buildRoomFromMapTableRecord`/
+`toTileGridBackgroundData`). Rendered result: a coherent, real outdoor
+scene -- a castle-wall exterior (matching pillars/border-trim file
+offsets EXACTLY shared with `fourthRoom`'s own already-classified wall
+family, `0x30D10`-`0x30DC0`), pine trees, and an open dotted-ground
+path (file offset `0x302E0`/`0x302F0`, EXACTLY `fourthRoom`'s/
+`startRoom`'s own already-classified walkable floor). A plausible
+"stepped out through the gate onto the overworld" scene -- qualitatively
+different from the old checkerboard-interior guess. Cross-checked
+against the OLD (bank5 record 220) data: only 17.5% cell overlap,
+confirming these are genuinely different rooms, not a re-derivation of
+the same one.
+
+**Honest limit, stated plainly**: unlike `startRoom`/`fourthRoom`
+(which had independent live-VRAM ground truth to cross-check against,
+98.8%/67.5% exact matches), there is no live gameplay capture of "what's
+past the second-boss gate" to verify record 51 against -- this rests on
+the user's direct testimony plus a coherent decode, not the live-VRAM
+standard those two rooms met. Still an IMPLEMENTATION CHOICE, just with
+a real narrative/positional basis now instead of a blind heuristic.
+
+**Cascading retraction**: the old `seventhRoom -> eighthRoom` south exit
+was wired via a byte-exact shared-edge match against the OLD
+seventhRoom's south row -- that row doesn't exist in the new data, so
+the match no longer holds. Removed rather than left pointing at stale
+geometry (`seventhRoom.exits` is now empty). `eighthRoom`'s own data is
+untouched (still real, decoded bank5 record 236) and it keeps its own
+independent, unaffected east exit into `ninthRoom` -- but it's no
+longer reachable from the known `sixthRoom`/`seventhRoom` chain. A real,
+honest regression in known connectivity, documented as such rather than
+silently left contradictory.
+
+**Shipped**: `startRoom.sameRomIdentityAs`; `seventhRoom` fully replaced
+(`tileOffsets`/`floorTileIds`/`grid`/`worldMapCatalogRecord`), `exits`
+emptied; `eighthRoom`'s own doc comment updated with the retraction.
+`rooms.js` border-priority reorder + new page-lede paragraphs explaining
+both changes. `seventh_room_test.lua` rewritten (new structural/
+regression/retraction tests); `map_tile_catalog_test.lua` updated for
+the real, shifted aggregate counts (303->300 entries, bank12 190->187,
+both from seventhRoom's own tileset changing shape). 564/564 Lua tests
+pass. Live-verified via Playwright: `startRoom` renders the violet
+border + all 3 badges, `seventhRoom` renders its own world-map badge
+with zero exit lines, `eighthRoom` shows no incoming edge, no console
+errors.

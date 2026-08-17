@@ -110,17 +110,27 @@ Harness.testIfAvailable(
     -- genuinely separate real tiles is now visible. roomCount (17)
     -- and bank 8/11 counts are unaffected (only bank 12's own count
     -- moved, matching where both the old and new pools both live).
+    -- CORRECTED AGAIN (2026-08-17, same day, direct follow-up: "und ja
+    -- nach dem zweiten boss... kommt er auf der kleinen weltmap an 6.3
+    -- raus"): seventhRoom's own tileOffsets were replaced wholesale
+    -- (bank5 record 220's engineering-choice pick -> real bank6 record
+    -- 51, see rom_profiles.lua's own dated doc comment) -- 36 distinct
+    -- real tile addresses now instead of the old 20, but with more
+    -- overlap against tiles fourthRoom/startRoom/eighthRoom/ninthRoom
+    -- already contributed (the new room shares the wall/border family
+    -- almost exactly with fourthRoom, see that room's own doc comment)
+    -- -- net count went DOWN slightly (303->300), all in bank 12.
     Harness.assertEqual(catalog.roomCount, 17)
-    Harness.assertEqual(#catalog.entries, 303)
+    Harness.assertEqual(#catalog.entries, 300)
 
     -- Real map/environment tiles live in exactly 3 banks (8, 11, 12) --
     -- NOT just bank 12, the honest finding this whole module exists to
     -- surface (see this module's own doc comment for the full story).
-    -- seventhRoom's own tiles are all bank 12 (file 0x30xxx, corrected
-    -- 2026-08-17) -- only that bank's count moved.
+    -- seventhRoom's own tiles are all bank 12 (file 0x30xxx) -- only
+    -- that bank's count moved with the 2026-08-17 seventhRoom swap.
     Harness.assertEqual(catalog.byBank[8], 28)
     Harness.assertEqual(catalog.byBank[11], 85)
-    Harness.assertEqual(catalog.byBank[12], 190)
+    Harness.assertEqual(catalog.byBank[12], 187)
 
     -- Every entry's own fileOffset must be inside the real ROM and
     -- tile-aligned (16-byte stride) -- same non-fabrication check every

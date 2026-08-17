@@ -501,6 +501,33 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       concrete data point. See `events.md`'s own dated entry for the
       complete trace, including the comparison-script bug hit and fixed
       along the way.
+      **seventhRoom REPLACED WITH THE REAL WORLD-MAP LANDING SPOT,
+      2026-08-17, same day, direct follow-up** ("und ja nach dem
+      zweiten boss nachdem sich das tor geöffnet hat und der player
+      durchgegangen ist kommt er auf der kleinen weltmap an 6.3 raus"):
+      `seventhRoom` used to be a pure heuristic pick (bank5 record 220,
+      "reasonable walkable %", no spatial basis) — replaced with the
+      real bank6 world-map record 51, (row=6,col=3), decoded via the
+      same corrected pipeline: a coherent outdoor scene (castle-wall
+      exterior, trees, open path) sharing exact wall/floor file offsets
+      with `fourthRoom`'s own already-classified tiles. Only 17.5%
+      overlap against the old data — confirms a genuinely different
+      room, not a re-derivation. Honest limit: no independent live-VRAM
+      cross-check exists for this one (unlike startRoom/fourthRoom's
+      98.8%/67.5%) — rests on the user's direct testimony + a coherent
+      decode. Cascading retraction: the old `seventhRoom->eighthRoom`
+      exit was byte-matched against the now-replaced data, so it no
+      longer holds — removed rather than left stale; `eighthRoom`'s own
+      data and its independent exit into `ninthRoom` are untouched, just
+      no longer reachable from the known chain. Also fixed the SAME
+      pass: `startRoom`'s own Room-System display was showing a plain
+      amber "isoliert" badge despite already being known (same session)
+      as byte-identical to the connected `sixthRoom` — added the
+      reciprocal `sameRomIdentityAs` and reordered the website's own
+      border-priority so the stronger same-identity finding wins the
+      primary visual slot. `seventh_room_test.lua` rewritten,
+      `map_tile_catalog_test.lua` numbers updated (300 entries, bank12
+      187). 564/564 tests pass, Playwright-verified live.
       **What this changes**: Milestone 3's real DoD (a general,
       ROM-driven way to load ANY room) now has a concrete, verified,
       SHIPPED mechanism behind it for willyRoom — but still not fully

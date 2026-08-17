@@ -2901,149 +2901,100 @@ RomProfiles.PROFILES = {
           },
         },
       },
-      -- ADDED (2026-08-16, direct continuation of the sixthRoom north
-      -- exit above): the real, decoded destination room. Genuinely
-      -- different in kind from every other room wired so far --
-      -- fourthRoom/fifthRoom/sixthRoom all needed a live VRAM capture +
-      -- exact-16-byte ROM search to find their own tiles, because they
-      -- were reached through actual, already-working real gameplay.
-      -- `seventhRoom` has no such live capture (it has no known real
-      -- ROM trigger at all, same honest limit as `secondBoss` itself) --
-      -- instead it's ONE of this project's own already-decoded 384-room
-      -- catalog entries (bank 5, `mapTable` record index 220, real
-      -- structural data from the SAME `RoomFloorLayout`/`MapTable`
-      -- pipeline `RoomExplorer.lua`'s F8 browser already drives live,
-      -- see rom-map.md's "World scope" section) -- picked from that
-      -- catalog by real, ROM-derived collision-byte walkability (55.0%
-      -- walkable, 176/320 cells -- a deliberately "reasonable middle
-      -- ground" selection criterion, neither near-solid-wall nor
-      -- suspiciously fully-open, both of which this project's own
-      -- `RoomExplorer.lua` doc comment already flags as correlating
-      -- with `COLLISION_WALL_MASK` being a noisy heuristic), not by any
-      -- claimed spatial/story adjacency to sixthRoom. HONEST STATUS:
-      -- every tile ID/offset/collision byte below IS real, decoded ROM
-      -- data (`RoomFloorLayout.buildRoomFromMapTableRecord`/
-      -- `buildCollisionGridFromMapTableRecord`, bank 5 record 220,
-      -- genericCatalogMetatileTableFileOffset) -- the CHOICE of this
-      -- specific catalog room as "what's north of sixthRoom" is this
-      -- project's own engineering decision, same evidentiary category
-      -- as `secondBoss`'s own room placement, not an independently
-      -- ROM-confirmed connection.
-      --
-      -- FLAGGED, NOT RESOLVED (2026-08-17, direct user claim "ok raum
-      -- 7 8 und 9 haben die falschen tilesets", confirmed on follow-up
-      -- to be based on real, first-hand ROM knowledge, not a guess):
-      -- re-investigated 3 independent ways this pass -- (1) fetched
-      -- the external FFA-Disassembly project's own devlog directly:
-      -- confirms tileset selection is real but per-MAP only, no
-      -- per-room field exists at all (corroborates this project's own
-      -- prior negative test); (2) checked bank 5's own 256-record
-      -- table for a hidden second map boundary near this record --
-      -- pointers are monotonic with zero discontinuities, tile-ID
-      -- ranges show no regime change anywhere near here; (3) rendered
-      -- this record against EVERY other known real roomSelectorTable
-      -- pointer, not just the current default -- ALL of them decode to
-      -- plausible-looking dungeon art (the shared bank-8 metatile pool
-      -- is generically dungeon-themed throughout, so "looks plausible"
-      -- cannot distinguish correct from wrong here, exactly the trap
-      -- `unknownRoomACandidates`'s own doc comment already warned
-      -- about). One real, SUGGESTIVE-not-proven lead: the willyRoom
-      -- family pointer (`$46B0`) produces a noticeably richer, more
-      -- architecturally distinct composition (a real door, torch
-      -- decoration, hedge border) than the current default -- not
-      -- switched to it this pass, no proof either way. See events.md's
-      -- own dated entry for the full trace. Honest bottom line
-      -- UNCHANGED from before this investigation: this room's own
-      -- tileset was never independently ROM-confirmed, and after a
-      -- real, thorough re-check, still isn't -- treat the graphics
-      -- below as a real but UNVERIFIED, possibly-wrong placeholder.
-      -- TILESET CORRECTED (2026-08-17, resolving the direct user report
-      -- "ok raum 7 8 und 9 haben die falschen tilesets" -- and the
-      -- follow-up "ja aber das hat definitv andere tiles! es muss
-      -- irgenwad in der pipeline hinterlegt sein was fuer tile das
-      -- hat"/"bleib dran"): the user was right, and the code DID have
-      -- the answer -- found and fully disassembled the real VRAM tile-
-      -- copy pipeline this pass (see `mapTable.tilesetFileOffset`'s own
-      -- dated correction above for the complete formula/evidence chain,
-      -- exact-matched against willyRoom's own known-good pixel). The
-      -- `grid` below (the metatile ARRANGEMENT) is unchanged -- only
-      -- `tileOffsets` (which real ROM bytes each raw GFX-tile ID
-      -- actually points to) was wrong, reusing willyRoom's own real but
-      -- WRONG-family pixel pool (`0x32xxx`) instead of this room's own
-      -- real family's pool (`0x30xxx`). Re-rendered: was a generic,
-      -- oddly-repetitive "bookshelf/chain-link dungeon" look; now a
-      -- real, coherent, clearly-distinct outdoor scene (trees, grass,
-      -- rock/mountain terrain) -- see events.md's own dated entry.
+      -- SUPERSEDED (2026-08-17, direct user report: "und ja nach dem
+      -- zweiten boss nachdem sich das tor geöffnet hat und der player
+      -- durchgegangen ist kommt er auf der kleinen weltmap an 6.3
+      -- raus"): this room used to be a pure engineering CHOICE (bank 5,
+      -- mapTable record 220, picked only by a "reasonable middle
+      -- ground" walkable-percentage heuristic, no real spatial/story
+      -- basis at all -- see events.md's own 2026-08-16 entry for that
+      -- history, kept there unedited as a historical record). The
+      -- user's direct, first-hand claim -- same evidentiary category
+      -- that already confirmed startRoom/fourthRoom's own world-map
+      -- positions this same day -- gives a real destination instead:
+      -- the bank6 (8x8) world-map catalog, record 51, grid (row=6,
+      -- col=3). Decoded via the same corrected `0x30000` pipeline used
+      -- everywhere else (`RoomFloorLayout.buildRoomFromMapTableRecord`/
+      -- `toTileGridBackgroundData`) -- a coherent, real outdoor scene
+      -- (a castle-wall exterior, pine trees, an open dotted-ground
+      -- path), a plausible "stepped out through the gate onto the
+      -- overworld" scene, qualitatively unlike the old checkerboard-
+      -- interior guess. Cross-checked against the OLD data: only 17.5%
+      -- cell overlap -- confirms these are genuinely different rooms,
+      -- not a coincidental re-derivation of the same one. HONEST LIMIT:
+      -- unlike startRoom/fourthRoom, no independent live-VRAM ground
+      -- truth exists for this specific room (there was never a live
+      -- gameplay capture of "what's past the second-boss gate") -- this
+      -- rests on the user's direct testimony plus a coherent decode,
+      -- not the live-VRAM-cross-check standard those two have. Still an
+      -- IMPLEMENTATION CHOICE, just with a real narrative/positional
+      -- basis now instead of a blind heuristic pick.
+      -- RETRACTED same pass: the old seventhRoom->eighthRoom south exit
+      -- was picked via a byte-exact shared-edge match against the OLD
+      -- south row -- that row no longer exists in this room's own real
+      -- data, so the match no longer holds. Removed rather than left
+      -- pointing at stale geometry; see eighthRoom's own doc comment
+      -- for the follow-on note. sixthRoom's own exit into this room
+      -- (above) keeps its `landingX`/`landingY` (80,112), tuned for the
+      -- OLD room and UNVERIFIED against this one -- it happens to land
+      -- on real walkable floor here too (tile 46/47), by coincidence,
+      -- not by any real capture; kept as a placeholder rather than
+      -- re-guessed.
       seventhRoom = {
-        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 220; " ..
-          "chosen by this project as sixthRoom's own north destination, not independently ROM-confirmed) -- " ..
-          "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see doc comment above",
+        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank6 (world-map catalog) " ..
+          "record 51, grid row=6/col=3 -- placed per a direct, credible user report of the real landing " ..
+          "spot after the second-boss gate, 2026-08-17; not independently ROM-confirmed to the live-VRAM " ..
+          "standard startRoom/fourthRoom have) -- SUPERSEDES the earlier bank5-record-220 placeholder, see doc comment above",
         cols = 20,
         rows = 16,
+        worldMapCatalogRecord = { table = "bank6", recordIndex = 51, row = 6, col = 3 },
         tileOffsets = {
-          [16] = 0x30100, [37] = 0x30250, [46] = 0x302E0, [47] = 0x302F0,
-          [54] = 0x30360, [55] = 0x30370, [62] = 0x303E0, [66] = 0x30420,
-          [67] = 0x30430, [68] = 0x30440, [69] = 0x30450, [118] = 0x30760,
-          [120] = 0x30780, [121] = 0x30790, [122] = 0x307A0, [123] = 0x307B0,
-          [150] = 0x30960, [151] = 0x30970, [152] = 0x30980, [153] = 0x30990,
+          [37] = 0x30250, [46] = 0x302E0, [47] = 0x302F0, [66] = 0x30420, [67] = 0x30430,
+          [68] = 0x30440, [69] = 0x30450, [70] = 0x30460, [71] = 0x30470, [72] = 0x30480,
+          [73] = 0x30490, [78] = 0x304E0, [79] = 0x304F0, [80] = 0x30500, [81] = 0x30510,
+          [82] = 0x30520, [83] = 0x30530, [84] = 0x30540, [89] = 0x30590, [90] = 0x305A0,
+          [91] = 0x305B0, [150] = 0x30960, [151] = 0x30970, [152] = 0x30980, [153] = 0x30990,
+          [209] = 0x30D10, [210] = 0x30D20, [211] = 0x30D30, [212] = 0x30D40, [213] = 0x30D50,
+          [214] = 0x30D60, [215] = 0x30D70, [216] = 0x30D80, [217] = 0x30D90, [218] = 0x30DA0,
+          [219] = 0x30DB0, [220] = 0x30DC0,
         },
-        -- Real, per-metatile-instance collision bytes (see this room's
-        -- own generation script -- not hand-classified): tile IDs
-        -- 66/67/68/69 and 150/151/152/153 are real, walkable floor
-        -- everywhere they appear in this room's own grid; every other
-        -- ID (16/37/46/47/54/55/62/118/120/121/122/123) is real,
-        -- consistent wall/decoration. `46`/`47` form the room's own
-        -- real vertical divider (cols 4-7, every row) plus a full-width
-        -- horizontal band (rows 6-9) -- together splitting the room
-        -- into two real halves; this project does not currently connect
-        -- them with a further exit (a real, honest gap, not silently
-        -- glossed over).
-        floorTileIds = { [66] = true, [67] = true, [68] = true, [69] = true,
-          [150] = true, [151] = true, [152] = true, [153] = true },
+        -- HYPOTHESIS, not a decoded ROM collision-flag table (bank6 is
+        -- RLE-mode -- per the external FFA-Disassembly doc, the real
+        -- per-tile "Door Bytes"/collision data only exists for
+        -- Templated-mode/bank7 maps, none exists here to decode). Visual
+        -- classification only: `46`/`47` (the dotted open-ground texture
+        -- covering most of the room, file offsets EXACTLY matching
+        -- fourthRoom's/startRoom's own already-classified walkable floor
+        -- at the same real pixel pool, 0x302E0/0x302F0) as floor; the
+        -- castle-wall pillars (66-84), trees (150-153), and border trim
+        -- (209-220, matching fourthRoom's own wall-family offsets
+        -- exactly) as non-walkable.
+        floorTileIds = { [46] = true, [47] = true },
         grid = {
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,118, 16, 16, 16},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,120,121,122,123},
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151,150,151},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153,152,153},
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151,150,151},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153,152,153},
+          { 66, 67, 66, 67, 70, 71,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          { 68, 69, 68, 69, 72, 73,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          { 78, 79, 78, 79, 82, 83,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          { 80, 81, 80, 81, 84, 37,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          {150,151,150,151,150,151,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          {152,153,152,153,152,153,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          {150,151,150,151,150,151,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
+          {152,153,152,153,152,153,219,212,209,209,215,220,210,210,210,210,210,210,219,212},
+          {150,151,150,151, 46, 47,211,212,209,209,215,216, 46, 47, 46, 47, 46, 47,211,212},
+          {152,153,152,153, 46, 47,213,214,210,210,217,218, 46, 47, 46, 47, 46, 47,213,214},
+          {150,151, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
+          {152,153, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
           { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
           { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
-          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
-          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47},
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151,150,151},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153,152,153},
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151,150,151, 37, 62},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153,152,153, 54, 55},
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151, 37, 62, 66, 67},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153, 54, 55, 68, 69},
+          {150,151,150,151,150,151, 46, 47, 46, 47, 46, 47, 46, 47, 37, 89, 70, 71, 70, 71},
+          {152,153,152,153,152,153, 46, 47, 46, 47, 46, 47, 46, 47, 90, 91, 72, 73, 72, 73},
         },
-        -- ADDED (2026-08-16, direct continuation, "an dem neuem raum
-        -- sind noch mehr räume angeschlossen explorire weiter"), SELF-
-        -- CORRECTED same pass: a first attempt wired a west exit here
-        -- (targeting the west-edge byte-exact match against record 219)
-        -- -- WRONG, caught by live testing before being reported done:
-        -- this room's own internal vertical wall (the `46`/`47` divider,
-        -- cols 4-7) runs the FULL height of the room in EVERY row,
-        -- completely sealing off the west edge (cols 0-3) from the
-        -- landing spot's own reachable region -- confirmed both by a
-        -- real BFS reachability check over the room's own live collision
-        -- grid AND by an actual `love .` playthrough getting physically
-        -- stuck against that wall. The real, ACTUALLY reachable edges
-        -- from the landing spot are the room's own SOUTH row (cols 8-15,
-        -- 0-based) and a narrow slice of the EAST column (rows 10-11) --
-        -- re-checked this exit against the wider, more robust south
-        -- opening instead. `zone` below sits entirely within the real,
-        -- BFS-confirmed reachable region this time.
-        exits = {
-          {
-            zone = { xMin = 64, xMax = 128, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "eighthRoom",
-            landingX = 88, landingY = 8,
-            holdFrames = 64, holdDirection = "down",
-          },
-        },
+        -- RETRACTED (2026-08-17, see doc comment above): the old south
+        -- exit to eighthRoom was byte-matched against a row that no
+        -- longer exists here. No real destination is known for this
+        -- room's own south row (cols 6-19, the open dotted-ground
+        -- floor) or east edge yet -- left honestly unexplored rather
+        -- than re-guessed.
+        exits = {},
       },
       -- ADDED (2026-08-16, same continuation, same self-correction):
       -- real bank-5 catalog record 236 -- seventhRoom's own SOUTH
@@ -3056,9 +3007,23 @@ RomProfiles.PROFILES = {
       -- `seventhRoom`'s own doc comment above -- see that one and
       -- `mapTable.tilesetFileOffset`'s own dated correction for the
       -- full formula/trace. `grid` unchanged, only `tileOffsets`.
+      -- CONNECTION TO seventhRoom RETRACTED (2026-08-17, same day,
+      -- direct follow-up): the "byte-exact shared-edge match" above was
+      -- against seventhRoom's OLD data (bank5 record 220) -- seventhRoom
+      -- was superseded this same pass with real bank6 record 51 (per a
+      -- direct user report of the actual post-second-boss landing spot),
+      -- whose own south row shares NOTHING with this room's north row.
+      -- This room's own data is untouched and still real, decoded ROM
+      -- catalog content -- only the "this sits south of seventhRoom"
+      -- claim is now false and no longer asserted anywhere (seventhRoom
+      -- 's own `exits` is empty). This room keeps its own real exit to
+      -- ninthRoom below (an independent edge-match, unaffected by this
+      -- retraction) -- it's simply no longer reachable from the known
+      -- sixthRoom/seventhRoom chain, a real, honest regression in known
+      -- connectivity, not silently left contradictory.
       eighthRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 236; " ..
-          "chosen via a byte-exact shared-edge match with seventhRoom's own south row (at the real, BFS-" ..
+          "chosen via a byte-exact shared-edge match with seventhRoom's own (NOW SUPERSEDED, no longer valid) south row (at the real, BFS-" ..
           "confirmed reachable columns), not independently ROM-confirmed) -- " ..
           "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
         cols = 20,
@@ -3250,6 +3215,22 @@ RomProfiles.PROFILES = {
         -- `fourthRoom`'s own doc comment above for the full "same
         -- pointer, partially-different capture" note.
         romRoomSelectors = { 0, 1 },
+        -- ADDED (2026-08-17, direct user instruction "der startraum muss
+        -- im raumsystem auch anders dargestellt werden"): the reciprocal
+        -- side of `sixthRoom.sameRomIdentityAs` above -- this room's own
+        -- real WRAM identity registers are byte-identical to sixthRoom's
+        -- (already live-confirmed, see sixthRoom's own doc comment), so
+        -- this room is not merely "isolated" in the play-flow graph --
+        -- it's the exact same real ROM room as sixthRoom, which DOES
+        -- have live-traced connections (fourthRoom->sixthRoom,
+        -- sixthRoom->seventhRoom). The website now shows this via the
+        -- same violet "same identity" styling sixthRoom already carries,
+        -- taking visual priority over the plain amber "isoliert" framing
+        -- (see rooms.js's own border-priority doc comment) -- accurate:
+        -- THIS graph node has no traced exit of its own, but the real
+        -- room it represents is not disconnected at all.
+        sameRomIdentityAs = { "sixthRoom" },
+        sameRomIdentityNote = "Reale ROM-Identitaetsregister sind byte-identisch mit sixthRoom (live bestaetigt 2026-08-17, siehe sixthRoom's eigenen Kommentar) -- derselbe reale ROM-Raum. Dieser Graph-Knoten selbst hat keinen eigenen live erfassten Exit (er wird nur ueber die separate Bosskampf-Einleitung erreicht), aber der reale Raum dahinter IST verbunden (fourthRoom -> sixthRoom -> seventhRoom).",
         -- CONFIRMED (2026-08-17, direct user report -- same discovery as
         -- `fourthRoom`'s own doc comment above, see there for the full
         -- verification methodology): this room is directly present in

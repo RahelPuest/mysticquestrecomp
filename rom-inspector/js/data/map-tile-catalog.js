@@ -3,7 +3,7 @@
 const MAP_TILE_CATALOG = {
   "byBank": {
     "11": 85,
-    "12": 190,
+    "12": 187,
     "8": 28
   },
   "entries": [
@@ -863,13 +863,6 @@ const MAP_TILE_CATALOG = {
     },
     {
       "bank": 12,
-      "fileOffset": 196864,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
       "fileOffset": 196880,
       "rooms": [
         "eighthRoom",
@@ -1040,8 +1033,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 197472,
       "rooms": [
         "eighthRoom",
-        "ninthRoom",
-        "seventhRoom"
+        "ninthRoom"
       ]
     },
     {
@@ -1049,8 +1041,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 197488,
       "rooms": [
         "eighthRoom",
-        "ninthRoom",
-        "seventhRoom"
+        "ninthRoom"
       ]
     },
     {
@@ -1072,8 +1063,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 197600,
       "rooms": [
         "eighthRoom",
-        "ninthRoom",
-        "seventhRoom"
+        "ninthRoom"
       ]
     },
     {
@@ -1132,28 +1122,32 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 197728,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197744,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197760,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197776,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
@@ -1184,82 +1178,75 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 197856,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197872,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197888,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197904,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197920,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197936,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
       "fileOffset": 197952,
       "rooms": [
-        "ninthRoom"
+        "ninthRoom",
+        "seventhRoom"
       ]
     },
     {
       "bank": 12,
-      "fileOffset": 198496,
+      "fileOffset": 198032,
       "rooms": [
         "seventhRoom"
       ]
     },
     {
       "bank": 12,
-      "fileOffset": 198528,
+      "fileOffset": 198048,
       "rooms": [
         "seventhRoom"
       ]
     },
     {
       "bank": 12,
-      "fileOffset": 198544,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 198560,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 198576,
+      "fileOffset": 198064,
       "rooms": [
         "seventhRoom"
       ]
@@ -1363,6 +1350,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 199952,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1372,6 +1360,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 199968,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1381,6 +1370,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 199984,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1390,6 +1380,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200000,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1398,6 +1389,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 200016,
       "rooms": [
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1406,6 +1398,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 200032,
       "rooms": [
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1415,6 +1408,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200048,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1423,6 +1417,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 200064,
       "rooms": [
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1432,6 +1427,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200080,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1441,6 +1437,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200096,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1450,6 +1447,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200112,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -1459,6 +1457,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200128,
       "rooms": [
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
