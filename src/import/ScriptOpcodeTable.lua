@@ -253,92 +253,81 @@ ScriptOpcodeTable.TYPEWRITER_COMMAND_HANDLER_ADDRESS = 0x332F
 -- See events.md's "The $1F35 dispatcher, fully mapped" section for
 -- the complete, corrected 22-entry table and this honest retraction.
 --
--- READ-SIDE CONSUMER FOUND (2026-08-14, "Bank-3-Funktionstabelle weiter
--- verfolgen"): selector `0x0E` (`$4B4F`) is the real periodic scanner
--- that CONSUMES what selector `0x0A`/`$4B70` writes. It walks all 8
--- bytes of the `$C5A0` known-list and, for each nonzero entry, calls a
--- real per-entry helper `$4B19`, which resolves the entry's own value
--- back to its `$C4E0` record (via `$429B`, a linear 8-slot search by ID
--- byte) and, if that record's own state field (`+4`, the SAME field
--- `$4B70` writes the group value into) is still nonzero, calls a real
--- per-record "tick" handler, `$404A`. `$404A` decrements a countdown
--- field (`+1`); once it reaches 0, it reloads it from a fixed reload
--- value (`+2`), conditionally calls a further helper (`$4107`, gated by
--- field `+8`), then branches on whether the group field (`+4`) is zero
--- (a `LD A,(DE) / CALL $29BA` path -- untraced further this pass) or
--- nonzero (calls `$4247`, then `CALL $2B70` on a FIXED address `$4C55`
--- -- confirmed via `$2B70`'s own disassembly, `CALL $2B63 / JP HL`, to
--- be a generic cross-bank "call through HL" trampoline, NOT a
--- group-indexed table lookup -- an initial hypothesis here that was
--- checked against the raw bytes at `$4C55` and corrected before being
--- reported, since they turned out to be real opcodes, not table data).
--- If `$404A`'s tick re-zeroes the state field, `$4B19` clears the
--- `$C5A0` slot (the flag is "consumed"); otherwise it stays pending for
--- the next scan.
+-- READ-SIDE CONSUMER FOUND (task to keep following the bank-3 function
+-- table): selector 0x0E ($4B4F) is the periodic scanner that consumes
+-- what selector 0x0A/$4B70 writes. It walks all 8 bytes of the $C5A0
+-- known-list and, for each nonzero entry, calls a per-entry helper
+-- $4B19, which resolves the entry's value back to its $C4E0 record
+-- (via $429B, a linear 8-slot search by ID byte) and, if that record's
+-- state field (+4, the same field $4B70 writes the group value into)
+-- is still nonzero, calls a per-record "tick" handler, $404A. $404A
+-- decrements a countdown field (+1); once it reaches 0, it reloads it
+-- from a fixed reload value (+2), conditionally calls a further helper
+-- ($4107, gated by field +8), then branches on whether the group field
+-- (+4) is zero (a LD A,(DE) / CALL $29BA path -- untraced further this
+-- pass) or nonzero (calls $4247, then CALL $2B70 on a fixed address
+-- $4C55 -- confirmed via $2B70's own disassembly, CALL $2B63 / JP HL,
+-- to be a generic cross-bank "call through HL" trampoline, not a
+-- group-indexed table lookup). If $404A's tick re-zeroes the state
+-- field, $4B19 clears the $C5A0 slot (the flag is "consumed");
+-- otherwise it stays pending for the next scan.
 --
--- Cross-check: selector `0x15`'s own code confirms (independently) that
--- `$C4E0` records embed a further pointer at `+0x12`, and refines the
--- existing doc note about it -- that pointer is itself dereferenced a
--- SECOND time at a `+0x14` offset from ITS OWN target, i.e. a real
--- two-level indirection (record -> sub-structure -> sub-sub-structure),
--- structurally consistent with a per-actor animation/effect state chain
--- rather than a flat "story flag" registry.
+-- Cross-check: selector 0x15's own code confirms (independently) that
+-- $C4E0 records embed a further pointer at +0x12, itself dereferenced
+-- a second time at a +0x14 offset from its own target -- a two-level
+-- indirection (record -> sub-structure -> sub-sub-structure),
+-- structurally consistent with a per-actor animation/effect state
+-- chain rather than a flat "story flag" registry.
 --
--- Net effect: this refines (does not overturn) the existing "actor
--- command queue" framing -- it's a real, periodic, per-record TICK
--- system (countdown/reload timers, an embedded nested-pointer field)
--- layered on top of the queue, which reads more like a scripted visual/
--- behavior-effect ticker than a discrete quest-flag store. The exact
--- real-world MEANING of the 8 action-code values is STILL open (the
--- `$4107`/`$29BA`/`$4247` leaves and the `0x0C`/`0x0D`/`0x0B`/`0x0F`
--- selectors' own further helpers were not traced this pass) -- a
--- concrete, bounded next step would be finding who WRITES the record's
--- own `+0x12` pointer field (this pass only confirmed readers), or
--- live-watching that field plus `+8` during a known real visual effect.
--- See events.md's dated entry for the full writeup.
+-- Net effect: this refines (doesn't overturn) the "actor command
+-- queue" framing -- it's a periodic, per-record tick system (countdown/
+-- reload timers, an embedded nested-pointer field) layered on top of
+-- the queue, reading more like a scripted visual/behavior-effect
+-- ticker than a discrete quest-flag store. The real-world meaning of
+-- the 8 action-code values is still open (the $4107/$29BA/$4247 leaves
+-- and the 0x0C/0x0D/0x0B/0x0F selectors' own further helpers weren't
+-- traced this pass) -- a bounded next step would be finding who writes
+-- the record's own +0x12 pointer field, or live-watching that field
+-- plus +8 during a known visual effect. See events.md's dated entry.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_10 = 0x125C -- group 0x04
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_20 = 0x12D0 -- group 0x04
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_25 = 0x130C -- group 0x1F
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_30 = 0x1344 -- group 0x04
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_7B = 0x157C -- group 0x0F
--- SUPERSEDED 2026-08-14 (task-11 quality pass): opcode `0x7B`'s real
--- handler is now more precisely modeled by
--- `ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_7B` (same real
--- address, `$157C` -- see that constant's own doc comment, and
--- `StandardScriptHandlers.actorActionWithReadinessParam`'s doc
--- comment, for the full real disassembly and why it's more precise
--- than this generic-family entry). This constant is kept only because
--- existing tests assert it against the real opcode-table bytes, and
--- `ScriptRuntime.lua`'s own generic sweep now explicitly EXCLUDES it
--- (a real, self-caught dead-code bug: this constant's own generic
--- registration used to silently overwrite the newer, more precise one
--- -- see that file's own matching exclusion comment for the full
--- story, including a live before/after verification).
+-- SUPERSEDED (task-11 quality pass): opcode 0x7B's handler is now more
+-- precisely modeled by ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_
+-- ADDRESS_7B (same address, $157C -- see that constant's own doc
+-- comment, and StandardScriptHandlers.actorActionWithReadinessParam's
+-- doc comment, for the full disassembly and why it's more precise than
+-- this generic-family entry). This constant is kept only because
+-- existing tests assert it against the opcode-table bytes, and
+-- ScriptRuntime.lua's own generic sweep now explicitly excludes it (a
+-- self-caught dead-code bug: this constant's generic registration used
+-- to silently overwrite the newer, more precise one -- see that file's
+-- own matching exclusion comment for the full story).
 
--- **Family B** (`0x38`/`0x78`): each opcode's own handler does `CALL
--- $28C2 / ADD A,<base> / LD C,A / CALL $2859` (no fixed "group" this
--- time). `$2859` (`PUSH BC / PUSH HL / CALL $289B / POP HL / POP BC /
--- RET NZ / ...`) halts via a DIFFERENT real condition: `$289B` OR-
--- reduces 8 real WRAM bytes at `$C5A0` and sets the tested flag from
--- the result -- i.e. `$2859` genuinely halts while ANY of those 8
--- bytes is nonzero, and only once ALL 8 are zero does it read a real
--- WRAM table at `$C4E0` (8 bytes/record, indexed by the action code)
--- and call `$27E3` (not decoded further) before continuing via
--- `$3727`. (`$C5A0`/`$C4E0` are the SAME two addresses this project's
--- own earlier "honest negatives" re-verification -- see events.md --
--- already found genuinely zero-hit during the boss-defeat script's
--- own real execution window, consistent with these 2 opcodes not
--- appearing in that script's own 18-opcode list at all.)
+-- Family B (0x38/0x78): each opcode's handler does CALL $28C2 / ADD
+-- A,<base> / LD C,A / CALL $2859 (no fixed "group" this time). $2859
+-- (PUSH BC / PUSH HL / CALL $289B / POP HL / POP BC / RET NZ / ...)
+-- halts via a different condition: $289B OR-reduces 8 WRAM bytes at
+-- $C5A0 and sets the tested flag from the result -- $2859 genuinely
+-- halts while any of those 8 bytes is nonzero, and only once all 8 are
+-- zero does it read a WRAM table at $C4E0 (8 bytes/record, indexed by
+-- the action code) and call $27E3 (not decoded further) before
+-- continuing via $3727. ($C5A0/$C4E0 are the same two addresses this
+-- project's own earlier "honest negatives" re-verification -- see
+-- events.md -- already found genuinely zero-hit during the boss-
+-- defeat script's execution window, consistent with these 2 opcodes
+-- not appearing in that script's 18-opcode list at all.)
 ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_38 = 0x138C
 ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_78 = 0x155C
 
--- Round 2 (2026-08-12, direct instruction "mach erstmal 2" -- a fresh
--- re-scan of all 1357 scripts, now that opcode 0x00's own real halt
--- no longer masks scripts that walk PAST it, found 9 MORE real opcodes
--- using this EXACT SAME already-solved family, previously hidden
--- behind other, now-resolved blockers). Same two real shapes as
--- Family A/B above, just different fixed constants -- each verified
--- byte-for-byte:
+-- Round 2 (direct instruction to do "2" first -- a fresh re-scan of
+-- all 1357 scripts, now that opcode 0x00's own halt no longer masks
+-- scripts that walk past it, found 9 more opcodes using this exact
+-- same already-solved family, previously hidden behind other, now-
+-- resolved blockers). Same two shapes as Family A/B above, just
+-- different fixed constants -- each verified byte-for-byte:
 --   0x11 ($1268): base 0x00, group 0x05   (Family A)
 --   0x14 ($128C): base 0x00, group 0x1E   (Family A)
 --   0x18 ($12A4): base 0x00               (Family B)
@@ -348,10 +337,10 @@ ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_78 = 0x155C
 --   0x48 ($1400): base 0x03               (Family B)
 --   0x60 ($14A0): base 0x05, group 0x04   (Family A)
 --   0x70 ($1514): base 0x06, group 0x04   (Family A)
--- (The real "base" constant, same as Family A/0x10 etc above, is not
--- separately modeled -- see this project's own reasoning above for
--- why it carries no additional OBSERVABLE information for this
--- project's purposes.)
+-- (The "base" constant, same as Family A/0x10 etc above, is not
+-- separately modeled -- see this project's reasoning above for why it
+-- carries no additional observable information for this project's
+-- purposes.)
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_11 = 0x1268 -- group 0x05
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_14 = 0x128C -- group 0x1E
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_1B = 0x12C4 -- group 0x0F
@@ -362,107 +351,104 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_70 = 0x1514 -- group 0x04
 ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_18 = 0x12A4
 ScriptOpcodeTable.QUEUED_ACTION_HANDLER_ADDRESS_48 = 0x1400
 
--- Real, no-operand "trigger fixed event" opcode `0xE4` (ROM `$0F88`) --
--- found the same re-scan, byte-for-byte IDENTICAL shape to `0xE0`
--- (`TRIGGER_EVENT_HANDLER_ADDRESS`) above, just a different fixed
--- constant passed to the same real `$235B` helper (`A=1` here vs.
--- `A=4` for `0xE0`): `PUSH HL / LD A,0x01 / CALL $235B / POP HL /
--- CALL $3727 / RET`. Reuses `StandardScriptHandlers.triggerEvent`
--- directly -- no new Lua implementation needed.
+-- No-operand "trigger fixed event" opcode 0xE4 (ROM $0F88) -- found the
+-- same re-scan, byte-for-byte identical shape to 0xE0
+-- (TRIGGER_EVENT_HANDLER_ADDRESS) above, just a different fixed
+-- constant passed to the same $235B helper (A=1 here vs. A=4 for
+-- 0xE0): PUSH HL / LD A,0x01 / CALL $235B / POP HL / CALL $3727 / RET.
+-- Reuses StandardScriptHandlers.triggerEvent directly -- no new Lua
+-- implementation needed.
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E4 = 0x0F88
 
--- Real opcodes `0x80` (ROM `$15A4`) and `0x85` (ROM `$15EF`) -- a
--- THIRD real shape found this round, reusing the actor-flag family's
--- own `$2879` dispatch but gated by a DIFFERENT real condition (a
--- shared helper, `$1588`, byte-for-byte disassembled):
+-- Opcodes 0x80 (ROM $15A4) and 0x85 (ROM $15EF) -- a third shape found
+-- this round, reusing the actor-flag family's own $2879 dispatch but
+-- gated by a different condition (a shared helper, $1588, byte-for-
+-- byte disassembled):
 --   $1588  PUSH HL / CALL $02AB / POP HL   ; $02AB: LD C,4 / CALL $0C99
---                                          ;  / RET -- real, general
+--                                          ;  / RET -- a general
 --                                          ; actor-array read ($C200 +
---                                          ; index*16, the SAME base
+--                                          ; index*16, the same base
 --                                          ; $0C6D itself uses), field
 --                                          ; +0 (no "+2"/no 0xFF-empty
---                                          ; check this time), FIXED
---                                          ; index 4 -- i.e. reads
---                                          ; actor-record #4's own
---                                          ; type/presence byte,
+--                                          ; check this time), fixed
+--                                          ; index 4 -- reads actor-
+--                                          ; record #4's own type/
+--                                          ; presence byte,
 --                                          ; $C200+4*16 = $C240
---   $158D  BIT 7,A / RET Z                 ; real release: if $C240's
---                                          ; own bit 7 is CLEAR,
---                                          ; return with Z set (the
---                                          ; caller's own `RET NZ`
---                                          ; does NOT fire -> continues)
---   ; bit 7 SET: a further real sub-check (`$2938`, not decoded)
---   ; either skips straight to, or first triggers a real NESTED
---   ; `$2879` call (fixed C=0xFF, group = a SECOND, fresh $02AB read)
---   ; before reaching, a final `XOR A / DEC A / RET` that ALWAYS
---   ; forces NZ -- i.e. EVERY bit-7-SET path halts the caller, whether
---   ; or not that nested dispatch fired.
--- Net real, OBSERVABLE effect from `0x80`/`0x85`'s own perspective:
--- **halt while WRAM `$C240` (actor-record #4's own type byte) has bit
--- 7 set.** The real nested `$2879` trigger that sometimes fires while
--- still halting is a genuine, further real behavior this project does
--- NOT reproduce (HYPOTHESIS on its own purpose, and it never affects
--- the caller's own observable release timing anyway, since every path
--- that reaches it also forces a halt regardless).
+--   $158D  BIT 7,A / RET Z                 ; release: if $C240's own
+--                                          ; bit 7 is clear, return
+--                                          ; with Z set (the caller's
+--                                          ; RET NZ doesn't fire ->
+--                                          ; continues)
+--   ; bit 7 set: a further sub-check ($2938, not decoded) either skips
+--   ; straight to, or first triggers a nested $2879 call (fixed
+--   ; C=0xFF, group = a second, fresh $02AB read) before reaching, a
+--   ; final XOR A / DEC A / RET that always forces NZ -- every bit-7-
+--   ; set path halts the caller, whether or not that nested dispatch
+--   ; fired.
+-- Net observable effect from 0x80/0x85's perspective: halt while WRAM
+-- $C240 (actor-record #4's type byte) has bit 7 set. The nested $2879
+-- trigger that sometimes fires while still halting is a further
+-- behavior this project doesn't reproduce (HYPOTHESIS on its purpose,
+-- and it never affects the caller's observable release timing anyway,
+-- since every path that reaches it also forces a halt regardless).
 --
--- `0x80`'s own real "group" (the value passed to its OWN, un-nested
--- `$2879` call once released) is NOT a fixed constant like every other
--- opcode in this family -- it's computed live, `($02AB result) AND
--- 0x0F, + 0x90` -- a real, DYNAMIC value depending on actor #4's own
--- CURRENT low nibble at release time (see `StandardScriptHandlers
--- .actorAction`'s own extended doc comment for how this project models
--- that: `group` may be a plain function, called fresh on release).
--- `0x85`'s own group IS a fixed real constant (`0x08`, with `C=0xFF`
--- fixed too, not computed via the usual `$28C2` base-adjustment).
+-- 0x80's own "group" (the value passed to its own, un-nested $2879
+-- call once released) is not a fixed constant like every other opcode
+-- in this family -- it's computed live, ($02AB result) AND 0x0F, +
+-- 0x90 -- a dynamic value depending on actor #4's current low nibble
+-- at release time (see StandardScriptHandlers.actorAction's own
+-- extended doc comment for how this project models that: group may be
+-- a plain function, called fresh on release). 0x85's group is a fixed
+-- constant (0x08, with C=0xFF fixed too, not computed via the usual
+-- $28C2 base-adjustment).
 --
--- CRACKED (2026-08-14, task 10, "die 6 $02AB-Geschwister wirklich
--- lösen"): "actor #4" here is exactly `EntityStructLayout.lua`'s own
--- already-live-confirmed `PLAYER_SLOT_INDEX_HYPOTHESIS = 4` -- i.e.
--- WRAM `$C240` is the PLAYER's own real entity-state byte, and
--- `$02AB` (previously treated as an opaque, "needs live WRAM
--- simulation" leaf) is nothing more than a plain read of it. Live-
--- traced its own real low-nibble values across idle/movement/attack:
--- a real one-hot FACING-DIRECTION bitmask (`1`=right/`2`=left/`4`=up/
--- `8`=down, decisively confirmed via the idle value `0x04` exactly
--- matching this project's own independently-verified `Player
--- .DEFAULT_FACING = "up"`). `0x80`'s real dynamic group is therefore
--- purely a function of the PLAYER'S CURRENT FACING DIRECTION -- see
--- `EntityStructLayout.PLAYER_FACING_BIT`'s own doc comment for the
--- complete live-trace data, and `ScriptRuntime.lua`'s own `0x80`
--- registration for the real implementation (now WIRED, not left
--- unmodeled -- this opcode is no longer part of the known-hard
--- family in any meaningful sense, even though it stays visible near
--- the top of the whole-corpus scan's own ranking for a DIFFERENT
--- real reason: `$1588`'s own bit-7 gate, approximated the same way
--- every other `$1588`-gated opcode already is).
-ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_80 = 0x15A4 -- group: dynamic, see above (CRACKED 2026-08-14)
+-- CRACKED (task 10, direct instruction to actually solve the 6 $02AB
+-- siblings): "actor #4" here is exactly EntityStructLayout.lua's own
+-- already-live-confirmed PLAYER_SLOT_INDEX_HYPOTHESIS = 4 -- WRAM
+-- $C240 is the player's own entity-state byte, and $02AB (previously
+-- treated as an opaque, "needs live WRAM simulation" leaf) is nothing
+-- more than a plain read of it. Live-traced its low-nibble values
+-- across idle/movement/attack: a one-hot facing-direction bitmask
+-- (1=right/2=left/4=up/8=down, decisively confirmed via the idle
+-- value 0x04 exactly matching this project's own independently-
+-- verified Player.DEFAULT_FACING = "up"). 0x80's dynamic group is
+-- therefore purely a function of the player's current facing
+-- direction -- see EntityStructLayout.PLAYER_FACING_BIT's own doc
+-- comment for the complete live-trace data, and ScriptRuntime.lua's
+-- own 0x80 registration for the implementation (now wired, not left
+-- unmodeled -- this opcode is no longer part of the known-hard family
+-- in any meaningful sense, even though it stays visible near the top
+-- of the whole-corpus scan's ranking for a different reason: $1588's
+-- bit-7 gate, approximated the same way every other $1588-gated
+-- opcode already is).
+ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_80 = 0x15A4 -- group: dynamic, see above (CRACKED)
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_85 = 0x15EF -- group 0x08
 
--- Real, no-operand, UNCONDITIONALLY-continuing opcode `0xDE` (ROM
--- `$3B81`) -- byte-for-byte disassembled: real WRAM housekeeping on a
--- real cooldown counter (`$D6F0`) and a real 24-entry table (`$D6C5`,
--- `LD B,0x18`) -- resets `$D6EF`/`$D6F1` to `0x80` and clears/finds a
--- matching table slot once the cooldown expires, no-ops otherwise.
--- Every real branch (cooldown active, cooldown just expired, table
--- slot found, table slot not found) converges on the SAME real
--- `POP HL / CALL $3727 / RET` tail -- genuinely NO conditional halt
--- anywhere in this routine, confirmed by tracing every branch to that
--- same real ending. `PUSH HL` at entry / `POP HL` right before
--- `CALL $3727` cleanly brackets the routine's own internal (unrelated)
--- use of `HL` for the table scan, confirming it never touches the real
--- script cursor. Reuses `StandardScriptHandlers.triggerEvent` directly
--- -- same real shape as `0xE0`/`0xE4` above (no operand, no halt, real
--- WRAM side effect this project doesn't reproduce, always continues).
+-- No-operand, unconditionally-continuing opcode 0xDE (ROM $3B81) --
+-- byte-for-byte disassembled: WRAM housekeeping on a cooldown counter
+-- ($D6F0) and a 24-entry table ($D6C5, LD B,0x18) -- resets $D6EF/
+-- $D6F1 to 0x80 and clears/finds a matching table slot once the
+-- cooldown expires, no-ops otherwise. Every branch (cooldown active,
+-- cooldown just expired, table slot found, table slot not found)
+-- converges on the same POP HL / CALL $3727 / RET tail -- genuinely no
+-- conditional halt anywhere, confirmed by tracing every branch to that
+-- same ending. PUSH HL at entry / POP HL right before CALL $3727
+-- cleanly brackets the routine's own internal (unrelated) use of HL
+-- for the table scan, confirming it never touches the script cursor.
+-- Reuses StandardScriptHandlers.triggerEvent directly -- same shape as
+-- 0xE0/0xE4 above (no operand, no halt, WRAM side effect this project
+-- doesn't reproduce, always continues).
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_DE = 0x3B81
 
--- Round 3 (2026-08-12, same "mach erstmal 2" pass -- a second re-scan,
--- now with round 2's opcodes also known, found these): 5 MORE real
--- Family-A actor-flag/state opcodes (verified byte-for-byte, same
--- shape as every other Family-A member above) plus 2 more real
--- trigger-event opcodes (same shape as 0xE0/0xE4/0xDE above, one
--- calling a DIFFERENT fixed helper, `$22FE` instead of `$235B` --
--- irrelevant to this project's own implementation, which never models
--- the real payload for ANY of these anyway).
+-- Round 3 (same "do 2 first" pass -- a second re-scan, now with round
+-- 2's opcodes also known, found these): 5 more Family-A actor-flag/
+-- state opcodes (verified byte-for-byte, same shape as every other
+-- Family-A member above) plus 2 more trigger-event opcodes (same
+-- shape as 0xE0/0xE4/0xDE above, one calling a different fixed helper,
+-- $22FE instead of $235B -- irrelevant to this project's own
+-- implementation, which never models the payload for any of these
+-- anyway).
 --   0x21 ($12DC): base 0x01, group 0x05
 --   0x3B ($13AC): base 0x02, group 0x0F
 --   0x47 ($13DC): base 0x03, group 0x1D
