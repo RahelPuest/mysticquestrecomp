@@ -767,6 +767,62 @@ Harness.testIfAvailable(
   end
 )
 
+-- REAL, CODE-DERIVED, EXACT-MATCH-VERIFIED FORMULA (2026-08-17, direct
+-- user report "raum 7 8 und 9 haben die falschen tilesets" then "ja
+-- aber das hat definitv andere tiles! es muss irgenwad in der
+-- pipeline hinterlegt sein was fuer tile das hat"/"bleib dran"): the
+-- real ROM code that copies a raw GFX-tile's actual pixel bytes into
+-- VRAM was found and fully disassembled this pass (mGBA, live single-
+-- step trace synchronized to a real, live-observed VRAM-allocation
+-- burst) -- see rom_profiles.lua's own `mapTable.tilesetFileOffset`
+-- dated correction for the full trace and formula. This test locks
+-- that formula down against known-good ground truth so a future
+-- change can't silently regress it: willyRoom's own real, live-
+-- confirmed `$D390:$D391=0x6000`, raw GFX-tile byte `0x1b` (this
+-- project's own already-documented "1b 1c 1d 1e -> 97 98 99 9a"
+-- example) must resolve to EXACTLY willyRoom's own already-
+-- independently-verified `tileOffsets[0x97]=0x321b0` -- byte for
+-- byte, not approximately.
+Harness.test("real VRAM tile-copy formula: bank*0x4000 + ((rawByte*16 + D390:D391) - 0x4000), exact-matched against willyRoom's own known-good pixel", function()
+  local function realTileSourceFileOffset(rawGfxByte, d390d391)
+    local hl = (rawGfxByte * 16 + d390d391) % 0x10000
+    local bank = 0x0C
+    if hl >= 0x8000 then
+      bank = bank - 1
+      hl = (hl % 0x8000) + 0x4000 -- RES 7,H / SET 6,H
+    end
+    return bank * 0x4000 + (hl - 0x4000)
+  end
+
+  -- willyRoom's own real, live-confirmed roomSelectorTable D390:D391 (=0x6000, roomSelector 2-6 family)
+  Harness.assertEqual(realTileSourceFileOffset(0x1b, 0x6000), 0x321b0)
+
+  local romData2 = DevRomLocator.find()
+  if romData2 then
+    local profile = RomProfiles.match(RomIdentity.identify(romData2))
+    Harness.assertEqual(profile.graphics.willyRoom.tileOffsets[0x97], 0x321b0,
+      "willyRoom's own already-independently-verified tileOffsets[0x97] must match the formula's own prediction")
+  end
+end)
+
+-- The 384-room catalog's own real per-map D390:D391 (roomSelector 0/1
+-- family, matching startRoom/fourthRoom -- see roomSelectorTable's own
+-- byte-layout doc comment) is 0x4000 -- applying the SAME formula
+-- gives the corrected 0x30000 base now used by mapTable/mapTableBank6/
+-- mapTableBank7, not the old 0x32000 (which was willyRoom's own real
+-- but WRONG-family base).
+Harness.testIfAvailable(
+  "the 384-room catalog's own tilesetFileOffset matches roomSelector 0/1's real D390:D391, not willyRoom's",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    Harness.assertEqual(profile.mapTable.tilesetFileOffset, 0x30000)
+    Harness.assertEqual(profile.mapTableBank6.tilesetFileOffset, 0x30000)
+    Harness.assertEqual(profile.mapTableBank7.tilesetFileOffset, 0x30000)
+  end
+)
+
 if romData then
   print("(RoomFloorLayout ROM-dependent tests ran against a real dev ROM)")
 end

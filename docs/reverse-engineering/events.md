@@ -10593,3 +10593,128 @@ this direct, credible user report and the `$46B0` lead explicitly, and
 the rom-inspector website's own Room-System graph now flags these 3
 nodes accordingly. No data changed -- this is a documentation-only
 update reflecting a real, thorough, still-open investigation.
+
+## The real VRAM tile-copy pipeline, found and closed -- FIXES the seventh/eighth/ninthRoom tileset dispute for real (2026-08-17, same day, direct follow-up "bleib dran")
+
+Direct follow-up to the dispute above. User: "ok aber gibt es keine
+position im code an dem ein tilset in den vram geladen wird?", then,
+after a first re-investigation pass came up short: "ja aber das hat
+definitv andere tiles! es muss irgenwad in der pipeline hinterlegt
+sein was fuer tile das hat" / "bleib dran". Correct on every count --
+the code DID have the answer, and finding it fixed a real, previously
+undetected bug affecting the ENTIRE 384-room catalog, not just the 3
+disputed rooms.
+
+**The lead**: `docs/reverse-engineering/rom-map.md`'s own 2026-08-11
+"$D070's real populator, found" section had already disassembled the
+real VRAM-tile-slot allocator (`$1BA1`) but explicitly left its own
+tail unfinished: "the routine's own tail (`$1BD5` onward)... not fully
+closed this pass... a concrete, well-specified next step."
+
+**Finished it, live, this pass**:
+1. Found the real, narrow live window where willyRoom's own tiles
+   actually get allocated (a coarse, cheap `$D270` slot-usage scan
+   across `post_black_wipe()`'s own real dialogue-tap sequence found a
+   clean 1->44 jump specifically within tap #4, frames 5922-6328 --
+   narrowed BEFORE committing to slow single-instruction tracing, same
+   "frame-accurate two-phase" discipline this project already uses).
+2. Single-stepped that ~400-frame window with a live PC/register watch
+   on `$1BA1`: captured 320 real hits, every one reading
+   `$D390:$D391=0x6000` -- cross-checked against `$D392:$D393` at the
+   SAME real moment (also `0x46B0`, matching willyRoom's own already-
+   independently-confirmed value) to confirm this really was
+   willyRoom's own real background-tile load, not something else.
+3. Fully disassembled the whole real chain, `$1AF3`->`$1B74`->
+   `$1B2B`/`$1B19`->`$1BA1`->`$2DF5`(enqueue)->`$2D57`(drain):
+   - `$01AF3` ("commit a new room") stores the roomSelectorTable
+     record's own two 16-bit fields into `$D390:$D391` (bytes 0-1) and
+     `$D392:$D393` (bytes 3-4), then genuinely CLEARS the whole VRAM-
+     allocation state (`$D170`-`$D26E` + `$D270`-`$D2EF`) -- a real
+     correction to the earlier "cumulative, session-path-dependent"
+     characterization: it's cumulative WITHIN a room's own lifetime,
+     reset BETWEEN real room commits.
+   - `$1B19`: `metatileRecordAddr = metatileIndex*6 + $D392:$D393` --
+     the real METATILE-DEFINITION table lookup (6 bytes/metatile,
+     matching the external FFA-Disassembly project's own documented
+     format exactly).
+   - `$1BA1`/`$1BD5`: for each of a metatile's own 4 raw GFX-tile-ID
+     bytes, allocates (if needed) a VRAM slot, then computes
+     `sourceAddr = rawGfxByte*16 + $D390:$D391` (with a real bit7/bit6
+     address-range fixup) and hands it to `$2DF5`, which QUEUES it (a
+     real `$C5E0` ring buffer, `$C8E0` count) rather than copying
+     immediately.
+   - `$2D57` (found by searching fixed bank 0 for direct references to
+     the queue's own count/lock cells, `$C8E0`/`$C8E1`): the real
+     DRAIN routine, run under a genuine per-frame LY-scanline time
+     budget (`LDH A,(0xFF44)`, +6, re-checked every queue entry -- a
+     real hardware-safe-VRAM-write-window budget, bailing out and
+     resuming next frame if exceeded). For each queued entry: `LD
+     (0x2100),A` -- **the real MBC bank-select register** -- switching
+     to bank **12** (the literal constant `0x0C`, or `11` if the
+     fixup triggered), THEN a 16-byte copy from the computed address.
+4. **Exact-matched against known-good ground truth**: `bank*0x4000 +
+   ((0x1b*16 + 0x6000) - 0x4000) = 0x321b0` -- byte-for-byte identical
+   to willyRoom's own already-independently-verified
+   `tileOffsets[0x97]=0x321b0` (and this project's own already-
+   documented "1b 1c 1d 1e -> 97 98 99 9a" example). Not approximate.
+
+**The bug, found by applying the SAME formula to the disputed rooms'
+own real family** (roomSelector 0/1, matching startRoom/fourthRoom,
+real `$D390:$D391=0x4000` -- read directly from `roomSelectorTable`'s
+own raw bytes, cross-checked against all 16 real records): the formula
+predicts base `0x30000`, NOT the `0x32000` this project's whole
+384-room catalog pipeline (`mapTable`/`mapTableBank6`/`mapTableBank7`,
+and by extension `seventhRoom`/`eighthRoom`/`ninthRoom`) had always
+used. **`0x32000` was willyRoom's own real pixel-pool base
+(roomSelector 2-6's family, `$D390:$D391=0x6000`)**, reused as a
+"shared, generic" default for a completely different real family --
+matching neither family's own true real `MAP_HEADER`-equivalent
+pairing (the external doc's own `tilesetGfxOutdoor`+`metatilesOutdoor`
+per-map pair -- this project had the metatile-table half right and the
+pixel-pool half wrong, mixed from two different real maps).
+
+**Empirically confirmed via re-rendering**: every sanity-check record
+(0/128/200/240/255) plus the 3 disputed ones (220/236/237), with the
+corrected `0x30000` base. Dramatic, unambiguous improvement across the
+board -- record 0 changed from a generic "bookshelf/chain-link
+dungeon corridor" look into an unmistakable, clearly-intentional
+outdoor scene (a real wooden gate, grass, bushes, mountain terrain --
+a town/wilderness entrance, not a dungeon at all); 220/236/237 into
+real, distinct outdoor scenes of their own (trees, grass, a lake with
+rocky shores, a road through a field). A qualitatively different,
+far-more-convincing result than any of the earlier (now superseded)
+investigation pass's alternate-pointer experiments.
+
+**Fixed**: `mapTable`/`mapTableBank6`/`mapTableBank7.tilesetFileOffset`
+corrected `0x32000`->`0x30000`; `seventhRoom`/`eighthRoom`/
+`ninthRoom.tileOffsets` regenerated against the corrected pipeline and
+hand-copied in (their own `grid` -- the metatile ARRANGEMENT -- is
+unchanged, only which real ROM bytes each raw tile ID points to). The
+`tilesetDisputed`/`tilesetDisputedNote` flags from the prior
+(superseded) investigation are retracted, replaced with a "TILESET
+CORRECTED" note citing this real fix. A new, locked-down regression
+test (`room_floor_layout_test.lua`) reproduces the exact willyRoom
+cross-check so this can't silently regress.
+
+**Honest remaining scope**: `unknownRoomACandidates.tilesetFileOffset`
+(roomSelector 8-13's own family, real `$D390:$D391=0x7000`, formula
+predicts `0x33000`) was ALSO re-tested this pass -- genuinely
+inconclusive (both `0x32000` and `0x33000` render equally plausible,
+structurally-identical dungeon art, no decisive signal). Left
+UNCHANGED, flagged as a newly-opened, separate question rather than
+force-changed on weak evidence -- this fix is scoped to what real
+evidence actually supports, not generalized further than the evidence
+reaches. Still no live gameplay reaches any of these 384 catalog
+rooms -- this is a real, code-derived, exact-match-verified formula,
+not a live-gameplay confirmation the way willyRoom's own tiles are;
+the room CHOICES themselves (which catalog record represents "north
+of sixthRoom," etc.) remain honestly un-confirmed IMPLEMENTATION
+CHOICEs, unaffected by this fix.
+
+Re-exported the whole website (`room-catalog.js`'s own 384 records,
+`map-tile-catalog.js`, `room-maps.js`, `rooms.js`) -- massive diff, as
+expected (every catalog room's own tileOffsets moved). Live-verified
+via Playwright: seventhRoom/eighthRoom/ninthRoom's own dispute badges
+are gone (the underlying data is genuinely fixed now, not just
+flagged), their thumbnails render the new, corrected art, no console
+errors. 562/562 Lua tests green (2 new regression tests added).

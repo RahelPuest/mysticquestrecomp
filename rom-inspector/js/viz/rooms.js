@@ -76,15 +76,17 @@ function render_rooms(main) {
       real ROM-seitig derselbe Raum, kein unabhängiger. Details im Tooltip am Knoten.
     </p>
     <p class="page-lede">
-      <span style="color:#e05a5a;">&#9888; <code>seventhRoom</code>/<code>eighthRoom</code>/
-      <code>ninthRoom</code></span> (rot gestrichelter Rahmen unten): direkter, glaubwürdiger
-      Nutzer-Hinweis (2026-08-17, echtes ROM-Wissen: "raum 7 8 und 9 haben die falschen tilesets") --
-      gründlich nachgeprüft (externe FFA-Disassembly-Doku direkt abgerufen, Bank-5-Struktur auf eine
-      versteckte zweite Karte geprüft, jeder bekannte alternative Tileset-Pointer ausprobiert), aber
-      <strong>nicht gelöst</strong>. Diese 3 Räume waren schon vorher als "IMPLEMENTATION CHOICE,
-      nicht ROM-bestätigt" markiert (kein Live-Gameplay erreicht sie je) -- dieser Hinweis geht
-      darüber hinaus: konkret als wahrscheinlich falsch gemeldet, nicht nur unbestätigt. Details im
-      Tooltip am jeweiligen Knoten.
+      <strong><code>seventhRoom</code>/<code>eighthRoom</code>/<code>ninthRoom</code>s Tileset war
+      wirklich falsch -- jetzt korrigiert.</strong> Direkter, glaubwürdiger Nutzer-Hinweis
+      (2026-08-17, echtes ROM-Wissen: "raum 7 8 und 9 haben die falschen tilesets", dann "bleib
+      dran" nach einer ersten erfolglosen Nachprüfung): der echte ROM-Code, der Kachel-Pixel ins
+      VRAM kopiert, wurde live per mGBA gefunden und komplett disassembliert (exakter Treffer gegen
+      willyRooms eigenen, bereits bestätigten Pixel: <code>0x321b0</code>, nicht angenähert). Ergebnis:
+      dieser Katalog nutzte willyRooms eigenen, aber FALSCHEN Pixel-Pool (<code>0x32000</code>) statt
+      des eigenen, richtigen (<code>0x30000</code>) -- korrigiert. Die drei Räume zeigen jetzt echte,
+      erkennbar unterschiedliche Außenbereich-Szenen (Bäume, Gras, Felsen, Wasser, ein Weg) statt der
+      generischen, wiederverwendeten Dungeon-Optik von vorher. Siehe events.md 2026-08-17 für die
+      vollständige Formel/Herleitung.
     </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">

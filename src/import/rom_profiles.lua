@@ -2924,25 +2924,35 @@ RomProfiles.PROFILES = {
       -- tileset was never independently ROM-confirmed, and after a
       -- real, thorough re-check, still isn't -- treat the graphics
       -- below as a real but UNVERIFIED, possibly-wrong placeholder.
+      -- TILESET CORRECTED (2026-08-17, resolving the direct user report
+      -- "ok raum 7 8 und 9 haben die falschen tilesets" -- and the
+      -- follow-up "ja aber das hat definitv andere tiles! es muss
+      -- irgenwad in der pipeline hinterlegt sein was fuer tile das
+      -- hat"/"bleib dran"): the user was right, and the code DID have
+      -- the answer -- found and fully disassembled the real VRAM tile-
+      -- copy pipeline this pass (see `mapTable.tilesetFileOffset`'s own
+      -- dated correction above for the complete formula/evidence chain,
+      -- exact-matched against willyRoom's own known-good pixel). The
+      -- `grid` below (the metatile ARRANGEMENT) is unchanged -- only
+      -- `tileOffsets` (which real ROM bytes each raw GFX-tile ID
+      -- actually points to) was wrong, reusing willyRoom's own real but
+      -- WRONG-family pixel pool (`0x32xxx`) instead of this room's own
+      -- real family's pool (`0x30xxx`). Re-rendered: was a generic,
+      -- oddly-repetitive "bookshelf/chain-link dungeon" look; now a
+      -- real, coherent, clearly-distinct outdoor scene (trees, grass,
+      -- rock/mountain terrain) -- see events.md's own dated entry.
       seventhRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 220; " ..
           "chosen by this project as sixthRoom's own north destination, not independently ROM-confirmed) -- " ..
-          "direct user report 2026-08-17 says the tileset is wrong; re-investigated, not resolved, see doc comment above",
-        tilesetDisputed = true,
-        tilesetDisputedNote = "Direkter Nutzerbericht (2026-08-17, echtes ROM-Wissen): das Tileset dieses " ..
-          "Raums ist falsch. Gruendlich nachgeprueft (externe FFA-Disassembly-Doku, Bank-5-Struktur, " ..
-          "alle bekannten alternativen Tileset-Pointer getestet) -- kein verstecktes Feld gefunden, keine " ..
-          "Bank-5-interne Kartengrenze gefunden. Ein Hinweis, nicht bewiesen: der willyRoom-Pointer ($46B0) " ..
-          "ergibt ein deutlich reicheres Bild als der aktuelle Standard. Nicht umgestellt -- kein Beweis. " ..
-          "Siehe events.md 2026-08-17.",
+          "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see doc comment above",
         cols = 20,
         rows = 16,
         tileOffsets = {
-          [16] = 0x32100, [37] = 0x32250, [46] = 0x322E0, [47] = 0x322F0,
-          [54] = 0x32360, [55] = 0x32370, [62] = 0x323E0, [66] = 0x32420,
-          [67] = 0x32430, [68] = 0x32440, [69] = 0x32450, [118] = 0x32760,
-          [120] = 0x32780, [121] = 0x32790, [122] = 0x327A0, [123] = 0x327B0,
-          [150] = 0x32960, [151] = 0x32970, [152] = 0x32980, [153] = 0x32990,
+          [16] = 0x30100, [37] = 0x30250, [46] = 0x302E0, [47] = 0x302F0,
+          [54] = 0x30360, [55] = 0x30370, [62] = 0x303E0, [66] = 0x30420,
+          [67] = 0x30430, [68] = 0x30440, [69] = 0x30450, [118] = 0x30760,
+          [120] = 0x30780, [121] = 0x30790, [122] = 0x307A0, [123] = 0x307B0,
+          [150] = 0x30960, [151] = 0x30970, [152] = 0x30980, [153] = 0x30990,
         },
         -- Real, per-metatile-instance collision bytes (see this room's
         -- own generation script -- not hand-classified): tile IDs
@@ -3009,32 +3019,27 @@ RomProfiles.PROFILES = {
       -- against seventhRoom's own south row at the real reachable
       -- columns (8-15, 0-based) -- verified via the same collision-grid
       -- re-derivation this room's own test file runs live.
-      -- FLAGGED, NOT RESOLVED (2026-08-17): same direct user report and
-      -- same thorough, still-open re-investigation as `seventhRoom`'s
-      -- own doc comment above -- see that one for the full trace
-      -- (external-doc check, bank-5 structural check, empirical
-      -- alternate-tileset test) and events.md's own dated entry.
+      -- TILESET CORRECTED (2026-08-17): same fix, same evidence as
+      -- `seventhRoom`'s own doc comment above -- see that one and
+      -- `mapTable.tilesetFileOffset`'s own dated correction for the
+      -- full formula/trace. `grid` unchanged, only `tileOffsets`.
       eighthRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 236; " ..
           "chosen via a byte-exact shared-edge match with seventhRoom's own south row (at the real, BFS-" ..
-          "confirmed reachable columns), not independently ROM-confirmed) -- direct user report 2026-08-17 " ..
-          "says the tileset is wrong; re-investigated, not resolved, see seventhRoom's own doc comment",
-        tilesetDisputed = true,
-        tilesetDisputedNote = "Direkter Nutzerbericht (2026-08-17, echtes ROM-Wissen): das Tileset dieses " ..
-          "Raums ist falsch. Gruendlich nachgeprueft, nicht geloest -- siehe seventhRoom's eigenen Hinweis " ..
-          "und events.md 2026-08-17.",
+          "confirmed reachable columns), not independently ROM-confirmed) -- " ..
+          "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
         cols = 20,
         rows = 16,
         tileOffsets = {
-          [12] = 0x320C0, [13] = 0x320D0, [14] = 0x320E0, [15] = 0x320F0,
-          [17] = 0x32110, [18] = 0x32120, [19] = 0x32130, [20] = 0x32140,
-          [21] = 0x32150, [25] = 0x32190, [26] = 0x321A0, [37] = 0x32250,
-          [45] = 0x322D0, [46] = 0x322E0, [47] = 0x322F0, [54] = 0x32360,
-          [55] = 0x32370, [56] = 0x32380, [57] = 0x32390, [62] = 0x323E0,
-          [63] = 0x323F0, [64] = 0x32400, [66] = 0x32420, [67] = 0x32430,
-          [68] = 0x32440, [69] = 0x32450, [74] = 0x324A0, [75] = 0x324B0,
-          [77] = 0x324D0, [150] = 0x32960, [151] = 0x32970, [152] = 0x32980,
-          [153] = 0x32990,
+          [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
+          [17] = 0x30110, [18] = 0x30120, [19] = 0x30130, [20] = 0x30140,
+          [21] = 0x30150, [25] = 0x30190, [26] = 0x301A0, [37] = 0x30250,
+          [45] = 0x302D0, [46] = 0x302E0, [47] = 0x302F0, [54] = 0x30360,
+          [55] = 0x30370, [56] = 0x30380, [57] = 0x30390, [62] = 0x303E0,
+          [63] = 0x303F0, [64] = 0x30400, [66] = 0x30420, [67] = 0x30430,
+          [68] = 0x30440, [69] = 0x30450, [74] = 0x304A0, [75] = 0x304B0,
+          [77] = 0x304D0, [150] = 0x30960, [151] = 0x30970, [152] = 0x30980,
+          [153] = 0x30990,
         },
         -- Real, per-metatile-instance collision bytes. Tile 68 is a
         -- genuinely POSITION-DEPENDENT case (real, live-confirmed: 8 of
@@ -3090,41 +3095,30 @@ RomProfiles.PROFILES = {
       -- cells reachable from the landing spot; this room's own further
       -- neighbors were not investigated this pass -- real, concrete
       -- leads for whoever continues, not exhausted.
-      -- FLAGGED, NOT RESOLVED (2026-08-17): same direct user report and
-      -- same thorough, still-open re-investigation as `seventhRoom`'s
-      -- own doc comment above -- see that one for the full trace. One
-      -- extra data point specific to THIS record: of every real
-      -- alternate tileset candidate tried, the willyRoom family
-      -- pointer (`$46B0`) produced the most architecturally distinct
-      -- result for this specific record (a real door + torch
-      -- decoration + bookshelf wall) -- suggestive, not proven, see
-      -- events.md's own dated entry.
+      -- TILESET CORRECTED (2026-08-17): same fix, same evidence as
+      -- `seventhRoom`'s own doc comment above -- see that one and
+      -- `mapTable.tilesetFileOffset`'s own dated correction for the
+      -- full formula/trace. `grid` unchanged, only `tileOffsets`.
       ninthRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 237; " ..
           "chosen via a byte-exact shared-edge match with eighthRoom's own east column, not independently " ..
-          "ROM-confirmed) -- direct user report 2026-08-17 says the tileset is wrong; re-investigated, not " ..
-          "resolved, see seventhRoom's own doc comment",
-        tilesetDisputed = true,
-        tilesetDisputedNote = "Direkter Nutzerbericht (2026-08-17, echtes ROM-Wissen): das Tileset dieses " ..
-          "Raums ist falsch. Gruendlich nachgeprueft, nicht geloest. Fuer DIESEN Raum: der willyRoom-" ..
-          "Pointer ($46B0) ergab von allen getesteten Kandidaten das architektonisch reichste Bild " ..
-          "(Tuer, Fackel, Buecherregal-Wand) -- ein Hinweis, kein Beweis. Siehe seventhRoom's eigenen " ..
-          "Hinweis und events.md 2026-08-17.",
+          "ROM-confirmed) -- " ..
+          "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
         cols = 20,
         rows = 16,
         tileOffsets = {
-          [12] = 0x320C0, [13] = 0x320D0, [14] = 0x320E0, [15] = 0x320F0,
-          [17] = 0x32110, [18] = 0x32120, [19] = 0x32130, [20] = 0x32140,
-          [21] = 0x32150, [22] = 0x32160, [23] = 0x32170, [24] = 0x32180,
-          [27] = 0x321B0, [28] = 0x321C0, [34] = 0x32220, [35] = 0x32230,
-          [36] = 0x32240, [37] = 0x32250, [45] = 0x322D0, [54] = 0x32360,
-          [55] = 0x32370, [62] = 0x323E0, [63] = 0x323F0, [64] = 0x32400,
-          [66] = 0x32420, [67] = 0x32430, [68] = 0x32440, [69] = 0x32450,
-          [70] = 0x32460, [71] = 0x32470, [72] = 0x32480, [73] = 0x32490,
-          [74] = 0x324A0, [75] = 0x324B0, [77] = 0x324D0, [78] = 0x324E0,
-          [79] = 0x324F0, [80] = 0x32500, [81] = 0x32510, [82] = 0x32520,
-          [83] = 0x32530, [84] = 0x32540, [127] = 0x327F0, [132] = 0x32840,
-          [133] = 0x32850, [134] = 0x32860, [135] = 0x32870,
+          [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
+          [17] = 0x30110, [18] = 0x30120, [19] = 0x30130, [20] = 0x30140,
+          [21] = 0x30150, [22] = 0x30160, [23] = 0x30170, [24] = 0x30180,
+          [27] = 0x301B0, [28] = 0x301C0, [34] = 0x30220, [35] = 0x30230,
+          [36] = 0x30240, [37] = 0x30250, [45] = 0x302D0, [54] = 0x30360,
+          [55] = 0x30370, [62] = 0x303E0, [63] = 0x303F0, [64] = 0x30400,
+          [66] = 0x30420, [67] = 0x30430, [68] = 0x30440, [69] = 0x30450,
+          [70] = 0x30460, [71] = 0x30470, [72] = 0x30480, [73] = 0x30490,
+          [74] = 0x304A0, [75] = 0x304B0, [77] = 0x304D0, [78] = 0x304E0,
+          [79] = 0x304F0, [80] = 0x30500, [81] = 0x30510, [82] = 0x30520,
+          [83] = 0x30530, [84] = 0x30540, [127] = 0x307F0, [132] = 0x30840,
+          [133] = 0x30850, [134] = 0x30860, [135] = 0x30870,
         },
         -- Same real, position-dependent tile-68 imprecision as
         -- eighthRoom above (see that room's own doc comment) -- every
@@ -4017,7 +4011,83 @@ RomProfiles.PROFILES = {
       -- Confirmed tile-index base for interpreting each record's data blob
       -- bytes (see environmentTilesetBank12.confirmedFrom above): tile
       -- index N in a blob -> file offset tilesetFileOffset + N*16.
-      tilesetFileOffset = 0x32000,
+      --
+      -- CORRECTED (2026-08-17, direct user pushback on this exact value
+      -- -- "ja aber das hat definitv andere tiles! es muss irgenwad in
+      -- der pipeline hinterlegt sein was fuer tile das hat", then "bleib
+      -- dran" after the first re-investigation pass came up short): the
+      -- real code that copies a raw GFX-tile's actual pixel bytes into
+      -- VRAM was found, fully disassembled, and closed this pass --
+      -- `docs/reverse-engineering/rom-map.md`'s own 2026-08-11 "$D070's
+      -- real populator" section had already found the ALLOCATOR
+      -- (`$1BA1`) but left its own tail ("$1BD5 onward... NOT fully
+      -- closed this pass") as an explicit open item. Finished it live
+      -- this pass (mGBA, real ROM, single-step trace synchronized to a
+      -- real, live-observed VRAM-allocation burst during the willy-
+      -- exchange dialogue): the real formula is
+      --   fileOffset = bank*0x4000 + ((rawGfxByte*16 + $D390:$D391) - 0x4000)
+      -- with `bank` a LITERAL CODE CONSTANT (`0x0C`=12, or `0x0B`=11 if
+      -- the computed address overflows into bit7 of H -- a real,
+      -- disassembled address-range fixup, `$1BF5`-`$1C15`), switched in
+      -- via the real MBC bank-select register (`LD (0x2100),A`, found by
+      -- finishing the trace into the real QUEUE-DRAIN routine, `$2D57`-
+      -- `$2DF4`, itself run under a real per-frame LY-scanline time
+      -- budget -- `$1BA1`'s own tail only ENQUEUES via `$2DF5`, it
+      -- doesn't copy immediately). **Exact-matched against known-good
+      -- ground truth**: willyRoom's own real, live-confirmed
+      -- `$D390:$D391=0x6000`, raw byte `0x1b` (from this project's own
+      -- already-documented "1b 1c 1d 1e -> 97 98 99 9a" example) ->
+      -- `12*0x4000 + ((0x1b*16+0x6000)-0x4000) = 0x321b0` -- BYTE-FOR-
+      -- BYTE identical to willyRoom's own already-independently-
+      -- verified `tileOffsets[0x97]=0x32200`... 0x321b0 (this project's
+      -- own real value, not approximated).
+      --
+      -- Applying this SAME real formula to `roomSelector 0`/`1`'s own
+      -- real `$D390:$D391` (`=0x4000`, live-read from `roomSelector
+      -- Table`'s own bytes 0-1 -- see that table's own doc comment)
+      -- gives `0x30000`, NOT `0x32000` -- the OLD value here was
+      -- reusing willyRoom's OWN real pixel-pool base (roomSelector
+      -- 2-6's family, `$D390:$D391=0x6000`) for the 384-room catalog's
+      -- own DEFAULT, a real, previously-undetected MISMATCH: the
+      -- catalog's `genericCatalogMetatileTableFileOffset` (the
+      -- METATILE-DEFINITION table) was always correctly roomSelector-
+      -- 0/1-based, but the RAW PIXEL POOL it was combined with was
+      -- roomSelector-2-6's -- two different real ROM "maps" mixed
+      -- together, matching neither's own true `MAP_HEADER` pairing
+      -- (the external FFA-Disassembly project's own documented format
+      -- has exactly TWO per-map pointers, `tilesetGfxOutdoor` +
+      -- `metatilesOutdoor` -- this project already had a correct value
+      -- for one and the WRONG one for the other).
+      --
+      -- Empirically re-rendered every already-spot-checked sanity
+      -- record (0/128/200/240/255) plus the disputed `seventhRoom`/
+      -- `eighthRoom`/`ninthRoom` records (220/236/237) with the
+      -- corrected `0x30000` base: EVERY one changed from a generic,
+      -- oddly-repetitive "bookshelf/chain-link dungeon" look (an
+      -- artifact of reusing willyRoom's own real but WRONG-family art)
+      -- to a coherent, clearly-distinct, clearly-INTENTIONAL scene --
+      -- record 0 is a real wooden gate + grass + bushes + mountains
+      -- (an outdoor town/wilderness entrance, not a dungeon corridor at
+      -- all), 220/236/237 show real trees/grass/water/roads. A
+      -- dramatically more convincing result than any of the alternate
+      -- pointers tried in the earlier (now-superseded) investigation
+      -- pass. See events.md's own dated entry for the full trace and
+      -- screenshots-equivalent renders.
+      --
+      -- HONEST SCOPE: this closes the SPECIFIC "which tileset" question
+      -- for the roomSelector-0/1 family (bank 5/6/7's own shared
+      -- default). `unknownRoomACandidates`'s own `tilesetFileOffset`
+      -- (roomSelector 8-13 family, real `$D390:$D391=0x7000` per the
+      -- SAME formula would predict `0x33000`) was ALSO re-tested this
+      -- pass -- inconclusive (both `0x32000` and `0x33000` render
+      -- equally plausible, structurally-identical dungeon art, no
+      -- decisive signal either way) -- left UNCHANGED, flagged as a
+      -- newly-opened, separate question rather than force-changed on
+      -- weak evidence. Still no live gameplay reaches any of these 384
+      -- catalog rooms -- this is a real, code-derived, exact-match-
+      -- verified formula, not a live-gameplay confirmation the way
+      -- willyRoom's own tiles are.
+      tilesetFileOffset = 0x30000,
     },
 
     -- A SECOND, real, independently-found map/room-block pointer table
@@ -4087,7 +4157,14 @@ RomProfiles.PROFILES = {
       -- render coherently against it, real cross-confirmation this is
       -- the right base for the whole shared bank-8 metatile pool's
       -- own GFX-tile bytes, not a coincidence specific to one table.
-      tilesetFileOffset = 0x32000,
+      --
+      -- CORRECTED (2026-08-17): same fix, same reasoning as `mapTable`'s
+      -- own dated correction above (the real, code-derived, exact-
+      -- match-verified `bank*0x4000 + ((rawByte*16+$D390:$D391)-0x4000)`
+      -- formula) -- roomSelector 1 (bank6's own "map") shares roomSelector
+      -- 0's real `$D390:$D391=0x4000`, so the same corrected `0x30000`
+      -- applies here too, not a separately-derived value.
+      tilesetFileOffset = 0x30000,
     },
 
     -- A THIRD real map/room-block table -- bank 7, the OTHER real
@@ -4168,7 +4245,14 @@ RomProfiles.PROFILES = {
       pointerTableFileOffset = 0x1C01E,
       recordCount = 64,
       -- Shares the SAME real tileset as bank 5/6's own tables.
-      tilesetFileOffset = 0x32000,
+      --
+      -- CORRECTED (2026-08-17): same fix as `mapTable`/`mapTableBank6`
+      -- above -- kept consistent with them (this table was always
+      -- assumed to share their exact tileset, never independently
+      -- derived on its own terms), even though which real roomSelector
+      -- family bank 7 itself corresponds to is honestly less
+      -- established than bank 5/6's own roomSelector-0/1 identification.
+      tilesetFileOffset = 0x30000,
     },
 
     -- The REAL room-connectivity table -- see docs/reverse-engineering/
@@ -4545,6 +4629,21 @@ RomProfiles.PROFILES = {
         bank5PointerTableFileOffset = 0x14004, -- already-VERIFIED mapTable.pointerTableFileOffset
         bank5BankFileStart = 0x14000,          -- already-VERIFIED mapTable.bankFileStart
         rleLength = 3,                          -- bank 5's own established header rleLength (MapTable.lua)
+        -- NOT RE-DERIVED, NEWLY FLAGGED (2026-08-17): this value was
+        -- always a direct reuse of `mapTable`'s own project-wide
+        -- constant, never independently confirmed for THIS specific
+        -- room family (roomSelector 8-13) on its own terms -- the
+        -- "VERIFIED... coherent dungeon art" status above only ever
+        -- meant "not noise," the same weaker standard `mapTable`'s own
+        -- now-corrected value used to rely on. Now that the real,
+        -- code-derived formula is known (see `mapTable`'s own dated
+        -- correction above), roomSelector 8-13's real `$D390:$D391`
+        -- (`=0x7000`) predicts `0x33000`, not `0x32000` -- tried both
+        -- this pass, genuinely inconclusive (both render equally
+        -- plausible, structurally-identical dungeon art, no decisive
+        -- signal the way bank 5/6/7's own correction had). Left
+        -- UNCHANGED rather than force-picking one guess over another;
+        -- a real, honest, newly-opened question, not silently ignored.
         tilesetFileOffset = 0x32000,             -- MapTable.lua's own already-VERIFIED formula; tileId*16 bytes/tile
         metatileGridRows = 8,
         metatileGridCols = 10,

@@ -19,8 +19,6 @@ const ROOMS = [
     ],
     "heightTiles": 16,
     "name": "eighthRoom",
-    "tilesetDisputed": true,
-    "tilesetDisputedNote": "Direkter Nutzerbericht (2026-08-17, echtes ROM-Wissen): das Tileset dieses Raums ist falsch. Gruendlich nachgeprueft, nicht geloest -- siehe seventhRoom's eigenen Hinweis und events.md 2026-08-17.",
     "widthTiles": 20
   },
   {
@@ -69,14 +67,6 @@ const ROOMS = [
     "widthTiles": 20
   },
   {
-    "exits": [],
-    "heightTiles": 16,
-    "name": "ninthRoom",
-    "tilesetDisputed": true,
-    "tilesetDisputedNote": "Direkter Nutzerbericht (2026-08-17, echtes ROM-Wissen): das Tileset dieses Raums ist falsch. Gruendlich nachgeprueft, nicht geloest. Fuer DIESEN Raum: der willyRoom-Pointer ($46B0) ergab von allen getesteten Kandidaten das architektonisch reichste Bild (Tuer, Fackel, Buecherregal-Wand) -- ein Hinweis, kein Beweis. Siehe seventhRoom's eigenen Hinweis und events.md 2026-08-17.",
-    "widthTiles": 20
-  },
-  {
     "exits": [
       {
         "axis": "x",
@@ -116,8 +106,6 @@ const ROOMS = [
     ],
     "heightTiles": 16,
     "name": "seventhRoom",
-    "tilesetDisputed": true,
-    "tilesetDisputedNote": "Direkter Nutzerbericht (2026-08-17, echtes ROM-Wissen): das Tileset dieses Raums ist falsch. Gruendlich nachgeprueft (externe FFA-Disassembly-Doku, Bank-5-Struktur, alle bekannten alternativen Tileset-Pointer getestet) -- kein verstecktes Feld gefunden, keine Bank-5-interne Kartengrenze gefunden. Ein Hinweis, nicht bewiesen: der willyRoom-Pointer ($46B0) ergibt ein deutlich reicheres Bild als der aktuelle Standard. Nicht umgestellt -- kein Beweis. Siehe events.md 2026-08-17.",
     "widthTiles": 20
   },
   {

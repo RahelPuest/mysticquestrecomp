@@ -446,6 +446,35 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       files had baked-in assumptions from the buggy data — fixed, one
       retired outright as circular. Full suite 560/560 green. See
       `events.md`'s own dated follow-up entry for the full trace.
+      **REAL VRAM TILE-COPY PIPELINE FOUND AND CLOSED, 2026-08-17,
+      same day** (direct user report "raum 7 8 und 9 haben die
+      falschen tilesets", then "bleib dran" after a first pass came up
+      short): closed a previously-explicit open item
+      (`rom-map.md`'s own 2026-08-11 "$D070's real populator" section
+      had disassembled the VRAM-slot allocator but left its own tail
+      unfinished) by live single-step tracing the real allocation
+      burst, then fully disassembling the whole chain (`$01AF3`->
+      `$1B74`->`$1B19`/`$1B2B`->`$1BA1`->`$2DF5`->`$2D57`) down to the
+      real MBC bank-select write (`LD (0x2100),A`, bank 12/11) and the
+      real per-frame LY-budgeted VRAM-write queue-drain routine. Exact-
+      matched the resulting formula against willyRoom's own known-good
+      pixel (`0x321b0`, byte-for-byte). Applying it to the 384-room
+      catalog's own real family found a genuine, previously-
+      undiagnosed bug: the catalog's own `tilesetFileOffset` (`0x32000`)
+      was actually willyRoom's own real pixel-pool base, mismatched
+      against the catalog's own correct metatile-table base -- two
+      different real ROM "maps"' own halves mixed together. Corrected
+      to the real `0x30000` (all 384 catalog rooms, not just the 3
+      disputed ones) -- re-rendered every sanity-check + disputed
+      record, dramatic improvement across the board (generic reused
+      dungeon corridors -> real, distinct outdoor scenes: a wooden
+      gate, trees, a lake, a road). `seventhRoom`/`eighthRoom`/
+      `ninthRoom`'s own dispute is RESOLVED, not just flagged, this
+      time. `unknownRoomACandidates`'s own tileset base was also
+      re-tested but genuinely inconclusive -- left unchanged, honestly
+      flagged as a separate open question. 2 new regression tests lock
+      the formula down; full suite 562/562 green. See `events.md`'s
+      own dated entry for the complete disassembly/trace.
       **What this changes**: Milestone 3's real DoD (a general,
       ROM-driven way to load ANY room) now has a concrete, verified,
       SHIPPED mechanism behind it for willyRoom — but still not fully
@@ -1337,9 +1366,21 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       direct user claim that `fifthRoom` is real ROM-wise the SAME room
       as willyRoom/secondRoom/thirdRoom (byte-identical `$D392`/
       `$D393`/`$C3F0`/`$C3F5`), now surfaced on the graph as a violet-
-      bordered node with a real cross-reference badge/tooltip. All 5
-      re-exported/re-verified live via Playwright screenshots against a
-      real loaded ROM; 562/562 Lua tests unaffected throughout.
+      bordered node with a real cross-reference badge/tooltip. (6) Same
+      for `sixthRoom`=`startRoom`/`fourthRoom` — this one also caught
+      and fixed a real capture bug (raw VRAM read never SCX-corrected)
+      and a stale, wrong `romRoomSelectors` claim. (7) Investigated
+      then FULLY RESOLVED (not just flagged) a direct user report that
+      `seventhRoom`/`eighthRoom`/`ninthRoom`'s own tileset was wrong —
+      found and closed a previously-open item in `rom-map.md` (the
+      real VRAM tile-copy pipeline, `$01AF3`->...->`$2D57`, exact-
+      matched against willyRoom's own known pixel), which turned up a
+      genuine bug affecting the ENTIRE 384-room catalog's own tileset
+      base, not just the 3 reported rooms — corrected, re-rendered
+      (generic reused dungeon corridors -> real, distinct outdoor
+      scenes), 2 new regression tests added. All 7 re-exported/re-
+      verified live via Playwright screenshots against a real loaded
+      ROM; 562/562 Lua tests green throughout.
 
 - [~] **"Voll interpretierte Version" (task list, 2026-08-15).**
       5-item priority list toward a real dialogue swap-over for the

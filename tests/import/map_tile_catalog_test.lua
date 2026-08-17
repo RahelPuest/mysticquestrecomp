@@ -94,17 +94,33 @@ Harness.testIfAvailable(
     -- REAL, corrected chain (records 236/237) introduces genuinely new
     -- real tile addresses: 15->17 rooms, 256->266 distinct entries,
     -- bank 12 143->153.
+    -- CORRECTED AGAIN (2026-08-17, real capture-bug fix, direct user
+    -- report "raum 7 8 und 9 haben die falschen tilesets" then "bleib
+    -- dran" -- see rom_profiles.lua's own `mapTable.tilesetFileOffset`
+    -- dated correction for the full disassembly/formula trace):
+    -- seventhRoom/eighthRoom/ninthRoom's own `tileOffsets` moved from
+    -- the wrong `0x32xxx` base (willyRoom's own real pixel pool,
+    -- accidentally reused) to the correct `0x30xxx` base (their own
+    -- real family's pool) -- 266->303 distinct entries. This is an
+    -- INCREASE, not a decrease: the old, wrong `0x32xxx` values
+    -- happened to coincidentally OVERLAP with willyRoom's own already-
+    -- catalogued tiles (both used the same wrong pool), so many
+    -- entries were being silently de-duplicated; the corrected,
+    -- distinct `0x30xxx` pool no longer overlaps, so the true count of
+    -- genuinely separate real tiles is now visible. roomCount (17)
+    -- and bank 8/11 counts are unaffected (only bank 12's own count
+    -- moved, matching where both the old and new pools both live).
     Harness.assertEqual(catalog.roomCount, 17)
-    Harness.assertEqual(#catalog.entries, 266)
+    Harness.assertEqual(#catalog.entries, 303)
 
     -- Real map/environment tiles live in exactly 3 banks (8, 11, 12) --
     -- NOT just bank 12, the honest finding this whole module exists to
     -- surface (see this module's own doc comment for the full story).
-    -- seventhRoom's own tiles are all bank 12 (file 0x32xxx) -- only
-    -- that bank's count moved.
+    -- seventhRoom's own tiles are all bank 12 (file 0x30xxx, corrected
+    -- 2026-08-17) -- only that bank's count moved.
     Harness.assertEqual(catalog.byBank[8], 28)
     Harness.assertEqual(catalog.byBank[11], 85)
-    Harness.assertEqual(catalog.byBank[12], 153)
+    Harness.assertEqual(catalog.byBank[12], 190)
 
     -- Every entry's own fileOffset must be inside the real ROM and
     -- tile-aligned (16-byte stride) -- same non-fabrication check every

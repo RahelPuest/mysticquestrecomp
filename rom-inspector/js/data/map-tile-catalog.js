@@ -3,7 +3,7 @@
 const MAP_TILE_CATALOG = {
   "byBank": {
     "11": 85,
-    "12": 153,
+    "12": 190,
     "8": 28
   },
   "entries": [
@@ -831,9 +831,177 @@ const MAP_TILE_CATALOG = {
     },
     {
       "bank": 12,
+      "fileOffset": 196800,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196816,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196832,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196848,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196864,
+      "rooms": [
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196880,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196896,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196912,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196928,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196944,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196960,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196976,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 196992,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197008,
+      "rooms": [
+        "eighthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197024,
+      "rooms": [
+        "eighthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197040,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197056,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197152,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197168,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197184,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197200,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197328,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
       "fileOffset": 197344,
       "rooms": [
+        "eighthRoom",
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -842,7 +1010,9 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 197360,
       "rooms": [
+        "eighthRoom",
         "fourthRoom",
+        "seventhRoom",
         "sixthRoom",
         "startRoom"
       ]
@@ -867,9 +1037,299 @@ const MAP_TILE_CATALOG = {
     },
     {
       "bank": 12,
+      "fileOffset": 197472,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197488,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197504,
+      "rooms": [
+        "eighthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197520,
+      "rooms": [
+        "eighthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197600,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197616,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197632,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197664,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197680,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197696,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197712,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197728,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197744,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197760,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197776,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197792,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197808,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197840,
+      "rooms": [
+        "eighthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197856,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197872,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197888,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197904,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197920,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197936,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 197952,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198496,
+      "rooms": [
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198528,
+      "rooms": [
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198544,
+      "rooms": [
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198560,
+      "rooms": [
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198576,
+      "rooms": [
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
       "fileOffset": 198640,
       "rooms": [
-        "fourthRoom"
+        "fourthRoom",
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198720,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198736,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198752,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 198768,
+      "rooms": [
+        "ninthRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 199008,
+      "rooms": [
+        "eighthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 199024,
+      "rooms": [
+        "eighthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 199040,
+      "rooms": [
+        "eighthRoom",
+        "seventhRoom"
+      ]
+    },
+    {
+      "bank": 12,
+      "fileOffset": 199056,
+      "rooms": [
+        "eighthRoom",
+        "seventhRoom"
       ]
     },
     {
@@ -1118,57 +1578,8 @@ const MAP_TILE_CATALOG = {
     },
     {
       "bank": 12,
-      "fileOffset": 204992,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205008,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205024,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205040,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205056,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205072,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
       "fileOffset": 205088,
       "rooms": [
-        "eighthRoom",
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
@@ -1181,8 +1592,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205104,
       "rooms": [
-        "eighthRoom",
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
@@ -1195,8 +1604,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205120,
       "rooms": [
-        "eighthRoom",
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
@@ -1209,8 +1616,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205136,
       "rooms": [
-        "eighthRoom",
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
@@ -1223,7 +1628,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205152,
       "rooms": [
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
@@ -1236,7 +1640,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205168,
       "rooms": [
-        "ninthRoom",
         "thirdRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1250,7 +1653,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205184,
       "rooms": [
-        "ninthRoom",
         "thirdRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1264,7 +1666,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205200,
       "rooms": [
-        "eighthRoom",
         "thirdRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1278,7 +1679,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205216,
       "rooms": [
-        "eighthRoom",
         "thirdRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1293,7 +1693,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205232,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1310,7 +1709,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205248,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1385,7 +1783,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205344,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "willyRoom"
@@ -1396,7 +1793,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205360,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1413,7 +1809,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205376,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1429,11 +1824,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205392,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1539,25 +1931,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205520,
       "rooms": [
-        "eighthRoom",
-        "ninthRoom",
         "secondRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205536,
-      "rooms": [
-        "eighthRoom",
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205552,
-      "rooms": [
-        "eighthRoom",
-        "seventhRoom"
       ]
     },
     {
@@ -1654,11 +2028,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205664,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "willyRoom"
       ]
@@ -1667,11 +2038,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205680,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "willyRoom"
       ]
@@ -1680,7 +2048,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205696,
       "rooms": [
-        "eighthRoom",
         "secondRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1694,7 +2061,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205712,
       "rooms": [
-        "eighthRoom",
         "secondRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1746,28 +2112,9 @@ const MAP_TILE_CATALOG = {
     },
     {
       "bank": 12,
-      "fileOffset": 205792,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom",
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 205808,
-      "rooms": [
-        "eighthRoom",
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
       "fileOffset": 205824,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1793,11 +2140,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205856,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -1812,11 +2156,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205872,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "willyRoom"
       ]
@@ -1825,11 +2166,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205888,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "willyRoom"
       ]
@@ -1838,11 +2176,8 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205904,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
-        "seventhRoom",
         "thirdRoom",
         "willyRoom"
       ]
@@ -1852,7 +2187,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205920,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "willyRoom"
@@ -1863,7 +2197,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205936,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "willyRoom"
@@ -1874,7 +2207,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205952,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1891,7 +2223,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 205968,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1907,9 +2238,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 205984,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1925,9 +2254,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 206000,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1953,9 +2280,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 206032,
       "rooms": [
-        "eighthRoom",
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "unknownRoomA_10",
@@ -1972,7 +2297,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 206048,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "willyRoom"
@@ -1983,7 +2307,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 206064,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "thirdRoom",
         "willyRoom"
@@ -1994,7 +2317,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 206080,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -2010,7 +2332,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 206096,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
@@ -2026,7 +2347,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 206112,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "willyRoom"
       ]
@@ -2036,7 +2356,6 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 206128,
       "rooms": [
         "fifthRoom",
-        "ninthRoom",
         "secondRoom",
         "willyRoom"
       ]
@@ -2045,7 +2364,6 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 206144,
       "rooms": [
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
@@ -2284,41 +2602,6 @@ const MAP_TILE_CATALOG = {
     },
     {
       "bank": 12,
-      "fileOffset": 206688,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206720,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206736,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206752,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206768,
-      "rooms": [
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
       "fileOffset": 206784,
       "rooms": [
         "unknownRoomA_10",
@@ -2357,73 +2640,12 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 206832,
       "rooms": [
-        "ninthRoom",
         "unknownRoomA_10",
         "unknownRoomA_11",
         "unknownRoomA_12",
         "unknownRoomA_13",
         "unknownRoomA_8",
         "unknownRoomA_9"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206912,
-      "rooms": [
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206928,
-      "rooms": [
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206944,
-      "rooms": [
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 206960,
-      "rooms": [
-        "ninthRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 207200,
-      "rooms": [
-        "eighthRoom",
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 207216,
-      "rooms": [
-        "eighthRoom",
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 207232,
-      "rooms": [
-        "eighthRoom",
-        "seventhRoom"
-      ]
-    },
-    {
-      "bank": 12,
-      "fileOffset": 207248,
-      "rooms": [
-        "eighthRoom",
-        "seventhRoom"
       ]
     },
     {
