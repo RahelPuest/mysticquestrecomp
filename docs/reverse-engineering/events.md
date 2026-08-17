@@ -11151,3 +11151,32 @@ cols=4 rendering whenever at least one chunk was reconstructed.
 575/575 Lua tests pass, Playwright-verified live (14 monster/boss cards
 with a reconstructed-pose badge on the Grafiken page's Monster tab
 alone, zero console errors).
+
+## Fully-reconstructed monsters get species 4's own UI treatment -- direct instruction "wenn die posen rekonstruiert sind dann bitte auch so einbauen wie bei spezies 4" (2026-08-17, same day)
+
+Direct, terse follow-up: the just-shipped reconstruction was still
+displayed as one tall concatenated strip (all poses stacked
+vertically) -- species 4's own card, by contrast, shows ONE 4x4 canvas
+with switchable "Pose A"/"Pose B" tabs. The user asked for the same
+presentation wherever the reconstruction is actually complete.
+
+**Shipped**: `export_data.lua` now also builds `spritePoses` (an array
+of real 16-tile/4x4 pose objects, one per real animation-phase chunk)
+for every boss whose `chunksReordered === chunksTotal > 0` -- the 7
+fully-reconstructed records (2, 3, 5, 7, 12, 16, 19). Left `nil` for
+anything only partially reconstructed (would imply a per-pose
+confidence this project doesn't have for the un-reconstructed chunks).
+`monsters.js`'s boss cards now render EXACTLY species 4's own UI
+pattern for these 7: one 4x4 canvas + a `Pose 1`/`Pose 2`/.../`Pose N`
+pill-tab switcher, defaulting to Pose 1. Species 4 itself ("Jackal",
+index 16) now gets this same treatment on ITS OWN boss card too (2
+tabs, Pose 1 = `enemySprite`, Pose 2 = `enemyDescent`) instead of the
+old flat 32-tile strip -- consistent, not just parallel, with the
+original card at the top of the page.
+
+Live-verified via Playwright: Garuda's card shows 3 real, distinct,
+individually coherent poses switchable via tabs -- Pose 1 a full bird
+silhouette (wings spread), Pose 2/3 closer creature-head poses -- all
+on one clean 4x4 canvas, exactly matching species 4's own established
+UX. 575/575 Lua tests pass (no Lua-level change this pass, pure
+export/website wiring), zero console errors.

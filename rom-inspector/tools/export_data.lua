@@ -946,6 +946,26 @@ do
         spriteOffsets, spriteBank, chunksReordered, chunksTotal =
           MonsterDefinitionTable.resolveSpriteTileOffsets(romData, monsterRecord)
       end
+      -- REAL POSE-BY-POSE PRESENTATION, same day, direct follow-up
+      -- ("wenn die posen rekonstruiert sind dann bitte auch so
+      -- einbauen wie bei spezies 4"): species 4's own website card
+      -- shows ONE 4x4 canvas with switchable "Pose A"/"Pose B" tabs,
+      -- not a tall concatenated strip. `spritePoses` gives the SAME
+      -- shape for every OTHER boss whose real chunks are ALL
+      -- confidently reconstructed (chunksReordered==chunksTotal>0) --
+      -- one real 4x4 pose per array entry, in real chunk order. Left
+      -- nil (falls back to the flat strip view) for anything only
+      -- partially or not at all reconstructed -- showing tabs would
+      -- imply a confidence this project doesn't have for those chunks.
+      local spritePoses = nil
+      if spriteOffsets and chunksReordered == chunksTotal and chunksTotal > 0 then
+        spritePoses = {}
+        for c = 0, chunksTotal - 1 do
+          local pose = {}
+          for k = 1, 16 do pose[k] = spriteOffsets[c * 16 + k] end
+          spritePoses[c + 1] = pose
+        end
+      end
       bosses[i] = {
         index = i - 1,
         name = names[i],
@@ -962,6 +982,7 @@ do
         spriteArrangementConfirmed = (i - 1 == 16), -- the one row this project independently live-verified (see MonsterDefinitionTable.LIVE_CONFIRMED)
         spriteChunksReordered = chunksReordered or 0,
         spriteChunksTotal = chunksTotal or 0,
+        spritePoses = spritePoses,
       }
     end
   end

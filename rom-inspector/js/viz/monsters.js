@@ -133,6 +133,16 @@ function render_monsters(main) {
       const anyReordered = b.spriteChunksReordered > 0;
       const cols = hasSprite ? (anyReordered ? 4 : 8) : 4;
       const rows = hasSprite ? Math.ceil(b.spriteTileOffsets.length / cols) : 4;
+      // 2026-08-17, same day, direct follow-up "wenn die posen
+      // rekonstruiert sind dann bitte auch so einbauen wie bei spezies
+      // 4": when EVERY real chunk is confidently reconstructed
+      // (`spritePoses`, see export_data.lua's own doc comment), show
+      // the SAME UI species 4's own card already uses -- one 4x4
+      // canvas + switchable "Pose N" tabs -- instead of one tall
+      // concatenated strip. Species 4 itself (Jackal, index 16) also
+      // gets this treatment here now, for the same real reason its own
+      // top card already has it: readability, one real pose at a time.
+      const hasPoseTabs = !!b.spritePoses;
       let spriteBadge = "";
       if (hasSprite) {
         if (b.spriteArrangementConfirmed) {
@@ -160,18 +170,40 @@ function render_monsters(main) {
           <tr><th>defeatBehaviorId</th><td class="num">${hex(b.defeatBehaviorId, 4)}</td><td class="desc">unbestätigt</td></tr>
         </table>
         ${hasSprite ? `<canvas id="bossSprite${b.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="Echtes Sprite von ${escapeHtml(b.name || ("Boss " + b.index))}, Bank ${b.spriteBank}, ${b.spriteTileOffsets.length} Kacheln, direkt aus der geladenen ROM gerendert (${b.spriteChunksReordered}/${b.spriteChunksTotal} echte Posen rekonstruiert)"></canvas>` : ""}
+        ${hasPoseTabs ? `
+        <div class="toolbar" style="margin-top:8px;">
+          <div class="pill-tabs" id="bossPoseTabs${b.index}">
+            ${b.spritePoses.map((_, p) => `<div class="pill-tab ${p === 0 ? "active" : ""}" data-pose="${p}">Pose ${p + 1}</div>`).join("")}
+          </div>
+        </div>` : ""}
         <div class="meta" style="margin-top:8px;">
           raw: ${b.rawBytes.map(x => hex(x, 2)).join(" ")}
         </div>
       `;
       bossHost.appendChild(card);
       if (hasSprite) {
+        const canvas = document.getElementById(`bossSprite${b.index}`);
+        const state = { pose: 0 };
         const draw = () => {
-          const canvas = document.getElementById(`bossSprite${b.index}`);
-          if (canvas) drawSpriteGrid(canvas, b.spriteTileOffsets, cols, rows, 3, false);
+          if (!canvas) return;
+          if (hasPoseTabs) {
+            drawSpriteGrid(canvas, b.spritePoses[state.pose], 4, 4, 4, false);
+          } else {
+            drawSpriteGrid(canvas, b.spriteTileOffsets, cols, rows, 3, false);
+          }
         };
         bossSpriteDraws.push(draw);
         draw();
+        if (hasPoseTabs) {
+          document.querySelectorAll(`#bossPoseTabs${b.index} .pill-tab`).forEach(tab => {
+            tab.addEventListener("click", () => {
+              document.querySelectorAll(`#bossPoseTabs${b.index} .pill-tab`).forEach(t => t.classList.remove("active"));
+              tab.classList.add("active");
+              state.pose = parseInt(tab.dataset.pose, 10);
+              draw();
+            });
+          });
+        }
       }
     }
   }

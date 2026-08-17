@@ -2430,6 +2430,19 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   false blanket claim. Strengthened the row-16 regression test to
   strict ordered equality. 575/575 Lua tests pass, Playwright-verified
   live.
+- **2026-08-17, same day, direct instruction "wenn die posen
+  rekonstruiert sind dann bitte auch so einbauen wie bei spezies 4":
+  fully-reconstructed monsters get species 4's own UI**: the 7 fully-
+  reconstructed bosses (rows 2/3/5/7/12/16/19) were still shown as one
+  tall concatenated strip -- species 4's own card shows one 4x4 canvas
+  with switchable pose tabs instead. `export_data.lua` now builds
+  `spritePoses` (one real 4x4 pose per array entry) only when EVERY
+  chunk is confidently reconstructed; `monsters.js` renders the exact
+  same "Pose 1"/"Pose 2"/... tab UI species 4's own card already used
+  -- and species 4 itself (Jackal) now gets this treatment on its own
+  boss card too, for consistency. Live-verified: Garuda's card switches
+  between 3 real, individually coherent poses (a full bird silhouette,
+  two creature-head poses) on one clean canvas. 575/575 tests pass.
 - **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
   full "elevate this product" brief, scoped to the website (confirmed
   via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,
