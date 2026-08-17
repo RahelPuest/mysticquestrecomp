@@ -905,60 +905,55 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_34 = 0x1374 -- group 0x1E
 -- targets a different real leaf routine with a different real effect).
 ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CB = 0x392C
 
--- `0x84` ($15E3): byte-identical shape to `0x85` above (`CALL $1588 /
--- RET NZ / LD A,0x04 / LD C,0xFF / CALL $2879 / RET`) -- same real
--- `$1588` gate (WRAM `$C240` bit 7), fixed group `0x04` instead of
--- `0x85`'s own `0x08`.
+-- 0x84 ($15E3): byte-identical shape to 0x85 above (CALL $1588 / RET
+-- NZ / LD A,0x04 / LD C,0xFF / CALL $2879 / RET) -- same $1588 gate
+-- (WRAM $C240 bit 7), fixed group 0x04 instead of 0x85's own 0x08.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_84 = 0x15E3 -- group 0x04, $1588 gate
 
--- `0xA0` ($0194): `PUSH HL / CALL $019D / POP HL / CALL $3727 / RET`
--- -- no operand bytes, a real, undecoded fixed helper call, always
--- continues (no conditional branch). Reuses `triggerEvent` directly.
+-- 0xA0 ($0194): PUSH HL / CALL $019D / POP HL / CALL $3727 / RET -- no
+-- operand bytes, an undecoded fixed helper call, always continues (no
+-- conditional branch). Reuses triggerEvent directly.
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_A0 = 0x0194
 
--- Two more real, structurally-traced, honestly NOT wired opcodes found
--- this round:
--- `0x90` ($1606): `CALL $28C2 / JR NZ,+0x54 / ...` -- unlike every
--- other Family-A member, this one branches DIRECTLY on `$28C2`'s own
--- result (a real conditional halt or alternate path, not just an
--- action-code adjustment) -- a genuinely different real shape, not
--- assumed to match the rest of the family.
--- `0xBA` ($0EB2): touches WRAM `$D499` -- the SAME already-flagged
--- palette/fade-counter family behind `0xFC`/`0xFD`/`0xBA`-adjacent
--- opcodes -- not re-investigated separately.
+-- Two more structurally-traced, honestly not wired opcodes found this
+-- round:
+-- 0x90 ($1606): CALL $28C2 / JR NZ,+0x54 / ... -- unlike every other
+-- Family-A member, this one branches directly on $28C2's result (a
+-- conditional halt or alternate path, not just an action-code
+-- adjustment) -- a genuinely different shape, not assumed to match
+-- the rest of the family.
+-- 0xBA ($0EB2): touches WRAM $D499 -- the same already-flagged
+-- palette/fade-counter family behind 0xFC/0xFD/0xBA-adjacent opcodes
+-- -- not re-investigated separately.
 --
--- UPDATE 2026-08-14 (whole-corpus scan, "sukzessive alle Blocker" --
--- this project's own later, DEEPER re-investigation): the note above
--- was itself imprecise -- `0xBA`'s real `$D499` usage is UNRELATED to
--- the `0xBC`/`0xBD`/`0xBE` palette-fade family (different real WRAM
--- role entirely). Full re-trace: `$0EB2` is a real `$D499`-driven
--- 2-step mini state machine (step-table base `$0ECA`, the SAME
--- `$2B70`-multiply-and-jump shape as `$4130`/`$4180`): step0 (`$0ECE`)
--- allocates a real entity slot via the already-known `$0A74`
--- primitive (slot hint `C=7`), stores it in `$D49A`, calls `$2F03`,
--- advances to step1; step1 (`$0EEF`) calls `$2ED3` (`RET NZ` = real
+-- UPDATE (whole-corpus scan, a deeper re-investigation): the note
+-- above was itself imprecise -- 0xBA's $D499 usage is unrelated to the
+-- 0xBC/0xBD/0xBE palette-fade family (different WRAM role entirely).
+-- Full re-trace: $0EB2 is a $D499-driven 2-step mini state machine
+-- (step-table base $0ECA, the same $2B70-multiply-and-jump shape as
+-- $4130/$4180): step0 ($0ECE) allocates an entity slot via the
+-- already-known $0A74 primitive (slot hint C=7), stores it in $D49A,
+-- calls $2F03, advances to step1; step1 ($0EEF) calls $2ED3 (RET NZ =
 -- halt if not ready), else despawns the allocated slot via the
--- already-known `$0AE3` primitive and resets. Both `$2F03` and
--- `$2ED3` were traced FURTHER this pass: both resolve to real CASES
--- of the already-mapped `$1ED7` bank-1 dispatcher (see rom-map.md's
--- "Consolidated reference" section) -- `$2F03` = case `0x26` (the
--- already-understood `$CEF0` sound-trigger-queue PRODUCER, `$5C9F`);
--- `$2ED3` = case `0x1D`, a FURTHER real `$CEF0`-queue scan with a
--- PER-VALUE jump-table dispatch (`CALL $2B70` into a table at
--- `$52CD`) whose own individual targets remain untraced. **Final
--- determination**: genuinely known-hard, NOT because the mechanism is
--- opaque (it is real, traced, decodable ROM code, unlike the `$02AB`/
--- `$1142` families) but because fully resolving "ready" requires
--- tracing the `$52CD` sub-table's own targets AND simulating a real
+-- already-known $0AE3 primitive and resets. Both $2F03 and $2ED3 were
+-- traced further this pass: both resolve to cases of the already-
+-- mapped $1ED7 bank-1 dispatcher (see rom-map.md's "Consolidated
+-- reference" section) -- $2F03 = case 0x26 (the already-understood
+-- $CEF0 sound-trigger-queue producer, $5C9F); $2ED3 = case 0x1D, a
+-- further $CEF0-queue scan with a per-value jump-table dispatch (CALL
+-- $2B70 into a table at $52CD) whose individual targets remain
+-- untraced. Final determination: genuinely known-hard, not because
+-- the mechanism is opaque (it's traced, decodable ROM code, unlike
+-- the $02AB/$1142 families) but because fully resolving "ready"
+-- requires tracing the $52CD sub-table's targets and simulating an
 -- entity/OAM lifecycle this project has no live model for. Left
--- deliberately unwired; a real, bounded, reusable further thread
--- (trace `$52CD`'s own targets) for whoever picks this back up, not
--- an exhausted dead end.
+-- deliberately unwired; a bounded, reusable next thread (trace
+-- $52CD's targets) for whoever picks this back up.
 
--- Round 6 (2026-08-12, same "mach erstmal 2" pass, a 5th re-scan):
--- 3 MORE real Family-A/B opcodes and 1 more real always-continuing
--- shape reusing `soundParam`. Script counts now consistently 10-14 --
--- confirms the diminishing-returns assessment below.
+-- Round 6 (same "do 2 first" pass, a 5th re-scan): 3 more Family-A/B
+-- opcodes and 1 more always-continuing shape reusing soundParam.
+-- Script counts now consistently 10-14 -- confirms the diminishing-
+-- returns assessment below.
 --   0x28 ($1318): Family B, base 0x01
 --   0x46 ($13D0): Family A, base 0x03, group 0x1C
 --   0x58 ($1474): Family B, base 0x04
