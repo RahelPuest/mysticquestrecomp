@@ -591,94 +591,88 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_17 = 0x1280 -- group 0x1D
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_56 = 0x1444 -- group 0x1C
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_65 = 0x14DC -- group 0x1F
 
--- `0xE1` ($0FBF): byte-identical shape to `0xE5` above (`PUSH HL / LD
--- A,0x04 / CALL $22FE / POP HL / CALL $3727 / RET`) -- same real
--- helper (`$22FE`), different fixed constant (`A=4` vs `0xE5`'s `A=1`).
+-- 0xE1 ($0FBF): byte-identical shape to 0xE5 above (PUSH HL / LD
+-- A,0x04 / CALL $22FE / POP HL / CALL $3727 / RET) -- same helper
+-- ($22FE), different fixed constant (A=4 vs 0xE5's A=1).
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E1 = 0x0FBF -- group 0x04, via $22FE
 
--- `0xB9` ($1186): `PUSH HL / LD HL,0xC3F1 / SET 0,(HL) / CALL $0204 /
--- POP HL / CALL $3727 / RET` -- no operand bytes, sets a real, fixed
--- WRAM flag bit (`$C3F1` bit 0 -- NOT the same cell as opcode
--- `0xDC`/`0xDD`'s own `$D874`), always continues. CORRECTED
--- 2026-08-14 (whole-corpus scan pass): originally wired here via the
--- coarser `triggerEvent` (which ignores the real bit-set and the real
--- `$0204` leaf entirely) -- superseded by the more precise
--- `WRAM_BIT_COMMAND_HANDLER_ADDRESS_B9` below, which models both.
--- Kept as a real, honest record of the earlier, less-precise pass
+-- 0xB9 ($1186): PUSH HL / LD HL,0xC3F1 / SET 0,(HL) / CALL $0204 /
+-- POP HL / CALL $3727 / RET -- no operand bytes, sets a fixed WRAM
+-- flag bit ($C3F1 bit 0 -- not the same cell as opcode 0xDC/0xDD's own
+-- $D874), always continues. CORRECTED (whole-corpus scan pass):
+-- originally wired here via the coarser triggerEvent (which ignores
+-- the bit-set and the $0204 leaf entirely) -- superseded by the more
+-- precise WRAM_BIT_COMMAND_HANDLER_ADDRESS_B9 below, which models
+-- both. Kept as an honest record of the earlier, less-precise pass
 -- rather than silently deleted.
 
--- `0xC3` ($3A09): `CALL $3727 / RET` -- byte-IDENTICAL in effect to
--- the real no-op default handler (`$3F0C`), just living at a separate
--- real table entry/address (this ROM's own code reuse, not modeled
--- further -- a real, harmless duplication). Reuses `triggerEvent` with
--- no callback (equivalent to a genuine no-op).
+-- 0xC3 ($3A09): CALL $3727 / RET -- byte-identical in effect to the
+-- no-op default handler ($3F0C), just living at a separate table
+-- entry/address (this ROM's own code reuse, not modeled further -- a
+-- harmless duplication). Reuses triggerEvent with no callback
+-- (equivalent to a genuine no-op).
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_C3 = 0x3A09
 
--- `0xE6` ($0F9E) -- FOUND 2026-08-13, direct response to a user bug
--- report ("der Raum nach dem Treffen-Raum geht links weiter, kann aber
--- nicht nach links laufen") asking whether secondRoom's real west side
--- has an undiscovered exit, "abgeleitet aus Algorithmen, nicht
--- empirisch." `$235B` (the real per-exit "open" dispatcher, see
--- `TRIGGER_EVENT_HANDLER_ADDRESS`/`_E4`/`_E2` above -- rom-map.md's
--- "Which physical exit each $225D bit-case is" table) is called with
--- EXACTLY 4 real fixed arguments ROM-wide (`0x01`/`0x02`/`0x04`/`0x08`
--- = East/West/North/South respectively) -- `0xE0`/`0xE4`/`0xE2` above
--- already cover North/East/South; `0x02` (WEST) was the one real
--- direction this project's own opcode census had never matched to an
--- actual script-opcode byte. Found by computing the expected handler
--- address directly (the 4th real `CALL $235B` call site, `rom-map.md`'s
--- own exhaustive-scan file offset `0xFA1`, minus the 3-byte `PUSH HL/LD
--- A,n` prologue = `$0F9E`) and confirming its real bytes match exactly:
+-- 0xE6 ($0F9E) -- FOUND, direct response to a user bug report that the
+-- room after the meeting-room continues left but can't be walked into,
+-- asking whether secondRoom's west side has an undiscovered exit,
+-- derived from algorithms rather than empirically. $235B (the per-exit
+-- "open" dispatcher, see TRIGGER_EVENT_HANDLER_ADDRESS/_E4/_E2 above
+-- -- rom-map.md's "Which physical exit each $225D bit-case is" table)
+-- is called with exactly 4 fixed arguments ROM-wide (0x01/0x02/0x04/
+-- 0x08 = East/West/North/South respectively) -- 0xE0/0xE4/0xE2 above
+-- already cover North/East/South; 0x02 (West) was the one direction
+-- this project's opcode census had never matched to an actual script-
+-- opcode byte. Found by computing the expected handler address
+-- directly (the 4th CALL $235B call site, rom-map.md's exhaustive-scan
+-- file offset 0xFA1, minus the 3-byte PUSH HL/LD A,n prologue = $0F9E)
+-- and confirming its bytes match exactly:
 --   $0F9E  PUSH HL / LD A,0x02 / CALL $235B / POP HL / CALL $3727 / RET
--- -- byte-IDENTICAL shape to `0xE0`/`0xE4`/`0xE2`/`0xDE`/`0xB9`/`0xC3`
--- above (no operand, unconditional continue). Reuses `triggerEvent`
--- directly, same as every other member of this family.
+-- -- byte-identical shape to 0xE0/0xE4/0xE2/0xDE/0xB9/0xC3 above (no
+-- operand, unconditional continue). Reuses triggerEvent directly, same
+-- as every other member of this family.
 --
 -- HONEST, DIRECT ANSWER to the triggering bug report: a systematic,
--- conservative walk of all 1357 real scripts (advancing only through
--- opcodes with an already-known real operand width, stopping at the
--- first unknown one -- this project's own established, non-guessing
--- census method) finds **zero** real scripts that ever reach this
--- opcode. Bounded, honest limitation: this only searches each script's
--- own known-width PREFIX (most scripts hit a still-undecoded opcode
--- within their first few bytes) -- it does NOT prove `0xE6` is
--- categorically unused past those points. Combined with a live
--- confirmation (holding LEFT for 200 real frames at secondRoom's own
--- west wall, at 9 different Y rows spanning the whole room, produced
--- zero movement and zero scroll-register change at every single one):
--- secondRoom's real west side is a genuine wall in this project's own
--- currently-reachable, decoded content -- not an app bug. The room's
--- own "Der Monstereingang fuehrt nach draussen" NPC hint most likely
--- foreshadows real, still-unreached content elsewhere (a real, honest
--- open question, not resolved here), not a currently-reachable exit
--- this project has simply failed to wire up.
+-- conservative walk of all 1357 scripts (advancing only through
+-- opcodes with an already-known operand width, stopping at the first
+-- unknown one -- this project's established, non-guessing census
+-- method) finds zero scripts that ever reach this opcode. Bounded,
+-- honest limitation: this only searches each script's known-width
+-- prefix (most scripts hit a still-undecoded opcode within their first
+-- few bytes) -- it doesn't prove 0xE6 is categorically unused past
+-- those points. Combined with a live confirmation (holding LEFT for
+-- 200 frames at secondRoom's west wall, at 9 different Y rows spanning
+-- the whole room, produced zero movement and zero scroll-register
+-- change at every single one): secondRoom's west side is a genuine
+-- wall in this project's currently-reachable, decoded content -- not
+-- an app bug. The room's own "Der Monstereingang fuehrt nach
+-- draussen" NPC hint most likely foreshadows still-unreached content
+-- elsewhere (an honest open question, not resolved here), not a
+-- currently-reachable exit this project simply failed to wire up.
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E6 = 0x0F9E
 
--- `0xEF` ($0E7F): `LD A,(HL+) / LD E,A / LD A,(HL+) / LD D,A / PUSH HL
--- / CALL $0454 / POP HL / CALL $3727 / RET` -- the SAME real operand
--- shape as `WORD_COMMAND_HANDLER_ADDRESS` above (2 real, little-endian
--- operand bytes -> a 16-bit word), just calling a different real,
--- undecoded helper (`$0454` instead of `$3117`). Reuses `wordCommand`
--- directly.
+-- 0xEF ($0E7F): LD A,(HL+) / LD E,A / LD A,(HL+) / LD D,A / PUSH HL /
+-- CALL $0454 / POP HL / CALL $3727 / RET -- the same operand shape as
+-- WORD_COMMAND_HANDLER_ADDRESS above (2 little-endian operand bytes ->
+-- a 16-bit word), just calling a different, undecoded helper ($0454
+-- instead of $3117). Reuses wordCommand directly.
 --
--- CORRECTED/REFINED 2026-08-14 (whole-corpus scan follow-up): `$0454`
--- has SINCE been fully disassembled and is NOT an opaque word-sized
--- computation -- it's a plain, branchless 2-BYTE STORE (`LD
--- (0xC345),A` / `LD (0xC344),A`, no arithmetic). Treating the operand
--- as a combined little-endian 16-bit "word" (this constant's own
--- original framing) is technically harmless for stream-advancement
--- purposes but throws away the real byte1/byte2 split a caller would
--- want. Superseded by the more precise
--- `TILE_CURSOR_SET_HANDLER_ADDRESS_EF` constant below (same address,
--- `StandardScriptHandlers.tileCursorSet`) -- SELF-CAUGHT BUG: this
--- constant's name still matches the generic `^WORD_COMMAND_HANDLER_
--- ADDRESS` sweep in `ScriptRuntime.lua`, which was silently
--- overwriting the more precise explicit registration (registered
--- earlier in the same function) every time `:registerStandardHandlers`
--- ran -- see that file's own generic-loop exclusion, added the same
--- day, for the fix. This constant is kept (not deleted) only because
--- existing tests assert the real opcode-table entry against it; new
--- code should prefer `TILE_CURSOR_SET_HANDLER_ADDRESS_EF`.
+-- CORRECTED/REFINED (whole-corpus scan follow-up): $0454 has since
+-- been fully disassembled and isn't an opaque word-sized computation
+-- -- it's a plain, branchless 2-byte store (LD (0xC345),A / LD
+-- (0xC344),A, no arithmetic). Treating the operand as a combined
+-- little-endian 16-bit "word" (this constant's original framing) is
+-- technically harmless for stream-advancement purposes but throws
+-- away the byte1/byte2 split a caller would want. Superseded by the
+-- more precise TILE_CURSOR_SET_HANDLER_ADDRESS_EF constant below
+-- (same address, StandardScriptHandlers.tileCursorSet) -- SELF-CAUGHT
+-- BUG: this constant's name still matches the generic ^WORD_COMMAND_
+-- HANDLER_ADDRESS sweep in ScriptRuntime.lua, which was silently
+-- overwriting the more precise explicit registration every time
+-- :registerStandardHandlers ran -- see that file's own generic-loop
+-- exclusion for the fix. This constant is kept (not deleted) only
+-- because existing tests assert the opcode-table entry against it;
+-- new code should prefer TILE_CURSOR_SET_HANDLER_ADDRESS_EF.
 ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_EF = 0x0E7F
 
 -- `0xF6` ($3CA2) -- a real, LONGER always-continuing routine (many
