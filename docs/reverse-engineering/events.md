@@ -10159,3 +10159,29 @@ approaching/dismissing `characterA`'s box set a real flag this
 project doesn't yet track?) or a fresh live script-runtime trace
 specifically watching WRAM writes DURING the characterA/characterB
 dialogue boxes, not just before/after them.
+
+**Attempted the same day, direct user instruction "weiter"**: tried
+exactly that -- a full real WRAM diff (`$C000`-`$DFFF`, confirmed via
+a real screenshot that the real `characterA` dialogue box genuinely
+was showing, "Der Mons...") comparing the instant the box appears
+against right after dismissing it, deliberately holding no directional
+keys in between to remove player-movement noise from the comparison.
+**Real, honest result: too noisy to isolate a specific flag this way.**
+141 real WRAM bytes changed across that narrow window regardless --
+consistent with several independently-ticking real subsystems this
+project already knows exist (the real 5-tick throttle counter `$D864`
+did visibly tick during this exact window; NPC wander AI keeps moving
+regardless of player input; the real sound/music engine's own state
+lives in a similar `$DFC6`+ region and free-runs every frame) -- none
+of the 141 changes stood out as an obvious one-shot "this NPC's story
+flag is now set" write versus this ordinary background churn. A short
+list of the least-explainable-by-background-noise candidates, for
+whoever picks this up next: `$C48B`/`$C48D` (a real, clean small-
+integer step, `04->02`/`02->04`), `$C5B0`-class values seen in an
+earlier, less-isolated pass. **Honest conclusion**: broad WRAM diffing
+has reached its useful limit for this specific question -- finding the
+real trigger needs actual disassembly of the real dialogue-box-close/
+NPC-interaction code path (the same rigor this project already applied
+to the text-decode work, e.g. `$3777`/`$34A4`), not another diff pass.
+A real, correctly-scoped, but meaningfully bigger next step than
+anything else tried in this whole investigation -- not started here.
