@@ -1219,126 +1219,110 @@ function StandardScriptHandlers.gatedByteLeafCommand(onByte, isFadeActive)
   end
 end
 
---- Real "peek-two-bytes gate" handler pair (opcodes `0xF3`/`0xF4`, ROM
--- `$11CE`/`$11B7`, found live 2026-08-13 task #86). Real, VERIFIED
--- structure, decoded carefully instruction-by-instruction (the SM83
--- byte sequence here is genuinely unusual, so this is spelled out in
--- full): `LD A,(HL+) / LD B,A` reads byte1 into B, advancing HL by 1;
--- `LD A,(HL-) / LD C,A` then reads byte2 (the NEXT byte) into C but
--- immediately DECREMENTS HL back -- net effect, HL ends up back at
--- its OWN STARTING position (byte1's own address) despite having read
--- 2 bytes. Calls an opaque per-opcode leaf with `BC` (`$11C8` for
--- `0xF4`, `$11DF` for `0xF3`), then checks a real, SHARED WRAM cell
--- (`$D499` -- the SAME cell `.oneShotTriggerGate` also uses for
--- `0xFC`/`0xFD`, though this project does not claim a further
--- relationship beyond sharing the address): while nonzero, `RET NZ`
--- real-halts (this project's usual "return nil, caller retries next
--- tick" convention) -- and since NOTHING advanced the cursor, a retry
--- re-peeks the exact same 2 bytes. Once `$D499` reads zero, falls
--- through to `CALL $3727 / RET` -- continuing from the SAME starting
--- cursor (the 2 peeked bytes are NEVER actually consumed; the next
--- real dispatch re-reads THIS SAME position as a fresh opcode). This
--- is a real, deliberate "wait for a WRAM gate, then let the normal
--- byte stream carry on unmodified" mechanic, not a normal 2-operand
--- opcode. `isGateClear` defaults to "always clear" (matches
--- `.oneShotTriggerGate`'s own established convention for this exact
--- WRAM cell).
+--- Real "peek-two-bytes gate" handler pair (opcodes 0xF3/0xF4, ROM
+-- $11CE/$11B7, found live in task #86). Verified structure, decoded
+-- instruction-by-instruction (the SM83 byte sequence here is genuinely
+-- unusual, so it's spelled out in full): LD A,(HL+) / LD B,A reads
+-- byte1 into B, advancing HL by 1; LD A,(HL-) / LD C,A then reads
+-- byte2 (the next byte) into C but immediately decrements HL back --
+-- net effect, HL ends up back at its own starting position (byte1's
+-- address) despite having read 2 bytes. Calls an opaque per-opcode
+-- leaf with BC ($11C8 for 0xF4, $11DF for 0xF3), then checks a shared
+-- WRAM cell ($D499 -- the same cell .oneShotTriggerGate also uses for
+-- 0xFC/0xFD, though no further relationship beyond sharing the address
+-- is claimed): while nonzero, RET NZ halts (return nil, caller retries
+-- next tick) -- and since nothing advanced the cursor, a retry re-peeks
+-- the same 2 bytes. Once $D499 reads zero, falls through to CALL $3727
+-- / RET -- continuing from the same starting cursor (the 2 peeked
+-- bytes are never actually consumed; the next dispatch re-reads this
+-- same position as a fresh opcode). A deliberate "wait for a WRAM
+-- gate, then let the normal byte stream carry on unmodified" mechanic,
+-- not a normal 2-operand opcode. isGateClear defaults to "always
+-- clear" (matches .oneShotTriggerGate's own convention for this cell).
 --
--- **The opaque per-opcode leaf, fully decoded (2026-08-14, direct
--- follow-up: "such die ROM-Adresse der Tile-Byte-Paare für die anderen
--- Übergänge... und die genaue Struktur des $11B7-Skriptformats selbst
--- und verallgemeinere den algorithmus")**: `0xF4`'s own leaf (`$11C8`)
--- does `PUSH AF` (saves `byte2`, still in `A`) `/ LD A,0x0F / JP
--- $1ED7`. `$1ED7` is a real, general "selector -> bank-1 handler"
--- dispatcher (SAME `$4000`-base, 2-byte-stride table SHAPE as the
--- already-known `$1F35` family, but a genuinely SEPARATE table
--- instance -- confirmed real, not assumed, by direct ROM byte read):
--- switches to bank 1, computes `HL = *($4000 + selector*2)`, restores
--- the ORIGINAL caller HL (the still-unconsumed script cursor) and `A`
--- (byte2), then does a real computed-jump (`PUSH HL / RET`) straight
--- into `table[selector]` -- for `0xF4`'s own selector `0x0F`,
--- **`table[0x0F] = $4130`, the ALREADY-known real entry point for the
--- `$413C` cut-transition sequence** (previously only known to be
--- reached from the room-load dispatch -- now CONFIRMED to ALSO be
--- reachable directly from a real script opcode). CORRECTED 2026-08-14
--- (task #85): earlier docs assumed 30 real steps; a fresh full-table
--- dump plus a second, previously-undocumented sibling table found the
--- same pass ($418C, byte-for-byte the same $4130-style dispatcher
--- shape) both show plausible, address-shaped entries only for indices
--- 0-7, becoming non-address garbage at EXACTLY index 8 in BOTH tables
--- independently -- real, strong (not yet live-confirmed) evidence the
--- true step count is 8, not 30; see events.md's dated entry. `$4130`
--- dispatches to
--- `$413C[real $D499 step index]` -- i.e. **`0xF4`'s real job is
+-- The opaque per-opcode leaf, fully decoded (direct follow-up to find
+-- the ROM address of the tile-byte pairs for the other transitions and
+-- generalize the algorithm): 0xF4's leaf ($11C8) does PUSH AF (saves
+-- byte2, still in A) / LD A,0x0F / JP $1ED7. $1ED7 is a general
+-- "selector -> bank-1 handler" dispatcher (same $4000-base, 2-byte-
+-- stride table shape as the already-known $1F35 family, but a
+-- genuinely separate table instance -- confirmed by direct ROM byte
+-- read): switches to bank 1, computes HL = *($4000 + selector*2),
+-- restores the original caller HL (the still-unconsumed script cursor)
+-- and A (byte2), then does a computed-jump (PUSH HL / RET) straight
+-- into table[selector] -- for 0xF4's selector 0x0F, table[0x0F] =
+-- $4130, the already-known entry point for the $413C cut-transition
+-- sequence (previously only known to be reached from the room-load
+-- dispatch -- now confirmed to also be reachable directly from a
+-- script opcode). CORRECTED (task #85): earlier docs assumed 30 steps;
+-- a fresh full-table dump plus a second, previously-undocumented
+-- sibling table found the same pass ($418C, byte-for-byte the same
+-- $4130-style dispatcher shape) both show plausible, address-shaped
+-- entries only for indices 0-7, becoming non-address garbage at
+-- exactly index 8 in both tables independently -- strong (not yet
+-- live-confirmed) evidence the true step count is 8, not 30. $4130
+-- dispatches to $413C[real $D499 step index] -- 0xF4's real job is
 -- "peek 2 literal bytes into B/C, then hand control to whichever step
 -- of the current cut-sequence is active right now, with those 2 bytes
--- available in `B`/`C` for that step's own use."** Neither `$1ED7`
--- nor `$4130`/`$02B70`'s own table-walk touches `B` or `C` at any
--- point, so they survive completely intact into the step handler --
--- this is a deliberate calling convention, not incidental register
--- survival (independently re-verified via a full instruction-by-
--- instruction disassembly of every intervening routine).
+-- available in B/C for that step's own use." Neither $1ED7 nor $4130/
+-- $02B70's own table-walk touches B or C at any point, so they survive
+-- completely intact into the step handler -- a deliberate calling
+-- convention, not incidental register survival (independently
+-- re-verified via full disassembly of every intervening routine).
 --
--- **Real, live-confirmed example** (the thirdRoom->fourthRoom cut):
--- step 5's own real handler (`$43A3`) uses the peeked `B,C` as a TILE
--- coordinate, converting to real screen pixels via `E=(B*8)+8,
--- D=(C*8)+16` (see `src/import/TileLandingPosition.lua`) and
--- committing through the real per-tick entity position-commit routine
--- (`$0611`). **This generalizes**: EVERY step of the `$413C` sequence
--- that needs a 2-byte parameter gets it via its own preceding `0xF4`
--- peek -- confirmed live for a SECOND real transition (fourthRoom->
--- fifthRoom): the exact same step-5 tile-coordinate use, real ROM
--- bytes `10 02` (tile 16,2 -> screen 136,32, an EXACT match to this
--- project's own already-recorded `landingX=136,landingY=32`) at real
--- bank 14, file offset `0x38C87` -- and 2 OTHER real `0xF4` peeks
--- fire earlier in the SAME script (bytes `04 50` and later `00 0B`,
--- real file offsets `0x38C85`/`0x38C89`) for OTHER steps' own,
--- different real parameters (not landing coordinates -- which step
--- consumes which peek, and what each OTHER step's own bytes mean, was
--- not decoded further this pass -- a real, honestly-scoped follow-up).
--- The known real landing-tile source addresses, so far: thirdRoom->
--- fourthRoom = bank 14, file `0x382F9` (bytes `0E 0C`); fourthRoom->
--- fifthRoom = bank 14, file `0x38C87` (bytes `10 02`). fourthRoom->
--- sixthRoom was NOT resolved this pass -- live re-tracing found its
--- own real trigger does NOT behave like a simple "hold at a wall for N
--- frames" cut at all (matches this project's own EARLIER, independent
--- finding in `rom_profiles.lua`'s own `sixthRoom` exit doc comment:
--- "a genuinely CONTINUOUS real hardware scroll... not a real, single
--- ROM-authored constant") -- a real, different mechanism, left open
--- rather than forced into this same live-trace method.
--- `extraBytesOnRelease` (default 0): CORRECTED 2026-08-15 (direct user
--- request "suchen alle... quick wins" -> task #126, "trace $1ED7
--- selector-0x10 phase 2/4 sub-calls for missing $3727"). A live mGBA
--- trace (single-step, real execution-address tracking from
--- `courtyard_boss_defeated()` through the real black-wipe/fade) found
--- the ACTUAL real bytes at the exact real cursor this project's own
--- BossSequenceInterpreter test already locks in (`0x61d8`, bank 14):
--- `bd f3 0f 55 14 00 bc f0 ...`. I.e. opcode `0xF3`'s own real total
--- instruction length is **5 bytes**, not the 1-byte-net-zero this
--- function previously modeled: `0f`/`55` are the already-known 2
--- peeked bytes, but `14`/`00` are ALSO real, silently-consumed bytes
--- -- confirmed by directly reading real `$3727` return addresses via
--- an execution-address trace: 0xF3's own real completion trampoline
--- (`$11de`, a real `CALL $3727` epilogue, distinct from opcode
--- `0xBD`'s own completion at `$1163`) fires ONLY once cursor `0x61de`
--- (5 bytes past 0xF3's own opcode byte) is reached -- `0x61da`-`0x61dd`
--- (the `0f 55 14 00` bytes) never individually re-enter `$3727`, so
--- they're consumed by `$1ED7` selector-0x10's own internal HL
--- increments (real phase 2/4 work), not the top-level dispatch loop --
--- exactly matching this project's own prior hypothesis ("one of phase
--- 2/4's own untraced sub-calls also advances the real cursor"), now
--- confirmed with byte-exact evidence instead of suspected. WHY 2 more
--- bytes get consumed (`0x14` is the already-confirmed hero-name token,
--- `0x00` a plausible terminator -- suggestively a real "flash the
--- hero's name" effect tied to this completion, but NOT independently
--- confirmed this pass) is left honestly UNMODELED -- only the real
--- BYTE COUNT is fixed here, not fabricated semantics for what those 2
--- bytes mean. Deliberately a NEW OPTIONAL parameter, not a change to
--- this function's own default behavior -- opcode `0xF4` also calls
--- `.peekTwoByteGate` but via the generic `ctx.isPeekGateClear` default
--- (explicitly NOT assumed to share `0xF3`'s own real sequence, per
--- this function's own existing doc comment above), so it keeps
--- `extraBytesOnRelease=0` unless independently proven otherwise.
+-- Real, live-confirmed example (the thirdRoom->fourthRoom cut): step
+-- 5's handler ($43A3) uses the peeked B,C as a tile coordinate,
+-- converting to screen pixels via E=(B*8)+8, D=(C*8)+16 (see
+-- src/import/TileLandingPosition.lua) and committing through the
+-- per-tick entity position-commit routine ($0611). This generalizes:
+-- every step of the $413C sequence that needs a 2-byte parameter gets
+-- it via its own preceding 0xF4 peek -- confirmed live for a second
+-- transition (fourthRoom->fifthRoom): the exact same step-5 tile-
+-- coordinate use, ROM bytes 10 02 (tile 16,2 -> screen 136,32, an
+-- exact match to the already-recorded landingX=136,landingY=32) at
+-- bank 14, file offset 0x38C87 -- and 2 other 0xF4 peeks fire earlier
+-- in the same script (bytes 04 50 and later 00 0B, file offsets
+-- 0x38C85/0x38C89) for other steps' own, different parameters (not
+-- landing coordinates -- which step consumes which peek wasn't decoded
+-- further). Known landing-tile source addresses so far: thirdRoom->
+-- fourthRoom = bank 14, file 0x382F9 (bytes 0E 0C); fourthRoom->
+-- fifthRoom = bank 14, file 0x38C87 (bytes 10 02). fourthRoom->
+-- sixthRoom wasn't resolved this pass -- live re-tracing found its own
+-- trigger doesn't behave like a simple "hold at a wall for N frames"
+-- cut at all (matches this project's earlier, independent finding in
+-- rom_profiles.lua's own sixthRoom exit doc comment: a genuinely
+-- continuous hardware scroll, not a single ROM-authored constant) --
+-- a different mechanism, left open rather than forced into this method.
+--
+-- extraBytesOnRelease (default 0): CORRECTED (task #126, tracing
+-- $1ED7 selector-0x10 phase 2/4 sub-calls for a missing $3727). A live
+-- mGBA trace (single-step, execution-address tracking from
+-- courtyard_boss_defeated() through the black-wipe/fade) found the
+-- actual bytes at the exact cursor this project's own
+-- BossSequenceInterpreter test already locks in (0x61d8, bank 14): bd
+-- f3 0f 55 14 00 bc f0 ... -- opcode 0xF3's real total instruction
+-- length is 5 bytes, not the 1-byte-net-zero this function previously
+-- modeled: 0f/55 are the already-known 2 peeked bytes, but 14/00 are
+-- also real, silently-consumed bytes -- confirmed by directly reading
+-- $3727 return addresses via an execution-address trace: 0xF3's real
+-- completion trampoline ($11de, a CALL $3727 epilogue, distinct from
+-- opcode 0xBD's own completion at $1163) fires only once cursor
+-- 0x61de (5 bytes past 0xF3's opcode byte) is reached -- 0x61da-0x61dd
+-- (the 0f 55 14 00 bytes) never individually re-enter $3727, so
+-- they're consumed by $1ED7 selector-0x10's own internal HL
+-- increments (phase 2/4 work), not the top-level dispatch loop --
+-- exactly matching this project's prior hypothesis (one of phase 2/4's
+-- own untraced sub-calls also advances the cursor), now confirmed with
+-- byte-exact evidence. Why 2 more bytes get consumed (0x14 is the
+-- already-confirmed hero-name token, 0x00 a plausible terminator --
+-- suggestively a "flash the hero's name" effect tied to this
+-- completion, not independently confirmed) is left honestly unmodeled
+-- -- only the byte count is fixed here, not fabricated semantics.
+-- Deliberately a new optional parameter, not a change to this
+-- function's default behavior -- opcode 0xF4 also calls
+-- .peekTwoByteGate but via the generic ctx.isPeekGateClear default
+-- (explicitly not assumed to share 0xF3's own sequence), so it keeps
+-- extraBytesOnRelease=0 unless independently proven otherwise.
 function StandardScriptHandlers.peekTwoByteGate(onPeek, isGateClear, extraBytesOnRelease)
   extraBytesOnRelease = extraBytesOnRelease or 0
   return function(stream, cursor)
