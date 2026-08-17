@@ -197,23 +197,19 @@ RomProfiles.PROFILES = {
     -- method and confidence notes. Offsets are flat file offsets into the
     -- 262144-byte ROM.
     graphics = {
-      -- VERIFIED (2026-08-09) by live ground truth, same session: read
-      -- the real DMG hardware palette registers directly (mGBA
-      -- `core.memory.u8[0xFF47/48/49]`, Pan Docs "LCD Monochrome
-      -- Palettes") at the real starting room. `BGP=$E4` decodes to the
-      -- identity mapping [0,1,2,3] (raw pixel index N -> grey shade N)
-      -- -- confirms this project's existing `TileImage.DEFAULT_PALETTE`
-      -- grey-ramp assumption was already correct for backgrounds/UI.
-      -- `OBP0`/`OBP1` both `$D0`, decoding to **[0,0,1,3]** -- raw pixel
-      -- index 1 renders as shade 0 (WHITE, same as index 0/background),
-      -- not a mid-grey -- i.e. real sprites render mostly as outlines
-      -- against a white background, not solid grey-filled blocks. This
-      -- was the exact, visible difference between this project's sprite
-      -- rendering and a live ground-truth screenshot before this fix
-      -- (see docs/progress.md). General DMG hardware fact for THIS game
-      -- state (both OBP0 and OBP1 agree, so it doesn't matter which an
-      -- OAM entry's attribute byte selects) -- not proven immutable
-      -- across every future screen this project hasn't captured yet.
+      -- VERIFIED by live ground truth: read the real DMG hardware
+      -- palette registers directly (mGBA core.memory.u8[0xFF47/48/49])
+      -- at the starting room. BGP=$E4 decodes to the identity mapping
+      -- [0,1,2,3] -- confirms TileImage.DEFAULT_PALETTE's grey-ramp
+      -- assumption was already correct for backgrounds/UI. OBP0/OBP1
+      -- both $D0, decoding to [0,0,1,3] -- raw pixel index 1 renders as
+      -- shade 0 (white, same as background), not mid-grey -- sprites
+      -- render mostly as outlines against white, not solid grey blocks.
+      -- This was the exact visible difference between this project's
+      -- sprite rendering and a ground-truth screenshot before this fix
+      -- (see docs/progress.md). A DMG hardware fact for this game state
+      -- (both OBP0/OBP1 agree) -- not proven immutable across every
+      -- future screen not yet captured.
       spritePalette = {
         status = "VERIFIED",
         registerValue = 0xD0,
@@ -281,44 +277,37 @@ RomProfiles.PROFILES = {
         screenX = 0,
         screenY = 136, -- window row 1: WY(128) + 8
       },
-      -- CORRECTED (2026-08-09, same day): an earlier capture this same
-      -- session, using tools/rom/reach_room.py's exact button sequence,
-      -- was NOT the real starting room -- it was a later screen (an
-      -- empty bordered box) that this project mistook for gameplay.
-      -- Direct user pushback ("kann es sein das du das main menü nimmst
-      -- und nicht die erste szene... da wo man den boss bekämpft?") led
-      -- to re-verifying instead of trusting the first capture: (1) the
-      -- "player" sprite in that capture jumped 72px in a single frame
-      -- when a direction was held, instead of the independently-VERIFIED
-      -- 1px/frame walk speed (Player.lua) -- a real, decisive tell that
-      -- it wasn't the field-movement entity; (2) a fresh, from-boot scan
-      -- screenshotting at regular intervals (not reusing reach_room.py's
-      -- assumed press counts) found the real room appears EARLIER, right
-      -- after the intro dialogue, and reach_room.py's extra name-entry
-      -- `START` presses were firing *after* gameplay had already begun --
-      -- almost certainly opening the in-game pause menu (see Menu.lua),
-      -- which is the empty box that was wrongly captured as "the room."
-      -- The real room (screenshot: real ROM art, a barred gate, textured
-      -- floor, and a real 4x2-tile enemy creature above a real 2-tile
-      -- player) was re-captured and is what `startRoom`/`playerSprite`/
-      -- `enemySprite` below now describe. `reach_room.py` itself was
-      -- also fixed (see its own updated comment) so this doesn't
-      -- silently regress for the next investigation.
+      -- CORRECTED (same day): an earlier capture this same session,
+      -- using reach_room.py's exact button sequence, was not the real
+      -- starting room -- it was a later screen (an empty bordered box)
+      -- mistaken for gameplay. Direct user pushback (that this might be
+      -- the main menu, not the first scene where the boss is fought)
+      -- led to re-verifying: (1) the "player" sprite in that capture
+      -- jumped 72px in a single frame when a direction was held,
+      -- instead of the independently-verified 1px/frame walk speed
+      -- (Player.lua) -- a decisive tell it wasn't the field-movement
+      -- entity; (2) a fresh, from-boot scan screenshotting at regular
+      -- intervals found the real room appears earlier, right after the
+      -- intro dialogue, and reach_room.py's extra name-entry START
+      -- presses were firing after gameplay had already begun -- almost
+      -- certainly opening the in-game pause menu (Menu.lua), the empty
+      -- box wrongly captured as "the room." The real room (a barred
+      -- gate, textured floor, a 4x2-tile enemy above a 2-tile player)
+      -- was re-captured and is what startRoom/playerSprite/enemySprite
+      -- below now describe. reach_room.py was also fixed so this
+      -- doesn't silently regress for the next investigation.
       --
-      -- VERIFIED (2026-08-09) real title screen -- captured the same way
-      -- as `startRoom` below (live VRAM tilemap + per-tile ROM offset
-      -- search against the ROM file, cross-checking multiple matches for
-      -- consistency rather than trusting the first hit -- some simple/
-      -- sparse tile patterns matched dozens of places; every one here
-      -- was resolved to a real offset inside bank 11 (the "MYSTIC QUEST"
-      -- logo art -- confirms this bank's own doc comment: "title-logo
-      -- art plus real small creature-sprite fragments") or bank 8 (the
-      -- font block's own unlabeled tail, a stylized title-specific menu
-      -- font distinct from the regular 64-glyph dialogue font). `grid`
-      -- is 18 rows x 20 cols (the FULL screen -- no HUD split like
-      -- `startRoom`, since this isn't a gameplay room). Real BGP at
-      -- capture: `$E4` (identity ramp, same as the room -- confirms this
-      -- project's rendering already uses the right palette here).
+      -- VERIFIED real title screen -- captured the same way as
+      -- startRoom below (live VRAM tilemap + per-tile ROM offset
+      -- search, cross-checking multiple matches for consistency rather
+      -- than trusting the first hit -- some sparse tile patterns
+      -- matched dozens of places; every one here was resolved to a real
+      -- offset inside bank 11 (the "MYSTIC QUEST" logo art) or bank 8
+      -- (the font block's unlabeled tail, a stylized title-specific
+      -- menu font distinct from the regular dialogue font). grid is 18
+      -- rows x 20 cols (the full screen -- no HUD split like startRoom,
+      -- since this isn't a gameplay room). Real BGP at capture: $E4
+      -- (identity ramp, same as the room).
       titleScreen = {
         status = "VERIFIED",
         tileOffsets = {
