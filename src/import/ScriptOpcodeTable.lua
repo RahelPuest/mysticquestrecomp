@@ -818,11 +818,10 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, op
 -- 0x80/0xEC/0xED/0xEE/0xA4 above. Left deliberately unwired for the
 -- same reason as those -- no constant assigned.
 
--- `0xFC`/`0xFD` ($27F9/$2820) -- structurally traced in task #83
--- (2026-08-13), the real "cursor commit" ambiguity resolved live in
--- task #86 (same day) -- see `StandardScriptHandlers
--- .oneShotTriggerGate`'s own doc comment for the full real story and
--- disassembly. Real bytes:
+-- 0xFC/0xFD ($27F9/$2820) -- structurally traced in task #83, the
+-- "cursor commit" ambiguity resolved live in task #86 (same day) --
+-- see StandardScriptHandlers.oneShotTriggerGate's own doc comment for
+-- the full story and disassembly. Bytes:
 --   $27F9: LD A,(0xD499) / CP 0 / CALL Z,$2819
 --   $2801: LD A,0x01 / LD (0xD499),A
 --   $2806: LD A,(0xC8E0) / CP 0 / RET NZ
@@ -834,13 +833,12 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, op
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FC = 0x27F9 -- selector group 5
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FD = 0x2820 -- selector group 4
 
--- `0x41`/`0x45`/`0x4B`/`0x55`/`0x59` -- FOUND 2026-08-13, direct
--- follow-up to task #80 ("ja mach das": shadow-run OTHER real scripts,
--- not just the boss-defeat one, to find further real opcode stoppers).
--- A full 1357-script census (every real entry in `scriptPointerTable`,
--- 500-step budget each) surfaced ~99 distinct new undecoded handler
--- addresses across many scripts -- these 5 are the ones that turned
--- out to be EXACT, byte-for-byte matches for already-known shapes
+-- 0x41/0x45/0x4B/0x55/0x59 -- FOUND, direct follow-up to task #80
+-- (shadow-run other scripts, not just the boss-defeat one, to find
+-- further opcode stoppers). A full 1357-script census (every entry in
+-- scriptPointerTable, 500-step budget each) surfaced ~99 distinct new
+-- undecoded handler addresses across many scripts -- these 5 turned
+-- out to be exact, byte-for-byte matches for already-known shapes
 -- (verified by full disassembly, not guessed from the address alone):
 --   $13C4 (0x41): CALL $28C2/ADD A,3/LD C,A/LD A,5/CALL $2879/RET
 --   $13F4 (0x45): CALL $28C2/ADD A,3/LD C,A/LD A,0x1F/CALL $2879/RET
@@ -857,14 +855,13 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_4B = 0x1420 -- group 0x0F
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_55 = 0x1468 -- group 0x1F
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_59 = 0x147E
 
--- `0x35`/`0x39`/`0x75` -- FOUND 2026-08-13, direct continuation of
--- task #82 (decode the remaining opcodes from the whole-corpus
--- census). Checked several high-frequency stoppers from that census
--- for shape before committing to deep tracing -- these 3 turned out
--- to be more exact, byte-for-byte matches for the already-fully-
--- understood families (several OTHER top candidates from that same
--- census -- `0x08`/`0x09`/`0x0A`/`0x0B`/`0xFC`/`0xFD` -- turned out to
--- be genuinely deep, multi-level real mechanics instead; left
+-- 0x35/0x39/0x75 -- FOUND, direct continuation of task #82 (decode the
+-- remaining opcodes from the whole-corpus census). Checked several
+-- high-frequency stoppers from that census for shape before committing
+-- to deep tracing -- these 3 turned out to be exact, byte-for-byte
+-- matches for the already-fully-understood families (several other top
+-- candidates from that same census -- 0x08/0x09/0x0A/0x0B/0xFC/0xFD --
+-- turned out to be genuinely deep, multi-level mechanics instead; left
 -- honestly undecoded, see events.md):
 --   $1380 (0x35): CALL $28C2/ADD A,2/LD C,A/LD A,0x1F/CALL $2879/RET  (actorAction, group 0x1F)
 --   $1396 (0x39): CALL $28C2/ADD A,2/LD C,A/CALL $123E/RET            (actorSlotPosition, same $123E chain)
@@ -873,21 +870,19 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_35 = 0x1380 -- group 0x1F
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_39 = 0x1396
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_75 = 0x1550 -- group 0x1F
 
--- 5 MORE real Family-A `actorAction` members (added 2026-08-14,
--- whole-corpus scan's own next real untouched blocker, `$1350`) --
--- found right in the SAME `$1338`-`$1380` neighborhood as `0x30`/
--- `0x35` above, byte-for-byte the exact same shape (`CALL $28C2 / ADD
--- A,<base> / LD C,A / LD A,<group> / CALL $2879 / RET`), just not
--- previously given their own constants:
+-- 5 more Family-A actorAction members (whole-corpus scan's next
+-- untouched blocker, $1350) -- found right in the same $1338-$1380
+-- neighborhood as 0x30/0x35 above, byte-for-byte the exact same shape
+-- (CALL $28C2 / ADD A,<base> / LD C,A / LD A,<group> / CALL $2879 /
+-- RET), just not previously given their own constants:
 --   $1338 (0x2B): base 1, group 0x0F
 --   $1350 (0x31): base 2, group 0x05
 --   $135C (0x36): base 2, group 0x1C
 --   $1368 (0x37): base 2, group 0x1D
 --   $1374 (0x34): base 2, group 0x1E
 -- No new Lua code needed -- the existing generic
--- `^ACTOR_ACTION_HANDLER_ADDRESS_` registration loop in
--- `ScriptRuntime.lua` picks these up automatically, same as every
--- other Family-A member.
+-- ^ACTOR_ACTION_HANDLER_ADDRESS_ registration loop in ScriptRuntime
+-- .lua picks these up automatically, same as every other Family-A member.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_2B = 0x1338 -- group 0x0F
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_31 = 0x1350 -- group 0x05
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_36 = 0x135C -- group 0x1C
