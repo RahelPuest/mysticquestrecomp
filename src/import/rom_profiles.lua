@@ -666,92 +666,44 @@ RomProfiles.PROFILES = {
         -- section) -- neither superseded nor explained by this finding,
         -- just a third, now-real data point.
       },
-      -- The real second room (traced per the `victorySequence` doc
-      -- comment above) -- captured the same way `startRoom` was: a live
-      -- VRAM tilemap read (20x16, no scroll, same convention as every
-      -- other confirmed room this project has found), NOT reconstructed
-      -- from the raw compressed source bytes (that pipeline is
-      -- documented but not re-implemented here -- this project renders
-      -- the known-correct decoded RESULT, same honesty level as
-      -- `startRoom`).
+      -- The real second room, captured the same way `startRoom` was: a
+      -- live VRAM tilemap read (20x16, no scroll), not reconstructed
+      -- from the raw compressed source bytes.
       --
-      -- CORRECTED (2026-08-09, same day): this entry originally assumed
-      -- these tile IDs (0x80-0xAB) were indices into the general
-      -- environment tileset at a flat `tilesetFileOffset + id*16` stride
-      -- (`mapTable.tilesetFileOffset`) -- WRONG, caught by direct user
-      -- report ("der neue raum ist noch falsch") after the room rendered
-      -- with a checkerboard pattern where the real screenshot shows
-      -- solid brick walls. Re-verified by reading the LIVE VRAM tile
-      -- *pattern* data directly (not the tilemap indices) for each used
-      -- ID and rendering THAT -- it matched the real screenshot exactly
-      -- (brick walls + a decorative arch at top-center, previously
-      -- invisible because the wrong graphics were being read for those
-      -- IDs). Then found each tile's real, individual ROM source offset
-      -- by an exact 16-byte search (same method as `startRoom.tileOffsets`
-      -- below) -- confirms these tiles live scattered across
-      -- `0x321B0-0x32630` (same general ROM region as the environment
-      -- tileset, but NOT at the simple `id*16` stride from that
-      -- tileset's own base -- a separate, room-specific tile graphics
-      -- set assembled into contiguous VRAM slots `0x80-0xAB`, indexed
-      -- explicitly below, same shape as `startRoom.tileOffsets`).
+      -- CORRECTED: this entry originally assumed tile IDs 0x80-0xAB
+      -- indexed the general environment tileset at a flat
+      -- `tilesetFileOffset + id*16` stride -- wrong (rendered as a
+      -- checkerboard where the real screenshot shows brick walls).
+      -- Re-verified by reading the live VRAM tile pattern directly for
+      -- each ID -- matched the real screenshot exactly. Each tile's
+      -- real ROM source offset was then found by exact 16-byte search:
+      -- these live scattered across `0x321B0-0x32630`, NOT at a simple
+      -- `id*16` stride -- a separate, room-specific tile set assembled
+      -- into contiguous VRAM slots 0x80-0xAB, indexed explicitly below.
       willyRoom = {
         status = "VERIFIED",
         -- Real tile-source pointer $46B0, shared by roomSelectors 2-6
-        -- in `roomSelectorTable` above (the willyRoom/secondRoom/
-        -- thirdRoom family).
+        -- (the willyRoom/secondRoom/thirdRoom family). Live-traced WRAM
+        -- `$C3F5` (the room-selector byte) through the real post-boss
+        -- sequence: `0x0f` during the black-wipe, then a stable `0x04`
+        -- from the Willy dialogue through free-roam -- willyRoom's own
+        -- real roomSelectorTable index is 4.
         --
-        -- The "which SPECIFIC selector is willyRoom's own" caveat this
-        -- comment used to carry is now RESOLVED (2026-08-12, quick win
-        -- #3 "parity-check gegen echte Live-VRAM-Daten"): live-traced
-        -- real WRAM `$C3F5` ("the room-selector byte", see rom-map.md's
-        -- own `$026DC` writeup) through the whole real post-boss
-        -- sequence -- `0x0f` (the already-known "unknownRoomB"
-        -- placeholder, fired during the black-wipe transition) right
-        -- after `post_black_wipe()`, then a clean, STABLE `0x04` from
-        -- the moment the Willy dialogue begins through the entire real
-        -- free-roam session (`willy_room_free()`) -- confirmed real,
-        -- reproducible, not a one-off read. **willyRoom's own real
-        -- roomSelectorTable index is 4.**
-        --
-        -- HONEST NEGATIVE RESULT, same investigation: this did NOT
-        -- confirm a matching bank-5/6 `mapTable` record the way it did
-        -- for `unknownRoomA`'s own family (selectors 8-13, see
-        -- `RoomFloorLayout.buildRoomFromMapTableRecord`'s own doc
-        -- comment) -- decoding bank-5 record 4 (the "roomSelector N =
-        -- mapTable record N" rule, applied here) and comparing it
-        -- cell-by-cell against THIS room's own real, independently
-        -- live-VRAM-captured grid below found only 96/320 real tile
-        -- matches (not the 288-320/320 a correct identification would
-        -- need) -- and no other bank-5/6 record (0-7 checked on both
-        -- tables) does meaningfully better (best: bank-5 record 3,
-        -- 124/320, still nowhere near a real match, plausibly just
-        -- incidental shared-floor-tile overlap). Conclusion: the
-        -- `roomSelector N = mapTable record N` identity is CONFIRMED
-        -- ONLY for the unknownRoomA family (selectors 8-13) that
-        -- originally established it -- it does NOT generalize to the
-        -- willyRoom family (selectors 2-6), which real evidence (this
-        -- room's own separate `$46B0` tile-source pointer, a DIFFERENT
-        -- real mechanism, see this comment's first paragraph) already
-        -- suggested was a distinct pipeline, now positively confirmed
-        -- rather than just suspected. This room's real content stays
-        -- exactly as before (the live-captured grid below) -- this
-        -- finding only narrows what the general "320 decodable rooms"
-        -- claim (rom-map.md "World scope, round 5") means: 320 real
-        -- records decode as real, coherent ROM ART (entropy + visual
-        -- confirmed), but only unknownRoomA's original 6 are also
-        -- confirmed to correspond to a specific, real, in-game room
-        -- IDENTITY -- the other 314 records' real in-game (if any)
-        -- placement remains genuinely unknown. See rom-map.md's "World
-        -- scope, round 6" for the full trace.
+        -- Honest negative result, same investigation: unlike unknownRoomA
+        -- (selectors 8-13), the `roomSelector N = mapTable record N`
+        -- identity does NOT hold here -- decoding bank-5 record 4 and
+        -- comparing cell-by-cell against this room's own live-captured
+        -- grid found only 96/320 matches (no other record 0-7 does
+        -- better). This room's own content stays the live-captured grid
+        -- below; the "320 decodable rooms" claim only means 320 records
+        -- decode as real ROM art -- only unknownRoomA's 6 are also
+        -- confirmed to correspond to a specific in-game room identity.
         romRoomSelectors = { 2, 3, 4, 5, 6 },
         romRoomSelectorConfirmed = 4, -- live-traced via WRAM $C3F5, see doc comment above
-        -- Confirmed 2026-08-12, same day: `$C3F5` stays exactly `4`
-        -- through the ENTIRE willyRoom -> secondRoom -> thirdRoom real
-        -- checkpoint chain (`door_ready()`/`second_room_free()`/
-        -- `third_room_free()`) -- consistent with (and now positively
-        -- confirming) `third_room_free()`'s own doc comment that these
-        -- 3 rooms are one continuous real room space, scrolled via
-        -- hardware SCX/SCY, not 3 separate roomSelector dispatches.
+        -- `$C3F5` stays exactly 4 through the entire willyRoom ->
+        -- secondRoom -> thirdRoom checkpoint chain -- confirms these 3
+        -- rooms are one continuous space, scrolled via hardware
+        -- SCX/SCY, not 3 separate roomSelector dispatches.
         cols = 20,
         rows = 16,
         tileOffsets = {
@@ -766,13 +718,9 @@ RomProfiles.PROFILES = {
           [0xa8] = 0x32410, [0xa9] = 0x32430, [0xaa] = 0x32360, [0xab] = 0x32370,
         },
         -- HYPOTHESIS, same status/method as `startRoom.floorTileIds`
-        -- below (this project's own classification of the real tile IDs
-        -- into floor vs. wall/border, not a decoded ROM collision
-        -- table): only the checkerboard floor pattern tiles are open --
-        -- live-verified (2026-08-09) by actually holding UP after the
-        -- Willy dialogue ends: the real player sprite moves a real 72px
-        -- north (1px/frame, same VERIFIED speed as the courtyard) then
-        -- stops dead at the wall/arch boundary, never entering row 0-1.
+        -- below: only the checkerboard floor tiles are open -- live-
+        -- verified by holding UP after the Willy dialogue: the player
+        -- moves 72px north then stops dead at the wall/arch boundary.
         floorTileIds = { [151] = true, [152] = true, [153] = true, [154] = true },
         grid = {
           {128,129,132,129,132,129,132,129,135,136,139,140,129,143,129,143,129,143,129,145},
@@ -792,63 +740,37 @@ RomProfiles.PROFILES = {
           {130,162,165,166,165,166,165,166,165,166,168,165,168,165,168,165,168,165,170,147},
           {163,164,167,164,167,164,167,164,167,164,164,169,164,169,164,169,164,169,164,171},
         },
-        -- VERIFIED (2026-08-09): the real north door (the arch-shaped
-        -- structure at BG row0-1, cols8-11). Direct user correction
-        -- after this project's own live testing repeatedly failed to
-        -- open it ("die tuer oeffnet einfach wenn man mittig dagegen
-        -- laeuft! ich habs gerade im rom verifiziert") -- the earlier
-        -- failures all approached off-center (this project's own test
-        -- harness had drifted the player to real screen X 88, outside
-        -- the door's real working range, purely a test-methodology
-        -- artifact). Re-tested centered: opens on the very first
-        -- approach, deterministically (exact input-sequence
-        -- reproduction gave identical results twice). `triggerXMin`/
-        -- `triggerXMax` are an empirically-bracketed real working range
-        -- (X 75/76/79/83 all opened it; X 88 confirmed did not) --
-        -- NOT a proven exact pixel/tile boundary, see rom-map.md
-        -- "ANSWERED: the real Willy-room north door DOES open".
+        -- Real north door (arch structure at BG row0-1, cols8-11).
+        -- Opens deterministically on the first centered approach (a
+        -- prior "never opens" finding was a test-harness artifact --
+        -- the player had drifted to X 88, outside the door's working
+        -- range). `triggerXMin`/`triggerXMax` are an empirically-
+        -- bracketed range (X 75/76/79/83 opened it; X 88 didn't), not a
+        -- proven exact pixel boundary.
         door = {
           status = "VERIFIED",
           bgRow = 0, bgCol = 8, rows = 2, cols = 4, -- BG tilemap row0-1, cols8-11
           closedGrid = { {135,136,139,140}, {137,138,141,142} },
           openGrid = { {172,152,151,174}, {173,154,153,175} },
         },
-        -- GENERAL room-exit schema (2026-08-09, introduced once a 2nd
-        -- and 3rd real transition made "one bespoke phase per room"
-        -- clearly not scalable -- see rom-map.md "Yes, it keeps going"
-        -- and RoomChain.lua's own doc comment for the engine this
-        -- drives). Each entry: `zone` (a real, empirically-bracketed
-        -- screen-space rectangle the player must be inside -- any of
-        -- xMin/xMax/yMin/yMax may be omitted, meaning "unbounded on
-        -- that side"), `transition` (`{type="scroll",axis="x"|"y",
-        -- totalPixels=,pixelsPerFrame=}` for a real hardware-scroll
-        -- pan, or `{type="cut"}` for a real instant room change via the
-        -- `$D392`/`$D393` pipeline), `targetRoom` (a key into this same
-        -- `graphics` table), `landingX`/`landingY` (where the player
-        -- appears in the target room), and optional `dialoguePages`/
-        -- `holdInput` (see RoomChain.lua). This one shape covers every
-        -- real transition mechanism found so far (VERIFIED: the
-        -- vertical scroll below, the horizontal scroll on `secondRoom`,
-        -- the instant cut on `thirdRoom`) without needing a new code
-        -- path for the next one, as long as it's also a scroll or a
-        -- cut -- a real, load-bearing generality claim, not aspirational.
+        -- General room-exit schema (see RoomChain.lua's own doc comment
+        -- for the engine this drives). Each entry: `zone` (a real,
+        -- empirically-bracketed screen-space rectangle, any bound may be
+        -- omitted = unbounded that side), `transition`
+        -- (`{type="scroll",axis=,totalPixels=,pixelsPerFrame=}` for a
+        -- hardware-scroll pan, or `{type="cut"}` for an instant room
+        -- change via `$D392`/`$D393`), `targetRoom`, `landingX`/
+        -- `landingY`, optional `dialoguePages`/`holdInput`. Covers every
+        -- real transition mechanism found so far (scroll + cut).
         --
-        -- `totalPixels` UPGRADED from empirical to CODE-VERIFIED
-        -- (2026-08-09/10, see rom-map.md "The real scroll/transition
-        -- engine" and "BREAKTHROUGH: the real room table, found"): the
-        -- real ROM scroll-completion routine (`$46C4`, bank 1) computes
-        -- its own threshold as `roomHeightTiles * 8` for a vertical
-        -- scroll (`$C340`, live-confirmed `0x10`=16 for `willyRoom`,
-        -- `16*8=128` exactly) but as a plain HARDCODED `160` (one
-        -- screen width) for a horizontal scroll -- i.e. `secondRoom`'s
-        -- own `160` below isn't a per-room field read from anywhere,
-        -- it's the same fixed constant the ROM itself always uses for
-        -- every horizontal room-scroll. `pixelsPerFrame=4` matches the
-        -- real per-frame delta this same routine applies (confirmed via
-        -- the already-VERIFIED live SCY/SCX register watches). These are
-        -- no longer "bracketed by testing many values" the way `zone`
-        -- still is -- they're the literal formula/constant the real
-        -- code uses.
+        -- `totalPixels` is code-verified, not just empirical: the real
+        -- scroll-completion routine (`$46C4`, bank 1) computes its
+        -- threshold as `roomHeightTiles*8` for a vertical scroll
+        -- (confirmed `0x10`=16 for willyRoom, 16*8=128 exactly) but a
+        -- plain hardcoded `160` for horizontal -- the same fixed
+        -- constant every room's horizontal scroll uses.
+        -- `pixelsPerFrame=4` matches the real per-frame delta this same
+        -- routine applies (confirmed via live SCY/SCX watches).
         exits = {
           {
             status = "VERIFIED",
@@ -928,26 +850,17 @@ RomProfiles.PROFILES = {
           },
         },
       },
-      -- VERIFIED (2026-08-09): the real second room revealed beyond the
-      -- Willy-room's own north door -- NOT reached via the already-
-      -- documented `$D392`/`$D393` room-load pipeline: watched live,
-      -- this room's content was already sitting in VRAM (tilemap rows
-      -- 16-31, off-screen) before the door ever opened, and the real
-      -- transition is a pure hardware background-scroll animation (see
-      -- `doorScroll` below) -- `$D392`/`$D393` never change. Real grid
-      -- + tile offsets captured the same way as every other room here
-      -- (live VRAM tile pattern -> exact ROM byte search); reuses most
-      -- of `willyRoom`'s own tileset (same bank 8 region) plus 12 real,
-      -- new tile IDs (`176`-`187`) found the same way. See rom-map.md
-      -- "ANSWERED: the real Willy-room north door DOES open" for the
-      -- full trace.
+      -- Real second room beyond the Willy-room's north door -- NOT
+      -- reached via the `$D392`/`$D393` room-load pipeline: this room's
+      -- content was already sitting in VRAM (rows 16-31, off-screen)
+      -- before the door opened; the real transition is a pure hardware
+      -- background-scroll (`$D392`/`$D393` never change). Reuses most
+      -- of `willyRoom`'s own tileset plus 12 new tile IDs (176-187).
       secondRoom = {
         status = "VERIFIED",
         -- Same real tile-source pointer/family as `willyRoom` above
-        -- ($46B0, roomSelectors 2-6) -- this is the SAME continuous
-        -- scrollable source, not a separately-selected room (see
-        -- roomSelectorTable's own note and rom-map.md's "scroll
-        -- transitions don't pick a different room" conclusion).
+        -- ($46B0, roomSelectors 2-6) -- the same continuous scrollable
+        -- source, not a separately-selected room.
         romRoomSelectors = { 2, 3, 4, 5, 6 },
         cols = 20,
         rows = 16,
@@ -967,13 +880,10 @@ RomProfiles.PROFILES = {
           [180]=0x32280,[181]=0x32290,[182]=0x32380,[183]=0x32390,
           [184]=0x322c0,[185]=0x323c0,[186]=0x322d0,[187]=0x323d0,
         },
-        -- HYPOTHESIS (same status/method as every other room's own
-        -- floorTileIds here): only the checkerboard floor tiles are
-        -- open, matching `willyRoom`'s own convention -- not
-        -- independently re-verified against real collision this pass
-        -- (real player movement in all 4 directions was confirmed
-        -- working after the transition, but the exact walkable/wall
-        -- boundary tiles were not individually tested).
+        -- HYPOTHESIS: only the checkerboard floor tiles are open,
+        -- matching willyRoom's own convention -- not individually
+        -- re-verified (4-directional movement confirmed working, exact
+        -- wall boundary tiles not tested).
         floorTileIds = { [151] = true, [152] = true, [153] = true, [154] = true },
         grid = {
           {128,129,132,129,132,129,132,129,132,129,129,143,129,143,129,143,129,143,129,145},
@@ -993,78 +903,30 @@ RomProfiles.PROFILES = {
           {130,162,165,166,165,166,165,166,184,152,151,186,168,165,168,165,168,165,170,147},
           {163,164,167,164,167,164,167,164,185,154,153,187,164,169,164,169,164,169,164,171},
         },
-        -- VERIFIED (2026-08-09): the real two new characters found
-        -- standing in this room -- neither matches the already-known
-        -- Willy sprite (tiles 96/98, palette attr 0x10). Identity
-        -- UNKNOWN (the room's own dialogue names a character "Amanda"
-        -- but does not visually tag which sprite -- if either -- is
-        -- her; not guessed here).
+        -- Real two new characters standing in this room -- neither
+        -- matches the known Willy sprite. Identity UNKNOWN (the room's
+        -- dialogue names a character "Amanda" but doesn't visually tag
+        -- which sprite is her).
         --
-        -- CORRECTED (2026-08-10): `screenX`/`screenY` below are NOT a
-        -- stable, ROM-authored fixed position -- live-traced (write-
-        -- watchpoint + CallTracer, see rom-map.md "P5: the secondRoom
-        -- NPCs are NOT placed via a fixed table") to a real, general
-        -- spawn primitive (`$42BD`, bank 3) fed by a genuinely
-        -- procedural placement loop. The values below are one real,
-        -- live-captured sample -- used as each character's own starting
-        -- point for the real wander movement below, not a fixed resting
-        -- spot.
+        -- CORRECTED: `screenX`/`screenY` are NOT a stable, ROM-authored
+        -- fixed position -- live-traced to a real, general spawn
+        -- primitive (`$42BD`, bank 3) fed by a procedural placement
+        -- loop. The values below are one live-captured sample, used as
+        -- each character's starting point for the wander movement below.
         --
-        -- `dialogue` (2026-08-10, direct user report: "die beiden npcs
-        -- ... der dialog wird beim betreten des raums getriggert"): a
-        -- fresh live re-trace found the real trigger is per-NPC
-        -- PROXIMITY, not room entry (see willyRoom's own north-door
-        -- `exits` entry above, whose now-removed `dialoguePages` this
-        -- replaces) -- confirmed by walking the player up to each
-        -- OAM-tracked NPC individually under mgba and watching a real
-        -- dialogue box appear the instant of overlap, with NO button
-        -- press needed. Real, confirmed text for the NPC approached
-        -- first (moving toward the higher-X side, i.e. `characterA`
-        -- here): "Der Monsterein-gang fuehrt nach drausen." (a room-
-        -- function hint, using the real ROM's own hyphenated word-wrap
-        -- this time, not this project's usual word-boundary substitute).
+        -- `dialogue`: the real trigger is per-NPC PROXIMITY, not room
+        -- entry -- confirmed by walking up to each OAM-tracked NPC and
+        -- watching a dialogue box appear on overlap, no button needed.
+        -- `characterA` (approached first): "Der Monsterein-gang fuehrt
+        -- nach drausen." `characterB`'s own line, found via a
+        -- `dump_strings.py` scan, sits immediately after characterA's
+        -- own box in the same ROM data stream: "Hallo!Willkommen\nin
+        -- Toppel!" (a real NPC greeting naming the ROM's own town,
+        -- "Toppel"). Stored as a plain string (not live-decoded) since
+        -- `NpcProximity.lua`'s existing dispatch expects one.
         --
-        -- FOUND (2026-08-12, "ja bitte alles in dieser reinfolge",
-        -- direct continuation of the same session's Willy-exchange
-        -- offset-hunting work): `characterB`'s own real line, previously
-        -- an honest, unfilled gap. Located the SAME way the Willy-
-        -- exchange offsets were -- a full-ROM `dump_strings.py` scan for
-        -- "Monster"/"drau" keywords turned up `characterA`'s own line at
-        -- real file offset `0x378AA` (bank 13) FIRST, decoding cleanly
-        -- end to end via `TextDecoder.decodeString` (confirms the
-        -- existing hand-transcription byte-for-byte, including finding
-        -- a genuinely new digraph along the way -- see `TextDecoder.lua`
-        -- own `DIGRAPH_PARTIAL[0x84]="ac"` doc comment: this exact line
-        -- needed it to complete "nach", and 5+ other independent real
-        -- sentences confirmed the same fill). Right after that box's own
-        -- real `[0x12][0x11]` close marker (file `0x378C6` onward, past
-        -- a short `[0x04][0x10]` control sequence -- same
-        -- un-reverse-engineered family as the Willy exchange's own
-        -- inter-box control bytes, not decoded further here) sits a
-        -- SECOND clean box at file `0x378CC`: `"Hallo!Willkommen\nin
-        -- Toppel!"` -- a real NPC greeting, real ROM room name
-        -- ("Toppel"), immediately following the first NPC's own line in
-        -- the same real ROM data stream -- exactly where a second NPC's
-        -- own dialogue would sit for a two-NPC scene like this one.
-        -- Stored here as a plain string (same shape as `characterA`'s
-        -- own `dialogue` field below, matching `NpcProximity.lua`'s
-        -- existing static-table convention) rather than live-decoded in
-        -- app code -- unlike `storyPages`/the Willy exchange, this
-        -- dialogue is dispatched through `NpcProximity.lua`'s own
-        -- proximity-trigger mechanism, which expects a plain string
-        -- array already in `rom_profiles.lua`, not a decode call at
-        -- render time; restructuring that mechanism to decode live is
-        -- real, separate, non-trivial scope beyond this quick win. The
-        -- STRING itself is real, ROM-confirmed content either way, not
-        -- a guess.
-        --
-        -- FOUND AND FIXED (2026-08-10, direct user reports: "die beiden
-        -- npcs ... haben immer noch keine grafik" then, after the first
-        -- fix pass, "die grafiken der npcs ... sind noch nicht [richtig].
-        -- ausserdem haben diese animationen und bewegungspattern"):
-        -- THREE real, confirmed problems, all from one extended live
-        -- mgba re-trace (900 real frames, OAM-tracked every single
-        -- frame, from `settled_secondroom.state`):
+        -- FOUND AND FIXED: three real problems, from one extended live
+        -- mgba re-trace (900 frames, OAM-tracked every frame):
         -- (1) the `tileOffsets` this project had were simply WRONG --
         --     real, readable ROM bytes, but from this profile's own font
         --     region, not a creature sprite (confirmed by a live
