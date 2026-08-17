@@ -1,194 +1,172 @@
--- The real post-victory scene: a typed victory textbox, a real full-
--- screen wipe to black (the ROM's own general VRAM-write-queue tile-fill
--- mechanism -- see rom_profiles.lua's `victorySequence` doc comment and
+-- The real post-victory scene: a typed victory textbox, a full-screen
+-- wipe to black (the ROM's own general VRAM-write-queue tile-fill
+-- mechanism -- see rom_profiles.lua's victorySequence doc comment and
 -- docs/reverse-engineering/combat.md's "Real post-victory scene
--- transition" entry), one or more black-background story textboxes with
--- manual (button-press) advance, then the "Willy" dialogue exchange --
--- direct implementation of a live ROM-code trace done per explicit user
--- instruction ("mach mal die scene transition... auf basis des codes und
--- moeglichst allgemein"), not inferred from visuals alone.
+-- transition" entry), one or more black-background story textboxes
+-- with manual (button-press) advance, then the "Willy" dialogue
+-- exchange -- direct implementation of a live ROM-code trace done per
+-- explicit user instruction, not inferred from visuals alone.
 --
--- Structure is a plain data-driven page list (`self.pages`), each page
--- `{ text, box = "bottom"|"top" }` -- the SAME general per-page machine
+-- Structure is a plain data-driven page list (self.pages), each page
+-- { text, box = "bottom"|"top" } -- the same general per-page machine
 -- (type + hold + typewriter + manual-advance) drives every page,
--- matching how the real ROM's own general VRAM-queue mechanism draws
--- every box (victory line, lore pages, Willy exchange) through one
--- shared primitive rather than bespoke code per line. `opaque = true` and
--- pushed ON TOP of Field (not replacing it) -- per src/core/StateStack
--- .lua's draw() rule this means nothing beneath is drawn, which is
--- exactly the real black-background result for free; Field resumes
+-- matching how the ROM's own general VRAM-queue mechanism draws every
+-- box through one shared primitive rather than bespoke code per line.
+-- opaque = true and pushed on top of Field (not replacing it) -- per
+-- src/core/StateStack.lua's draw() rule this means nothing beneath is
+-- drawn, exactly the black-background result for free; Field resumes
 -- underneath, enemy already cleared, once this state pops itself.
 --
--- Real room transition (2026-08-09, traced and implemented): the real
--- ROM loads a genuinely different room (see rom_profiles.lua's
--- `graphics.willyRoom` doc comment) before the Willy exchange plays.
--- Each page's `box` field ("bottom"/"top") is a 1:1 real signal for
--- which side of the transition it's on.
+-- Real room transition (traced and implemented): the ROM loads a
+-- genuinely different room (see rom_profiles.lua's graphics.willyRoom
+-- doc comment) before the Willy exchange plays. Each page's box field
+-- ("bottom"/"top") is a 1:1 signal for which side of the transition
+-- it's on.
 --
--- Real gameplay continuation (2026-08-09): once every intro page is
--- done, this state does not pop itself -- it switches into a real,
--- minimal playable mode (`self.phase = "interactive"`) reusing the SAME
--- real entities/collision primitives Field.lua uses (`Player`,
--- `TileWalkability`) against the current room's own real floor
--- classification.
+-- Real gameplay continuation: once every intro page is done, this
+-- state does not pop itself -- it switches into a minimal playable
+-- mode (self.phase = "interactive") reusing the same entities/
+-- collision primitives Field.lua uses (Player, TileWalkability)
+-- against the current room's own floor classification.
 --
--- GENERAL room-chain walker (2026-08-09, further pass -- this project
--- found a real north door, then a real second room with its own real
--- east exit, then a real third room with a real staircase leading to a
--- real fourth room -- FOUR real, independently-confirmed transition
--- mechanisms in one connected chain, see rom-map.md "Yes, it keeps
--- going"). Rather than hardcode one bespoke `self` phase pair per real
--- room (which does not scale -- this project's own earlier "door + 2nd
--- room" implementation already needed `doorScrolling`/
--- `secondRoomDialogueActive`/`inSecondRoom` as three separate ad hoc
--- fields), this state now walks a GENERAL, data-driven room graph: each
--- room in `rom_profiles.lua` may declare its own `exits` (a real,
--- empirically-found trigger zone + a real transition shape + a target
--- room + an optional real dialogue) -- see that file's own doc comment
--- for the exact schema. This ONE engine (`self.phase` cycling through
--- "interactive" -> "transitioning" -> "dialogue" -> "interactive" again)
--- covers every real transition mechanism found so far (a real hardware
--- scroll on either axis, and a real instant cut via the relocatable-
--- pointer pipeline) without new code for the next one, as long as it's
--- also a scroll or a cut -- the direct answer to "mach es so allgemein
--- wie moeglich... falls wir alle Transitionsmechanismen schon gefunden
--- haben, wuerden jetzt schon alle funktionieren."
+-- GENERAL room-chain walker (further pass -- found a north door, then
+-- a second room with its own east exit, then a third room with a
+-- staircase leading to a fourth room -- four independently-confirmed
+-- transition mechanisms in one connected chain, see rom-map.md "Yes,
+-- it keeps going"). Rather than hardcode one bespoke self phase pair
+-- per room (which doesn't scale -- the earlier "door + 2nd room"
+-- implementation already needed 3 separate ad hoc fields), this state
+-- now walks a general, data-driven room graph: each room in
+-- rom_profiles.lua may declare its own exits (an empirically-found
+-- trigger zone + a transition shape + a target room + an optional
+-- dialogue) -- see that file's own doc comment for the exact schema.
+-- This one engine (self.phase cycling through "interactive" ->
+-- "transitioning" -> "dialogue" -> "interactive" again) covers every
+-- transition mechanism found so far (hardware scroll on either axis,
+-- and an instant cut via the relocatable-pointer pipeline) without new
+-- code for the next one, as long as it's also a scroll or a cut -- the
+-- direct answer to a request to make this as general as possible.
 --
--- What's still bespoke, deliberately: the INTRO cutscene itself (the
+-- What's still bespoke, deliberately: the intro cutscene itself (the
 -- victory/lore pages, the black wipe, the willyRoom-specific Willy
--- exchange) -- that's a one-time, scripted narrative sequence, not a
--- room-graph edge, and stays as its own `self.pages`-driven machine
--- exactly as before. `enterGameplay()` is the real hand-off point
--- between the two systems.
+-- exchange) -- a one-time, scripted narrative sequence, not a room-
+-- graph edge, staying as its own self.pages-driven machine.
+-- enterGameplay() is the hand-off point between the two systems.
 --
--- REAL ScriptInterpreter integration, PARALLEL and OPT-IN (2026-08-13,
--- direct instruction "bau den interpreter ein... parallel zum
--- bisherigen code so das es mit einem cmd switch gewechselt werden
--- kann... alte hardcoded logig parallel drin lassen bis wir confident
--- sind diese entfernen zu können"): when the real environment variable
--- `MYSTICQUEST_SCRIPT_INTERPRETER=1` is set, this state ALSO builds and
--- drives a real `BossSequenceInterpreter` (src/scripting/
--- BossSequenceInterpreter.lua) against the REAL boss-defeat script's own
--- real ROM bytes -- a genuine, live execution of real, decoded ROM
--- opcodes, not a simulation. Its own result is surfaced ONLY via the
--- debug overlay (`self.bossSequenceInterpreter`/`self
--- .bossSequenceTranscript`, read in `:draw()`) -- it never touches
--- `self.pages`, `self.phase`, or anything else this state actually
--- renders/drives. The switch defaults OFF, and even ON, the existing
--- hand-authored cutscene/room-graph machinery above stays 100% unchanged
--- and fully in control of real gameplay.
+-- REAL ScriptInterpreter integration, PARALLEL and OPT-IN (direct
+-- instruction to build the interpreter in parallel to existing code,
+-- switchable via an env var, keeping the old hardcoded logic in place
+-- until confident enough to remove it): when MYSTICQUEST_SCRIPT_
+-- INTERPRETER=1 is set, this state also builds and drives a real
+-- BossSequenceInterpreter (src/scripting/BossSequenceInterpreter.lua)
+-- against the boss-defeat script's own ROM bytes -- a genuine, live
+-- execution of decoded ROM opcodes, not a simulation. Its result is
+-- surfaced only via the debug overlay (self.bossSequenceInterpreter/
+-- self.bossSequenceTranscript, read in :draw()) -- it never touches
+-- self.pages, self.phase, or anything else this state actually
+-- renders/drives. The switch defaults off, and even on, the existing
+-- hand-authored cutscene/room-graph machinery stays 100% unchanged and
+-- fully in control of real gameplay.
 --
--- REAL interpreter, UNGATED and DRIVING ACTUAL GAMEPLAY, for the FIRST
--- time (2026-08-16, direct user instruction "es soll alles komplett
--- über den interpreter laufen" -- see `CutTransitionInterpreter.lua`'s
--- own doc comment for the full live-trace evidence this is built on).
--- `thirdRoom.exits[1]` (the fourthRoom staircase cut) now carries a
--- real `scriptEntry` field; `beginTransition`/`switchToTargetRoom`
--- build and tick a real `CutTransitionInterpreter` (NOT behind
--- `MYSTICQUEST_SCRIPT_INTERPRETER` -- this is the direct answer to
--- "alles komplett", not another opt-in shadow run) whenever an exit
--- has one. HONEST, DELIBERATELY NARROW SCOPE: a live single-step trace
--- found the real ROM's own `$413C` step automaton reaches its first
--- real peek (`roomSelector`/`subIndexByte`) via genuine top-level
--- script dispatch, but reaches its SECOND real peek (the landing tile)
--- via the automaton's own internal jump, NOT top-level dispatch -- a
--- lower-level mechanism this project's `ScriptRuntime` doesn't model
--- yet. So `roomSelector` really is now live-captured from real ROM
--- execution and cross-checked (`switchToTargetRoom` fails loudly on a
--- mismatch, or if the interpreter never captured anything at all) --
--- but `landingX`/`landingY`/`targetRoom` stay the pre-baked,
--- already-independently-ROM-table-verified constants, honestly
--- labeled as such at the call site. Only this ONE transition (of ~186
--- real known `CutTransitionTable` records, 82 genuinely distinct)
--- has a live-confirmed entry point -- every other exit, including
--- every scroll transition (genuinely NOT script-driven in the real
--- ROM -- pure hardware scrolling) and fourthRoom's own fifthRoom cut
--- (not yet separately live-traced), is completely unaffected, still
--- 100% hand-authored, by design, not oversight.
+-- REAL interpreter, UNGATED and DRIVING ACTUAL GAMEPLAY, for the first
+-- time (direct user instruction that everything should run through
+-- the interpreter -- see CutTransitionInterpreter.lua's own doc
+-- comment for the full live-trace evidence this is built on).
+-- thirdRoom.exits[1] (the fourthRoom staircase cut) now carries a
+-- scriptEntry field; beginTransition/switchToTargetRoom build and tick
+-- a CutTransitionInterpreter (not behind MYSTICQUEST_SCRIPT_
+-- INTERPRETER -- this is the direct answer to "run everything
+-- completely", not another opt-in shadow run) whenever an exit has
+-- one. HONEST, DELIBERATELY NARROW SCOPE: a live single-step trace
+-- found the ROM's own $413C step automaton reaches its first peek
+-- (roomSelector/subIndexByte) via genuine top-level script dispatch,
+-- but reaches its second peek (the landing tile) via the automaton's
+-- own internal jump, not top-level dispatch -- a lower-level mechanism
+-- ScriptRuntime doesn't model yet. So roomSelector really is now
+-- live-captured from ROM execution and cross-checked
+-- (switchToTargetRoom fails loudly on a mismatch, or if the
+-- interpreter never captured anything at all) -- but landingX/
+-- landingY/targetRoom stay the pre-baked, already-independently-ROM-
+-- table-verified constants, honestly labeled as such at the call
+-- site. Only this one transition (of ~186 known CutTransitionTable
+-- records, 82 genuinely distinct) has a live-confirmed entry point --
+-- every other exit, including every scroll transition (genuinely not
+-- script-driven -- pure hardware scrolling) and fourthRoom's own
+-- fifthRoom cut (not yet separately live-traced), is completely
+-- unaffected, still 100% hand-authored, by design.
 --
--- REWRITTEN 2026-08-15 (task "ScriptInterpreter soll wirklich treiben,
--- nicht nur parallel beobachten" -- direct continuation of this
--- project's own quick-wins list, item 1): the ORIGINAL version of this
--- integration (`runScriptInterpreterShadow`, since removed) had a real,
--- self-caught bug this rewrite fixes -- it built its `RomScriptStream`
--- from `profile.scriptPointerTable.fileOffset` (bank 8, the STATIC
--- table's own location), but task #86 (2026-08-14, one day after this
--- integration first shipped) already found and documented, live, that
--- the real ROM's own EXECUTING cursor for this exact script is NOT bank
--- 8 -- it's bank 13 (see `BossSequenceInterpreter.lua`'s own doc
--- comment for the full live-traced evidence). That correction was never
--- propagated back into this file, so the old "shadow run" had been
--- silently reading and executing the WRONG bank's bytes (bank 8's real
--- content at CPU `$470F`, not the real boss-defeat script) for a full
--- day of otherwise-active development before this pass caught it via a
--- fresh, from-scratch headless probe (see `probe_boss_sequence.lua`,
--- scratchpad -- not checked in, a one-off investigation script) that
--- compared the old wiring's own real opcode dispatch against events.md's
--- own documented 18-opcode list and found no overlap.
+-- REWRITTEN (task to make the interpreter really drive, not just
+-- watch in parallel): the original version of this integration
+-- (runScriptInterpreterShadow, since removed) had a self-caught bug
+-- this rewrite fixes -- it built its RomScriptStream from
+-- profile.scriptPointerTable.fileOffset (bank 8, the static table's
+-- location), but task #86, one day after this integration first
+-- shipped, already found and documented, live, that the ROM's
+-- executing cursor for this exact script is not bank 8 -- it's bank
+-- 13 (see BossSequenceInterpreter.lua's own doc comment for the full
+-- live-traced evidence). That correction was never propagated back
+-- into this file, so the old "shadow run" had been silently reading
+-- and executing the wrong bank's bytes for a full day before this
+-- pass caught it via a fresh, from-scratch headless probe that
+-- compared the old wiring's opcode dispatch against events.md's
+-- documented 18-opcode list and found no overlap.
 --
--- What changed, concretely: (1) uses `BossSequenceInterpreter`, which
--- already has the CORRECT, live-verified bank pair (13 -> 14 on the
--- first real CHAIN) baked in, instead of hand-rolling a `RomScriptStream
--- .forFileOffset` against the wrong table; (2) ticks it ONCE PER REAL
--- FRAME from `:update(dt)` (see that method's own comment below) instead
--- of a single bounded burst at construction time -- SEE THE 2026-08-15
--- CORRECTION BELOW for why "once per real frame" is now known to be an
--- approximation, not a verified match to the real ROM; (3) wires a REAL
--- `ctx.onMessage` that resolves real message IDs via
--- `MessageTextPointer.resolveText` and records them into
--- `self.bossSequenceTranscript` (id/text/frame), not a no-op -- so if a
--- future ROM-decoding pass ever unblocks this run far enough to reach
--- real dialogue, that content is captured and visible immediately,
--- without a second integration pass.
+-- What changed, concretely: (1) uses BossSequenceInterpreter, which
+-- already has the correct, live-verified bank pair (13 -> 14 on the
+-- first CHAIN) baked in, instead of hand-rolling a RomScriptStream
+-- .forFileOffset against the wrong table; (2) ticks it once per frame
+-- from :update(dt) instead of a single bounded burst at construction
+-- time -- see the correction below for why "once per frame" is known
+-- to be an approximation, not a verified match to the ROM; (3) wires a
+-- real ctx.onMessage that resolves message IDs via MessageTextPointer
+-- .resolveText and records them into self.bossSequenceTranscript
+-- (id/text/frame), not a no-op -- so if a future ROM-decoding pass
+-- ever unblocks this run far enough to reach real dialogue, that
+-- content is captured and visible immediately.
 --
--- CORRECTED, 2026-08-15, same day, direct continuation ("mach das",
--- following up on "crack the real $1F35/$C5AF trigger timing, live, via
--- mgba"): this section used to claim the run "genuinely STALLS at a
--- real, honestly-still-OPEN mystery" (opcode `0x00`'s real release
--- condition). A real, decisive live `mgba` trace from
--- `courtyard_boss_defeated()` (`trace_31ad_redirect.py`/`...2.py`,
--- scratchpad, not checked in -- watched real WRAM `$D85A`/`$D8B6:D8B7`/
--- `$C5AF` every single real frame) proved that framing WRONG, not just
--- imprecise, and found something more precise and more useful instead:
---   1. The `$1F35`/`$C5AF` edge DOES fire, exactly once, and DOES
---      redirect the persistent cursor to `$4710` (opcode `0x08` fetched
---      at `$470F`) -- an EXACT match to `BossSequenceInterpreter`'s own
---      `START_CPU_ADDRESS`. That specific mystery is CLOSED: this
+-- CORRECTED, same day (following up on cracking the $1F35/$C5AF
+-- trigger timing live via mgba): this section used to claim the run
+-- "genuinely stalls at a still-open mystery" (opcode 0x00's release
+-- condition). A decisive live mgba trace from courtyard_boss_defeated()
+-- (watched WRAM $D85A/$D8B6:D8B7/$C5AF every frame) proved that
+-- framing wrong, not just imprecise, and found something more precise
+-- and useful instead:
+--   1. The $1F35/$C5AF edge does fire, exactly once, and does redirect
+--      the persistent cursor to $4710 (opcode 0x08 fetched at $470F)
+--      -- an exact match to BossSequenceInterpreter's own
+--      START_CPU_ADDRESS. That specific mystery is closed: this
 --      project's software already enters the boss-defeat script at
---      exactly the real, correct address.
---   2. Past the first real CHAIN, the REAL ROM does NOT dispatch a new
---      opcode every real frame -- `$D85A` was observed holding the SAME
---      value for long real stretches (10, 158, even 314 consecutive
---      real frames) before changing. Calling `BossSequenceInterpreter
---      :tick()` unconditionally every real LÖVE frame (what this file
---      does) therefore races far ahead of the real ROM's own actual
---      position once real per-frame-paced opcodes are involved (`0x04`/
---      `0xFF`'s own textbox-typing family is the prime suspect) --
---      this project's own software cursor silently DESYNCS from the
---      real intended byte stream. Concrete, decisive comparison: this
---      project's own live software run (screenshot-verified, 610 real
---      frames) converges on cursor `0x4798`; the REAL ROM, traced over
---      the SAME real frame range from the same real checkpoint, is
---      actually at `0x6206` by then -- having ALSO genuinely dispatched
---      the real, still-undecoded `0xBC`/`0xBD` palette-fade opcodes
---      along the way (a real, LIVE, first-ever confirmation that this
---      script's own real content actually reaches them -- previously
---      only known to be traced to real ROM code, not confirmed to fire
---      here). This project's software would have stopped loudly on
---      either of those two undecoded opcodes had it stayed synced with
---      the real byte stream -- it doesn't get that far only because it
---      desynced earlier and is reading unrelated bytes as "opcodes".
---   3. HONEST, NOW-OPEN QUESTION this correction surfaces (not resolved
---      this pass): what real condition actually gates re-invocation of
---      the real fetch-dispatch routine (`$3727`) for this script --
---      every real frame, only while some other real per-frame counter/
---      flag holds, or something else entirely. `BossSequenceInterpreter
---      :tick()`'s own doc comment is updated to state this honestly.
--- The concrete next step is therefore NOT "wait for a dialogue-swap-over
--- opportunity that hasn't arrived yet" (the old framing) -- it's finding
--- the real per-opcode dispatch cadence for opcodes past the first CHAIN,
--- which is a genuinely separate, deeper investigation than this pass
--- covers.
+--      exactly the correct address.
+--   2. Past the first CHAIN, the ROM does not dispatch a new opcode
+--      every frame -- $D85A was observed holding the same value for
+--      long stretches (10, 158, even 314 consecutive frames) before
+--      changing. Calling BossSequenceInterpreter:tick() unconditionally
+--      every LÖVE frame (what this file does) therefore races far
+--      ahead of the ROM's actual position once per-frame-paced
+--      opcodes are involved (0x04/0xFF's textbox-typing family is the
+--      prime suspect) -- this project's software cursor silently
+--      desyncs from the intended byte stream. Concrete comparison:
+--      this project's live software run (screenshot-verified, 610
+--      frames) converges on cursor 0x4798; the ROM, traced over the
+--      same frame range from the same checkpoint, is actually at
+--      0x6206 by then -- having also genuinely dispatched the
+--      still-undecoded 0xBC/0xBD palette-fade opcodes along the way
+--      (a live, first-ever confirmation this script's content
+--      actually reaches them). This project's software would have
+--      stopped loudly on either undecoded opcode had it stayed synced
+--      -- it doesn't get that far only because it desynced earlier and
+--      is reading unrelated bytes as "opcodes".
+--   3. Honest, now-open question this correction surfaces (not
+--      resolved this pass): what condition actually gates re-
+--      invocation of the fetch-dispatch routine ($3727) for this
+--      script -- every frame, only while some other per-frame
+--      counter/flag holds, or something else entirely.
+--      BossSequenceInterpreter:tick()'s own doc comment is updated to
+--      state this honestly.
+-- The concrete next step is therefore not "wait for a dialogue-swap-
+-- over opportunity that hasn't arrived yet" -- it's finding the
+-- per-opcode dispatch cadence for opcodes past the first CHAIN, a
+-- separate, deeper investigation than this pass covers.
 
 local TextBox = require("src.rendering.TextBox")
 local Font = require("src.rendering.Font")
