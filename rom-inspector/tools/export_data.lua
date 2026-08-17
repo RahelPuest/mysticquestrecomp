@@ -553,7 +553,16 @@ for name, room in pairs(profile.graphics) do
       heightTiles = #room.grid
       widthTiles = room.grid[1] and #room.grid[1]
     end
-    rooms[#rooms + 1] = { name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = exits }
+    rooms[#rooms + 1] = {
+      name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = exits,
+      -- Real, structured cross-reference (currently only fifthRoom) --
+      -- see rom_profiles.lua's own `sameRomIdentityAs`/`sameRomIdentity
+      -- Note` doc comment: a real, live-confirmed byte-identical WRAM
+      -- room-identity register match to another already-named room,
+      -- not a generic "similar tileset" guess.
+      sameRomIdentityAs = room.sameRomIdentityAs,
+      sameRomIdentityNote = room.sameRomIdentityNote,
+    }
   end
 end
 -- Real, decoded, VERIFIED rooms that exist as genuine ROM screens but
@@ -595,9 +604,40 @@ for _, name in ipairs(ISOLATED_BUT_REAL_ROOMS) do
     }
   end
 end
+-- Attach real `sameRomIdentityAs`/`sameRomIdentityNote` cross-
+-- references (see rom_profiles.lua's own doc comment on this field,
+-- currently only `fifthRoom`) to their room's own ROOMS[] entry --
+-- generic over any room that carries this field, not a hardcoded
+-- name list. Handles LEAF rooms too (like `fifthRoom`, which has no
+-- `exits` of its own and so never went through the main loop above):
+-- a real cross-reference must not silently disappear just because the
+-- room it's attached to happens to have no outgoing exit yet.
+for name, room in pairs(profile.graphics) do
+  if type(room) == "table" and room.sameRomIdentityAs then
+    local found = nil
+    for _, r in ipairs(rooms) do
+      if r.name == name then found = r end
+    end
+    if found then
+      found.sameRomIdentityAs = room.sameRomIdentityAs
+      found.sameRomIdentityNote = room.sameRomIdentityNote
+    else
+      local widthTiles, heightTiles
+      if room.grid then
+        heightTiles = #room.grid
+        widthTiles = room.grid[1] and #room.grid[1]
+      end
+      rooms[#rooms + 1] = {
+        name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = {},
+        sameRomIdentityAs = room.sameRomIdentityAs,
+        sameRomIdentityNote = room.sameRomIdentityNote,
+      }
+    end
+  end
+end
 table.sort(rooms, function(a, b) return a.name < b.name end)
 writeJs("rooms.js", "ROOMS", rooms,
-  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A small number of real, VERIFIED rooms with no live-traced exits (currently: startRoom, the real first-boss-fight room) are still included as their own honestly-disconnected node, via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted.")
+  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A small number of real, VERIFIED rooms with no live-traced exits (currently: startRoom, the real first-boss-fight room) are still included as their own honestly-disconnected node, via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a real, live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom) carry that field regardless of whether they have their own exits.")
 
 ----------------------------------------------------------------------
 -- 6b. Room MAPS (grid + tileOffsets) -- for the Tile/Map viewers. Only
@@ -1137,7 +1177,10 @@ do
       { roomSelector = 1, pixelX = 120, pixelY = 112,
         label = "thirdRoom -> fourthRoom (live-verified, real ROM cut transition)" },
       { roomSelector = 4, pixelX = 136, pixelY = 32,
-        label = "fourthRoom -> fifthRoom (live-verified, real ROM cut transition)" },
+        label = "fourthRoom -> fifthRoom (live-verified, real ROM cut transition) -- " ..
+          "roomSelector 4 is the SAME real room identity as willyRoom/secondRoom/thirdRoom " ..
+          "(byte-identical $D392/$D393/$C3F0/$C3F5, live-confirmed 2026-08-17), not an " ..
+          "independent room -- see rooms.fifthRoom's own sameRomIdentityNote" },
     },
   }, "Real, general ROM structure (bank 14, 186 raw records collapsing to " ..
     #distinct .. " genuinely distinct real transitions) that encodes BOTH the target " ..

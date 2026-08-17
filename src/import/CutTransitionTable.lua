@@ -107,6 +107,17 @@ CutTransitionTable.SELECTOR_RECORD_BODY_LENGTH = 12
 -- can return (`1`-`15`) has an entry; `0` is included too (never
 -- actually used by a real landing record, per this module's own doc
 -- comment, but a real, valid `roomSelectorTable` index nonetheless).
+--
+-- UPGRADED from "curated/assumed" to LIVE-VERIFIED for selectors 2-6
+-- (2026-08-17, direct user claim "ich bin mir sehr sicher das er
+-- übergang von fourth in den fith room einfach nur ein übergang
+-- zurück in den third room ist"): a real live WRAM register trace
+-- ($D392/$D393/$C3F0/$C3F5) confirmed willyRoom/secondRoom/thirdRoom/
+-- fifthRoom really do share one identical real room identity, not
+-- just this table's own coarse label -- see `rom_profiles.lua`'s
+-- `fifthRoom.sameRomIdentityAs`/`sameRomIdentityNote` and
+-- `docs/reverse-engineering/events.md`'s same-dated entry for the
+-- full register table, screenshots, and grid-overlap numbers.
 CutTransitionTable.FAMILY_BY_ROOM_SELECTOR = {
   [0] = "startRoom/fourthRoom",
   [1] = "startRoom/fourthRoom",

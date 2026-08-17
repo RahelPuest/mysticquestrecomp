@@ -831,7 +831,7 @@ const TRANSITIONS = {
       "roomSelector": 1
     },
     {
-      "label": "fourthRoom -> fifthRoom (live-verified, real ROM cut transition)",
+      "label": "fourthRoom -> fifthRoom (live-verified, real ROM cut transition) -- roomSelector 4 is the SAME real room identity as willyRoom/secondRoom/thirdRoom (byte-identical $D392/$D393/$C3F0/$C3F5, live-confirmed 2026-08-17), not an independent room -- see rooms.fifthRoom's own sameRomIdentityNote",
       "pixelX": 136,
       "pixelY": 32,
       "roomSelector": 4

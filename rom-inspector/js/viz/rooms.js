@@ -62,6 +62,19 @@ function render_rooms(main) {
       Debug-Walker erreichbar ist, nicht über den normalen Spielfluss). Ehrlich als
       eigenständiger, unverbundener Knoten gezeigt statt weggelassen.
     </p>
+    <p class="page-lede">
+      <span style="color:#9d6fe0;">&equiv; <code>fifthRoom</code></span> (violetter Rahmen unten):
+      <strong>kein eigenständiger ROM-Raum</strong> &mdash; direkte Bestätigung eines Nutzer-Hinweises
+      (2026-08-17: "ich bin mir sehr sicher das der übergang von fourth in den fith room einfach
+      nur ein übergang zurück in den third room ist"). Live geprüft: die echten
+      Raum-Identitätsregister (<code>$D392</code>/<code>$D393</code> Tile-Source-Pointer,
+      <code>$C3F0</code> dynamicBank, <code>$C3F5</code> roomSelector) sind byte-identisch mit
+      <code>willyRoom</code>/<code>secondRoom</code>/<code>thirdRoom</code>. Nuance: visuell/im
+      Kachel-Grid nicht dasselbe bereits erfasste Bild wie <code>thirdRoom</code> (nur 17,5&nbsp;%
+      Zellen-Übereinstimmung, gegen 82&ndash;89&nbsp;% zwischen je zwei der anderen drei) &mdash;
+      vermutlich ein anderer, per Cut erreichter Scroll-Ausschnitt derselben großen Leinwand, aber
+      real ROM-seitig derselbe Raum, kein unabhängiger. Details im Tooltip am Knoten.
+    </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
       <button class="btn small" id="roomZoomOut" type="button" title="Verkleinern">&minus;</button>
@@ -197,10 +210,23 @@ function render_rooms(main) {
     // of looking like an ordinary, silently-unconnected leaf.
     const roomEntry = roomByName[n];
     const isIsolated = !!(roomEntry && roomEntry.note);
-    const borderStyle = isIsolated ? "2px dashed #e0a030" : "1px solid var(--border)";
+    // A room whose real, live-confirmed WRAM room-identity registers
+    // are byte-identical to another already-named room (currently:
+    // fifthRoom = willyRoom/secondRoom/thirdRoom -- see
+    // rom_profiles.lua's own `sameRomIdentityAs`/`sameRomIdentityNote`
+    // doc comment, 2026-08-17 direct user claim "ich bin mir sehr
+    // sicher das er übergang von fourth in den fith room einfach nur
+    // ein übergang zurück in den third room ist") -- shown with a
+    // distinct solid violet border + a "= <rooms>" badge + the real
+    // evidence as a hover tooltip, visually different from the amber
+    // dashed "isoliert" styling above (a different real finding: this
+    // one IS connected, it's just not an independent room).
+    const sameAs = roomEntry && roomEntry.sameRomIdentityAs;
+    const borderStyle = isIsolated ? "2px dashed #e0a030" : (sameAs ? "2px solid #9d6fe0" : "1px solid var(--border)");
+    const tooltip = isIsolated ? roomEntry.note : (sameAs ? roomEntry.sameRomIdentityNote : "");
     nodesHtml += `
       <div class="room-node-card${isLeaf ? " leaf" : ""}" data-room="${escapeHtml(n)}"
-           ${isIsolated ? `title="${escapeHtml(roomEntry.note)}"` : ""}
+           ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}
            style="position:absolute; left:${p.x}px; top:${p.y}px; width:${p.w}px; height:${p.h}px;
                   box-sizing:border-box; border:${borderStyle}; border-radius:8px;
                   background:var(--bg-card,#171b10); padding:${NODE_PAD}px; text-align:center;">
@@ -210,6 +236,7 @@ function render_rooms(main) {
         <div style="font-size:11px; margin-top:4px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(n)}</div>
         <div style="font-size:9px; color:var(--text-faint);">${m ? m.cols + "&times;" + m.rows + " Tiles" : (roomByName[n] ? "kein Kartenraster" : "kein eigener Exit-Eintrag")}</div>
         ${isIsolated ? `<div style="font-size:9px; color:#e0a030; margin-top:2px;" title="${escapeHtml(roomEntry.note)}">&#9888; isoliert &mdash; 1. Bosskampf</div>` : ""}
+        ${sameAs ? `<div style="font-size:9px; color:#9d6fe0; margin-top:2px;" title="${escapeHtml(roomEntry.sameRomIdentityNote)}">&equiv; ${escapeHtml(sameAs.join("/"))}</div>` : ""}
       </div>`;
   }
   nodesHost.innerHTML = nodesHtml;

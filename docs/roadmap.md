@@ -396,6 +396,19 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       dated entry for the full trail). Doesn't change any decoded ROM
       data, only which real story moment this project's rooms
       represent.
+      **ROOM-IDENTITY CORRECTION, 2026-08-17** (same day, direct user
+      claim "ich bin mir sehr sicher das er übergang von fourth in den
+      fith room einfach nur ein übergang zurück in den third room
+      ist"): confirmed live and correct — `fifthRoom`'s real WRAM
+      room-identity registers (`$D392`/`$D393` tile-source pointer,
+      `$C3F0` dynamicBank, `$C3F5` roomSelector) are byte-identical to
+      willyRoom/secondRoom/thirdRoom's own. Not a genuinely separate
+      ROM room, just a different (per-cut) scroll section of the same
+      shared canvas — full register table, screenshots, and grid-
+      overlap numbers in `events.md`'s own dated entry; surfaced on
+      the rom-inspector website's Room-System graph (violet badge on
+      `fifthRoom`'s own node) and `rom_profiles.lua`'s `fifthRoom.
+      sameRomIdentityAs`/`sameRomIdentityNote` fields.
       **What this changes**: Milestone 3's real DoD (a general,
       ROM-driven way to load ANY room) now has a concrete, verified,
       SHIPPED mechanism behind it for willyRoom — but still not fully
@@ -1261,6 +1274,35 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       dump (not just "the JS has no syntax errors") that both new
       sections render real data and that the story page shows
       "Julius", not "Julia", anywhere.
+      **UPDATE 2026-08-17, later same day** (direct user requests, in
+      order): (1) rewrote the Room-System graph to render real,
+      live-decoded room-map thumbnails instead of generic boxes, with
+      connection arrows anchored at each exit's real, empirically-
+      bracketed trigger zone and real landing point (both newly
+      exported from `rom_profiles.lua`'s own `exits[].zone`/
+      `landingX`/`landingY`) instead of a generic node-edge midpoint —
+      root-caused and fixed a real render bug along the way (a leftover
+      CSS rule from the old single-`<svg>`-graph design was painting an
+      opaque background over the new HTML node cards; DOM/layout/hit-
+      testing were correct the whole time, only the paint layer was
+      wrong). (2) Added Google-Maps-style pan/zoom to the same graph
+      (reusing `js/viz/worldmap.js`'s own established Pointer-Events
+      convention). (3) Added `startRoom` (the real first-boss-fight
+      room) as its own honestly-disconnected node, previously silently
+      omitted because the exporter only ever included rooms with a
+      live-traced `exits` field. (4) Live re-traced and fixed a real,
+      live-gameplay-affecting bug in `secondRoom`'s own `landingX`
+      (was 80 — the room's visual middle, actually a methodology
+      artifact from a checkpoint script that over-walks after the real
+      scroll settles — corrected to the real, code-verified 0, the
+      door threshold) — CODE-verified via a live `Watcher`+`CallTracer`
+      write-watchpoint trace, not just re-measured. (5) Confirmed a
+      direct user claim that `fifthRoom` is real ROM-wise the SAME room
+      as willyRoom/secondRoom/thirdRoom (byte-identical `$D392`/
+      `$D393`/`$C3F0`/`$C3F5`), now surfaced on the graph as a violet-
+      bordered node with a real cross-reference badge/tooltip. All 5
+      re-exported/re-verified live via Playwright screenshots against a
+      real loaded ROM; 562/562 Lua tests unaffected throughout.
 
 - [~] **"Voll interpretierte Version" (task list, 2026-08-15).**
       5-item priority list toward a real dialogue swap-over for the

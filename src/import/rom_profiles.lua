@@ -2481,6 +2481,23 @@ RomProfiles.PROFILES = {
         -- `(B,C)=(4,80)` reads B=4 too, byte-exact agreement between
         -- two completely independent live-execution angles.
         romRoomSelectorConfirmed = 4,
+        -- STRUCTURED, EXPORTABLE cross-reference for the same finding
+        -- documented in prose further below (2026-08-17, direct user
+        -- claim "ich bin mir sehr sicher das er übergang von fourth in
+        -- den fith room einfach nur ein übergang zurück in den third
+        -- room ist") -- real, live-confirmed identity registers
+        -- ($D392/$D393/$C3F0/$C3F5) byte-identical to willyRoom/
+        -- secondRoom/thirdRoom; kept as real fields (not just a
+        -- comment) so rom-inspector's own export_data.lua can surface
+        -- this on the website without hand-duplicating the claim.
+        sameRomIdentityAs = { "willyRoom", "secondRoom", "thirdRoom" },
+        sameRomIdentityNote = "Reale ROM-Identitaetsregister ($D392/$D393 Tile-Source-Pointer, " ..
+          "$C3F0 dynamicBank, $C3F5 roomSelector) sind byte-identisch mit willyRoom/secondRoom/" ..
+          "thirdRoom (live bestaetigt 2026-08-17) -- derselbe reale ROM-Raum, ein anderer, per " ..
+          "Cut erreichter Scroll-Ausschnitt derselben Leinwand, kein unabhaengiger Raum. Nur " ..
+          "17.5% Grid-Zellen-Uebereinstimmung mit thirdRoom (vs. 82-89% zwischen je zwei der " ..
+          "willyRoom/secondRoom/thirdRoom-Trias) -- nicht dasselbe bereits erfasste Bild, aber " ..
+          "dieselbe ROM-Rauminstanz. Siehe events.md 2026-08-17.",
         cols = 20,
         rows = 16,
         tileOffsets = {
