@@ -7858,6 +7858,45 @@ west, the exit fires after the real ~220-frame hold, lands at
 `sixthRoom` (144,80), and the second boss (same real sprite/species
 data as the courtyard boss) is visible and reachable there.
 
+**Real, external-reference corroboration found 2026-08-17** (direct
+user instruction "suche eine möglichst umfangreiche Komplettlösung...
+gegnerlisten... benutzte die als grundlage", then "marsch cave ist was
+anderes als die start sequenz! weiter schauen"): the public US "Final
+Fantasy Adventure" walkthrough (gamesurge.com, see docs/references.md)
+describes this project's OWN already-documented room shape almost
+exactly, independently: the hero is imprisoned in an ARENA inside
+Glaive Castle, fights a "Jackal" monster, escapes toward a door, and
+"another Jackal is released" a SECOND time at "the gate used to admit
+monsters into the arena... after which you must go through the gate"
+-- two same-species fights, the second one gating the way onward,
+matching this project's own courtyard-boss/`sixthRoom`-second-boss/
+gate shape point for point. Rendering this project's own `startRoom`
+live and comparing it directly against the real game's own first
+screenshot ([fantasyanime.com](https://fantasyanime.com/mana/ffadventshots.htm),
+`ffashot001.png`) confirmed it decisively: identical room, identical
+monster, identical barred gate, identical HP/MP/gold HUD values. This
+project's room chain is the real Glaive Castle PRISON ARENA intro, not
+Marsh Cave (an earlier, same-day misidentification, corrected -- see
+references.md for the full account) and not any of the 17 numbered
+dungeons a fan-cartographer catalogued (this intro is short enough it
+apparently wasn't mapped separately).
+
+Also found the SAME DAY, independently: this investigation's own
+"species byte" field (5 sibling records, indices 3/5/10/16/18) is the
+exact same byte as `EnemyStatTable.lua`'s own `speciesByte` field
+(`+5` in its 24-byte record, base file `0x10739` -- the SAME table as
+`messageTextPointer` above), found via a completely different route
+(external boss-list byte matching) the same day. All 5 sibling rows
+(Megapede/Golem/Iflyte/Jackal/Metal Crab, per that table's own
+external reference names) matched byte-for-byte, both the `speciesByte`
+value itself and its surrounding `+6..+9` bytes -- see
+`EnemyStatTable.lua`'s own doc comment for the full reconciliation.
+This still does NOT resolve which of scripts 533/1092/1240 ties to
+which room (the "honest remaining gap" above stands unchanged) -- but
+it does independently corroborate that the underlying table and field
+this whole investigation was built on are real, from a second,
+unrelated angle.
+
 **Honest caveat, recorded rather than smoothed over**: `sixthRoom`'s
 own real captured tileset is the willyRoom/secondRoom/thirdRoom
 checkerboard-courtyard family, NOT `startRoom`'s tileset -- the user's

@@ -4367,8 +4367,21 @@ RomProfiles.PROFILES = {
     -- confirmed role in the enemy HP-randomization formula, landing on
     -- the exact same byte this external-reference search found
     -- independently.
+    --
+    -- SAME TABLE, found again 2026-08-17 (same day): this is the exact
+    -- same table as `messageTextPointer` below's own "ALREADY-known
+    -- message-settings record base/stride (CPU `$4739`/file `0x10739`,
+    -- 24 bytes/record)" -- itself reused from an even EARLIER
+    -- (2026-08-15) investigation (events.md's "Second boss
+    -- investigation") that independently found a real "species byte"
+    -- field at this table's own `+5` and 5 real sibling rows (3, 5,
+    -- 10, 16, 18) sharing it -- all 5 confirmed byte-for-byte against
+    -- THIS table too. See EnemyStatTable.lua's own doc comment for the
+    -- full reconciliation (field renamed `projectileType` ->
+    -- `speciesByte` to match that earlier, independently-verified
+    -- name).
     enemyStatTable = {
-      status = "VERIFIED (table location + stride + speed/hpBase/xp/gold fields, via exact external-reference byte match); other fields real but unconfirmed against this EU ROM",
+      status = "VERIFIED (table location + stride + speed/hpBase/xp/gold/speciesByte fields, via exact external-reference byte match AND an independent, earlier internal investigation); other fields real but unconfirmed against this EU ROM",
       bank = 4,
       fileOffset = 0x10739,
       rowCount = 21,

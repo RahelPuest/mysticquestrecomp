@@ -43,6 +43,34 @@
 -- independently re-confirmed for a SECOND row -- a real, honest open
 -- follow-up, not assumed.
 --
+-- **SECOND, even bigger connection found the same day** (direct user
+-- instruction "marsch cave ist was anderes als die start sequenz!
+-- weiter schauen" -- while re-examining this project's own room-graph
+-- story context): this table is THE SAME real table as the already-
+-- independently-found "message-settings table" from an EARLIER
+-- session (2026-08-15, events.md's own "Second boss investigation" --
+-- `rom_profiles.lua`'s `messageTextPointer`, "ALREADY-known message-
+-- settings record base/stride (CPU `$4739`/file `0x10739`, 24 bytes/
+-- record)"). That investigation independently found "species byte
+-- `0x16` (22)" for the real courtyard boss at its own `hpBase+3`
+-- offset (this table's `+5`, called `projectileType` below at the
+-- time) -- and its own "5 sibling records sharing this species byte"
+-- (indices 3, 5, 10, 16, 18) match this table's own rows 3/5/10/16/18
+-- (Megapede/Golem/Iflyte/Jackal/Metal Crab per the external reference
+-- names) BYTE-FOR-BYTE, both at `+5` (`0x16` in all 5) and `+6..+9`
+-- (the exact `70/71,2,64,16/24` pattern that investigation already
+-- documented). Renamed `projectileType` -> `speciesByte` to match
+-- that EARLIER, independently-verified name rather than invent a
+-- second one for the same real field. **Note the real, honest
+-- surprise this reconciliation surfaced**: `speciesByte` is NOT
+-- unique per named boss (5 very different bosses -- a centipede, a
+-- golem, a flying creature, a jackal, a crab -- all share `0x16`) --
+-- most consistent with a shared sprite/animation-family grouping
+-- rather than a strict per-creature identity, per that earlier
+-- investigation's own framing ("this project's OWN evidence-based
+-- implementation choice, not a claimed decoded ROM fact" for exactly
+-- which script ties to which room).
+--
 -- Record shape (0-based byte offset; only speed/hpBase/xp/gold are
 -- confirmed by the cross-check above; the rest are the external
 -- disassembly's own labels, unverified against this EU ROM's actual
@@ -57,7 +85,13 @@
 --   +4  numObjects        -- UNCONFIRMED against this EU ROM (external
 --                            disassembly's own label: count of 16x16
 --                            sprite objects)
---   +5  projectileType    -- UNCONFIRMED against this EU ROM
+--   +5  speciesByte       -- REAL, independently confirmed (see the
+--                            "second connection" note above) -- a real
+--                            creature-species/sprite-family selector,
+--                            read by the real bank-4 spawn routine
+--                            (file `0x101d1`) off a message-settings
+--                            record via opcode `0xFE`. NOT unique per
+--                            named boss (see the note above).
 --   +6-7 defeatBehaviorId (LE u16) -- UNCONFIRMED; only 3 distinct
 --                            real values seen across all 21 EU rows
 --                            (`0x0246`/`0x0247`/`0x024F`), clustering
@@ -77,6 +111,14 @@
 --                            data" but doesn't give a field-by-field
 --                            breakdown, so nothing here is claimed.
 --
+-- **Real, concrete next step this connection opens up**: `messageText
+-- Pointer`'s own table is indexed by `messageID` across (per events.md)
+-- 1357 real records -- this decoder currently only covers the first 21
+-- rows (the ones this pass could byte-match against the external boss
+-- list). Extending `rowCount` and re-deriving `externalReferenceNames`
+-- for the FULL real table (regular field monsters, not just named
+-- bosses) is a real, scoped, not-yet-attempted follow-up.
+--
 -- Pure Lua, no love.* calls, same convention as EnemySpeciesTable/
 -- ItemTable/WeaponTable.
 
@@ -87,7 +129,7 @@ EnemyStatTable.ROW_STRIDE = 24
 --- Decode all real records from `romData` per `enemyStatTable`
 -- (`profile.enemyStatTable`, `{fileOffset, rowCount}`). Returns a
 -- plain 1-based array of `rowCount` records, each `{speed, hpBase,
--- xp, gold, numObjects, projectileType, defeatBehaviorId, raw}`.
+-- xp, gold, numObjects, speciesByte, defeatBehaviorId, raw}`.
 function EnemyStatTable.decode(romData, enemyStatTable)
   assert(type(romData) == "string", "EnemyStatTable.decode expects a byte string")
   assert(enemyStatTable and enemyStatTable.fileOffset and enemyStatTable.rowCount,
@@ -105,7 +147,7 @@ function EnemyStatTable.decode(romData, enemyStatTable)
       xp = raw:byte(3),
       gold = raw:byte(4),
       numObjects = raw:byte(5),
-      projectileType = raw:byte(6),
+      speciesByte = raw:byte(6),
       defeatBehaviorId = raw:byte(7) + raw:byte(8) * 256,
       raw = raw,
     }

@@ -254,25 +254,48 @@ would likely see them fine.
     (Kett's guard)" fight here -- either this map's own author didn't
     mark it, or it's a smaller/scripted encounter this particular fan
     map doesn't call out.
-  - **Real, still-open relevance to this project's own long-running
-    "second boss" placement question** (see events.md's "Second boss
-    investigation" and this project's own `sixthRoom.gate` work): The
-    Marsh Cave map shows only ONE boss for the entire first dungeon,
-    which is where this project's OWN 9 decoded rooms (`startRoom`
-    through `ninthRoom`) most plausibly sit (matching item names
-    already found: Sickle, and this project's own `startRoom`
-    checkerboard/gate imagery). If this project's 2 in-ROM boss
-    fights are really BOTH inside "the first dungeon" as currently
-    modeled, that would be one MORE boss than this specific fan map
-    shows for that dungeon -- not a contradiction (fan maps can miss
-    optional/scripted encounters, and this project's own live-testing
-    already independently confirmed `sixthRoom`'s own boss+gate
-    mechanic really exists in the ROM), but a real, honest data point
-    worth keeping in mind, NOT yet resolved either way. A full room-
-    by-room visual cross-check (rendering this project's own 9 decoded
-    rooms as images and comparing tile-for-tile against this map's own
-    grid) was NOT attempted this pass -- a substantial, concrete next
-    step, not started here.
+  - **CORRECTED, same day, direct user pushback ("marsch cave ist was
+    anderes als die start sequenz! weiter schauen")**: the guess above
+    (this project's own `startRoom`-onward rooms belonging to Marsh
+    Cave) was wrong. Found the real match instead: gamesurge.com's own
+    walkthrough opening ("the hero... is captured... forced to fight
+    daily" in a prison ARENA inside Glaive Castle, "another Jackal is
+    released" a second time at "the gate used to admit monsters into
+    the arena", "after which you must go through the gate") describes
+    the exact real shape of this project's OWN already-documented
+    room chain (two same-species boss fights, a gate that opens after
+    the second one -- see events.md's "Second boss investigation" and
+    `sixthRoom.gate`). Found this site's own screenshot gallery
+    ([ffadventshots.htm](https://fantasyanime.com/mana/ffadventshots.htm),
+    `screenshots/large/ffashot001.png` onward) and DECISIVELY confirmed
+    it: rendered this project's own `startRoom` live (`love .`,
+    `MYSTICQUEST_DEBUG_STATE=field`) and compared side-by-side against
+    the real game's own first screenshot -- **identical room layout,
+    identical monster, identical barred gate at the top, identical
+    HP/MP/gold HUD values (19/6/50)**. This project's `startRoom`
+    THROUGH `ninthRoom` chain is the real Glaive Castle PRISON ARENA
+    intro sequence (fight a Jackal, meet Willy, a door leads to Amanda
+    +another prisoner, a second released Jackal at the monster-gate,
+    escape through that same gate, down the castle wall, a Dark Lord/
+    Julius confrontation, pushed over falls into the overworld near
+    Topple) -- NOT any of the 17 numbered "dungeon" maps this
+    fan-cartographer catalogued (this intro sequence is short enough
+    it apparently wasn't mapped as its own dungeon by them). This also
+    means the earlier "one boss vs. two" tension against the Marsh
+    Cave map (removed above) was never a real discrepancy -- wrong
+    dungeon entirely, not resolved by dropping it, just no longer the
+    right question. The real overworld destination after this intro
+    (a forest area leading into Topple, a town with an Inn) is a
+    concrete, still-open next lead for this project's own room graph,
+    not yet located in the ROM.
+  - Real, reusable technique this pass established: `MYSTICQUEST
+    _SCREENSHOT` writes into LÖVE's own sandboxed save directory (a
+    bare filename, not an OS path -- see `main.lua`'s own doc comment),
+    so a real side-by-side comparison against an external reference
+    image needs an extra `cp` step from
+    `~/Library/Application Support/LOVE/mysticquestrecomp/<name>.png`
+    before it can be read/compared -- not obvious from the env var
+    alone, worth remembering for the next visual cross-check.
 
 ## Open research leads (not yet followed up)
 

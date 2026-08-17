@@ -6,7 +6,7 @@ local DevRomLocator = require("tests.dev_rom_locator")
 
 Harness.test("EnemyStatTable.decode: parses a synthetic 1-row record", function()
   -- speed=0x08 hpBase=0x19 xp=0x14 gold=0x0a numObjects=0x08
-  -- projectileType=0x1e defeatBehaviorId=0x0246 (bytes 0x46,0x02 LE)
+  -- speciesByte=0x1e defeatBehaviorId=0x0246 (bytes 0x46,0x02 LE)
   local row = string.char(0x08, 0x19, 0x14, 0x0a, 0x08, 0x1e, 0x46, 0x02) ..
     string.rep("\0", 16)
   local rows = EnemyStatTable.decode(row, { fileOffset = 0, rowCount = 1 })
@@ -16,9 +16,30 @@ Harness.test("EnemyStatTable.decode: parses a synthetic 1-row record", function(
   Harness.assertEqual(rows[1].xp, 0x14)
   Harness.assertEqual(rows[1].gold, 0x0a)
   Harness.assertEqual(rows[1].numObjects, 0x08)
-  Harness.assertEqual(rows[1].projectileType, 0x1e)
+  Harness.assertEqual(rows[1].speciesByte, 0x1e)
   Harness.assertEqual(rows[1].defeatBehaviorId, 0x0246)
   Harness.assertEqual(#rows[1].raw, 24)
+end)
+
+Harness.test("EnemyStatTable.decode: the real courtyard-boss speciesByte (0x16) is shared by 5 real rows -- a real, independently-confirmed cross-check against events.md's own 'Second boss investigation'", function()
+  -- Real bytes for rows 3/5/10/16/18 (Megapede/Golem/Iflyte/Jackal/
+  -- Metal Crab): all share speciesByte=0x16 at +5 AND the same +6..+9
+  -- pattern that earlier, independent investigation already found --
+  -- see EnemyStatTable.lua's own doc comment for the full reconciliation.
+  local rows = {}
+  local data = {
+    [3]  = { 0x0a, 0x1c, 0x2c, 0x96, 0x0b, 0x16, 0x46, 0x02 },
+    [5]  = { 0x04, 0x8f, 0x60, 0xa0, 0x06, 0x16, 0x46, 0x02 },
+    [10] = { 0x06, 0x92, 0xc8, 0xfa, 0x07, 0x16, 0x47, 0x02 },
+    [16] = { 0x05, 0x02, 0x00, 0x00, 0x06, 0x16, 0x46, 0x02 },
+    [18] = { 0x0a, 0x51, 0x64, 0x64, 0x07, 0x16, 0x47, 0x02 },
+  }
+  for i, bytes in pairs(data) do
+    local row = string.char(bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8]) ..
+      string.rep("\0", 16)
+    local decoded = EnemyStatTable.decode(row, { fileOffset = 0, rowCount = 1 })
+    Harness.assertEqual(decoded[1].speciesByte, 0x16, "row " .. i .. " speciesByte mismatch")
+  end
 end)
 
 -- --- ROM-dependent tests -------------------------------------------------
