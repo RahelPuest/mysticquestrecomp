@@ -384,6 +384,18 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       ROM load (not just the investigation's own scratch scripts) —
       asserts the exact real numbers (288 matches, 32 door-zone
       placeholders, 0 unexplained mismatches), full suite 202/202.
+      **STORY-CONTEXT CORRECTION, 2026-08-17** (direct user pushback,
+      "marsch cave ist was anderes als die start sequenz! weiter
+      schauen"): this project's own `startRoom`-through-`ninthRoom`
+      room chain was misidentified as Marsh Cave (this game's first
+      dungeon) in an earlier same-day pass — corrected and decisively
+      confirmed instead as the real GLAIVE CASTLE PRISON ARENA intro
+      sequence (rendered `startRoom` live and compared it directly
+      against the real game's own first screenshot: identical room,
+      monster, gate, and HUD values — see docs/references.md's own
+      dated entry for the full trail). Doesn't change any decoded ROM
+      data, only which real story moment this project's rooms
+      represent.
       **What this changes**: Milestone 3's real DoD (a general,
       ROM-driven way to load ANY room) now has a concrete, verified,
       SHIPPED mechanism behind it for willyRoom — but still not fully
@@ -917,6 +929,17 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       own `$3DF4`/table-semantics follow-up); whether equipping a
       different weapon changes real combat damage is honestly still
       open (see combat.md's own MAJOR CORRECTION entry).
+      **UPDATE 2026-08-17**: the "weapon stat-byte fields UNKNOWN" gap
+      above is now partially closed for POWER/PRICE specifically —
+      `WeaponStatTable.lua` (a real, SEPARATE table, file `0xA1FD`)
+      found via external-reference byte matching against the US
+      cartridge's own public disassembly, all 16 weapons confirmed
+      byte-for-byte, cross-checked again independently against a real
+      walkthrough capture. Wired into `Inventory.lua` as its own
+      `weaponStatCatalog` (deliberately NOT merged per-weapon into the
+      existing name catalog — the two tables' real row-order
+      correspondence isn't confirmed, a genuine open sub-question, not
+      glossed over). Real combat-damage-per-weapon still open.
 
 - [~] **Milestone 9 — Combat.** Real-time contact/action combat,
       confirmed (not a separate turn-based battle mode). **The real
@@ -1222,6 +1245,22 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       (regenerates the auto part) plus update the relevant hand-curated
       file by hand where needed. Tracked as an ongoing task in the live
       tracker (see task list) rather than a single completed item.
+      **UPDATE 2026-08-17** (direct user instruction, "in app und
+      website einbauen"): re-ran the export after this whole session's
+      text-decode/name-correction/new-table work — `story.js`
+      automatically picked up the `Julia`->`Julius` correction and
+      every new digraph decode with zero manual edits (confirms the
+      "auto-generated, re-run don't hand-edit" design actually holds
+      up). Also EXTENDED the exporter and the site's own Monster-/
+      Items-pages with the two new real tables found this session:
+      `EnemyStatTable` (21 named bosses, own `Bosse` section on the
+      Monster page) and `WeaponStatTable` (16 weapons' real power/
+      price, own `Waffen-Stats` tab on the Items page) — both kept
+      visibly SEPARATE from the existing name catalogs, same honesty
+      stance as the Lua side. Live-verified via a headless-Chrome DOM
+      dump (not just "the JS has no syntax errors") that both new
+      sections render real data and that the story page shows
+      "Julius", not "Julia", anywhere.
 
 - [~] **"Voll interpretierte Version" (task list, 2026-08-15).**
       5-item priority list toward a real dialogue swap-over for the

@@ -32,6 +32,10 @@ const TEXT_DECODER = {
       "chars": "r "
     },
     {
+      "byte": 39,
+      "chars": ".."
+    },
+    {
       "byte": 40,
       "chars": "t "
     },
@@ -233,7 +237,7 @@ const TEXT_DECODER = {
     },
     {
       "byte": 91,
-      "chars": "a"
+      "chars": "us"
     },
     {
       "byte": 92,
@@ -264,6 +268,10 @@ const TEXT_DECODER = {
       "chars": "nn"
     },
     {
+      "byte": 99,
+      "chars": "ng"
+    },
+    {
       "byte": 100,
       "chars": "sc"
     },
@@ -273,7 +281,7 @@ const TEXT_DECODER = {
     },
     {
       "byte": 102,
-      "chars": "! "
+      "chars": ". "
     },
     {
       "byte": 103,
@@ -312,12 +320,80 @@ const TEXT_DECODER = {
       "chars": " B"
     },
     {
+      "byte": 112,
+      "chars": "rt"
+    },
+    {
+      "byte": 113,
+      "chars": " a"
+    },
+    {
+      "byte": 114,
+      "chars": "me"
+    },
+    {
+      "byte": 115,
+      "chars": " G"
+    },
+    {
+      "byte": 116,
+      "chars": "ac"
+    },
+    {
+      "byte": 117,
+      "chars": "di"
+    },
+    {
+      "byte": 118,
+      "chars": "Di"
+    },
+    {
+      "byte": 119,
+      "chars": "na"
+    },
+    {
+      "byte": 120,
+      "chars": "Da"
+    },
+    {
+      "byte": 121,
+      "chars": "a "
+    },
+    {
+      "byte": 122,
+      "chars": "eh"
+    },
+    {
+      "byte": 123,
+      "chars": "ns"
+    },
+    {
+      "byte": 124,
+      "chars": "ha"
+    },
+    {
+      "byte": 125,
+      "chars": "Ic"
+    },
+    {
+      "byte": 126,
+      "chars": "ra"
+    },
+    {
+      "byte": 127,
+      "chars": "eg"
+    },
+    {
       "byte": 128,
       "chars": "rt"
     },
     {
       "byte": 129,
       "chars": " a"
+    },
+    {
+      "byte": 130,
+      "chars": "me"
     },
     {
       "byte": 131,
@@ -333,7 +409,7 @@ const TEXT_DECODER = {
     },
     {
       "byte": 134,
-      "chars": "ih"
+      "chars": "Di"
     },
     {
       "byte": 135,
@@ -370,6 +446,10 @@ const TEXT_DECODER = {
     {
       "byte": 143,
       "chars": "eg"
+    },
+    {
+      "byte": 252,
+      "chars": "sch"
     }
   ],
   "exclamationByte": 243,

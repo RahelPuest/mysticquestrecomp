@@ -13,8 +13,19 @@ function render_items(main) {
       <div class="pill-tabs" id="itemTabs">
         <div class="pill-tab active" data-tab="items">Items &amp; Zauber</div>
         <div class="pill-tab" data-tab="weapons">Waffen &amp; Rüstung</div>
+        ${ITEMS.weaponStats && ITEMS.weaponStats.length ? '<div class="pill-tab" data-tab="weaponStats">Waffen-Stats (echte Power/Preise)</div>' : ""}
       </div>
     </div>
+    ${ITEMS.weaponStats && ITEMS.weaponStats.length ? `
+    <p class="page-lede" id="weaponStatsLede" style="display:none; margin-top:8px;">
+      Eine echte, SEPARATE Tabelle (<code>WeaponStatTable.lua</code>, Datei
+      <code>0xA1FD</code>, 16 Bytes/Zeile) &mdash; Power und Preis
+      <strong>byte-genau</strong> gegen die öffentliche US-Disassembly
+      abgeglichen (alle 16 Waffen), und Power/mehrere Preise zusätzlich
+      unabhängig gegen einen echten Walkthrough-Fund bestätigt. Bewusst
+      NICHT mit der Namenstabelle oben verschmolzen &mdash; die
+      Reihenfolge-Zuordnung zwischen beiden Tabellen ist nicht bestätigt.
+    </p>` : ""}
     <p class="page-lede" style="margin-top:8px;">
       <strong>Kategorie-Bytes</strong> (2026-08-15, Katalog-Plan Phase 2): jeder echte
       Datensatz trägt ein reales <code>categoryByte</code>. Gruppen mit &ge;5 Einträgen
@@ -41,6 +52,10 @@ function render_items(main) {
   }
 
   function renderCategoryPills() {
+    if (state.tab === "weaponStats") {
+      categoryToolbar.innerHTML = "";
+      return;
+    }
     const cats = categoriesFor(state.tab);
     categoryToolbar.innerHTML = `
       <div class="pill-tabs" id="itemCatPills">
@@ -71,6 +86,30 @@ function render_items(main) {
   }
 
   function renderTable() {
+    const lede = document.getElementById("weaponStatsLede");
+    if (lede) lede.style.display = state.tab === "weaponStats" ? "" : "none";
+    if (categoryToolbar) categoryToolbar.style.display = state.tab === "weaponStats" ? "none" : "";
+
+    if (state.tab === "weaponStats") {
+      host.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Name</th><th>Power</th><th>Preis</th><th>Rohbytes</th></tr></thead>
+          <tbody>
+            ${(ITEMS.weaponStats || []).map(r => `
+              <tr>
+                <td class="num">${r.index}</td>
+                <td>${r.name ? escapeHtml(r.name) : '<span class="desc">(unbenannt)</span>'}</td>
+                <td class="num">${r.power}</td>
+                <td class="num">${r.price}</td>
+                <td class="num">${r.rawBytes.map(b => hex(b, 2)).join(" ")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+      return;
+    }
+
     if (state.tab === "items") {
       host.innerHTML = `
         <table class="data-table">

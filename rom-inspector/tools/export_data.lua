@@ -28,8 +28,10 @@ local ScriptRuntime = require("src.scripting.ScriptRuntime")
 local RoomFloorLayout = require("src.import.RoomFloorLayout")
 local MapTable = require("src.import.MapTable")
 local EnemySpeciesTable = require("src.import.EnemySpeciesTable")
+local EnemyStatTable = require("src.import.EnemyStatTable")
 local ItemTable = require("src.import.ItemTable")
 local WeaponTable = require("src.import.WeaponTable")
+local WeaponStatTable = require("src.import.WeaponStatTable")
 local NpcCatalog = require("src.import.NpcCatalog")
 local GraphicsCandidates = require("src.import.GraphicsCandidates")
 local MapTileCatalog = require("src.import.MapTileCatalog")
@@ -778,6 +780,35 @@ do
     }
   end
   local es = profile.graphics and profile.graphics.enemySprite
+
+  -- FOUND, 2026-08-17 (external-reference byte matching against the US
+  -- "Final Fantasy Adventure" disassembly -- see EnemyStatTable.lua's
+  -- own doc comment for the full evidence trail, including the
+  -- decisive cross-check against this project's own earlier, unrelated
+  -- live-CPU-trace finding). A real, SEPARATE table from the species
+  -- table above (own file offset, own 24-byte stride) -- 21 named
+  -- bosses with real speed/HP-formula-input/XP/gold, all confirmed
+  -- byte-for-byte against the external reference.
+  local bosses = {}
+  if profile.enemyStatTable then
+    local bossRows = EnemyStatTable.decode(romData, profile.enemyStatTable)
+    local names = profile.enemyStatTable.externalReferenceNames or {}
+    for i, r in ipairs(bossRows) do
+      bosses[i] = {
+        index = i - 1,
+        name = names[i],
+        speed = r.speed,
+        hpBase = r.hpBase,
+        xp = r.xp,
+        gold = r.gold,
+        numObjects = r.numObjects,
+        speciesByte = r.speciesByte,
+        defeatBehaviorId = r.defeatBehaviorId,
+        rawBytes = bytesToArray(r.raw),
+      }
+    end
+  end
+
   writeJs("monsters.js", "MONSTERS", {
     species = monsters,
     knownSprite = es and {
@@ -796,12 +827,18 @@ do
       -- of just the un-flipped one.
       flipXTogglesPerStep = es.flipXTogglesPerStep or false,
     } or nil,
+    bosses = bosses,
   }, "Real enemySpeciesTable rows (EnemySpeciesTable.lua), grouped into 11 distinct species. " ..
      "ATK is VERIFIED (live register match); defCandidate1/2 are real bytes with NO confirmed " ..
      "consumer found after 4 independent leads (see combat.md's 2026-08-15 entries) -- shown " ..
      "as raw data, not claimed to be a working DEF stat. Only 1 of 11 species has a known real " ..
      "sprite (found via live OAM tracing during actual combat) -- honestly flagged per-species; " ..
-     "that one real sprite's own 2-pose animation (X-flip toggle) is included under knownSprite.")
+     "that one real sprite's own 2-pose animation (X-flip toggle) is included under knownSprite. " ..
+     "`bosses` (2026-08-17, EnemyStatTable.lua) is a SEPARATE real table -- 21 named story bosses " ..
+     "with speed/hpBase/xp/gold confirmed byte-for-byte against the US cartridge's own public " ..
+     "disassembly; hpBase is a PRNG-formula input, not flat starting HP (see that module's own " ..
+     "doc comment); speciesByte/defeatBehaviorId/numObjects are real bytes, not yet independently " ..
+     "confirmed against this EU ROM's own code.")
 end
 
 ----------------------------------------------------------------------
@@ -900,12 +937,45 @@ do
     weaponCategories[i] = { categoryByte = g.categoryByte, count = g.count, sizeClass = g.sizeClass }
   end
 
+  -- FOUND, 2026-08-17 (same external-reference-matching pass as
+  -- EnemyStatTable -- see WeaponStatTable.lua's own doc comment). A
+  -- real, SEPARATE table from `weapons` above (own file offset, own
+  -- 16-byte stride, own real row order matching the external
+  -- reference's catalog order) -- power/price confirmed byte-for-byte
+  -- against the US cartridge's own disassembly AND independently
+  -- cross-checked against this project's own earlier gamesurge.com
+  -- walkthrough capture. Kept SEPARATE from `weapons` (not merged
+  -- in by index) because the two tables' real row-order
+  -- correspondence isn't confirmed -- see that module's own doc
+  -- comment for a concrete example of why (weaponCatalog's German
+  -- "Streit" sitting where a naive same-order guess would expect
+  -- "Were Axe" doesn't obviously fit).
+  local weaponStats = {}
+  if profile.weaponStatTable then
+    local statRows = WeaponStatTable.decode(romData, profile.weaponStatTable)
+    local names = profile.weaponStatTable.externalReferenceNames or {}
+    for i, r in ipairs(statRows) do
+      weaponStats[i] = {
+        index = i - 1,
+        name = names[i],
+        power = r.power,
+        price = r.price,
+        flagA = r.flagA,
+        typeTag = r.typeTag,
+        variantFlag = r.variantFlag,
+        byte3 = r.byte3,
+        rawBytes = bytesToArray(r.raw),
+      }
+    end
+  end
+
   writeJs("items.js", "ITEMS", {
     items = items,
     weapons = weapons,
     categoryBoundaryRecord = profile.itemTable.categoryBoundaryRecord,
     itemCategories = itemCategories,
     weaponCategories = weaponCategories,
+    weaponStats = weaponStats,
   }, "Real item/spell table (ItemTable.lua) and weapon/armor table (WeaponTable.lua). Names " ..
      "decode cleanly for most records (2026-08-15: found spell records need a 2nd real name " ..
      "offset, see ItemTable.lua's own doc comment) -- records with name=\"\" genuinely don't " ..
@@ -913,7 +983,10 @@ do
      "name are real but NOT interpreted (raw only). itemCategories/weaponCategories (2026-08-15, " ..
      "catalog plan Phase 2) group the real records by their real categoryByte -- sizeClass is a " ..
      "plain size threshold (>=5 records), NOT a claimed real slot name (e.g. weapon/armor/helm) -- " ..
-     "see WeaponTable.lua's own doc comment for why that's still unconfirmed.")
+     "see WeaponTable.lua's own doc comment for why that's still unconfirmed. `weaponStats` " ..
+     "(2026-08-17, WeaponStatTable.lua) is a SEPARATE real table -- 16 real weapons with power/price " ..
+     "confirmed byte-for-byte against the US cartridge's own public disassembly, kept apart from " ..
+     "`weapons` above since the two tables' row-order correspondence to each other isn't confirmed.")
 end
 
 ----------------------------------------------------------------------

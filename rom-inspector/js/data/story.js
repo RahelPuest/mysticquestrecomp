@@ -59,10 +59,10 @@ const STORY = {
       "role": "Mentor-Figur -- gibt dem Held Excalibur, schickt ihn zu Cibba nach Wendel"
     },
     {
-      "name": "Julia",
+      "name": "Julius",
       "occurrences": 14,
       "positionKnown": false,
-      "role": "Hauptgegnerin -- wird König von Glaive, erlangt die Macht des Mana"
+      "role": "Hauptgegner -- wird König von Glaive, erlangt die Macht des Mana"
     },
     {
       "name": "Cibba",

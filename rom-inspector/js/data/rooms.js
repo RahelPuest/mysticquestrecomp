@@ -5,6 +5,18 @@ const ROOMS = [
     "exits": [
       {
         "reverse": false,
+        "targetRoom": "ninthRoom",
+        "transitionType": "cut"
+      }
+    ],
+    "heightTiles": 16,
+    "name": "eighthRoom",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "reverse": false,
         "targetRoom": "fifthRoom",
         "transitionType": "cut"
       },
@@ -31,6 +43,30 @@ const ROOMS = [
     ],
     "heightTiles": 16,
     "name": "secondRoom",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "reverse": false,
+        "targetRoom": "eighthRoom",
+        "transitionType": "cut"
+      }
+    ],
+    "heightTiles": 16,
+    "name": "seventhRoom",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "reverse": false,
+        "targetRoom": "seventhRoom",
+        "transitionType": "cut"
+      }
+    ],
+    "heightTiles": 16,
+    "name": "sixthRoom",
     "widthTiles": 20
   },
   {

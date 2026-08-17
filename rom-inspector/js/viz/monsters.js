@@ -45,6 +45,7 @@ function drawSpriteGrid(canvas, tileOffsets, cols, rows, scale, flip) {
 
 function render_monsters(main) {
   const ks = MONSTERS.knownSprite; // top-level real sprite data (1 of 11 species)
+  const bosses = MONSTERS.bosses || [];
   main.innerHTML = `
     <h1 class="page-title">Monster</h1>
     <p class="page-lede">
@@ -73,6 +74,23 @@ function render_monsters(main) {
         </div>
       </div>
     </div>` : ""}
+    ${bosses.length ? `
+    <h2 class="page-title" style="font-size:1.3em; margin-top:28px;">Bosse (echte Story-Bosse)</h2>
+    <p class="page-lede">
+      21 echte, namentlich bekannte Bosse aus einer eigenen, separaten
+      ROM-Tabelle (<code>EnemyStatTable</code>, Datei <code>0x10739</code>,
+      24 Bytes/Zeile) &mdash; Namen aus der öffentlichen US-Disassembly
+      ("Final Fantasy Adventure"), <strong>byte-genau</strong> gegen diese
+      EU-ROM abgeglichen (speed/hpBase/xp/gold stimmen für alle 21
+      exakt überein). <code>hpBase</code> ist kein fester Start-HP-Wert,
+      sondern der Multiplikator in einer echten, live bestätigten
+      Zufallsformel. <code>speciesByte</code>/<code>defeatBehaviorId</code>/
+      <code>numObjects</code> sind echte Bytes, aber gegen diese EU-ROM
+      noch nicht unabhängig bestätigt.
+    </p>
+    <div class="card-grid" id="bossCards" style="margin-top:16px;"></div>
+    ` : ""}
+    <h2 class="page-title" style="font-size:1.3em; margin-top:28px;">Reguläre Spezies</h2>
     <div class="card-grid" id="monsterCards" style="margin-top:16px;"></div>
   `;
 
@@ -92,6 +110,30 @@ function render_monsters(main) {
         drawSpriteGrid(canvas, ks.tileOffsets, ks.cols, ks.rows, 4, tab.dataset.flip === "1");
       });
     });
+  }
+
+  const bossHost = document.getElementById("bossCards");
+  if (bossHost) {
+    for (const b of bosses) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <h3>${b.name || ("Boss " + b.index)}</h3>
+        <span class="badge verified">byte-genau bestätigt</span>
+        <table class="data-table" style="margin-top:10px;">
+          <tr><th>Speed</th><td class="num">${b.speed}</td></tr>
+          <tr><th>hpBase</th><td class="num">${b.hpBase}</td><td class="desc">Formel-Eingabe, kein fester HP-Wert</td></tr>
+          <tr><th>XP</th><td class="num">${b.xp}</td></tr>
+          <tr><th>Gold</th><td class="num">${b.gold}</td></tr>
+          <tr><th>speciesByte</th><td class="num">${b.speciesByte}</td><td class="desc">nicht eindeutig pro Boss</td></tr>
+          <tr><th>defeatBehaviorId</th><td class="num">${hex(b.defeatBehaviorId, 4)}</td><td class="desc">unbestätigt</td></tr>
+        </table>
+        <div class="meta" style="margin-top:8px;">
+          raw: ${b.rawBytes.map(x => hex(x, 2)).join(" ")}
+        </div>
+      `;
+      bossHost.appendChild(card);
+    }
   }
 
   const host = document.getElementById("monsterCards");
