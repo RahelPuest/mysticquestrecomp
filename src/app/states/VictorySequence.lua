@@ -223,95 +223,85 @@ end
 --
 -- Real `ctx` fields, and why each one is safe to wire for real here even
 -- though this run is still a shadow (never drives visible state):
---   `stats = stats` -- the SAME real `Stats` object every other real
---     system in this state reads/writes. Deliberately NOT a private
---     copy: if the real, decoded `0xC0`/`0x32` (HEAL_LP/HEAL_MP) opcodes
---     this script is confirmed to dispatch (events.md's own opcode
---     list) ever produce a wrong-looking value, that becomes visible
---     live (HUD, overlay) instead of silently sitting in an unobserved
---     shadow copy -- a genuine, free cross-check of the real formula,
---     not just a code-review guess.
---   `flags`/`wramBitFlags`/`actorStateFlags` -- private, freshly zero-
---     initialized shadow WRAM cells (real `$D874`/`$C3F1`/`$C4D4`) --
---     zero-init is an honest default (see `ScriptRuntime.new`'s own doc
+--   stats = stats -- the same Stats object every other system in this
+--     state reads/writes. Deliberately not a private copy: if the
+--     decoded 0xC0/0x32 (HEAL_LP/HEAL_MP) opcodes this script is
+--     confirmed to dispatch (events.md's own opcode list) ever produce
+--     a wrong-looking value, that becomes visible live (HUD, overlay)
+--     instead of silently sitting in an unobserved shadow copy -- a
+--     free cross-check of the real formula, not just a code-review guess.
+--   flags/wramBitFlags/actorStateFlags -- private, freshly zero-
+--     initialized shadow WRAM cells (real $D874/$C3F1/$C4D4) --
+--     zero-init is an honest default (see ScriptRuntime.new's own doc
 --     comment for each field), not a guess at a real starting value;
---     nothing else in this project's engine reads these specific real
---     cells today, so keeping them private here can't desync anything.
---   `onControlCode` -- REWRITTEN 2026-08-15 ("mach trotzdem, ändere den
---     code", direct continuation of the "voll interpretierte Version"
---     investigation). The PREVIOUS version of this wiring used
---     `isTextboxDone`, decoding the real text at the live cursor via
---     `TextDecoder.decodeString` and pacing until that many characters
---     were "revealed" -- a working approximation, but built on top of
---     `StandardScriptHandlers.tick`'s own then-current (and, it turned
---     out, still wrong) model of opcode `0x04` as a simple tick. Real,
---     decisive static disassembly of `$333D` (`tools/rom/disasm.py`,
---     see docs/reverse-engineering/events.md's "the $38F6 table
---     decoded" section) proved opcode `0x04` is actually a genuine
---     PER-BYTE TEXT/CONTROL-CODE CLASSIFIER -- `StandardScriptHandlers
---     .tick` itself is now rewritten to match (real terminator/control-
---     code/text-character branches, see that handler's own doc
---     comment) -- so this state no longer needs to pre-compute a whole
---     text run's length at all; the classifier discovers the
---     terminator organically, byte by byte, the same way the real ROM
---     does. `onControlCode(byte)` is this integration's own hook for
---     the real `0x10`-`0x1F` control-code family that classifier calls
---     back with -- logs each real control byte into
---     `self.bossSequenceTranscript` (repurposed from its old "resolved
---     message" shape into a general "real, notable interpreter event"
---     log) for live overlay visibility, WITHOUT modeling any of those
---     bytes' own deeper real WRAM side effects (mode registers, name-
---     pointer writes, cursor-position pairs) -- see events.md's own
---     doc for exactly what's real-but-unmodeled here (the bank-2-
---     delegated portions specifically). `isTextboxDone` is no longer
---     wired here at all -- opcode `0x04` doesn't need it any more (see
---     `.tick`'s own doc comment), and `0xFF`/`0xF0` are not confirmed
---     to fire in the real, reachable portion of this specific script
---     (events.md's own opcode list for it does NOT include them
---     reaching a real conditional-halt state this ctx would need to
---     answer) -- if that ever changes, `ScriptRuntime.new`'s own
---     documented "always true" default applies, an honest stand-in,
---     same as before.
---   `onMessage` -- REAL, not a no-op (unlike leaving it unset, which
---     would make a genuine `0xFE` dispatch fail loudly with "no ctx
---     .onMessage wired"): resolves the real message ID via
---     `MessageTextPointer.resolveText` exactly like `runMessagePipelineDemo`
---     already proved works end to end, and records the result (success
---     or honest failure) into `transcript` rather than displaying it --
---     this run is still parallel/shadow, so nothing it produces is
---     shown on screen yet (see the top-of-file doc comment). This
---     script's own real dialogue text turned out to be embedded inline
---     via opcode `0x04` rather than resolved through a `0xFE` dispatch
---     (see `onControlCode`'s own doc comment above) -- kept wired
---     anyway: it's real, decoded, correct behavior for whichever real
---     script genuinely does use a `0xFE` dispatch, and costs nothing
---     when unused.
--- EXPORTED 2026-08-15 (monster/npc/item census, "baue sie in der app ein
--- (sowohl interpreter als auch normale variante)"): was a local, now a
--- real module function so `CatalogExplorer.lua` can reuse the EXACT
--- same real wiring (the live-verified `onControlCode` pacing/bridge
--- logic, see StandardScriptHandlers.tick's own doc comment) instead of
--- duplicating it -- one real implementation, two callers.
+--     nothing else in this project's engine reads these specific cells
+--     today, so keeping them private here can't desync anything.
+--   onControlCode -- REWRITTEN (direct continuation of the "fully
+--     interpreted version" investigation). The previous version of
+--     this wiring used isTextboxDone, decoding the text at the live
+--     cursor via TextDecoder.decodeString and pacing until that many
+--     characters were "revealed" -- a working approximation, but built
+--     on top of StandardScriptHandlers.tick's own then-current (and,
+--     it turned out, still wrong) model of opcode 0x04 as a simple
+--     tick. Decisive static disassembly of $333D (see docs/reverse-
+--     engineering/events.md's "the $38F6 table decoded" section)
+--     proved opcode 0x04 is actually a per-byte text/control-code
+--     classifier -- StandardScriptHandlers.tick itself is now
+--     rewritten to match (terminator/control-code/text-character
+--     branches, see that handler's own doc comment) -- so this state
+--     no longer needs to pre-compute a whole text run's length at all;
+--     the classifier discovers the terminator organically, byte by
+--     byte, the same way the ROM does. onControlCode(byte) is this
+--     integration's hook for the 0x10-0x1F control-code family that
+--     classifier calls back with -- logs each control byte into
+--     self.bossSequenceTranscript (repurposed from its old "resolved
+--     message" shape into a general "notable interpreter event" log)
+--     for live overlay visibility, without modeling any of those
+--     bytes' own deeper WRAM side effects (mode registers, name-
+--     pointer writes, cursor-position pairs) -- see events.md for
+--     exactly what's real-but-unmodeled here (the bank-2-delegated
+--     portions specifically). isTextboxDone is no longer wired here at
+--     all -- opcode 0x04 doesn't need it any more, and 0xFF/0xF0 are
+--     not confirmed to fire in the reachable portion of this specific
+--     script -- if that ever changes, ScriptRuntime.new's own
+--     documented "always true" default applies, an honest stand-in.
+--   onMessage -- real, not a no-op (unlike leaving it unset, which
+--     would make a genuine 0xFE dispatch fail loudly): resolves the
+--     message ID via MessageTextPointer.resolveText exactly like
+--     runMessagePipelineDemo already proved works end to end, and
+--     records the result (success or honest failure) into transcript
+--     rather than displaying it -- this run is still parallel/shadow,
+--     so nothing it produces is shown on screen yet. This script's own
+--     dialogue text turned out to be embedded inline via opcode 0x04
+--     rather than resolved through a 0xFE dispatch (see onControlCode's
+--     doc comment above) -- kept wired anyway: it's decoded, correct
+--     behavior for whichever script genuinely does use a 0xFE dispatch,
+--     and costs nothing when unused.
+-- EXPORTED (monster/npc/item census, to build it into the app for both
+-- interpreter and normal variants): was a local, now a module function
+-- so CatalogExplorer.lua can reuse the exact same wiring (the live-
+-- verified onControlCode pacing/bridge logic, see
+-- StandardScriptHandlers.tick's own doc comment) instead of
+-- duplicating it -- one implementation, two callers.
 function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
   if not (profile.messageTextPointer and profile.scriptOpcodeTable) then
     return nil
   end
   local transcript = {}
   local frameCounter = { n = 0 } -- boxed so the closure below can read the live count
-  -- Real, live-verified pacing state for control byte 0x11 specifically
-  -- (2026-08-15, direct continuation of the "$36D0 bridge" investigation
-  -- -- see StandardScriptHandlers.tick's own doc comment for the general
-  -- mechanism this feeds). A native mgba watchpoint on real WRAM $D853
-  -- found bit 7 SET immediately on entering this control byte's own
-  -- classify state, staying SET for exactly 8 further real frames (9
-  -- total real ticks from first entry), then CLEARING on the exact same
-  -- real frame the persistent cursor finally advances -- i.e. real
-  -- control byte 0x11 paces BEFORE its own real $36D0 bridge fires, not
-  -- an instant single-byte consume. `ticksSeen` counts consecutive real
-  -- `onControlCode(0x11)` calls (this project's own proxy for "still the
-  -- same real occurrence" -- reset whenever a DIFFERENT control byte
-  -- value is seen, since the persistent cursor only ever sits on ONE
-  -- classify target at a time).
+  -- Live-verified pacing state for control byte 0x11 specifically
+  -- (direct continuation of the "$36D0 bridge" investigation -- see
+  -- StandardScriptHandlers.tick's own doc comment for the general
+  -- mechanism this feeds). A native mgba watchpoint on WRAM $D853 found
+  -- bit 7 set immediately on entering this control byte's classify
+  -- state, staying set for exactly 8 further frames (9 total ticks
+  -- from first entry), then clearing on the exact same frame the
+  -- persistent cursor finally advances -- control byte 0x11 paces
+  -- before its own $36D0 bridge fires, not an instant single-byte
+  -- consume. ticksSeen counts consecutive onControlCode(0x11) calls
+  -- (a proxy for "still the same occurrence" -- reset whenever a
+  -- different control byte value is seen, since the persistent cursor
+  -- only ever sits on one classify target at a time).
   local controlCodeState = { lastByte = nil, ticksSeen = 0 }
   local CONTROL_CODE_0X11_REAL_TICKS = 9 -- live-observed, not a guess
   local interpreter = BossSequenceInterpreter.new(romData, {
@@ -333,105 +323,94 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
 
       if byte == 0x11 then
         if controlCodeState.ticksSeen < CONTROL_CODE_0X11_REAL_TICKS then
-          return false -- still real-pacing, matches the live-observed $D853 bit-7 window
+          return false -- still pacing, matches the live-observed $D853 bit-7 window
         end
         controlCodeState.lastByte = nil
-        -- real $36D0 bridge: 1 extra byte beyond the control byte
-        -- itself. SELF-CORRECTED same day (task #144/#145): a first
-        -- attempt at this fix also pinned here unconditionally,
-        -- reasoning from $34F4's own disassembly (`CALL $30A5 / LD A,
-        -- ($D853) / AND 0x80 / RET NZ / CALL $36D0 / RET` -- looks
-        -- unconditional past the already-modeled pacing gate) -- but
-        -- that broke a DIFFERENT, ALREADY-WORKING real dispatch (the
-        -- real cursor right after an earlier 0x11 occurrence is
-        -- 0xC0/HEAL_LP, a fresh top-level opcode, live-cross-checked
-        -- and already tested long before today -- pinning there
-        -- misrouted it into the classifier instead). This project has
-        -- NO direct live $D8B6/$D8B7 write-trace confirming ANY real
-        -- 0x11 occurrence actually stays pinned (only inferred from
-        -- static disassembly, which the 0x10 case already proved
-        -- insufficient by itself -- see that branch below) -- reverted
-        -- to the honest, safe default (no pin) until a real occurrence
-        -- is live-traced the same way 0x10's was.
+        -- $36D0 bridge: 1 extra byte beyond the control byte itself.
+        -- SELF-CORRECTED same day (task #144/#145): a first attempt at
+        -- this fix also pinned here unconditionally, reasoning from
+        -- $34F4's disassembly (CALL $30A5 / LD A,($D853) / AND 0x80 /
+        -- RET NZ / CALL $36D0 / RET -- looks unconditional past the
+        -- already-modeled pacing gate) -- but that broke a different,
+        -- already-working dispatch (the cursor right after an earlier
+        -- 0x11 occurrence is 0xC0/HEAL_LP, a fresh top-level opcode,
+        -- live-cross-checked and already tested -- pinning there
+        -- misrouted it into the classifier instead). No direct live
+        -- $D8B6/$D8B7 write-trace confirms any 0x11 occurrence actually
+        -- stays pinned (only inferred from static disassembly, which
+        -- the 0x10 case already proved insufficient by itself -- see
+        -- below) -- reverted to the honest, safe default (no pin) until
+        -- a real occurrence is live-traced the same way 0x10's was.
         return 1
       end
 
       if byte == 0x10 then
-        -- PARTIALLY LIVE-CONFIRMED 2026-08-15 (task #144/#145, direct
-        -- continuation of the day's `0xF3` fix): full disassembly of
-        -- $34E7 (0x10's own real handler) found `LD A,6 / LD ($D84A),A
-        -- / CALL $3627 / POP HL / CALL Z,$36D0 / RET` -- UNLIKE 0x11
-        -- above, `$36D0` here is GENUINELY CONDITIONAL on `$3627`'s own
-        -- real Zero-flag result, which this project has NOT traced.
-        -- Live evidence (a $D8B6/$D8B7 write-trace, courtyard_boss_
-        -- defeated() checkpoint) confirms pinning is CORRECT for the
-        -- real occurrence at cursor `0x61e3` specifically (~74 further
-        -- real text-character ticks all re-arm via the SAME `$36D9`
-        -- PC) -- but an EARLIER real occurrence in the SAME playthrough
-        -- (cursor `0x61bc`) does NOT pin (confirmed the opposite way:
-        -- forcing a pin there breaks a real dispatch sequence that
-        -- worked correctly before this whole investigation even
-        -- started). Pinning ONLY the one live-confirmed cursor, not the
-        -- byte value in general, is the honest, correct scope until
-        -- $3627's real condition itself gets traced -- a well-defined,
-        -- bounded follow-up (see docs/reverse-engineering/events.md's
-        -- task #144/#145 entry), not guessed at here. CAVEAT: `cursor`
-        -- is a bare CPU address (0x4000-0x7FFF), reused across every
-        -- real bank -- this check is only meaningful for THIS specific
-        -- script's own bank-14 content; a coincidental cursor match in
-        -- a different real script would be a false positive. Acceptable
-        -- for this specific, narrow, honestly-scoped fix; would need a
-        -- real bank check too if reused more broadly.
+        -- PARTIALLY LIVE-CONFIRMED (task #144/#145, direct continuation
+        -- of the day's 0xF3 fix): full disassembly of $34E7 (0x10's own
+        -- handler) found LD A,6 / LD ($D84A),A / CALL $3627 / POP HL /
+        -- CALL Z,$36D0 / RET -- unlike 0x11 above, $36D0 here is
+        -- genuinely conditional on $3627's own Zero-flag result, which
+        -- this project hasn't traced. Live evidence (a $D8B6/$D8B7
+        -- write-trace, courtyard_boss_defeated() checkpoint) confirms
+        -- pinning is correct for the occurrence at cursor 0x61e3
+        -- specifically (~74 further text-character ticks all re-arm
+        -- via the same $36D9 PC) -- but an earlier occurrence in the
+        -- same playthrough (cursor 0x61bc) does not pin (confirmed the
+        -- opposite way: forcing a pin there breaks a dispatch sequence
+        -- that worked correctly before this investigation started).
+        -- Pinning only the one live-confirmed cursor, not the byte
+        -- value in general, is the honest scope until $3627's
+        -- condition gets traced (see docs/reverse-engineering/events
+        -- .md's task #144/#145 entry). CAVEAT: cursor is a bare CPU
+        -- address (0x4000-0x7FFF), reused across every bank -- this
+        -- check is only meaningful for this script's bank-14 content;
+        -- a coincidental cursor match in a different script would be a
+        -- false positive. Acceptable for this narrow fix; would need a
+        -- bank check too if reused more broadly.
         controlCodeState.lastByte = nil
         return 0, cursor == 0x61e3
       end
 
       if byte == 0x14 and cursor == 0x61e4 then
-        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct follow-up): a
-        -- fine-grained trace correlating each real `$36D9`/`$36DB` hit
-        -- with the ACTUAL real byte being classified (not just periodic
-        -- WRAM snapshots, which had earlier conflated this with plain
-        -- text) found real WRAM `$D85A` briefly becomes `0xFF` for
-        -- EXACTLY ONE real tick right after this control byte -- the
-        -- real `$3C74` bridge (`$357D`'s own disassembly: `... CALL
-        -- $3C74` with `B=1`) genuinely hands off into the ALREADY-
-        -- documented "0xFF sub-table" system (sub-opcode 1) -- then
-        -- resumes as opcode `0x04` at real cursor `0x61e6`, two real
-        -- bytes past this control byte's own position (`0x61e4`),
-        -- confirmed live: the byte there (`0x37`) is the first of a
-        -- long real plain-text run.
+        -- LIVE-CONFIRMED (task #146, direct follow-up): a fine-grained
+        -- trace correlating each $36D9/$36DB hit with the actual byte
+        -- being classified (not just periodic WRAM snapshots, which
+        -- had earlier conflated this with plain text) found WRAM
+        -- $D85A briefly becomes 0xFF for exactly one tick right after
+        -- this control byte -- the $3C74 bridge ($357D's disassembly:
+        -- ... CALL $3C74 with B=1) genuinely hands off into the
+        -- already-documented "0xFF sub-table" system (sub-opcode 1) --
+        -- then resumes as opcode 0x04 at cursor 0x61e6, two bytes past
+        -- this control byte's position (0x61e4), confirmed live: the
+        -- byte there (0x37) is the first of a long plain-text run.
         --
-        -- HONEST SIMPLIFICATION: this project's own Lua model does NOT
-        -- actually dispatch through opcode `0xFF`'s own handler for
-        -- this specific one-tick interlude -- doing so byte-exactly
-        -- would need `$3C7E`/`$36C2`/`$3C92`/`$3777` disassembled (the
-        -- real sub-opcode-1 internals, e.g. the actual hero-name
-        -- character insertion), not done this pass. Instead, this
-        -- consumes the SAME net 2 real bytes (1 extra beyond the
-        -- control byte's own +1) and resumes pinning as `0x04`
-        -- directly, matching the OBSERVABLE real cursor effect (correct
-        -- resumption of real text typing at `0x61e6`) without claiming
-        -- to model the skipped interlude's own real side effects (the
-        -- name text itself is NOT inserted into anything this project
-        -- renders). A real, well-scoped follow-up, not silently
-        -- pretended away.
+        -- HONEST SIMPLIFICATION: this project's Lua model doesn't
+        -- actually dispatch through opcode 0xFF's own handler for this
+        -- one-tick interlude -- doing so byte-exactly would need
+        -- $3C7E/$36C2/$3C92/$3777 disassembled (the sub-opcode-1
+        -- internals, e.g. the hero-name character insertion), not
+        -- done this pass. Instead, this consumes the same net 2 bytes
+        -- (1 extra beyond the control byte's +1) and resumes pinning
+        -- as 0x04 directly, matching the observable cursor effect
+        -- without claiming to model the skipped interlude's side
+        -- effects (the name text isn't inserted into anything this
+        -- project renders). A well-scoped follow-up, not pretended away.
         controlCodeState.lastByte = nil
         return 1, true
       end
 
       if byte == 0x1a then
-        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct follow-up),
-        -- SAFE TO GENERALIZE (unlike 0x10 above): full disassembly of
-        -- $35B0 (real NEWLINE_BYTE handler -- also independently
-        -- confirmed by TextDecoder.lua's own, completely separate
-        -- reverse-engineering, a real cross-validation) shows `CALL
-        -- $3C92 / CALL $380B / CALL $3C7E / CALL $3736 / POP HL / CALL
-        -- $36D0 / RET` -- `$36D0` is reached UNCONDITIONALLY (a plain
-        -- `CALL`, no `JR NZ`/`CALL Z` gate like 0x10's own handler
-        -- had) -- so pinning is correct for EVERY real occurrence of a
-        -- newline within running text, not just one live-traced
-        -- position. Consumes 0 extra real bytes beyond the control
-        -- byte itself, matching $36D0's own standard "+1" advance.
+        -- LIVE-CONFIRMED (task #146, direct follow-up), safe to
+        -- generalize (unlike 0x10 above): full disassembly of $35B0
+        -- (NEWLINE_BYTE handler -- also independently confirmed by
+        -- TextDecoder.lua's own separate reverse-engineering, a
+        -- cross-validation) shows CALL $3C92 / CALL $380B / CALL $3C7E
+        -- / CALL $3736 / POP HL / CALL $36D0 / RET -- $36D0 is reached
+        -- unconditionally (a plain CALL, no JR NZ/CALL Z gate like
+        -- 0x10's handler had) -- pinning is correct for every
+        -- occurrence of a newline within running text, not just one
+        -- live-traced position. Consumes 0 extra bytes beyond the
+        -- control byte itself, matching $36D0's standard "+1" advance.
         controlCodeState.lastByte = nil
         return 0, true
       end
