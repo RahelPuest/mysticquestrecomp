@@ -37,156 +37,142 @@ ScriptOpcodeTable.MESSAGE_HANDLER_ADDRESS = 0x0E69 -- real "display message" (op
 ScriptOpcodeTable.HEAL_LP_HANDLER_ADDRESS = 0x394F
 ScriptOpcodeTable.HEAL_MP_HANDLER_ADDRESS = 0x3968
 
--- Real handlers found live-tracing the actual boss-defeat script byte
--- by byte (2026-08-12, see events.md's "Every remaining open question,
--- resolved" -- opcode 0x01 -> $32F3, 0x02 -> $32FE, 0xDC -> $3B5B,
--- 0xDD -> $3B66; the real ROM disassembly for each is quoted there).
--- Simple, fully-pinned real-world semantics: a relative skip, a
--- pointer-chain (the same real "show next page" shape already known
--- from the `[0x12][0x1B]` control-byte pair), and a matched flag-
--- set/flag-clear pair on WRAM `$D874` bit 1.
+-- Handlers found live-tracing the actual boss-defeat script byte by
+-- byte (see events.md's "Every remaining open question, resolved" --
+-- opcode 0x01 -> $32F3, 0x02 -> $32FE, 0xDC -> $3B5B, 0xDD -> $3B66;
+-- the ROM disassembly for each is quoted there). Simple, fully-pinned
+-- semantics: a relative skip, a pointer-chain (the same "show next
+-- page" shape already known from the [0x12][0x1B] control-byte pair),
+-- and a matched flag-set/flag-clear pair on WRAM $D874 bit 1.
 ScriptOpcodeTable.SKIP_HANDLER_ADDRESS = 0x32F3
 ScriptOpcodeTable.CHAIN_HANDLER_ADDRESS = 0x32FE
--- CHAIN's own real handler ($32FE), disassembled directly 2026-08-16
--- (task #160/#81 follow-up, direct user question "können wir damit
--- vorher bestehende questions lösen"): computes its target the
--- already-VERIFIED way (`byte1*256+byte2+0x4000`), writes it to the
--- real persistent-cursor cache ($D8B6/$D8B7, `WRAM_MAP`'s own entry),
--- then calls a real, previously-undocumented, general-purpose BANK
--- CALL-STACK primitive found this same pass: $2A0A ("pop" -- decrement
--- HRAM $FF8A's own stack index, switch to whatever real MBC2 bank is
--- now on top via the real $2100 convention). The matching "push"
--- ($29FB) and "peek" ($2A17, the SAME routine the graphics-DMA
--- consumer at $2DD3 calls to restore ITS OWN bank after a transfer --
--- see rom-map.md's "the real graphics-loading mechanism" section) are
--- both real and disassembled, but no live trace has yet confirmed
--- this stack is what correctly resolves the real 7 cross-bank CHAIN
--- targets task #81 is about -- genuine narrowing, not a closure. A
--- sibling block at $32CF shares the identical "commit cursor, pop
+-- CHAIN's own handler ($32FE), disassembled directly (task #160/#81
+-- follow-up, direct user question whether this could resolve prior
+-- open questions): computes its target the already-verified way
+-- (byte1*256+byte2+0x4000), writes it to the persistent-cursor cache
+-- ($D8B6/$D8B7, WRAM_MAP's own entry), then calls a previously-
+-- undocumented, general-purpose bank call-stack primitive found this
+-- same pass: $2A0A ("pop" -- decrement HRAM $FF8A's own stack index,
+-- switch to whatever MBC2 bank is now on top via the $2100
+-- convention). The matching "push" ($29FB) and "peek" ($2A17, the same
+-- routine the graphics-DMA consumer at $2DD3 calls to restore its own
+-- bank after a transfer -- see rom-map.md's "the real graphics-loading
+-- mechanism" section) are both disassembled, but no live trace has yet
+-- confirmed this stack is what correctly resolves the 7 cross-bank
+-- CHAIN targets task #81 is about -- genuine narrowing, not a closure.
+-- A sibling block at $32CF shares the identical "commit cursor, pop
 -- bank, release" shape, byte for byte.
 ScriptOpcodeTable.FLAG_SET_HANDLER_ADDRESS = 0x3B5B
 ScriptOpcodeTable.FLAG_CLEAR_HANDLER_ADDRESS = 0x3B66
 
--- Real opcode `0x04`'s own handler (`$333D`) -- the typewriter reveal-
--- tick, confirmed live as part of the same boss-defeat script trace
--- (~110 real re-invocations, see events.md). No operand bytes; the
--- interpreter does not block on it (unlike the real `0x00` conditional
--- halt).
+-- Opcode 0x04's own handler ($333D) -- the typewriter reveal-tick,
+-- confirmed live as part of the same boss-defeat script trace (~110
+-- re-invocations, see events.md). No operand bytes; the interpreter
+-- doesn't block on it (unlike the 0x00 conditional halt).
 ScriptOpcodeTable.TICK_HANDLER_ADDRESS = 0x333D
 
--- Real opcode `0xFF`'s own handler (`$38E6`) -- the "textbox driver"
--- sub-dispatch: `LD A,($D86B) / LD HL,$3BAC / ... / JP HL`, a SECOND,
--- byte-indexed, 2-bytes/entry table (11 real entries, `rom_profiles
--- .lua`'s own `scriptOpcodeSubTable`) keyed by a SEPARATE WRAM cell
--- (`$D86B`, not the primary opcode cell `$D85A`). All 11 real sub-
--- handlers were fully disassembled in a prior pass (events.md's "0xFF
--- sub-table" sections). Two independent live traces of the real boss-
--- defeat script (2026-08-12) -- a corrected, single-instruction-
--- stepped ~180,000,000-step re-verification covering the first
--- dialogue box, and a fresh, `core.frame_counter`-bounded trace
--- covering the FULL 14-box dialogue sequence -- agree the real sub-
--- opcodes actually exercised are 1 (`$3597`), 2 (`$3675`), 3
--- (`$3C1B`), and 4 (`$350F`) (the wider trace additionally observed
--- sub-opcode 2, absent from the narrower one's own window -- more
--- content covered, not a contradiction). Sub-opcode 1 is the real
--- per-tick "advance the draw cursor, paced (a real 5-tick/frame
--- pacing gate matching this project's own already-VERIFIED 5-frames-
--- per-letter typewriter cadence), hand off to the typewriter" routine;
--- 3 and 4 are real conditional halts whose EXACT WRAM trigger
--- conditions are not pinned down (HYPOTHESIS, not VERIFIED -- see
--- events.md) but which are confirmed to eventually fall through to a
--- real `CALL $3727` (release, continue the outer script) once their
--- condition holds; 2 blanks a run of tile positions (a line-clear/
--- wrap rendering step). This project does NOT reproduce this exact
--- multi-sub-opcode state machine (see StandardScriptHandlers
--- .textboxWait's own doc comment for the honestly-scoped, functionally-
--- equivalent replacement actually wired to this address).
+-- Opcode 0xFF's own handler ($38E6) -- the "textbox driver" sub-
+-- dispatch: LD A,($D86B) / LD HL,$3BAC / ... / JP HL, a second, byte-
+-- indexed, 2-bytes/entry table (11 entries, rom_profiles.lua's own
+-- scriptOpcodeSubTable) keyed by a separate WRAM cell ($D86B, not the
+-- primary opcode cell $D85A). All 11 sub-handlers were fully
+-- disassembled in a prior pass (events.md's "0xFF sub-table"
+-- sections). Two independent live traces of the boss-defeat script (a
+-- corrected, single-instruction-stepped re-verification covering the
+-- first dialogue box, and a fresh, frame-counter-bounded trace
+-- covering the full 14-box dialogue sequence) agree the sub-opcodes
+-- actually exercised are 1 ($3597), 2 ($3675), 3 ($3C1B), and 4
+-- ($350F). Sub-opcode 1 is the per-tick "advance the draw cursor,
+-- paced (a 5-tick/frame pacing gate matching this project's already-
+-- verified 5-frames-per-letter typewriter cadence), hand off to the
+-- typewriter" routine; 3 and 4 are conditional halts whose exact WRAM
+-- trigger conditions aren't pinned down (HYPOTHESIS, not VERIFIED)
+-- but which are confirmed to eventually fall through to a CALL $3727
+-- (release, continue) once their condition holds; 2 blanks a run of
+-- tile positions (a line-clear/wrap rendering step). This project does
+-- not reproduce this exact multi-sub-opcode state machine (see
+-- StandardScriptHandlers.textboxWait's own doc comment for the
+-- honestly-scoped, functionally-equivalent replacement wired here).
 ScriptOpcodeTable.SUBTABLE_DISPATCH_HANDLER_ADDRESS = 0x38E6
 
--- Real opcode `0xF0`'s own handler (`$3C04`) -- confirmed live via the
--- boss-defeat script trace AND, this session, a full byte-for-byte
--- static disassembly (not just "structurally traced"):
---   CALL $3727           ; real fetch: consumes ONE real operand byte
---                           into A (the interpreter's own general fetch
+-- Opcode 0xF0's own handler ($3C04) -- confirmed live via the boss-
+-- defeat script trace and a full byte-for-byte static disassembly:
+--   CALL $3727           ; fetch: consumes one operand byte into A
+--                           (the interpreter's own general fetch
 --                           primitive, reused here as a plain "read the
 --                           next stream byte" helper -- its side effect
 --                           of also writing $D85A is harmless, since
 --                           $D85A is about to be overwritten below
 --                           anyway)
 --   PUSH HL
---   LD H,0x00 / LD L,A    ; HL = the real operand byte, zero-extended
---   CALL $2F9E             ; real helper, not further decoded (HYPOTHESIS
+--   LD H,0x00 / LD L,A    ; HL = the operand byte, zero-extended
+--   CALL $2F9E             ; helper, not further decoded (HYPOTHESIS
 --                            re: exact purpose)
---   LD ($D84D),A           ; real: writes into WRAM $D84D -- the SAME
---                            cell events.md documents sub-opcode 3
---                            ($3C1B) itself tests as part of its own
---                            real conditional-halt logic -- i.e. this
---                            opcode's real job is setting UP the exact
---                            condition sub-opcode 3 later checks
---   CALL $2FD4             ; real helper, not further decoded
---   LD B,0x03               ; B = 3 (the real sub-opcode value)
---   CALL $3C74              ; the ALREADY-known real "reschedule"
---                             primitive ($D86B=B, $D85A=0xFF) -- hands
---                             off DIRECTLY into the 0xFF sub-dispatch
+--   LD ($D84D),A           ; writes into WRAM $D84D -- the same cell
+--                            events.md documents sub-opcode 3 ($3C1B)
+--                            itself tests as part of its own
+--                            conditional-halt logic -- this opcode's
+--                            job is setting up the condition sub-
+--                            opcode 3 later checks
+--   CALL $2FD4             ; helper, not further decoded
+--   LD B,0x03               ; B = 3 (the sub-opcode value)
+--   CALL $3C74              ; the already-known "reschedule" primitive
+--                             ($D86B=B, $D85A=0xFF) -- hands off
+--                             directly into the 0xFF sub-dispatch
 --                             family's own sub-opcode 3, confirming
 --                             (not just structurally implying) that
---                             opcode `0xF0` is a real, dedicated
---                             "shortcut" entry point into the SAME
---                             textbox-wait mechanism opcode `0xFF`
---                             itself uses.
+--                             opcode 0xF0 is a dedicated "shortcut"
+--                             entry point into the same textbox-wait
+--                             mechanism opcode 0xFF itself uses.
 --   POP HL / RET
 ScriptOpcodeTable.START_TEXTBOX_WAIT_HANDLER_ADDRESS = 0x3C04
 
--- Real "sound/timing parameter" opcode pair (`0xF8`/`0xF9`, ROM
--- `$119B`/`$1194` -- found this session's own opcode-frequency scan,
--- confirmed live as part of the boss-defeat script's own disassembly
--- too). Byte-for-byte identical shape, one real operand byte each,
--- writing to a different real DMG HRAM I/O register, ALWAYS
--- continuing (no conditional branch at all):
+-- "Sound/timing parameter" opcode pair (0xF8/0xF9, ROM $119B/$1194 --
+-- found this session's opcode-frequency scan, confirmed live as part
+-- of the boss-defeat script's disassembly too). Byte-for-byte
+-- identical shape, one operand byte each, writing to a different DMG
+-- HRAM I/O register, always continuing (no conditional branch at all):
 --   $119B (0xF8): LD A,(HL+) / LDH ($FF90),A / LD ($D49B),A /
 --                 LD ($D4A3),A / CALL $3727 / RET
 --   $1194 (0xF9): LD A,(HL+) / LDH ($FF92),A / CALL $3727 / RET
--- HRAM `$FF90`/`$FF92` are real DMG sound-channel-adjacent registers
--- (not independently mapped to a specific PAPU register by this
--- project -- this project has no real sound emulation at all, see
--- audio.md's own "format totally unknown" status) -- the exact real
--- musical/timing effect is HYPOTHESIS, but the real STRUCTURE (1
--- operand byte, unconditional continue) is fully VERIFIED.
+-- HRAM $FF90/$FF92 are DMG sound-channel-adjacent registers (not
+-- independently mapped to a specific PAPU register -- this project has
+-- no real sound emulation at all, see audio.md's "format totally
+-- unknown" status) -- the exact musical/timing effect is HYPOTHESIS,
+-- but the structure (1 operand byte, unconditional continue) is fully
+-- verified.
 ScriptOpcodeTable.SOUND_PARAM_1_HANDLER_ADDRESS = 0x119B
 ScriptOpcodeTable.SOUND_PARAM_2_HANDLER_ADDRESS = 0x1194
 
--- Real, no-operand "trigger fixed event" opcode (`0xE0`, ROM `$0FB4`,
--- found this session's own opcode-frequency scan):
+-- No-operand "trigger fixed event" opcode (0xE0, ROM $0FB4, found this
+-- session's opcode-frequency scan):
 --   PUSH HL / LD A,0x04 / CALL $235B / POP HL / CALL $3727 / RET
--- No real operand bytes -- the `0x04` is a fixed constant baked into
--- THIS specific opcode's own handler code (structurally identical
--- sibling handlers exist nearby with different fixed constants, e.g.
--- `0x08`, at least one seen in passing during this same disassembly --
--- not themselves decoded/wired this pass). ALWAYS continues (no
--- conditional branch). `$235B`'s own real effect is HYPOTHESIS, not
--- decoded further -- the real STRUCTURE (no operand, unconditional
--- continue) is fully VERIFIED.
+-- No operand bytes -- the 0x04 is a fixed constant baked into this
+-- specific opcode's handler code (structurally identical sibling
+-- handlers exist nearby with different fixed constants, e.g. 0x08, at
+-- least one seen in passing during this disassembly -- not themselves
+-- decoded/wired this pass). Always continues. $235B's own effect is
+-- HYPOTHESIS -- the structure (no operand, unconditional continue) is
+-- fully verified.
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS = 0x0FB4
 
--- Real "typewriter cursor command" opcode (`0x03`, ROM `$332F`, found
--- this session's own opcode-frequency scan):
---   CALL $3727        ; real fetch: consumes operand byte 1 into A
+-- "Typewriter cursor command" opcode (0x03, ROM $332F, found this
+-- session's opcode-frequency scan):
+--   CALL $3727        ; fetch: consumes operand byte 1 into A
 --   LD B,0x03          ; B = 3, a fixed constant (this opcode's own ID)
 --   LD C,A              ; C = operand byte 1
---   INC HL               ; SKIPS operand byte 2 (never read into any
---                          register -- a real, deliberate skip, not an
+--   INC HL               ; skips operand byte 2 (never read into any
+--                          register -- a deliberate skip, not an
 --                          omission in this disassembly)
---   CALL $36DF            ; the ALREADY-known real typewriter-
---                           continuation site (see events.md's `$331E`
---                           note: "the real 'chain to the next page of
---                           THIS SAME message' mechanism") with BC set
---                           as above
---   CALL $3727             ; real fetch: continues the script
+--   CALL $36DF            ; the already-known typewriter-continuation
+--                           site (see events.md's $331E note: "the
+--                           real 'chain to the next page of this same
+--                           message' mechanism") with BC set as above
+--   CALL $3727             ; fetch: continues the script
 --   RET
--- ALWAYS continues (no conditional branch at all). The real, precise
--- meaning of "B=3, C=operand byte 1" to `$36DF` is HYPOTHESIS -- the
--- real STRUCTURE (2 real operand bytes, one used, one skipped,
--- unconditional continue) is fully VERIFIED.
+-- Always continues. The precise meaning of "B=3, C=operand byte 1" to
+-- $36DF is HYPOTHESIS -- the structure (2 operand bytes, one used, one
+-- skipped, unconditional continue) is fully verified.
 ScriptOpcodeTable.TYPEWRITER_COMMAND_HANDLER_ADDRESS = 0x332F
 
 -- The real "actor flag/state" opcode family -- 7 real opcodes
