@@ -1463,19 +1463,18 @@ end
 function VictorySequence:update(dt)
   if self.done or not self.pages then return end
 
-  -- REAL ScriptInterpreter, ticked once per real frame (2026-08-15, see
-  -- this module's own top-of-file "REWRITTEN" doc comment) -- runs
-  -- BEFORE the `self.phase` dispatch below (deliberately unconditional
-  -- on `self.phase`, matching the real ROM's own boss-defeat script,
-  -- which is a fully separate mechanism from this state's own hand-
-  -- authored phase machine, not gated by it). A genuine per-frame
-  -- dispatch attempt, exactly matching `BossSequenceInterpreter:tick`'s
-  -- own doc comment ("meant to be called once per real game frame") --
-  -- replaces the OLD one-shot construction-time burst, which could never
-  -- pace real per-frame effects (the typewriter tick, a real conditional
-  -- halt) correctly even in principle. Still pure observation -- see
-  -- `self.bossSequenceInterpreter`'s own doc comment for why nothing
-  -- here reads its result.
+  -- ScriptInterpreter, ticked once per frame (see this module's own
+  -- top-of-file "REWRITTEN" doc comment) -- runs before the self.phase
+  -- dispatch below (deliberately unconditional on self.phase, matching
+  -- the ROM's own boss-defeat script, a fully separate mechanism from
+  -- this state's hand-authored phase machine, not gated by it). A
+  -- genuine per-frame dispatch attempt, exactly matching
+  -- BossSequenceInterpreter:tick's own doc comment ("meant to be
+  -- called once per game frame") -- replaces the old one-shot
+  -- construction-time burst, which could never pace per-frame effects
+  -- (the typewriter tick, a conditional halt) correctly even in
+  -- principle. Still pure observation -- see self.bossSequenceInterpreter's
+  -- own doc comment for why nothing here reads its result.
   if self.bossSequenceInterpreter and not self.bossSequenceInterpreter.done then
     self.bossSequenceFrameCounter.n = self.bossSequenceFrameCounter.n + 1
     self.bossSequenceInterpreter:tick()
@@ -1496,40 +1495,39 @@ function VictorySequence:update(dt)
     if self.player and self.roomWalk[self.currentRoomKey] then
       local prevX, prevY = self.player.x, self.player.y
       self.player:update(dt, self.input, bounds, self.roomWalk[self.currentRoomKey])
-      -- Real "blocked against a living enemy" collision (same rule
-      -- Field.lua's own first-boss fight uses) -- only checked in
-      -- sixthRoom while its own second boss is alive, so every other
-      -- room's movement is completely unaffected.
+      -- "Blocked against a living enemy" collision (same rule Field
+      -- .lua's own first-boss fight uses) -- only checked in sixthRoom
+      -- while its own second boss is alive, so every other room's
+      -- movement is completely unaffected.
       if inSecondBossRoom and self.secondBoss:isAlive() and
           self.secondBoss:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
         self.player.x, self.player.y = prevX, prevY
       end
-      -- Real walk-cycle animation (see this state's own `playerSprite`
-      -- doc comment above) -- same per-frame drive as Field.lua's own.
+      -- Walk-cycle animation (see this state's own playerSprite doc
+      -- comment above) -- same per-frame drive as Field.lua's own.
       if self.playerSprite then
         self.playerSprite:update(dt, self.player.moving, self.player.facing)
       end
     end
 
-    -- ADDED (2026-08-15, second-boss feature -- see rom_profiles.lua's
-    -- `sixthRoom.secondBoss` doc comment). Direct port of Field.lua's
-    -- own first-boss combat loop (contact damage + knockback, real A-
-    -- button attack with the real swing-vs-thrust choice, real per-
-    -- phase hitbox detection, real death "explosion") against this
-    -- room's own second `Enemy` instance -- see that file's own
-    -- `:update()` for the original, more heavily-commented version this
-    -- mirrors line for line. Entirely gated on `inSecondBossRoom` so it
-    -- never runs (and never even reads `self.secondBoss*` fields) in
-    -- any other room.
+    -- ADDED (second-boss feature -- see rom_profiles.lua's sixthRoom
+    -- .secondBoss doc comment). Direct port of Field.lua's own first-
+    -- boss combat loop (contact damage + knockback, A-button attack
+    -- with the swing-vs-thrust choice, per-phase hitbox detection,
+    -- death "explosion") against this room's own second Enemy instance
+    -- -- see that file's own :update() for the original, more heavily-
+    -- commented version this mirrors line for line. Entirely gated on
+    -- inSecondBossRoom so it never runs (and never even reads
+    -- self.secondBoss* fields) in any other room.
     if inSecondBossRoom then
-      -- Deliberately NOT calling `self.secondBoss:updateMovement(dt)`
-      -- (unlike Field.lua's own first-boss fight) -- without a real
-      -- `movementInterpreter`, `Enemy:updateMovement` falls back to the
-      -- OLD `MOVEMENT_CYCLE` patrol step, which would make this second
-      -- boss visibly walk a real pattern that was live-derived FOR THE
-      -- FIRST boss specifically -- this project has no evidence that
-      -- pattern applies here too, so this creature stays still instead
-      -- of silently inheriting unrelated real ROM behavior.
+      -- Deliberately not calling self.secondBoss:updateMovement(dt)
+      -- (unlike Field.lua's own first-boss fight) -- without a
+      -- movementInterpreter, Enemy:updateMovement falls back to the old
+      -- MOVEMENT_CYCLE patrol step, which would make this second boss
+      -- visibly walk a pattern that was live-derived for the first
+      -- boss specifically -- this project has no evidence that pattern
+      -- applies here too, so this creature stays still instead of
+      -- silently inheriting unrelated ROM behavior.
       if self.secondBossFlashTimer > 0 then
         self.secondBossFlashTimer = self.secondBossFlashTimer - 1
       end
@@ -1590,28 +1588,28 @@ function VictorySequence:update(dt)
         if self.secondBoss:deathComplete() then
           self.secondBossDefeated = true
           -- Invalidate the cached sixthRoom background/collision so the
-          -- next `ensureRoomLoaded` rebuilds it with the gate's own
-          -- `openGrid` patch applied (see rom_profiles.lua's own
-          -- `sixthRoom.gate` doc comment) -- `ensureRoomLoaded` itself
-          -- only ever builds once and caches, so without this the gate
+          -- next ensureRoomLoaded rebuilds it with the gate's own
+          -- openGrid patch applied (see rom_profiles.lua's own
+          -- sixthRoom.gate doc comment) -- ensureRoomLoaded itself only
+          -- ever builds once and caches, so without this the gate
           -- would stay visually closed even though the real exit
-          -- (`requiresFlag="secondBossDefeated"`) is already usable.
+          -- (requiresFlag="secondBossDefeated") is already usable.
           self.roomBg.sixthRoom = nil
           self.roomWalk.sixthRoom = nil
         end
       end
     end
 
-    -- ADDED (2026-08-10, direct user report: "diese [npcs] haben
-    -- animationen und bewegungspattern" -- see `updateNpcWander`'s own
-    -- doc comment): a no-op for any room without animated NPCs.
+    -- ADDED (direct user report these NPCs have animations and
+    -- movement patterns -- see updateNpcWander's own doc comment): a
+    -- no-op for any room without animated NPCs.
     self:updateNpcWander(dt, self.currentRoomKey)
-    -- ADDED (2026-08-10, see `matchedNpcDialogue`'s own doc comment):
-    -- checked BEFORE `matchedExit` -- a room's own NPCs sit well inside
-    -- its exit zones, never overlapping them in practice, so the order
-    -- doesn't matter for correctness today, but dialogue is the more
-    -- specific/local trigger of the two, so it takes priority on
-    -- principle if a future room ever did overlap them.
+    -- ADDED (see matchedNpcDialogue's own doc comment): checked before
+    -- matchedExit -- a room's NPCs sit well inside its exit zones,
+    -- never overlapping them in practice, so the order doesn't matter
+    -- for correctness today, but dialogue is the more specific/local
+    -- trigger of the two, so it takes priority on principle if a
+    -- future room ever did overlap them.
     local npcLines, npcName = self:matchedNpcDialogue()
     if npcLines then
       self.npcDialogueShown[self.currentRoomKey .. ":" .. npcName] = true
@@ -1638,19 +1636,18 @@ function VictorySequence:update(dt)
     return
   end
 
-  -- Real "cut" wipe -- see `RoomWipeTransition.lua`'s own doc comment
-  -- for the live-traced timing this real-frame-counted state machine
-  -- reproduces. The room actually switches at the CLOSING/OPENING
-  -- boundary (screen is fully covered by the black band right then),
-  -- matching the real ROM's own room-pointer commit happening while
-  -- the screen is fully wiped, not before or after.
+  -- "Cut" wipe -- see RoomWipeTransition.lua's own doc comment for the
+  -- live-traced timing this frame-counted state machine reproduces.
+  -- The room actually switches at the closing/opening boundary (screen
+  -- is fully covered by the black band right then), matching the ROM's
+  -- own room-pointer commit happening while the screen is fully wiped.
   if self.phase == "cutClosing" then
-    -- REAL interpreter tick, unconditional on how far the wipe has
-    -- progressed (same "unconditional per real frame" pattern the
-    -- boss-sequence shadow run above already uses) -- see
-    -- `beginTransition`'s own doc comment. A no-op when this exit has
-    -- no `scriptEntry` (every transition except thirdRoom->fourthRoom
-    -- and fourthRoom->fifthRoom, for now).
+    -- Interpreter tick, unconditional on how far the wipe has
+    -- progressed (same "unconditional per frame" pattern the boss-
+    -- sequence shadow run above already uses) -- see beginTransition's
+    -- own doc comment. A no-op when this exit has no scriptEntry
+    -- (every transition except thirdRoom->fourthRoom and fourthRoom->
+    -- fifthRoom, for now).
     if self.cutTransitionInterpreter then
       self.cutTransitionInterpreter:tick()
     end
