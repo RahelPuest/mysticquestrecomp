@@ -167,6 +167,35 @@ Harness.testIfAvailable(
   end
 )
 
+Harness.testIfAvailable(
+  "MonsterDefinitionTable IS enemyStatTable (2026-08-17): same file base, same stride, row 16 is 'Jackal' in both",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local EnemyStatTable = require("src.import.EnemyStatTable")
+
+    Harness.assertEqual(MonsterDefinitionTable.fileOffset(MonsterDefinitionTable.BANK, 0x4739), profile.enemyStatTable.fileOffset)
+    Harness.assertEqual(MonsterDefinitionTable.TABLE_COUNT, profile.enemyStatTable.rowCount)
+
+    local bossRows = EnemyStatTable.decode(romData, profile.enemyStatTable)
+    Harness.assertEqual(profile.enemyStatTable.externalReferenceNames[17], "Jackal") -- 1-based row 17 = 0-based index 16
+
+    -- Cross-check via actual raw bytes: MonsterDefinitionTable's own
+    -- row 16 raw bytes[0..3] (0-based -- bytes[2..3] of THIS pair are
+    -- live-confirmed written to real WRAM $D3F4/$D3F5, see
+    -- MonsterDefinitionTable.lua's own doc comment) must equal
+    -- enemyStatTable's own row 16 speed/hpBase/xp/gold exactly -- same
+    -- raw ROM bytes, decoded by two independent modules.
+    local monsterRow16 = MonsterDefinitionTable.readRecord(romData, 16)
+    local bossRow16 = bossRows[17]
+    Harness.assertEqual(monsterRow16.raw:byte(1), bossRow16.speed)
+    Harness.assertEqual(monsterRow16.raw:byte(2), bossRow16.hpBase)
+    Harness.assertEqual(monsterRow16.raw:byte(3), bossRow16.xp)
+    Harness.assertEqual(monsterRow16.raw:byte(4), bossRow16.gold)
+  end
+)
+
 if romData then
   print("(SpriteTileFormula ROM-dependent tests ran against a real dev ROM)")
 end

@@ -915,6 +915,21 @@ do
     local bossRows = EnemyStatTable.decode(romData, profile.enemyStatTable)
     local names = profile.enemyStatTable.externalReferenceNames or {}
     for i, r in ipairs(bossRows) do
+      -- REAL SPRITE, found 2026-08-17 (direct user instruction "die
+      -- müssen nicht verified sein, bau auch die grafiken in die
+      -- website ein"): `MonsterDefinitionTable` (SpriteTileFormula.lua)
+      -- is THE EXACT SAME real table as `enemyStatTable` here -- same
+      -- bank, same file base (0x10739/CPU 0x4739), same 24-byte stride,
+      -- same 21 rows, found independently by two different
+      -- investigations the same day (see EnemyStatTable.lua's own "SAME
+      -- TABLE" doc comment). So boss row `i-1` (0-based) IS
+      -- MonsterDefinitionTable record `i-1` -- every one of these 21
+      -- NAMED story bosses gets its own real sprite tiles, not just the
+      -- 1 (row 16, "Jackal") this project independently live-verified.
+      -- Shown regardless of arrangementConfirmed status, per the direct
+      -- instruction above -- honestly badged, not hidden.
+      local monsterRecord = MonsterDefinitionTable.readRecord(romData, i - 1)
+      local spriteOffsets = monsterRecord and MonsterDefinitionTable.resolveSpriteTileOffsets(romData, monsterRecord)
       bosses[i] = {
         index = i - 1,
         name = names[i],
@@ -926,6 +941,9 @@ do
         speciesByte = r.speciesByte,
         defeatBehaviorId = r.defeatBehaviorId,
         rawBytes = bytesToArray(r.raw),
+        spriteTileOffsets = spriteOffsets,
+        spriteBank = monsterRecord and monsterRecord.spriteSource.bank,
+        spriteArrangementConfirmed = (i - 1 == 16), -- the one row this project independently live-verified (see MonsterDefinitionTable.LIVE_CONFIRMED)
       }
     end
   end
@@ -959,7 +977,14 @@ do
      "with speed/hpBase/xp/gold confirmed byte-for-byte against the US cartridge's own public " ..
      "disassembly; hpBase is a PRNG-formula input, not flat starting HP (see that module's own " ..
      "doc comment); speciesByte/defeatBehaviorId/numObjects are real bytes, not yet independently " ..
-     "confirmed against this EU ROM's own code.")
+     "confirmed against this EU ROM's own code. Each boss also carries `spriteTileOffsets` " ..
+     "(2026-08-17, direct instruction \"die müssen nicht verified sein, bau auch die grafiken in " ..
+     "die website ein\") -- real ROM pixel data via MonsterDefinitionTable/SpriteTileFormula.lua, " ..
+     "since this table IS MonsterDefinitionTable (same file base/stride/row count, found " ..
+     "independently). Shown for all 21 regardless of `spriteArrangementConfirmed` (only true for " ..
+     "index 16, \"Jackal\" -- the one row independently live-OAM-verified); the other 20 show real, " ..
+     "individually-correct pixels in the ROM's own raw DMA copy order, an honestly unconfirmed " ..
+     "on-screen arrangement.")
 end
 
 ----------------------------------------------------------------------

@@ -11041,3 +11041,45 @@ page: 3-tier badge system, family members render as real 4-wide pose
 sheets instead of an 8-wide raw strip. 572/572 Lua tests pass,
 Playwright-verified live (170 family badges visible on the NPCs tab,
 zero console errors).
+
+## All 21 named story bosses get their own real sprite -- direct instruction "die müssen nicht verified sein, bau auch die grafiken in die website ein" (2026-08-17, same day)
+
+Direct, short follow-up: the boss cards on the Monster page (21 named
+story bosses, `EnemyStatTable`) showed real stats but NO sprite image
+at all -- the user's instruction removed the (self-imposed) gate of
+"only show it if independently verified."
+
+**A genuine, previously-unnoticed connection, found while wiring this
+up**: `MonsterDefinitionTable` (this session's own new sprite-source
+table) and `EnemyStatTable` (found earlier the same day, via external
+US-disassembly reference matching) are THE EXACT SAME real ROM table --
+same bank (4), same file base (`0x10739`/CPU `0x4739`), same 24-byte
+stride, same 21 rows -- found completely independently, by two
+different investigations, the same day, without either one noticing
+the overlap until now. Cross-checked byte-for-byte: `MonsterDefinition
+Table`'s own row 16 raw bytes[0..3] (0-based) exactly equal
+`EnemyStatTable`'s own row 16 speed/hpBase/xp/gold (5/2/0/0) --
+confirming this isn't a coincidental base-address collision, it's
+provably one real table decoded twice.
+
+**What this means**: every one of the 21 NAMED bosses (Vampire, Hydra,
+Medusa, ..., Jackal, ..., Dragon (Final)) now has its own real ROM
+sprite tiles resolvable via the SAME `SpriteTileFormula` pipeline --
+not just row 16 ("Jackal", the one this project independently live-
+verified as the real first-boss/gate-creature). Shown for all 21
+regardless of arrangement-confirmation status, per the direct
+instruction -- honestly badged per-boss ("Sprite-Anordnung bestätigt"
+only for Jackal; "Sprite-Anordnung unbestätigt" for the other 20, real
+pixels in the ROM's own raw DMA copy order).
+
+**Shipped**: `export_data.lua`'s boss-export loop now also reads
+`MonsterDefinitionTable.readRecord`/`resolveSpriteTileOffsets` for the
+matching row index and attaches `spriteTileOffsets`/`spriteBank`/
+`spriteArrangementConfirmed` to each boss entry. `monsters.js`'s boss
+cards render a real sprite canvas (4-wide for Jackal, matching its own
+confirmed pose grid; 8-wide raw strip for the other 20). New regression
+test locks the table-identity finding (same file base/stride, row 16
+byte-for-byte match) so this can't silently drift apart if either
+table's own base address is ever "corrected" independently. 573/573
+Lua tests pass. Live-verified via Playwright: all 21 boss cards render
+a real sprite canvas, correctly badged, zero console errors.

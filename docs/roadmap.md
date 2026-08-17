@@ -2390,6 +2390,22 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   now that the real order is known. 572/572 Lua tests pass, Playwright-
   verified live (170 family-badged NPC cards render as coherent 4-pose
   sheets).
+- **2026-08-17, same day, direct instruction "die müssen nicht
+  verified sein, bau auch die grafiken in die website ein": all 21
+  named story bosses get a real sprite**: found, while wiring this up,
+  that `MonsterDefinitionTable` (this session's own new sprite table)
+  and `EnemyStatTable` (found earlier the same day via external
+  US-disassembly name matching) are THE EXACT SAME real table -- same
+  bank/file base/stride/row count, found independently by two
+  investigations the same day. Byte-for-byte cross-checked (row 16's
+  speed/hpBase/xp/gold match exactly between both decoders). Every one
+  of the 21 named bosses (Vampire...Dragon (Final)) now shows its own
+  real ROM sprite on the Monster page, regardless of arrangement-
+  confirmation status (only "Jackal", row 16, is individually live-
+  verified -- honestly badged per-boss, not hidden for the other 20).
+  New regression test locks the table-identity finding. 573/573 Lua
+  tests pass, Playwright-verified (21 boss cards, each with a real
+  sprite canvas, zero console errors).
 - **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
   full "elevate this product" brief, scoped to the website (confirmed
   via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,
