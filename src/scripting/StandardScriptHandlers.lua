@@ -235,23 +235,21 @@ function StandardScriptHandlers.clearFlagBit(flags, bitIndex)
 end
 
 --- Real "set/clear a WRAM status bit, then an opaque per-opcode leaf,
--- always continue" handler pair (opcodes `0xB8`/`0xB9`, ROM `$1178`/
--- `$1186`, found 2026-08-14 via the whole-corpus shadow-run scan --
--- the single highest-count clean structural match among the top 40
--- most-blocking undecoded handlers). Real, VERIFIED disassembly:
--- `PUSH HL / LD HL,$C3F1 / SET|RES 0,(HL) / CALL <leaf> / POP HL /
--- CALL $3727 / RET` -- sets/clears bit 0 of a real, DIFFERENT WRAM
--- cell than `.setFlagBit`/`.clearFlagBit`'s own `$D874` (kept as its
--- own factory rather than reusing those, both because the real WRAM
--- address differs and because THIS pair also has a real leaf call
--- those don't), then calls a real, self-contained leaf (`$01F4`/
--- `$0204`) before always continuing. HONEST SCOPE: the leaf's own real
--- effect (writing fixed real sound-parameter bytes into `$C0AA`/
--- `$C0AC` and toggling bit 1 of a THIRD real WRAM cell, `$C4D4`) is
--- real and disassembled, but not consumed by anything this project
--- currently models -- exposed as an opaque `onLeaf` callback per this
--- project's "interpreter doesn't render, it calls back" convention,
--- same as `.tick`'s own `onTick` or opcode `0x00`'s own `onIdle`.
+-- always continue" handler pair (opcodes 0xB8/0xB9, ROM $1178/$1186,
+-- found via the whole-corpus shadow-run scan -- the single highest-
+-- count clean structural match among the top 40 most-blocking
+-- undecoded handlers). Verified disassembly: PUSH HL / LD HL,$C3F1 /
+-- SET|RES 0,(HL) / CALL <leaf> / POP HL / CALL $3727 / RET -- sets/
+-- clears bit 0 of a different WRAM cell than .setFlagBit/.clearFlagBit's
+-- own $D874 (kept as its own factory since the address differs and
+-- this pair also has a leaf call those don't), then calls a self-
+-- contained leaf ($01F4/$0204) before always continuing. HONEST SCOPE:
+-- the leaf's effect (writing fixed sound-parameter bytes into $C0AA/
+-- $C0AC and toggling bit 1 of a third WRAM cell, $C4D4) is disassembled
+-- but not consumed by anything this project currently models --
+-- exposed as an opaque onLeaf callback per this project's "interpreter
+-- doesn't render, it calls back" convention, same as .tick's own
+-- onTick or opcode 0x00's own onIdle.
 function StandardScriptHandlers.wramBitCommand(flags, bitIndex, setBit, onLeaf)
   return function(_stream, cursor)
     if setBit then
@@ -271,115 +269,90 @@ end
 -- share the exact same real pacing constant.
 local FRAMES_PER_TICK = 5
 
---- Real "text/control-code classifier" handler (opcode `0x04`, ROM
--- `$333D`) -- see docs/reverse-engineering/events.md's "the $38F6
--- table decoded" section (2026-08-15) for the full disassembly trail
--- this implements.
+--- Real "text/control-code classifier" handler (opcode 0x04, ROM
+-- $333D) -- see docs/reverse-engineering/events.md's "the $38F6 table
+-- decoded" section for the full disassembly trail this implements.
 --
--- REWRITTEN 2026-08-15, direct continuation ("mach trotzdem, ändere
--- den code"): every previous version of this handler (including the
--- immediately-preceding 5-frame-pacing fix) modeled opcode `0x04` as a
--- SIMPLE tick with no real per-byte semantics -- real, decisive
--- disassembly (`tools/rom/disasm.py`, no guessing) proved that's wrong
--- at a deeper level than just timing: `$333D` is a genuine PER-BYTE
--- TEXT/CONTROL-CODE CLASSIFIER. `LD A,(HL)` reads the byte at the
--- CURRENT cursor (NOT `(HL+)` -- this fetch does not itself advance
--- the cursor) and dispatches via real threshold comparisons:
---   `A == 0x00` (`TERMINATOR_BYTE`) -- real ROM: `INC HL / CALL $3727
---     / RET` -- skips the terminator and RECURSIVELY re-dispatches the
---     next real opcode within the same real instant. This project's
---     interpreter model can't recurse inside one handler call -- the
---     next real opcode dispatches on the FOLLOWING tick instead, one
---     real frame later than true hardware -- a small, honestly-
---     documented timing simplification that does NOT affect cursor
---     position (still consumes exactly the terminator byte).
---   `0x10 <= A <= 0x1F` -- a real CONTROL CODE, dispatched through the
---     real jump table at `$38F6` (bytes `0x16`-`0x19` are real,
---     confirmed-unused/reserved slots) -- see events.md for what each
---     of the 12 real, populated entries does (mode switches, name
---     insertion, cursor moves, bridges into the ALREADY-documented
---     "0xFF sub-table" system). `onControlCode(byte, cursor)` (2nd arg
---     added 2026-08-15, see this function's own "PINNING FIX" doc
---     comment below for why the real cursor position matters, not just
---     the byte value) is the caller's own hook for whatever real
---     per-code behavior it wants to model --
---     see `ScriptRuntime.lua`'s own doc comment for what this project
---     currently does with it. HONEST SCOPE: the real jump table's own
---     targets mostly bridge into the "0xFF sub-table" via the real
---     `$3C74` reschedule primitive, or delegate into still-unfollowed
---     bank-2 code (several call sites go through the same `$30A5`-
---     family bank-2 wrappers this project has already found elsewhere
---     but never disassembled across the bank switch) -- this handler
---     consumes exactly the 1 real control byte and calls back; it does
---     NOT reproduce the deeper WRAM side effects (mode registers,
---     cursor-position pairs, name-pointer writes) those real targets
---     perform, since faithfully doing so would require the not-yet-done
---     bank-2 trace. A real, bounded, honestly-named gap, not a silent
---     guess.
---   anything else -- a real, printable TEXT CHARACTER (must be
---     `TextDecoder.decodeByte`-recognized -- fails loudly, no silent
---     guess, if it isn't). Paced at the real, live-confirmed 5-real-
---     frame cadence (`FRAMES_PER_TICK`, matching `.textboxWait`'s own
---     already-documented cadence -- both opcodes share the identical
---     real typewriter mechanism, per that handler's own doc comment),
---     calling `onTick` once per real pacing tick, then consuming
---     exactly this ONE byte once released (the classifier re-enters for
---     the NEXT byte on the interpreter's next real dispatch, naturally
---     discovering the terminator/control codes/more text as it goes --
---     no pre-computed text length needed, unlike this handler's own
---     immediately-preceding version).
+-- REWRITTEN, direct continuation ("do it anyway, change the code"):
+-- every previous version modeled opcode 0x04 as a simple tick with no
+-- per-byte semantics -- disassembly proved that's wrong at a deeper
+-- level than timing: $333D is a per-byte text/control-code classifier.
+-- LD A,(HL) reads the byte at the current cursor (not (HL+) -- doesn't
+-- advance the cursor) and dispatches via threshold comparisons:
+--   A == 0x00 (TERMINATOR_BYTE) -- ROM: INC HL / CALL $3727 / RET --
+--     skips the terminator and recursively re-dispatches the next
+--     opcode within the same instant. This project's interpreter can't
+--     recurse inside one handler call -- the next opcode dispatches on
+--     the following tick instead, one frame later than true hardware --
+--     a small, documented timing simplification that doesn't affect
+--     cursor position.
+--   0x10 <= A <= 0x1F -- a control code, dispatched through the jump
+--     table at $38F6 (bytes 0x16-0x19 are confirmed-unused/reserved
+--     slots) -- see events.md for what each of the 12 populated entries
+--     does (mode switches, name insertion, cursor moves, bridges into
+--     the already-documented "0xFF sub-table" system). onControlCode
+--     (byte, cursor) is the caller's hook for whatever per-code
+--     behavior it wants to model -- see ScriptRuntime.lua's own doc
+--     comment for what this project currently does with it. HONEST
+--     SCOPE: the jump table's targets mostly bridge into the "0xFF
+--     sub-table" via the $3C74 reschedule primitive, or delegate into
+--     still-unfollowed bank-2 code -- this handler consumes exactly
+--     the 1 control byte and calls back; it does not reproduce the
+--     deeper WRAM side effects those targets perform, since that would
+--     need the not-yet-done bank-2 trace.
+--   anything else -- a printable text character (must be TextDecoder
+--     .decodeByte-recognized -- fails loudly, no silent guess, if it
+--     isn't). Paced at the live-confirmed 5-frame cadence
+--     (FRAMES_PER_TICK, matching .textboxWait's own cadence -- both
+--     opcodes share the identical typewriter mechanism), calling
+--     onTick once per pacing tick, then consuming exactly this one
+--     byte once released (the classifier re-enters for the next byte
+--     on the interpreter's next dispatch, naturally discovering the
+--     terminator/control codes/more text as it goes -- no pre-computed
+--     text length needed).
 --
--- PINNING FIX (2026-08-15, task #144/#145, direct continuation of
--- today's `0xF3` fix): "the classifier re-enters for the NEXT byte on
--- the interpreter's next real dispatch" above was true in INTENT but
--- NOT actually implemented until now -- a live mgba trace (watching
--- real writes to the persistent cursor `$D8B6`/`$D8B7`, filtered to
--- exclude an unrelated interrupt handler's own noise on those same
--- cells) found the real ROM keeps WRAM `$D85A` ("current opcode")
--- PINNED at `0x04` across MANY real per-character ticks (confirmed:
--- `$36D0`'s own real body advances the cursor and re-arms `$D85A=0x04`
--- DIRECTLY, without ever calling `$3727` again) while the underlying
--- cursor keeps moving through raw text bytes underneath it -- this
--- project's OLD interpreter architecture had no way to express that: it
--- always re-read `stream[cursor]` as a FRESH top-level opcode on every
--- tick, so once one text character finished, the NEXT raw text byte's
--- own numeric value got misdispatched as if it were a completely
--- different, unrelated opcode -- "succeeding" for a while purely by
--- coincidence (real text byte values occasionally colliding with other
--- real, already-registered opcodes' own IDs) before eventually landing
--- on a genuinely undecoded one and stopping there, which looked like
--- (but was NOT) a real content boundary. `ScriptInterpreter:step` now
--- supports real opcode pinning (see its own doc comment) -- the
--- TEXT-CHARACTER-release path below always returns a SECOND value,
--- `true`, requesting exactly this: stay dispatched as opcode `0x04` for
--- the resulting cursor, regardless of the raw byte sitting there. Live
--- evidence supports pinning UNCONDITIONALLY for text characters (every
--- byte in a real, live-traced ~74-character run advanced this exact
--- way, confirmed via the SAME real `$36D9` PC repeatedly).
+-- PINNING FIX (task #144/#145, direct continuation of the 0xF3 fix):
+-- "the classifier re-enters for the next byte on the next dispatch"
+-- above was true in intent but not actually implemented until now -- a
+-- live mgba trace (watching writes to the persistent cursor $D8B6/
+-- $D8B7, filtered to exclude an unrelated interrupt handler's noise on
+-- those same cells) found the ROM keeps WRAM $D85A ("current opcode")
+-- pinned at 0x04 across many per-character ticks ($36D0's body
+-- advances the cursor and re-arms $D85A=0x04 directly, without ever
+-- calling $3727 again) while the cursor keeps moving through raw text
+-- bytes underneath it -- the old interpreter architecture always
+-- re-read stream[cursor] as a fresh top-level opcode on every tick, so
+-- once one character finished, the next raw text byte's numeric value
+-- got misdispatched as an unrelated opcode -- "succeeding" for a while
+-- purely by coincidence before eventually landing on a genuinely
+-- undecoded one and stopping, which looked like (but wasn't) a real
+-- content boundary. ScriptInterpreter:step now supports opcode pinning
+-- -- the text-character-release path below always returns a second
+-- value, true, requesting exactly this: stay dispatched as opcode 0x04
+-- for the resulting cursor, regardless of the raw byte sitting there.
+-- Live evidence supports pinning unconditionally for text characters
+-- (every byte in a live-traced ~74-character run advanced this exact
+-- way, confirmed via the same $36D9 PC repeatedly).
 --
--- The CONTROL-CODE-release path's own `pin` comes from `onControlCode`
--- ITSELF now (see that parameter's own updated doc comment below) --
--- NOT a blanket default -- because a SEPARATE live trace (same
--- session) caught this project over-generalizing "control codes always
--- pin": an EARLIER, real occurrence's own control byte does NOT stay
--- pinned in the real ROM (its real target hands off elsewhere),
--- exactly matching this function's own pre-existing "HONEST SCOPE"
--- note above -- only SOME control codes route through `$36D0` (live-
--- confirmed for `0x10`/`0x11` so far), others bridge into the `0xFF`
--- sub-table or bank-2 code this project hasn't traced. Pinning only
--- what's actually confirmed per real byte value, not applying one
--- blanket rule, is the whole discipline this project runs on -- see
--- docs/reverse-engineering/events.md's task #144/#145 entry for the
--- real trace that caught the over-generalization. The TERMINATOR case
--- ALSO never pins -- the real ROM genuinely hands control back to a
--- fresh top-level opcode dispatch there (confirmed: this is exactly
--- how the classifier correctly lands on a REAL `CHAIN` (`0x02`) opcode
--- once a real multi-character text run's own terminator is reached).
--- Per-occurrence pacing state, same reasoning as `.textboxWait`'s own
--- doc comment (a shared closure counter would misalign two separate
--- real uses of this opcode) -- keyed by the CURRENT byte's own cursor
--- position (not a whole text run), since each real byte gets its own
--- real 5-frame pacing cycle.
+-- The control-code-release path's own pin comes from onControlCode
+-- itself now (see that parameter's updated doc comment below) -- not a
+-- blanket default -- because a separate live trace caught this project
+-- over-generalizing "control codes always pin": an earlier occurrence's
+-- control byte does not stay pinned in the ROM (its target hands off
+-- elsewhere) -- only some control codes route through $36D0 (confirmed
+-- for 0x10/0x11 so far), others bridge into the 0xFF sub-table or
+-- bank-2 code not yet traced. Pinning only what's confirmed per byte
+-- value, not one blanket rule, is the discipline this project runs on
+-- -- see events.md's task #144/#145 entry for the trace that caught the
+-- over-generalization. The terminator case also never pins -- the ROM
+-- genuinely hands control back to a fresh top-level dispatch there
+-- (confirmed: this is exactly how the classifier lands on a real CHAIN
+-- (0x02) opcode once a multi-character text run's terminator is
+-- reached). Per-occurrence pacing state, same reasoning as
+-- .textboxWait's own doc comment (a shared closure counter would
+-- misalign two separate uses of this opcode) -- keyed by the current
+-- byte's cursor position, since each byte gets its own 5-frame pacing
+-- cycle.
 function StandardScriptHandlers.tick(onTick, onControlCode)
   local states = {}
   return function(stream, cursor)
@@ -394,50 +367,45 @@ function StandardScriptHandlers.tick(onTick, onControlCode)
     end
 
     if byte >= 0x10 and byte <= 0x1F then
-      -- REAL, live-confirmed refinement (2026-08-15, direct follow-up:
-      -- a live mgba trace of WRAM $D853 bit 7 -- the SAME real "pacing
-      -- timer active" flag the text-character branch's own 5-frame
-      -- cadence already relies on -- found it SET immediately on
-      -- entering AT LEAST control byte 0x11's own classify state, and
-      -- CLEARED only once real several real frames later, exactly when
-      -- the real cursor finally advances past it. I.e. NOT every real
-      -- control code is an instant, single-byte consume -- at least
-      -- some genuinely pace first, THEN (via the real $36D0 bridge
-      -- already disassembled) advance by MORE than 1 real byte. Real
-      -- `onControlCode(byte)` contract, extended to express this:
-      -- returning a NUMBER (0 or more) means "done -- consume 1 real
-      -- control byte plus this many EXTRA real bytes" (0x11's own real
-      -- $36D0 bridge needs 1 extra, matching its own real "INC HL"
-      -- beyond the control byte itself); returning `false`/`nil` means
-      -- "still real-pacing, not done yet" -- a real halt, re-dispatched
-      -- next tick, same shape as the text-character branch below. A
-      -- caller that doesn't supply `onControlCode` at all keeps the
-      -- OLD, simpler "immediate single-byte consume" behavior (matches
-      -- every real control code this project hasn't live-traced the
-      -- exact pacing/bridge behavior of yet -- an honest default, not a
-      -- guess at behavior for those).
+      -- Live-confirmed refinement (a live mgba trace of WRAM $D853 bit
+      -- 7 -- the same "pacing timer active" flag the text-character
+      -- branch's 5-frame cadence relies on -- found it set immediately
+      -- on entering at least control byte 0x11's classify state, and
+      -- cleared only several frames later, exactly when the cursor
+      -- finally advances past it). Not every control code is an
+      -- instant, single-byte consume -- some genuinely pace first, then
+      -- (via the $36D0 bridge already disassembled) advance by more
+      -- than 1 byte. onControlCode(byte) contract, extended: returning
+      -- a number (0 or more) means "done -- consume 1 control byte plus
+      -- this many extra bytes" (0x11's $36D0 bridge needs 1 extra,
+      -- matching its INC HL beyond the control byte itself); returning
+      -- false/nil means "still pacing, not done yet" -- a halt,
+      -- re-dispatched next tick, same shape as the text-character
+      -- branch below. A caller that doesn't supply onControlCode keeps
+      -- the old, simpler "immediate single-byte consume" behavior
+      -- (matches every control code this project hasn't live-traced
+      -- yet -- an honest default, not a guess).
       if not onControlCode then
         states[cursor] = nil
         return cursor + 1
       end
-      -- `onControlCode` now receives the real CURSOR too (2nd arg), and
-      -- may return a SECOND value, `pin` (boolean, 2026-08-15 follow-up
-      -- to the PINNING FIX above): `true` means THIS SPECIFIC real
-      -- occurrence's own real target is `$36D0` (the SAME bridge the
-      -- text-character path below always pins through). The CURSOR
-      -- matters, not just the byte value: full disassembly of `$34E7`
-      -- (control byte 0x10's real handler) found a genuine CONDITIONAL
-      -- -- `CALL $3627 / CALL Z,$36D0` -- so whether THIS byte pins
-      -- depends on a real, still-untraced condition, NOT on the byte
-      -- value alone (live-confirmed: the SAME byte value 0x10 pins at
-      -- one real script position and does NOT at another, in the SAME
-      -- real playthrough). The caller is the right place for this
-      -- decision since it's the one with LIVE, per-occurrence evidence
-      -- -- this generic classifier can't know on its own (see this
-      -- function's own doc comment above for why NOT every real control
-      -- code pins). Omitting `pin` (old callers, or occurrences this
-      -- project hasn't live-traced yet) keeps the honest, safe default:
-      -- no pin, hand off to a fresh top-level dispatch.
+      -- onControlCode now receives the cursor too (2nd arg), and may
+      -- return a second value, pin (boolean, follow-up to the PINNING
+      -- FIX above): true means this specific occurrence's target is
+      -- $36D0 (the same bridge the text-character path below always
+      -- pins through). The cursor matters, not just the byte value:
+      -- full disassembly of $34E7 (control byte 0x10's handler) found a
+      -- genuine conditional -- CALL $3627 / CALL Z,$36D0 -- so whether
+      -- this byte pins depends on a still-untraced condition, not the
+      -- byte value alone (live-confirmed: the same byte value 0x10 pins
+      -- at one script position and does not at another, in the same
+      -- playthrough). The caller is the right place for this decision
+      -- since it has live, per-occurrence evidence -- this generic
+      -- classifier can't know on its own (see this function's own doc
+      -- comment above for why not every control code pins). Omitting
+      -- pin (old callers, or occurrences not yet live-traced) keeps the
+      -- honest, safe default: no pin, hand off to a fresh top-level
+      -- dispatch.
       local extraBytes, pin = onControlCode(byte, cursor)
       if extraBytes then
         states[cursor] = nil
