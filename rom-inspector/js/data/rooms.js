@@ -58,7 +58,7 @@ const ROOMS = [
     "exits": [
       {
         "axis": "x",
-        "landingX": 80,
+        "landingX": 0,
         "landingY": 64,
         "reverse": false,
         "status": "VERIFIED",

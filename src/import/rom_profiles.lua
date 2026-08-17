@@ -1643,18 +1643,36 @@ RomProfiles.PROFILES = {
             -- own exits above.
             transition = { type = "scroll", axis = "x", totalPixels = 160, pixelsPerFrame = 4 },
             targetRoom = "thirdRoom",
-            -- CORRECTED (2026-08-10, same user report as willyRoom's
-            -- own exit above): the old (24,64) assumed "enters from the
-            -- west edge" without pixel verification. Live-traced from
-            -- `room2_free.state`: held RIGHT for 200 frames (well past
-            -- the real 40-frame/160px scroll duration, confirmed by
-            -- SCX actually reaching its real settled 160), released,
-            -- then confirmed the position stabilized at exactly (80,64)
-            -- -- Y=64 genuinely matches the old guess, X does not. An
-            -- earlier attempt that released input mid-scroll (before
-            -- SCX reached 160) produced a misleading, still-drifting
-            -- value and was discarded.
-            landingX = 80, landingY = 64,
+            -- CORRECTED AGAIN (2026-08-17, direct user report: "die end
+            -- position im third room ist falsch. das sollte nicht die
+            -- mitte des raums sein sondern in dem türdurchgang"): the
+            -- (80,64) below (this project's own prior pass, dated
+            -- 2026-08-10) turned out to be a real methodology bug, not a
+            -- ROM fact -- it was captured by `checkpoints.third_room_
+            -- free()`, which deliberately holds RIGHT for 200 frames
+            -- AFTER the scroll settles, to walk the player clear of the
+            -- landing spot for later, unrelated investigation
+            -- convenience. That extra ~160px of self-inflicted walking
+            -- (well past the scroll's own 40-frame/160px duration) got
+            -- mistakenly recorded as if it were the landing position
+            -- itself, instead of stopping measurement the instant
+            -- control genuinely returns to the player.
+            --
+            -- Re-measured properly this pass: released RIGHT on the
+            -- EXACT frame the real SCX shadow (`$C0A6`) reaches its
+            -- settled 160 (same signal used before, just not walked
+            -- past this time), then confirmed via 40 further real
+            -- frames with ZERO input that the real position (`$C245`=X,
+            -- `$C244`=Y) does NOT drift -- a genuine stable settle, not
+            -- a mid-transition reading. Real result: (0,64), not
+            -- (80,64) -- Y=64 was already correct both times; only X
+            -- was wrong. X=0 is thirdRoom's own real west edge (the
+            -- door threshold this room is entered through, scrolling in
+            -- from `secondRoom`), landing cleanly on real, already-
+            -- verified floor tile 151 (see this room's own `grid`/
+            -- `floorTileIds` below) -- exactly matching the user's own
+            -- description, not a coincidence.
+            landingX = 0, landingY = 64,
           },
         },
       },
