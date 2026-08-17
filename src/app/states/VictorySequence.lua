@@ -416,29 +416,27 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
       end
 
       if byte == 0x12 and cursor == 0x6206 then
-        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct continuation).
-        -- Full disassembly of `$3502` (0x12's own real handler): `CALL
-        -- $1ED1 / POP HL / LD A,C / OR A / RET NZ / LD B,4 / CALL $3C74
-        -- / RET` -- `$1ED1` is a real bank-2 function-call trampoline
-        -- (`PUSH AF / LD A,0x01 / JP $1F06` -- the SAME dispatch stub
-        -- family this project has repeatedly found and deferred
-        -- tracing into elsewhere) whose real C-register result decides
-        -- whether to bridge into `0xFF` sub-opcode 4 at all. Once
-        -- bridged, `$350F` (sub-opcode 4's own real per-tick body:
-        -- `CALL $1ED1 / POP HL / LD A,C / AND A / RET Z / CALL $36D0 /
-        -- RET`) re-checks the SAME real bank-2 condition every real
-        -- tick, halting (real `RET Z`) until it finally goes nonzero,
-        -- THEN unconditionally resuming as opcode `0x04` via `$36D0`
-        -- (matching the `0x1A`/`0x14` pattern above, not the
-        -- `$3627`-style genuine per-occurrence conditional `0x10` has).
-        -- A live tick-count trace (courtyard_boss_defeated()) found
-        -- this SPECIFIC real occurrence paces for exactly 156 real
-        -- ticks before releasing -- like `CONTROL_CODE_0X11_REAL_TICKS`,
-        -- an empirically-observed real constant for THIS occurrence,
-        -- not a claim about bank 2's own internal computation (not
-        -- traced -- a real, well-scoped, deferred follow-up, matching
-        -- this project's own established precedent for `$1F06`-
-        -- dispatched bank-2 calls elsewhere).
+        -- LIVE-CONFIRMED (task #146, direct continuation). Full
+        -- disassembly of $3502 (0x12's own handler): CALL $1ED1 / POP
+        -- HL / LD A,C / OR A / RET NZ / LD B,4 / CALL $3C74 / RET --
+        -- $1ED1 is a bank-2 function-call trampoline (PUSH AF / LD
+        -- A,0x01 / JP $1F06 -- the same dispatch stub family
+        -- repeatedly found and deferred elsewhere) whose C-register
+        -- result decides whether to bridge into 0xFF sub-opcode 4 at
+        -- all. Once bridged, $350F (sub-opcode 4's per-tick body: CALL
+        -- $1ED1 / POP HL / LD A,C / AND A / RET Z / CALL $36D0 / RET)
+        -- re-checks the same bank-2 condition every tick, halting
+        -- (RET Z) until it finally goes nonzero, then unconditionally
+        -- resuming as opcode 0x04 via $36D0 (matching the 0x1A/0x14
+        -- pattern above, not the $3627-style genuine per-occurrence
+        -- conditional 0x10 has). A live tick-count trace
+        -- (courtyard_boss_defeated()) found this specific occurrence
+        -- paces for exactly 156 ticks before releasing -- like
+        -- CONTROL_CODE_0X11_REAL_TICKS, an empirically-observed
+        -- constant for this occurrence, not a claim about bank 2's own
+        -- internal computation (not traced -- a deferred follow-up,
+        -- matching this project's precedent for $1F06-dispatched
+        -- bank-2 calls elsewhere).
         if controlCodeState.ticksSeen < 156 then
           return false
         end
@@ -447,36 +445,33 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
       end
 
       if byte == 0x1b and cursor == 0x6207 then
-        -- LIVE-CONFIRMED 2026-08-15 (task #146, direct continuation).
-        -- Full disassembly of `$35C1` (0x1B's own real handler: `CALL
-        -- $3648 / POP HL / RET`) and `$3648` (the real work: sets up
-        -- `$D8B2`-`$D8B5` cursor-position-pair cells, `$D853=0x1E`,
-        -- then `LD B,2 / CALL $3C74` -- bridges into `0xFF` sub-opcode
-        -- 2 UNCONDITIONALLY, same shape as `0x14`'s own bridge) --
-        -- AFTER the bridge, `$3648` also does `LD A,($D84A) / CP 0 /
-        -- JR Z,$36A8 / RET` -- a REAL conditional on the SAME mode
-        -- register `0x10` sets, meaning this project does NOT claim
-        -- this generalizes to every real occurrence (same caution as
-        -- `0x10` itself) -- only the ONE live-confirmed real cursor
-        -- (`0x6207`) is pinned here. A live `$D85A`/`$D86B` trace found
-        -- this occurrence bridges into `0xFF` (`D86B=2`) for EXACTLY
-        -- ONE real tick then resumes `0x04` at cursor `0x6209` --
-        -- modeled the same way as `0x14`: consumes 1 extra real byte
-        -- (net +2 from this control byte's own position) and pins
-        -- straight back to `0x04`, without literally dispatching
-        -- `0xFF` sub-opcode 2's own real line-clear/blank internals.
+        -- LIVE-CONFIRMED (task #146, direct continuation). Full
+        -- disassembly of $35C1 (0x1B's handler: CALL $3648 / POP HL /
+        -- RET) and $3648 (the real work: sets up $D8B2-$D8B5 cursor-
+        -- position-pair cells, $D853=0x1E, then LD B,2 / CALL $3C74 --
+        -- bridges into 0xFF sub-opcode 2 unconditionally, same shape
+        -- as 0x14's bridge) -- after the bridge, $3648 also does LD
+        -- A,($D84A) / CP 0 / JR Z,$36A8 / RET -- a conditional on the
+        -- same mode register 0x10 sets, meaning this doesn't
+        -- generalize to every occurrence (same caution as 0x10 itself)
+        -- -- only the one live-confirmed cursor (0x6207) is pinned
+        -- here. A live $D85A/$D86B trace found this occurrence bridges
+        -- into 0xFF (D86B=2) for exactly one tick then resumes 0x04 at
+        -- cursor 0x6209 -- modeled the same way as 0x14: consumes 1
+        -- extra byte (net +2 from this control byte's position) and
+        -- pins straight back to 0x04, without literally dispatching
+        -- 0xFF sub-opcode 2's own line-clear/blank internals.
         controlCodeState.lastByte = nil
         return 1, true
       end
 
-      -- HONEST SCOPE: every OTHER real control code (0x13/0x15-0x19/
-      -- 0x1C-0x1F, and 0x10/0x12/0x14/0x15/0x1B at any OTHER real
-      -- cursor than the ones live-confirmed above) is NOT yet
-      -- live-traced for its own real pacing/bridge/pin behavior --
-      -- defaults to the old, simple immediate single-byte consume (0
-      -- extra bytes, no pin) rather than guessing whether it also
-      -- needs either treatment (see StandardScriptHandlers.tick's own
-      -- doc comment).
+      -- HONEST SCOPE: every other control code (0x13/0x15-0x19/
+      -- 0x1C-0x1F, and 0x10/0x12/0x14/0x15/0x1B at any other cursor
+      -- than the ones live-confirmed above) isn't yet live-traced for
+      -- its own pacing/bridge/pin behavior -- defaults to the old,
+      -- simple immediate single-byte consume (0 extra bytes, no pin)
+      -- rather than guessing whether it also needs either treatment
+      -- (see StandardScriptHandlers.tick's own doc comment).
       controlCodeState.lastByte = nil
       return 0
     end,
@@ -494,36 +489,35 @@ function VictorySequence.buildBossSequenceInterpreter(romData, profile, stats)
   return interpreter, transcript, frameCounter
 end
 
--- Real, already-VERIFIED example message ID (see MessageTextPointer.lua
--- and rom_profiles.lua's own `messageTextPointer.verifiedExample`) --
--- decodes to the real ROM string "gefunden" ("found", the real item-
--- pickup message). Used ONLY by the pipeline-proof demo below, not a
--- guess at what the boss-defeat script itself would show.
+-- Already-verified example message ID (see MessageTextPointer.lua and
+-- rom_profiles.lua's own messageTextPointer.verifiedExample) -- decodes
+-- to the ROM string "gefunden" ("found", the item-pickup message).
+-- Used only by the pipeline-proof demo below, not a guess at what the
+-- boss-defeat script itself would show.
 local MESSAGE_PIPELINE_DEMO_MESSAGE_ID = 13
 
---- REAL PIPELINE PROOF (2026-08-13, direct follow-up to discovering the
--- boss-defeat script's own real post-fight content is gated behind a
--- genuinely deep, not-yet-modeled cross-actor dispatch mechanism --
--- see events.md's own "task #84" section for the full trail of WHY a
--- real NPC/story script isn't a safe target yet). Rather than wire
--- `ctx.onMessage` against unproven real content, this proves the
--- INTERPRETER -> RENDERING pipeline itself works end to end using a
--- tiny, SYNTHETIC 2-byte script (`{0xFE, 13}` -- opcode `0xFE`
--- (MESSAGE_HANDLER_ADDRESS) with the real, independently-verified
--- messageID 13) run through the exact same real `ScriptInterpreter`/
--- `ScriptRuntime` machinery as every other opcode in this project, with
--- a REAL `ctx.onMessage` that resolves the real ROM text via
--- `MessageTextPointer` (the exact formula already cross-checked in
--- `tests/import/message_text_pointer_test.lua`) instead of a no-op.
+--- PIPELINE PROOF (direct follow-up to discovering the boss-defeat
+-- script's own post-fight content is gated behind a deep, not-yet-
+-- modeled cross-actor dispatch mechanism -- see events.md's "task #84"
+-- section for the full trail of why a real NPC/story script isn't a
+-- safe target yet). Rather than wire ctx.onMessage against unproven
+-- content, this proves the interpreter -> rendering pipeline itself
+-- works end to end using a tiny, synthetic 2-byte script ({0xFE, 13}
+-- -- opcode 0xFE (MESSAGE_HANDLER_ADDRESS) with the independently-
+-- verified messageID 13) run through the exact same ScriptInterpreter/
+-- ScriptRuntime machinery as every other opcode in this project, with
+-- a real ctx.onMessage that resolves the ROM text via
+-- MessageTextPointer (the exact formula already cross-checked in
+-- tests/import/message_text_pointer_test.lua) instead of a no-op.
 --
--- HONEST SCOPE: this is NOT "the interpreter drives a real NPC" --
--- the 2-byte script is constructed by this project, not read from a
--- real ROM script pointer. What IS real: the opcode dispatch, the
--- `0xFE` handler, the messageID->text resolution formula, and the
--- on-screen rendering are all the SAME real code paths a genuine
--- ROM-driven run would use -- this proves that pipeline is wired
--- correctly and ready for real content, the concrete prerequisite the
--- earlier boss-defeat attempt was missing.
+-- HONEST SCOPE: this is not "the interpreter drives a real NPC" -- the
+-- 2-byte script is constructed by this project, not read from a real
+-- ROM script pointer. What is real: the opcode dispatch, the 0xFE
+-- handler, the messageID->text resolution formula, and the on-screen
+-- rendering are all the same code paths a genuine ROM-driven run would
+-- use -- this proves that pipeline is wired correctly and ready for
+-- real content, the prerequisite the earlier boss-defeat attempt was
+-- missing.
 local function runMessagePipelineDemo(romData, profile)
   if not (profile.messageTextPointer and profile.scriptOpcodeTable) then
     return nil
@@ -551,12 +545,12 @@ local ROOM_W = 160
 local HUD_H = 16
 local ROOM_H = ROOM_W * 144 / 160 -- 144, this file's own established full-height convention
 
--- Real box geometry (tile units, 8px each). "bottom": same real position
--- observed for the victory/lore boxes (roughly the lower half of the
--- playfield, HUD bar still visible beneath). "top": the same real
--- position this project's existing DialogueBox.lua already used for the
--- Willy exchange (`BOX_X=4,BOX_Y=4,BOX_W=152,BOX_H=40` == 19x5 tiles),
--- now re-confirmed live as correct for that exchange.
+-- Box geometry (tile units, 8px each). "bottom": same position observed
+-- for the victory/lore boxes (roughly the lower half of the playfield,
+-- HUD bar still visible beneath). "top": the same position this
+-- project's existing DialogueBox.lua already used for the Willy
+-- exchange (BOX_X=4,BOX_Y=4,BOX_W=152,BOX_H=40 == 19x5 tiles), now
+-- re-confirmed live as correct for that exchange.
 local BOX_GEOMETRY = {
   bottom = { x = 0, y = 64, cols = 20, rows = 8 },
   top = { x = 4, y = 4, cols = 19, rows = 5 },
@@ -580,19 +574,19 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     pageStartFrame = 0,
     done = false,
     -- General room-graph caches, keyed by room name (a key into
-    -- `profile.graphics`) -- built lazily as each room is first
-    -- reached, not all up front (a chain could in principle be long).
+    -- profile.graphics) -- built lazily as each room is first reached,
+    -- not all up front (a chain could in principle be long).
     roomBg = {},
     roomWalk = {},
     roomSprites = {},
-    -- Live wander state (position/facing/timer) for animated NPCs, keyed
-    -- roomKey -> characterName -- see `ensureRoomLoaded`/
-    -- `updateNpcWander`'s own doc comments (2026-08-10).
+    -- Live wander state (position/facing/timer) for animated NPCs,
+    -- keyed roomKey -> characterName -- see ensureRoomLoaded/
+    -- updateNpcWander's own doc comments.
     roomNpcState = {},
-    -- Real per-NPC one-shot dialogue tracking (2026-08-10, see
-    -- `matchedNpcDialogue`'s own doc comment) -- keyed
-    -- "<roomKey>:<characterName>" so the same NPC doesn't immediately
-    -- re-trigger every frame the player stays in its proximity zone.
+    -- Per-NPC one-shot dialogue tracking (see matchedNpcDialogue's own
+    -- doc comment) -- keyed "<roomKey>:<characterName>" so the same NPC
+    -- doesn't immediately re-trigger every frame the player stays in
+    -- its proximity zone.
     npcDialogueShown = {},
   }, VictorySequence)
 
@@ -603,33 +597,31 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     self.box = TextBox.new(romData, profile, self.font, data.textbox.border)
     self.framesPerLetter = data.textbox.framesPerLetter
 
-    -- REAL ScriptInterpreter shadow run (2026-08-13, opt-in, REWRITTEN
-    -- 2026-08-15 -- see this module's own top-of-file doc comment for
-    -- the full "why" and the self-caught wrong-bank bug this replaced).
-    -- A no-op unless `MYSTICQUEST_SCRIPT_INTERPRETER=1`.
-    -- `self.bossSequenceInterpreter` is ticked once per real frame from
-    -- `:update(dt)` below (unlike the old one-shot burst); its own
-    -- `self.bossSequenceTranscript`/`self.bossSequenceFrameCounter` are
-    -- only ever READ by `:draw()`'s overlay reporting -- nothing else in
-    -- this state consults them.
+    -- ScriptInterpreter shadow run (opt-in, REWRITTEN -- see this
+    -- module's top-of-file doc comment for the full "why" and the
+    -- self-caught wrong-bank bug this replaced). A no-op unless
+    -- MYSTICQUEST_SCRIPT_INTERPRETER=1. self.bossSequenceInterpreter is
+    -- ticked once per frame from :update(dt) below (unlike the old
+    -- one-shot burst); its self.bossSequenceTranscript/
+    -- self.bossSequenceFrameCounter are only ever read by :draw()'s
+    -- overlay reporting -- nothing else in this state consults them.
     if scriptInterpreterShadowRunEnabled() then
       self.bossSequenceInterpreter, self.bossSequenceTranscript, self.bossSequenceFrameCounter =
         VictorySequence.buildBossSequenceInterpreter(romData, profile, self.stats)
-      -- Real pipeline proof (2026-08-13) -- see `runMessagePipelineDemo`'s
-      -- own doc comment above for exactly what this does and does not
-      -- claim. `:draw()` renders `self.messagePipelineDemo.text` in a
-      -- real, visible `TextBox` when present, not just the debug overlay.
+      -- Pipeline proof -- see runMessagePipelineDemo's own doc comment
+      -- above for exactly what this does and doesn't claim. :draw()
+      -- renders self.messagePipelineDemo.text in a visible TextBox when
+      -- present, not just the debug overlay.
       self.messagePipelineDemo = runMessagePipelineDemo(romData, profile)
     end
 
-    -- WIRING (2026-08-10, "geh mal 1 an"): surface the REAL bank-8
-    -- roomSelector-table data for the room the player is actually
-    -- standing in, live, instead of it only existing as static
-    -- documentation. Decoded once here (16 records, negligible cost)
-    -- rather than every frame; `self.roomSelectorInfo[roomKey]` is nil
-    -- for rooms without a `romRoomSelectors` cross-reference (e.g. any
-    -- future room added without one) -- the overlay below skips those
-    -- rather than guessing.
+    -- WIRING: surface the bank-8 roomSelector-table data for the room
+    -- the player is actually standing in, live, instead of it only
+    -- existing as static documentation. Decoded once here (16 records,
+    -- negligible cost) rather than every frame; self.roomSelectorInfo
+    -- [roomKey] is nil for rooms without a romRoomSelectors cross-
+    -- reference (e.g. any future room added without one) -- the
+    -- overlay below skips those rather than guessing.
     self.roomSelectorInfo = {}
     if profile.roomSelectorTable then
       local RoomSelectorTable = require("src.import.RoomSelectorTable")
