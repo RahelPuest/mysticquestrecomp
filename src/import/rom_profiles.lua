@@ -779,74 +779,30 @@ RomProfiles.PROFILES = {
             -- it live, X 88 confirmed did not) and the real screen Y
             -- reached when blocked against the closed door.
             zone = { xMin = 72, xMax = 86, yMax = 24 },
-            -- totalPixels = roomHeightTiles(16) * 8, CODE-VERIFIED, see
-            -- schema comment above.
+            -- totalPixels = roomHeightTiles(16) * 8, code-verified.
             --
-            -- CORRECTED (2026-08-12, direct user report from actual
-            -- play: "der wipe vom willy raum ist von unten nach oben
-            -- anstatt anders herrum"): `VictorySequence:draw()`'s own
-            -- scroll-pan code hardcodes "the current room slides toward
-            -- the NEGATIVE axis side, the target room enters from the
-            -- POSITIVE side" for every exit, with no per-exit direction
-            -- data to say otherwise -- correct for `secondRoom`'s own
-            -- EAST exit below (walking further east really should
-            -- reveal new area sliding in from positive X), but this
-            -- exit is a real NORTH door (the player walks UP through
-            -- it) -- walking north should reveal new area ABOVE
-            -- (negative Y), sliding DOWN into place, the OPPOSITE sign.
-            -- `reverse=true` tells the draw code to flip which side
-            -- each room slides toward for this specific exit, instead
-            -- of guessing a single global convention that can only ever
-            -- be right for one of the two real directions on an axis.
+            -- `reverse=true`: `VictorySequence:draw()`'s scroll-pan code
+            -- defaults to "current room slides toward the negative axis
+            -- side" for every exit -- correct for secondRoom's own east
+            -- exit, but wrong for this north door (walking north should
+            -- reveal new area above, sliding down -- the opposite sign).
+            -- This flag flips the slide direction for this specific exit.
             transition = { type = "scroll", axis = "y", totalPixels = 128, pixelsPerFrame = 4, reverse = true },
             targetRoom = "secondRoom",
-            -- CORRECTED AGAIN (2026-08-10, direct user report: "beim
-            -- betreten des raums nach willy bin ich halb in der wand
-            -- gespawned"): the (80,136) value directly below (this
-            -- project's own prior pass) turned out to be the RAW WRAM
-            -- `$C244`/`$C245` bytes at the scroll's settle instant, used
-            -- as-is -- but every OTHER position in this file (playerSprite
-            -- /enemySprite/willyScene/etc) documents that raw OAM/WRAM
-            -- position pair as needing the standard Pan Docs hardware
-            -- offset subtracted (`Y-16`/`X-8`) before it's a real local
-            -- screen coordinate; this one entry skipped that step. A
-            -- naive `-16` alone (136-16=120) still isn't right either --
-            -- 136 is a WORLD-space Y that kept accumulating THROUGH the
-            -- 128px scroll (confirmed live: it rose in lockstep with SCY
-            -- falling, exactly matching this file's own `exits.
-            -- transition` doc comment's "world position advances in
-            -- lockstep with the scroll" note), not a simple per-room
-            -- local value. Re-derived the real local landing spot
-            -- directly instead of theorizing further: took a real
-            -- screenshot at the exact settled instant, overlaid a real
-            -- pixel grid on it, and cross-CALIBRATED that same grid
-            -- method against an ALREADY-VERIFIED position (`playerSprite`
-            -- .screenX/screenY` above) in an unrelated screenshot first,
-            -- to confirm the measurement technique itself was trustworthy
-            -- before trusting its result here. Real measured position:
-            -- (72,96) -- lands on the room's own real checkerboard floor
-            -- (cross-checked against `TileWalkability.build` using this
-            -- room's own `floorTileIds` below: `canMoveTo(72,96)` is
-            -- real open floor, `canMoveTo(80,136)` and even
-            -- `canMoveTo(72,120)` are not), matching the live screenshot
-            -- exactly (player standing normally, not clipped).
+            -- Real measured landing position (72,96), re-derived via a
+            -- calibrated screenshot pixel-grid overlay after an earlier
+            -- pass wrongly used the raw, un-adjusted WRAM position (which
+            -- is also a world-space value that accumulates through the
+            -- scroll, not a per-room local one). Cross-checked against
+            -- `TileWalkability`: (72,96) is real open floor, the old
+            -- (80,136) was not -- matches the live screenshot exactly.
             landingX = 72, landingY = 96,
-            -- REMOVED (2026-08-10, same investigation): the 3-line
-            -- "Amanda! Das mit Willy tut mir leid...." dialogue
-            -- previously fired here, tied to completing THIS transition
-            -- (matching this project's own general `exits.dialoguePages`
-            -- room-entry mechanism) -- direct user report ("der dialog
-            -- wird beim betreten des raums getriggert") questioned this,
-            -- and a fresh live re-trace disproves it outright: idling
-            -- 900 real frames with ZERO input immediately after landing
-            -- in `secondRoom` produced no dialogue box at all. The real
-            -- trigger is per-NPC proximity instead (see `secondRoom
-            -- .scene.characterA.dialogue` below) -- a structurally
-            -- different mechanism, not a timing tweak, so this field is
-            -- removed rather than re-populated with a guess; no text
-            -- resembling "Amanda"/these exact lines appeared anywhere in
-            -- this fresh re-trace, so it is not re-attached to the NPCs
-            -- either -- an honest gap, not a silent carry-over.
+            -- REMOVED: a 3-line "Amanda!..." dialogue used to fire on
+            -- this transition -- disproved live (900 frames idle after
+            -- landing produced no dialogue). The real trigger is per-NPC
+            -- proximity instead (see `secondRoom.scene.characterA
+            -- .dialogue` below), a different mechanism -- field removed
+            -- rather than reattached as a guess.
           },
         },
       },
@@ -927,36 +883,21 @@ RomProfiles.PROFILES = {
         --
         -- FOUND AND FIXED: three real problems, from one extended live
         -- mgba re-trace (900 frames, OAM-tracked every frame):
-        -- (1) the `tileOffsets` this project had were simply WRONG --
-        --     real, readable ROM bytes, but from this profile's own font
-        --     region, not a creature sprite (confirmed by a live
-        --     screenshot showing garbled glyph-shaped marks).
-        -- (2) the SHAPE was wrong too: this project modeled these as
-        --     2x2-tile (4-tile, 16x16px) sprites like Willy/the player --
-        --     but the real OAM only ever uses TWO sprite slots per
-        --     character (one column, 8x16 OBJ mode, top+bottom), not
-        --     four. A correct 2-tile read through the WRONG 2x2 shape
-        --     would still have come out visually wrong/doubled even with
-        --     the right bytes.
-        -- (3) both characters really do animate AND move -- confirmed
-        --     directly: each one's OAM tile ID cycles through a real
-        --     4-direction, 2-phase walk cycle as it wanders, tracked the
-        --     entire 900-frame window with no obvious short fixed loop
-        --     (reads as a real, continuous random walk, consistent with
-        --     these same NPCs' already-VERIFIED PRNG-driven spawn
-        --     placement above -- plausibly the same generator still
-        --     driving them post-spawn, not independently confirmed).
-        -- All 16 real tile IDs used (8 per character, a clean `+0x20`
-        -- shift between the two -- `characterA` here, `characterB`
-        -- `+0x20`) were found via this project's own "exact 16-byte ROM
-        -- search" method (every one matched exactly ONE location in the
-        -- whole 256KB ROM -- high-confidence, not a guess) and are wired
-        -- below as `animation` (see `src/rendering/NpcSprite.lua`).
-        -- HONESTY NOTE: the real MOVEMENT algorithm itself (exact step
-        -- timing/direction-change rule) was not decoded -- `wander`
-        -- below is this project's own reasonable random-walk
-        -- approximation (same "not independently verified" status as
-        -- KnockbackFlicker.lua's own direction extrapolation), not a
+        -- (1) the old `tileOffsets` were simply WRONG -- real, readable
+        --     ROM bytes, but from the font region, not a creature sprite.
+        -- (2) the SHAPE was wrong too: modeled as 2x2-tile (16x16px)
+        --     like Willy/the player, but real OAM only uses two sprite
+        --     slots per character (one 8x16 column, top+bottom).
+        -- (3) both characters really do animate AND move -- each OAM
+        --     tile ID cycles through a real 4-direction, 2-phase walk
+        --     cycle while wandering, no obvious short fixed loop across
+        --     900 frames (a real, continuous random walk).
+        -- All 16 real tile IDs (8 per character, a clean +0x20 shift
+        -- between the two) were found via exact 16-byte ROM search
+        -- (each matched exactly one location) and are wired below as
+        -- `animation`. HONESTY NOTE: the real MOVEMENT algorithm itself
+        -- was not decoded -- `wander` below is this project's own
+        -- reasonable random-walk approximation, not a
         -- reproduction of the real PRNG sequence. The animation TILES
         -- and their direction/phase/flip pairing, by contrast, ARE the
         -- real, directly-observed data.
@@ -964,52 +905,31 @@ RomProfiles.PROFILES = {
           characterA = {
             screenX = 128, screenY = 58,
             dialogue = { "Der Monsterein-\ngang f\195\188hrt nach\ndrau\195\159en." },
-            -- REAL ROM SOURCE FOUND (task "komplett autark
-            -- interpretiert", direct follow-up): `dialogue` above was
-            -- hand-transcribed from a live VRAM capture with no static
-            -- ROM offset ever pinned down -- this project's own
-            -- `tools/rom/dump_strings.py "$ROM" --min-len 8` scan found
-            -- it decodes CLEANLY (zero digraph exceptions) at bank 13,
-            -- file `0x0378aa`-`0x0378c6` (stops at the real terminator
-            -- control byte `0x12`), byte-exact match to the string
-            -- above -- see `tests/import/dialogue_text_resolver_test
-            -- .lua`. `VictorySequence.lua` now resolves this live via
-            -- `DialogueTextResolver` when `romData` is available,
-            -- falling back to the hand-transcribed string above only
-            -- when it isn't (e.g. `NpcCatalog.build`, which has no
-            -- `romData` -- see that module's own doc comment).
+            -- Real ROM source found: `dialogue` above was hand-
+            -- transcribed from a live VRAM capture -- `dump_strings.py`
+            -- found it decodes cleanly at bank 13, file
+            -- `0x0378aa`-`0x0378c6`, byte-exact match. VictorySequence.lua
+            -- now resolves this live via `DialogueTextResolver` when
+            -- `romData` is available, falling back to the hand-
+            -- transcribed string when it isn't (e.g. `NpcCatalog.build`).
             dialogueSegments = {
               { { fromOffset = 0x0378aa, toOffsetExclusive = 0x0378c6 } },
             },
-            -- CORRECTED FOR REAL (2026-08-15, direct user report from
-            -- actual play: "die npc sprites a und b jeweils 16x16 gross
-            -- sind"): this whole `animation` table (and the 2026-08-12
-            -- "CORRECTED" comment that used to sit here) was built on a
-            -- WRONG model -- "a single 8x16-OBJ-mode column, 2 real OAM
-            -- entries stacked top+bottom" (see the superseded 2026-08-10
-            -- progress.md entry). A fresh live OAM re-trace this pass
-            -- (`second_room_free()` checkpoint, `core.memory.oam`
-            -- dumped directly) found the REAL shape: 2 OAM entries at
-            -- the SAME Y, X exactly 8px apart -- a real LEFT+RIGHT pair,
-            -- each already 8x16 in hardware (8x16 OBJ mode IS real and
-            -- confirmed -- tile IDs always even, per Pan Docs' own
-            -- LSB-forced-to-0 rule), so the TRUE on-screen character is
-            -- a 16x16 block using 4 real tiles, not 2.
+            -- CORRECTED FOR REAL (direct user report from actual play):
+            -- this `animation` table was built on a wrong model (a
+            -- single 8x16-OBJ-mode column, 2 OAM entries stacked). A
+            -- fresh live OAM re-trace found the real shape: 2 OAM
+            -- entries at the same Y, 8px apart -- a real LEFT+RIGHT
+            -- pair, each already 8x16 in hardware, so the true on-screen
+            -- character is a 16x16 block using 4 real tiles, not 2.
             --
-            -- SECOND CORRECTION, same day (direct user report "die
-            -- linke und rechte haelfte der npc sprites a und b sind
-            -- vertauscht"): a first attempt at this fix reordered the 4
-            -- tiles by their OWN live-captured OAM screen X position
-            -- (`{ T+0x10, T, T+0x30, T+0x20 }`) -- WRONG, confirmed by
-            -- directly decoding the 4 real captured tile byte blocks and
-            -- rendering both candidate orderings pixel-for-pixel: that
-            -- "OAM-position" ordering produces 2 visibly DISCONNECTED
-            -- blobs (not a character), while the plain, UNREORDERED
-            -- sequential order -- `{ T, T+0x10, T+0x20, T+0x30 }` -- (T
-            -- = the pre-existing `top` field's own file offset) renders
-            -- a single, coherent, correctly-proportioned 16x16 humanoid,
-            -- confirmed independently for BOTH characterA's own "left"
-            -- capture AND characterB's own "up" capture. I.e. the ROM
+            -- SECOND CORRECTION (direct user report left/right halves
+            -- were swapped): reordering the 4 tiles by their own live
+            -- OAM screen X position was WRONG (produces 2 disconnected
+            -- blobs when rendered); the plain, unreordered sequential
+            -- order (`{ T, T+0x10, T+0x20, T+0x30 }`) renders a single,
+            -- coherent 16x16 humanoid, confirmed for both characterA's
+            -- "left" and characterB's "up" capture. I.e. the ROM
             -- simply stores each pose's 4 tiles consecutively in real
             -- row-major file order already -- no OAM-position-based
             -- reordering was ever needed; that extra step was the bug.
@@ -1035,125 +955,60 @@ RomProfiles.PROFILES = {
           },
           characterB = {
             screenX = 80, screenY = 58,
-            -- RESOLVED (2026-08-15, direct user report "die npc sprites
-            -- a und b jeweils 16x16..." then a direct follow-up "der
-            -- dialog von b ist falsch. das ist amanda die hat einen
-            -- ganz anderen dialog ueber ihren bruder"): the PREVIOUS
-            -- text here (`"Hallo!Willkommen\nin Toppel!"`, file offset
-            -- 0x378CC) was found via simple ROM-adjacency to
-            -- characterA's own box on 2026-08-10 -- WRONG, confirmed
-            -- both by 3 failed live re-verification attempts (blind
-            -- walk, closed-loop OAM-seek, static loiter+A-press, none
-            -- ever reproduced the box) AND, decisively, by the user
-            -- directly naming the real character and topic. Found the
-            -- REAL line via a targeted `dump_strings.py --gaps` scan
-            -- for "Bruder"/"Amanda" (NOT a live capture -- this text is
-            -- read directly from ROM data, no emulator needed once the
-            -- byte-decode formula is known): real file offset
-            -- `0x03783e` (bank 13), a genuine first-person 3-page
-            -- Amanda monologue that explicitly mentions Willy (matching
-            -- this exact story beat, right after the Willy scene) and
-            -- her own little brother -- unmistakably the right line,
-            -- not a guess. Decoded via `TextDecoder`'s own byte-exact
-            -- formula EXCEPT two bytes, `0x82` and `0x5B`, both
-            -- resolved LOCALLY by hand for "meinem"/"meinen"/"raus"
-            -- here (NOT added to the shared global digraph table --
-            -- checked first in both cases).
-            --
-            -- SECOND CORRECTION, same day (direct user report "raa!
-            -- müsste wir müssen hier raus heißen", then, once shown the
-            -- byte-count math looked airtight, "du hast einfach das
-            -- literal falsch abgespeichert es muss ja ganz klar
-            -- ausrüstung heißen" -- pointing straight at a fresh
-            -- cross-check that had turned up "Aarüstung" as PART of
-            -- confirming this): a first pass left "raa!" as an "honest,
-            -- unresolved oddity", reasoning that its 2 bytes (`0x8E`
-            -- ="ra", `0x5B`="a" at the time, both independently well-
-            -- confirmed elsewhere) mathematically can't spell "raus!"
-            -- (4 decoded symbols vs. 5 needed). That reasoning was
-            -- right about the MATH but wrong to stop there -- searching
-            -- the WHOLE ROM for every other occurrence of the exact
-            -- byte pair `8E 5B` (only 4 total) found `0x5B` is ALSO
-            -- genuinely contradictory against the OLD "a" reading (same
-            -- shape as `0x82`, just never previously flagged):
-            -- "Ausrüstung" (equipment, `A[5B]r...`, no `0x8E` even
-            -- involved), "Daraus mache" (from that I make), "grausamer
-            -- als" (crueler than -- ALSO independently reconfirms
-            -- `0x82`="me"), "grausam!" (terrible!) all needed "us", not
-            -- "a". At the time, `0x5B` stayed "a" in the SHARED global
-            -- table (the byte was also assumed to spell "Julia") with a
-            -- LOCAL override to "us" just for this hand-transcribed
-            -- string. RESOLVED, 2026-08-17: the real ROM digraph table
+            -- RESOLVED (direct user report the previous dialogue was
+            -- wrong -- it's Amanda, with a different topic about her
+            -- brother): the old text ("Hallo!Willkommen\nin Toppel!")
+            -- was found via simple ROM-adjacency and was wrong -- 3
+            -- failed live re-verification attempts plus the user
+            -- directly naming the character confirmed it. Found the
+            -- real line via a `dump_strings.py --gaps` scan for
+            -- "Bruder"/"Amanda": file offset `0x03783e` (bank 13), a
+            -- genuine first-person 3-page Amanda monologue mentioning
+            -- Willy and her little brother -- unmistakably right.
+            -- Decoded via TextDecoder's byte-exact formula except two
+            -- bytes (`0x82`/`0x5B`), resolved locally for "meinem"/"raus"
+            -- at the time. RESOLVED later: the real ROM digraph table
             -- (found by disassembly) proved `0x5B="us"` universally --
-            -- these 4 words were right all along, and "Julia" was
-            -- itself a mis-read (really "Julius", see
-            -- `namedCharacters` above and TextDecoder.lua's own `0x5B`
-            -- note). The shared global table now reads "us" directly,
-            -- so this string no longer needs (or has) a local override.
-            realName = "Amanda", -- her name is unmistakable and appears
-            -- 15+ times throughout this ROM's own real story text (see
-            -- dump_strings.py's own scan output) -- confident enough to
-            -- surface as a real name, unlike `characterA`'s own still-
-            -- undetermined one.
+            -- these words were right all along ("Julia" was itself a
+            -- mis-read of "Julius", see `namedCharacters` above); the
+            -- shared global table now reads "us" directly, no local
+            -- override needed.
+            realName = "Amanda", -- unmistakable, appears 15+ times in this ROM's own real story text
             dialogue = {
-              "Amanda:Das mit\nWilly tut mir\nleid.", -- CORRECTED (task
-              -- "komplett autark interpretiert"): no space after the
-              -- speaker colon (`SPEAKER_COLON_BYTE`, `0x2c`) -- the real
-              -- ROM byte stream never inserts one; this project already
-              -- established the SAME "no added space" convention for
-              -- Julius's own line ("Julius:Nun er-\nfahre..."), this
-              -- was just never applied here yet.
-              "Wir müssen hier\nraus!", -- 0x5B reads "us" here via the shared table directly (see doc comment above)
+              "Amanda:Das mit\nWilly tut mir\nleid.", -- no space after the speaker colon (0x2c never inserts one), same convention as Julius's own line
+              "Wir müssen hier\nraus!",
               "Ich möchte nach\nHause zu meinem\nkleinen Bruder.",
             },
-            -- REAL ROM SOURCE FOUND (task "komplett autark
-            -- interpretiert", direct follow-up to the doc comment
-            -- above's own already-cited `0x03783e`): a full byte-exact
-            -- trace via `tools/rom/dump_strings.py --gaps` found the
-            -- precise real ranges for all 3 pages, bank 13 -- page 1
-            -- decodes CLEANLY end to end (`0x037840`-`0x037859`); pages
-            -- 2 and 3 each need exactly the ONE already-documented
-            -- per-occurrence digraph override from this table's own doc
-            -- comment above (`0x5B`->"us" at file `0x037867`; `0x82`
-            -- ->"me" at file `0x03787b`) spliced in between two real,
-            -- cleanly-decoding ranges -- everything else here is real
-            -- ROM bytes, not a guess. Byte-exact regression:
-            -- `tests/import/dialogue_text_resolver_test.lua`.
-            -- `VictorySequence.lua` now resolves this live via
-            -- `DialogueTextResolver` when `romData` is available (same
-            -- fallback story as `characterA.dialogueSegments` above).
+            -- Real ROM source: `dump_strings.py --gaps` found the exact
+            -- ranges for all 3 pages, bank 13 -- page 1 decodes cleanly
+            -- end to end; pages 2/3 each need the one documented
+            -- per-occurrence digraph override above, spliced between
+            -- real, cleanly-decoding ranges. Byte-exact regression:
+            -- `dialogue_text_resolver_test.lua`. VictorySequence.lua
+            -- resolves this live via `DialogueTextResolver` when
+            -- available, same fallback as `characterA` above.
             dialogueSegments = {
               { { fromOffset = 0x037840, toOffsetExclusive = 0x037859 } },
               {
                 { fromOffset = 0x03785b, toOffsetExclusive = 0x037867 },
-                { literal = "us" }, -- real byte 0x5B at file 0x037867, documented local override (see doc comment above)
+                { literal = "us" }, -- real byte 0x5B at file 0x037867
                 { fromOffset = 0x037868, toOffsetExclusive = 0x037869 },
               },
               {
                 { fromOffset = 0x03786b, toOffsetExclusive = 0x03787b },
-                { literal = "me" }, -- real byte 0x82 at file 0x03787b, documented local override (see doc comment above)
+                { literal = "me" }, -- real byte 0x82 at file 0x03787b
                 { fromOffset = 0x03787c, toOffsetExclusive = 0x037889 },
               },
             },
-            -- Real tile set is `characterA`'s own `+0x20` (see this
-            -- table's own doc comment) -- confirmed independently from
-            -- this NPC's own live OAM capture, not assumed from the
-            -- shift alone.
-            -- SAME real shape fix as `characterA`'s own doc comment
-            -- above (2026-08-15, twice-corrected same day): real 4-tile
-            -- `tileOffsets`, plain sequential file order `{T,T+0x10,
-            -- T+0x20,T+0x30}` (NOT an OAM-position-reordered variant --
-            -- that first attempt was the bug the 2nd correction fixed).
-            -- This character's own "up" pose (T=0x25540) is the SECOND
-            -- of the 2 fresh live captures that cross-validated this
-            -- exact tile SET (real measured tiles: right-top=0x25540,
-            -- left-top=0x25550, right-bottom=0x25560, left-
-            -- bottom=0x25570 -- exact match to `{T,T+0x10,T+0x20,
-            -- T+0x30}`, zero discrepancy) -- and independently re-
-            -- confirmed the correct ORDER by direct pixel rendering:
-            -- decoding these 4 real tiles and assembling them in this
-            -- sequential order (not OAM-position order) produces a
-            -- single, coherent 16x16 humanoid silhouette.
+            -- Real tile set is characterA's own +0x20 (confirmed
+            -- independently from this NPC's own live OAM capture, not
+            -- assumed from the shift alone). Same real 4-tile shape fix
+            -- as characterA: plain sequential file order
+            -- `{T,T+0x10,T+0x20,T+0x30}` (not OAM-position-reordered).
+            -- This character's own "up" pose (T=0x25540) independently
+            -- cross-validated the exact tile set and confirmed the
+            -- correct order by direct pixel rendering (a single,
+            -- coherent 16x16 humanoid).
             animation = {
               framesPerPhase = 10,
               down  = { { tileOffsets = { 0x25500, 0x25510, 0x25520, 0x25530 }, flip = false },
