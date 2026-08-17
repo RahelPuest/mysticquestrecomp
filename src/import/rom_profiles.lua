@@ -1092,94 +1092,84 @@ RomProfiles.PROFILES = {
           {163,164,167,164,167,164,167,164,167,164,164,169,164,169,164,169,164,169,164,171},
         },
         -- Real staircase -- a fourth, different transition mechanism:
-        -- not a scroll. `$D392`/`$D393` actually change (`$B0`/`$46` ->
-        -- `$B0`/`$40`) and SCX/SCY both snap to 0 -- an instant cut via
-        -- the same relocatable-pointer pipeline the courtyard ->
-        -- willyRoom transition uses. `zone` is the staircase's own real
-        -- screen position; the whole visible tile block is used as the
-        -- trigger zone (a coarser sweep than the other two exits, a
-        -- reasonable superset).
+        -- not a scroll. $D392/$D393 actually change ($B0/$46 -> $B0/
+        -- $40) and SCX/SCY both snap to 0 -- an instant cut via the
+        -- same relocatable-pointer pipeline the courtyard->willyRoom
+        -- transition uses. zone is the staircase's screen position; the
+        -- whole visible tile block is used as the trigger zone (a
+        -- coarser sweep than the other two exits, a reasonable superset).
         --
-        -- Code-traced: this `cut` is real, general, data-driven
-        -- infrastructure. The ROM's "commit new room" routine (`$01AF3`,
-        -- bank 0) is fed by a real table lookup (`$026DC`, bank 1): an
-        -- 11-byte-stride record table at bank 8 file `0x20000`, indexed
-        -- by a literal `roomSelector` byte (this staircase uses
-        -- selector 1; its real record is `00 00 00 b0 40 80 06 00 40 0e
-        -- 11`, bytes 3-4 = this room's own `$D392`/`$D393` target).
-        -- This project's engine doesn't read that table at runtime --
-        -- recorded here so `targetRoom` is understood as table-verified
-        -- ROM data, not an empirical guess.
+        -- Code-traced: this cut is real, general, data-driven
+        -- infrastructure. The ROM's "commit new room" routine ($01AF3,
+        -- bank 0) is fed by a table lookup ($026DC, bank 1): an
+        -- 11-byte-stride record table at bank 8 file 0x20000, indexed
+        -- by a literal roomSelector byte (this staircase uses selector
+        -- 1; its record is 00 00 00 b0 40 80 06 00 40 0e 11, bytes 3-4
+        -- = this room's $D392/$D393 target). This project's engine
+        -- doesn't read that table at runtime -- recorded here so
+        -- targetRoom is understood as table-verified ROM data, not an
+        -- empirical guess.
         exits = {
           {
             status = "VERIFIED",
             zone = { xMin = 128, xMax = 143, yMin = 16, yMax = 31 },
             transition = { type = "cut" },
             targetRoom = "fourthRoom",
-            -- CORRECTED (2026-08-10, same user report as the two exits
-            -- above): the old (72,96) was an explicitly-flagged
-            -- placeholder guess. Live-traced from `staircase_ready
-            -- .state`: held UP until the real instant-cut fired
-            -- ($D392/$D393 changing from the thirdRoom to the fourthRoom
-            -- pointer), released input at that EXACT frame (the cut
-            -- itself lands the player 9 real frames later -- position
+            -- CORRECTED (same user report as the two exits above): the
+            -- old (72,96) was an explicitly-flagged placeholder guess.
+            -- Live-traced from staircase_ready.state: held UP until the
+            -- instant-cut fired ($D392/$D393 changing from thirdRoom's
+            -- to fourthRoom's pointer), released input at that exact
+            -- frame (the cut lands the player 9 frames later -- position
             -- stays at the old room's coordinates in between, a real
             -- sequencing detail, not a bug), then confirmed the position
-            -- stabilized at exactly (120,112) for 60+ further frames
-            -- with zero input.
+            -- stabilized at exactly (120,112) for 60+ further frames.
             --
-            -- REAL HARDWARE OFFSET FOUND, 2026-08-15 (direct user
-            -- report: "der charakter spwned ein tile zu südlich und ein
-            -- halbes tile nach rechts verschoben") -- see Player.lua's
-            -- own `RENDER_OFFSET_X`/`RENDER_OFFSET_Y` doc comment for
-            -- the full real-hardware OAM trace. Direct, blunt user
-            -- pushback (twice) against BOTH ways this was tried so far:
+            -- REAL HARDWARE OFFSET FOUND (direct user report the
+            -- character spawns shifted south/right by a tile) -- see
+            -- Player.lua's own RENDER_OFFSET_X/RENDER_OFFSET_Y doc
+            -- comment for the full real-hardware OAM trace. Direct
+            -- pushback (twice) against both ways this was tried:
             -- editing this value directly (breaks the general "landingX/
-            -- landingY is always the real raw WRAM value, collision-
-            -- space, same convention in every room" invariant every
-            -- other room in this file relies on), and applying the real
+            -- landingY is always the raw WRAM value, collision-space"
+            -- invariant every other room relies on), and applying the
             -- offset as a general per-draw-call render correction
-            -- (regressed `startRoom`'s own rendering, cause not yet
-            -- root-caused -- see Player.lua's own doc comment for
-            -- exactly where that investigation currently stands). This
-            -- value is deliberately back to the real, raw, ROM-verified
-            -- WRAM value (120,112) -- collision-space, untouched,
-            -- consistent with every other room's own `landingX`/
-            -- `landingY` -- while the render-side fix is properly
-            -- finished (see Player.lua).
+            -- (regressed startRoom's own rendering, cause not yet
+            -- root-caused -- see Player.lua's own doc comment). This
+            -- value is deliberately back to the raw, ROM-verified WRAM
+            -- value (120,112) -- collision-space, untouched, consistent
+            -- with every other room -- while the render-side fix is
+            -- properly finished (see Player.lua).
             landingX = 120, landingY = 112,
-            -- ROM-TABLE-VERIFIED (2026-08-16, task "komplett autark
-            -- interpretiert"/blocker resolution): this pair is not
-            -- just an empirical WRAM capture anymore -- it's the real,
-            -- decoded tile coordinate (14,12) at ROM file `0x382f3`
-            -- (bank 14), part of a real, general 186-record landing
-            -- table this session found and decoded (see
-            -- `src/import/CutTransitionTable.lua`'s own doc comment
-            -- for the full derivation). `(14+1)*8=120`,
-            -- `(12+2)*8=112` -- exact match, confirming this project's
-            -- own real tile-to-pixel formula (`TileLandingPosition
-            -- .lua`) end to end.
+            -- ROM-TABLE-VERIFIED (task to make everything fully
+            -- interpreter-driven, blocker resolution): this pair isn't
+            -- just an empirical WRAM capture anymore -- it's the
+            -- decoded tile coordinate (14,12) at ROM file 0x382f3
+            -- (bank 14), part of a general 186-record landing table
+            -- this session found and decoded (see src/import/
+            -- CutTransitionTable.lua's own doc comment for the full
+            -- derivation). (14+1)*8=120, (12+2)*8=112 -- exact match,
+            -- confirming this project's own tile-to-pixel formula
+            -- (TileLandingPosition.lua) end to end.
             --
-            -- INTERPRETER-DRIVEN, real ROM bytecode (2026-08-16, direct
-            -- user instruction "es soll alles komplett über den
-            -- interpreter laufen"): a live single-step trace (native
-            -- mGBA, PC watchpoint on `$11B7`, opcode `0xF4`'s real
-            -- handler) found this transition's own real entry point --
-            -- bank 14, CPU `$42F6` (file `0x382F6`, the `0xF4` byte
-            -- itself, immediately before the already-known landing
-            -- record's own `A1`/`A2` bytes at file `0x382F7`) -- reached
-            -- via genuine TOP-LEVEL script dispatch (74 real hits across
-            -- the transition, all bank 14). `roomSelector`/
-            -- `subIndexByte` (below) are now LIVE-CAPTURED by
-            -- `CutTransitionInterpreter` at this exact real ROM address,
-            -- not just read from the static table -- see that module's
-            -- own doc comment for the full trace and the honest limit
-            -- (only this ONE peek is reached via top-level dispatch; the
-            -- landing-tile peek is reached via the real `$413C` step
-            -- automaton's own internal jump, NOT top-level dispatch, so
-            -- `landingX`/`landingY` above stay the pre-baked, already
-            -- ROM-table-verified constants -- not yet interpreter-
-            -- captured).
+            -- INTERPRETER-DRIVEN, real ROM bytecode (direct user
+            -- instruction that everything should run through the
+            -- interpreter): a live single-step trace (PC watchpoint on
+            -- $11B7, opcode 0xF4's handler) found this transition's own
+            -- entry point -- bank 14, CPU $42F6 (file 0x382F6, the 0xF4
+            -- byte itself, immediately before the already-known landing
+            -- record's A1/A2 bytes at file 0x382F7) -- reached via
+            -- genuine top-level script dispatch (74 hits across the
+            -- transition, all bank 14). roomSelector/subIndexByte
+            -- (below) are now live-captured by CutTransitionInterpreter
+            -- at this exact ROM address, not just read from the static
+            -- table -- see that module's own doc comment for the full
+            -- trace and the honest limit (only this one peek is reached
+            -- via top-level dispatch; the landing-tile peek is reached
+            -- via the real $413C step automaton's own internal jump,
+            -- not top-level dispatch, so landingX/landingY above stay
+            -- the pre-baked, already ROM-table-verified constants --
+            -- not yet interpreter-captured).
             scriptEntry = {
               bank = 14,
               cpuAddress = 0x42F6,
@@ -1193,7 +1183,7 @@ RomProfiles.PROFILES = {
       -- Visually/structurally different from the willyRoom chain: a
       -- simple, repetitive 8-tile set. 6 of 8 tile IDs matched the
       -- known startRoom/environment tileset byte-for-byte, reused
-      -- directly. Dominant tile 128 (fills the top) is a real solid
+      -- directly. Dominant tile 128 (fills the top) is a solid
       -- all-0xFF pattern, same signature as the courtyard gate's open
       -- state -- reads structurally like an entrance to a bigger
       -- outdoor area, not confirmed.
@@ -1257,29 +1247,28 @@ RomProfiles.PROFILES = {
         -- CORRECTED (direct user report of spawning inside the wall
         -- after the staircase): 129/130 (the border trim) used to be
         -- excluded on a never-tested visual guess -- the staircase's
-        -- own real landing spot (120,112) puts the player's top-half
-        -- footprint exactly on 130/129, confirmed both statically and
-        -- against live VRAM. With them excluded, `TileWalkability`
-        -- blocked the player from moving away from that overlap at all
-        -- -- exactly the reported symptom.
+        -- landing spot (120,112) puts the player's top-half footprint
+        -- exactly on 130/129, confirmed both statically and against
+        -- live VRAM. With them excluded, TileWalkability blocked the
+        -- player from moving away from that overlap at all -- exactly
+        -- the reported symptom.
         --
         -- Live re-verified: holding UP from the settled landing spot
         -- walks real screen Y 112->102->95->88 over 30 frames with zero
-        -- hesitation crossing the 129/130 row -- real open floor, not a
-        -- wall. Promoted to verified real floor/decoration.
+        -- hesitation crossing the 129/130 row -- open floor, not a
+        -- wall. Promoted to verified floor/decoration.
         --
         -- CLOSED (direct user report the spawn/transition were still
-        -- broken): 135 promoted from hypothesis to verified real floor.
-        -- Root cause: the player's 16px-tall footprint touches tile 135
-        -- the instant Y moves even 1px off its spawn-time alignment;
-        -- with 135 excluded from `floorTileIds`, vertical movement was
+        -- broken): 135 promoted from hypothesis to verified floor. Root
+        -- cause: the player's 16px-tall footprint touches tile 135 the
+        -- instant Y moves even 1px off its spawn-time alignment; with
+        -- 135 excluded from floorTileIds, vertical movement was
         -- completely frozen from the instant of landing (confirmed
         -- live, Y never changed over 60 frames) -- explaining both the
         -- "spawn feels wrong" and "fifthRoom exit doesn't work" reports
-        -- at once (unreachable if you can't move vertically at all).
-        -- Directly contradicted by this room's own already-recorded
-        -- live evidence above (Y walks freely 112->88) -- 135 was
-        -- simply never added to `floorTileIds` to match it.
+        -- at once. Directly contradicted by this room's own already-
+        -- recorded live evidence above (Y walks freely 112->88) -- 135
+        -- was simply never added to floorTileIds to match it.
         floorTileIds = { [129] = true, [130] = true, [131] = true, [132] = true,
           [133] = true, [134] = true, [135] = true },
         grid = {
