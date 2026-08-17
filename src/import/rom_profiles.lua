@@ -2157,14 +2157,11 @@ RomProfiles.PROFILES = {
         -- module constants.
         cols = 20,
         rows = 16,
-        -- HYPOTHESIS, not a decoded ROM collision-flag table (none
-        -- found -- see rom-map.md "Maps"): this project's own
-        -- classification of the real grid's tile IDs into "floor/
-        -- decoration" (141-147, plus the confirmed-blank 127) vs. "wall/
-        -- gate/border structure" (everything else) -- used for real
-        -- per-tile movement collision (see Player.lua's `canMoveTo`) --
-        -- a reasonable approximation from visually inspecting the real
-        -- tile layout, not a verified ROM fact.
+        -- HYPOTHESIS, not decoded ROM collision data (none found -- see
+        -- rom-map.md "Maps"): visual classification of tile IDs into
+        -- floor/decoration (141-147, plus confirmed-blank 127) vs.
+        -- wall/gate/border (everything else), used for per-tile
+        -- movement collision (Player.lua's canMoveTo).
         floorTileIds = { [127] = true, [141] = true, [142] = true, [143] = true,
           [144] = true, [145] = true, [146] = true, [147] = true },
         tileOffsets = {
@@ -2200,50 +2197,34 @@ RomProfiles.PROFILES = {
           {130,130,148,129,130,130,148,129,130,130,130,130,148,129,130,130,148,129,130,130},
         },
       },
-      -- CORRECTED (2026-08-09, same day): both sprites below were
-      -- rendered visibly truncated -- direct user catch ("die sprites
-      -- sind noch abgeschnitten"). Root cause found: `LCDC` bit 2 (OBJ
-      -- size) reads `1` at this live capture -- **8x16 sprite mode is
-      -- active** (Pan Docs "LCDC.2"), meaning every OAM entry this
-      -- project had already found automatically draws a 16px-tall
-      -- block using tile N (top half) *and* tile N+1 (bottom half) in
-      -- real hardware, not the flat 8px-tall tile this project's
-      -- renderer was treating each one as. Only the top halves were
-      -- ever captured/rendered before this fix. Found each real N+1
-      -- partner tile's live VRAM pattern and searched the ROM for its
-      -- exact offset the same way as every other tile here (real byte
-      -- match, not inferred by arithmetic -- the offsets are NOT evenly
-      -- strided, so guessing them would have been wrong).
+      -- CORRECTED (direct user catch: sprites render truncated). Root
+      -- cause: LCDC bit 2 (OBJ size) is set -- 8x16 sprite mode is
+      -- active, meaning every OAM entry draws a 16px-tall block using
+      -- tile N (top) and N+1 (bottom), not the flat 8px tile this
+      -- project's renderer had assumed. Only top halves were ever
+      -- rendered before. Found each N+1 partner's live VRAM pattern and
+      -- searched the ROM for its exact offset (real byte match -- the
+      -- offsets aren't evenly strided, so guessing would be wrong).
       --
-      -- Real player sprite: 2x2 tiles (16x16px, not 16x8) at OAM
-      -- (Y=96,X=80/88) -> screen (72,80). Tile order (row-major,
-      -- top-left first): $00 $02 / $01 $03 -- NOT sequential-by-tile-ID
-      -- visual order, hence CreatureSprite.fromOffsets (explicit list)
-      -- rather than .static (which assumes a simple sequential stride).
-      -- VERIFIED real facing (2026-08-09): held each D-pad direction and
-      -- read live OAM tile order + attribute byte. DOWN/UP/LEFT are all
-      -- identical (tile $00 at the left column, attr 0). RIGHT swaps the
-      -- column order (tile $02 at the left column) *and* sets OAM
-      -- attribute bit 5 (X-flip, Pan Docs "OBJ Flags") -- i.e. the game
-      -- draws one piece of art and mirrors it for right-facing, not a
-      -- separate sprite per direction.
+      -- Real player sprite: 2x2 tiles (16x16px) at OAM (Y=96,X=80/88)
+      -- -> screen (72,80). Tile order (row-major): $00 $02 / $01 $03 --
+      -- not sequential, hence CreatureSprite.fromOffsets (explicit
+      -- list) rather than .static. Verified real facing: held each
+      -- D-pad direction, read OAM tile order + attribute byte. DOWN/UP/
+      -- LEFT are identical (tile $00 left column, attr 0). RIGHT swaps
+      -- the column order and sets X-flip -- one piece of art, mirrored
+      -- for right-facing, not a separate sprite per direction.
       --
-      -- CORRECTED (2026-08-09, same day): the paragraph above used to
-      -- also claim "no tile ID ever changes while moving... genuinely no
-      -- walk-cycle animation." That was wrong -- direct user pushback
-      -- ("es muss doch irgendwo im ROM eine tabelle... mit den
-      -- animationsphasen sein oder?") prompted re-checking more than
-      -- just the OAM tile *index* (which, alone, really doesn't change).
-      -- What this project had never checked before: the raw VRAM *byte
-      -- content* at that same fixed tile index, sampled every frame.
-      -- It changes -- a real DMA content-swap animation (some GB games
-      -- redraw the pixel data at a fixed OAM tile slot instead of
-      -- switching which slot is referenced; this project's own earlier
-      -- OAM-index-only check structurally could not have seen this). See
-      -- the new `playerAnimation` entry below for the full real capture.
-      -- `flipX` is still the only real per-direction mirroring mechanism
-      -- (see src/rendering/CreatureSprite.lua's `draw`) -- this
-      -- correction is about *whether it animates*, not about facing.
+      -- CORRECTED (same day): previously claimed "no walk-cycle
+      -- animation" -- wrong. Direct user pushback prompted re-checking
+      -- the raw VRAM byte CONTENT at the fixed tile index (not just the
+      -- OAM tile index, which alone doesn't change) sampled every
+      -- frame. It changes -- a DMA content-swap animation (some GB
+      -- games redraw pixel data at a fixed OAM slot instead of
+      -- switching which slot is referenced). See playerAnimation below.
+      -- flipX is still the only per-direction mirroring mechanism
+      -- (CreatureSprite.lua's draw) -- this correction is about
+      -- whether it animates, not about facing.
       playerSprite = {
         status = "VERIFIED",
         bank = 8,
@@ -2256,34 +2237,26 @@ RomProfiles.PROFILES = {
         screenX = 72,
         screenY = 80,
       },
-      -- VERIFIED (2026-08-09) real walk-cycle animation, captured live
-      -- by sampling raw VRAM bytes (not OAM tile index -- see
-      -- `playerSprite`'s correction note above) every single frame while
-      -- holding each direction. DOWN and LEFT/RIGHT each have a real,
-      -- independently-captured 2-phase leg-cycle (4 real GB frames per
-      -- phase, confirmed steady-state over 40 real frames for both);
-      -- LEFT and RIGHT share identical underlying tile bytes (mirrored
-      -- via the same real X-flip mechanism as the idle pose, re-checked
-      -- tile-for-tile) -- only one real "left/right" walk data set is
-      -- stored. UP showed NO tile-content change in every clean
-      -- (contact-free) window this project could isolate -- walking up
-      -- from spawn reaches the real enemy quickly, and real contact
-      -- triggers its own, SEPARATE, and much larger discovery this same
-      -- pass (a real knockback + several-frame full-sprite invisibility/
-      -- flicker reaction -- NOT implemented yet, see docs/progress.md's
-      -- "still open" note) that this project could not fully untangle
-      -- from a possible slow UP-specific animation within this pass's
-      -- time -- UP is therefore left static (idle pose) here, an honest
-      -- "not found, not disproven" rather than a confirmed negative like
-      -- the original (wrong) "no animation at all" claim was.
+      -- VERIFIED real walk-cycle animation, captured by sampling raw
+      -- VRAM bytes (not OAM tile index) every frame while holding each
+      -- direction. DOWN and LEFT/RIGHT each have an independently-
+      -- captured 2-phase leg-cycle (4 GB frames/phase, steady-state
+      -- over 40 frames for both); LEFT/RIGHT share identical tile bytes
+      -- (mirrored via the same X-flip as idle) -- only one left/right
+      -- data set is stored. UP showed no tile-content change in every
+      -- clean (contact-free) window isolated -- walking up from spawn
+      -- reaches the enemy quickly, and contact triggers its own,
+      -- separate discovery (knockback + flicker reaction, not
+      -- implemented yet, see docs/progress.md) that couldn't be fully
+      -- untangled from a possible slow UP-specific animation in time --
+      -- UP is left static (idle pose), an honest "not found, not
+      -- disproven" rather than the original (wrong) "no animation" claim.
       --
-      -- Structure per direction: `top` = the sprite's top-tile pair,
-      -- `legsB`/`legsC` = the two real alternating bottom-tile (leg)
-      -- pairs. DOWN's `top` switches ONCE (idle -> a constant walking
-      -- pose) and does not toggle back while moving continuously; LEFT/
-      -- RIGHT's `top` DOES toggle in sync with the legs (2 distinct real
-      -- top poses, not 1) -- a genuine, real difference between the two,
-      -- not simplified away for consistency.
+      -- Structure per direction: top = the sprite's top-tile pair,
+      -- legsB/legsC = the two alternating leg pairs. DOWN's top switches
+      -- once (idle -> constant walking pose); LEFT/RIGHT's top DOES
+      -- toggle in sync with the legs (2 distinct top poses) -- a genuine
+      -- difference between the two, not simplified away.
       playerAnimation = {
         status = "VERIFIED",
         framesPerPhase = 4,
@@ -2294,60 +2267,50 @@ RomProfiles.PROFILES = {
           legsC = { 0x21A80, 0x21A90 },
         },
         leftRight = {
-          -- Both phases have their OWN top pose here (unlike DOWN) --
-          -- topB looks superficially similar to the idle top at a
-          -- glance but is a byte-for-byte DIFFERENT real tile (found via
-          -- the same exact-match ROM search as everything else here,
-          -- not assumed/reused from `idle` above).
+          -- Both phases have their own top pose here (unlike DOWN) --
+          -- topB looks superficially similar to the idle top but is a
+          -- byte-for-byte different tile (exact-match ROM search, not
+          -- assumed/reused from idle above).
           topB = { 0x21B00, 0x21B10 },
           legsB = { 0x21B20, 0x21B30 },
           topC = { 0x21B40, 0x21B50 },
           legsC = { 0x21B60, 0x21B70 },
         },
       },
-      -- VERIFIED (2026-08-09), CORRECTED same day after a much more
-      -- thorough re-trace (direct user request: "wieder bitte die
-      -- punkte im rom code finden anstatt das empirisch zu machen").
-      -- The original capture (same day, earlier) sampled OAM
-      -- position/attribute every frame but only checked VRAM tile
-      -- *content* at 2 points, silently assuming just 2 real content
-      -- blocks ("A"/"B") existed. A full per-frame content-offset trace
-      -- (searching the ROM for each frame's exact tile 8/9/10/11 bytes,
-      -- not just position) found the real swing actually cycles through
-      -- **3 distinct real content blocks** (X, Y, Z) across its 4
-      -- phases, not 2 -- e.g. UP's phases are X,Y,X,Z, not two unique
-      -- blocks alternating. This entry replaces the incomplete one.
+      -- VERIFIED, CORRECTED after a more thorough re-trace (direct user
+      -- request to find the ROM's own points rather than doing this
+      -- empirically). The original capture sampled OAM position/
+      -- attribute every frame but only checked VRAM tile content at 2
+      -- points, assuming just 2 content blocks ("A"/"B") existed. A
+      -- full per-frame content-offset trace found the swing actually
+      -- cycles through 3 distinct content blocks (X, Y, Z) across its 4
+      -- phases -- e.g. UP's phases are X,Y,X,Z, not two alternating
+      -- blocks. This entry replaces the incomplete one.
       --
-      -- Direct fix for a real gap (Field.lua's attack previously applied
-      -- damage with ZERO visual feedback, user report: "es gibt noch
-      -- keine attacke"). Pressing A activates 2 OAM slots (10/11),
-      -- otherwise permanently parked off-screen (x=248) while idle.
-      -- `dx`/`dy` are real captured OAM-space deltas from the player's
-      -- own OAM position (cancels out the shared -8/-16 OAM->screen
-      -- offset, see playerSprite above). One real, incidental side
-      -- effect of the original capture still stands: it's what revealed
-      -- the idle/spawn facing is really "up" (see Player.DEFAULT_FACING),
-      -- not "down" as this project had assumed without checking.
+      -- Direct fix for a real gap (attacks previously applied damage
+      -- with zero visual feedback). Pressing A activates 2 OAM slots
+      -- (10/11), otherwise parked off-screen (x=248) while idle. dx/dy
+      -- are captured OAM-space deltas from the player's own OAM
+      -- position (cancels the shared -8/-16 OAM->screen offset). One
+      -- incidental side effect of the capture: it revealed the idle/
+      -- spawn facing is really "up" (Player.DEFAULT_FACING), not "down"
+      -- as previously assumed.
       --
-      -- HONEST LIMIT: whether the swing actually connects for real-game
-      -- damage purposes was NOT re-derived from this capture (no
-      -- confirmed enemy-HP RAM address exists -- see combat.md); hit
-      -- detection is a separate, already-real mechanism
-      -- (AttackSwing:getHitboxes, unaffected by this correction). A
-      -- single A-press plays the swing once; holding A for 180 real
-      -- frames only ever played it once (no charge/power-gauge
-      -- mechanic -- re-confirmed this pass too, see combat.md).
+      -- HONEST LIMIT: whether the swing actually connects for damage was
+      -- not re-derived from this capture (no confirmed enemy-HP RAM
+      -- address exists -- see combat.md); hit detection is a separate
+      -- mechanism (AttackSwing:getHitboxes, unaffected). A single
+      -- A-press plays the swing once; holding A for 180 frames only
+      -- ever played it once (no charge/power-gauge mechanic).
       attackSwing = {
         status = "VERIFIED",
-        -- Real content blocks: each defines the actual pixel data
-        -- loaded at the fixed OAM tile-ID slots 8/9 ("A" pair) and
-        -- 10/11 ("B" pair) at a given moment -- a real DMA content-swap
-        -- mechanism (same technique this project already found driving
-        -- the player's own walk-cycle animation), not a tile-swap
-        -- between two static sprites. Block Z is byte-for-byte IDENTICAL
-        -- to the real thrust attack's own tiles (see `attackThrust`
-        -- below) -- confirmed, not assumed: the swing's final phase
-        -- reuses the same real art as the thrust's ready pose.
+        -- Real content blocks: pixel data loaded at the fixed OAM
+        -- tile-ID slots 8/9 ("A" pair) and 10/11 ("B" pair) at a given
+        -- moment -- a DMA content-swap mechanism (same technique
+        -- driving the walk-cycle animation), not a tile-swap between
+        -- two static sprites. Block Z is byte-for-byte identical to the
+        -- thrust attack's own tiles (attackThrust below) -- the swing's
+        -- final phase reuses the thrust's ready pose.
         tileOffsets = {
           A = {
             X = { top = 0x23000, bottom = 0x23020 },
@@ -2361,14 +2324,13 @@ RomProfiles.PROFILES = {
           },
         },
         framesPerPhase = 4,
-        -- Real per-facing phase sequences (one real A-press per
-        -- direction, sampled every frame, cross-checked against a
-        -- second independent full-content re-trace). `content` = which
-        -- real block (X/Y/Z, see tileOffsets) is active this phase, real
-        -- and GLOBAL to both L/R (both always use the same block at
-        -- once -- confirmed). `pair` = which physical OAM tile-ID slot
-        -- (A=8/9, B=10/11) this side renders -- swaps between phases,
-        -- independently of which content block is loaded there.
+        -- Per-facing phase sequences (one A-press per direction,
+        -- sampled every frame, cross-checked against a second
+        -- independent full-content re-trace). content = which block
+        -- (X/Y/Z) is active this phase, global to both L/R (both always
+        -- use the same block at once). pair = which physical OAM
+        -- tile-ID slot (A=8/9, B=10/11) this side renders -- swaps
+        -- between phases, independently of the loaded content block.
         byFacing = {
           up = {
             { content = "X",
