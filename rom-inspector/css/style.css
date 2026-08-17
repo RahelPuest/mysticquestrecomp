@@ -574,6 +574,12 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 .edge-scroll { stroke: var(--accent2); stroke-width: 2; fill: none; }
 .edge-cut { stroke: var(--accent3); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
 .edge-label { fill: var(--text-faint); font-family: var(--mono); font-size: 10px; }
+/* Real trigger-zone rectangle (source room) / landing-point marker
+   (target room), 2026-08-17 -- see js/viz/rooms.js's own top-of-file
+   doc comment for where these real `zone`/`landingX`/`landingY`
+   coordinates come from. */
+.zone-rect { fill: rgba(224, 160, 48, 0.18); stroke: #e0a030; stroke-width: 1.5; stroke-dasharray: 3 2; }
+.landing-point { fill: #40c0ff; stroke: #06120a; stroke-width: 1.5; }
 
 /* ---------- text decoder ---------- */
 .decode-trace { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 14px; }

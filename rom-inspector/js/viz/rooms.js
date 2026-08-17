@@ -1,3 +1,29 @@
+// Pan/zoom (2026-08-17, direct user request: "mach den grafen noch
+// scroll und zoombar") -- reuses the exact same Google-Maps-style
+// convention worldmap.js already established for the Weltkarte page
+// (see that file's own "Google-Maps-style pan/zoom" doc comment):
+// `overflow:hidden` host + one absolutely-positioned child carrying a
+// pure `translate(...) scale(...)` transform, Pointer Events unifying
+// mouse drag + touch drag/pinch, wheel-zoom anchored under the cursor.
+// Unlike worldmap.js (one canvas), the transformed child here wraps
+// TWO siblings (the HTML `.room-node-card` thumbnails + the SVG arrow
+// overlay) so both pan/zoom together as one rigid graph.
+//
+// Real trigger-zone -> landing-point arrows (same request, second
+// half): every edge below now anchors at the REAL, empirically-
+// bracketed `zone` rectangle (screen-space trigger area, exported
+// as-is from rom_profiles.lua's own `exits[].zone`) in the source
+// room's thumbnail, and the REAL `landingX`/`landingY` point in the
+// target room's thumbnail -- not a generic node-edge midpoint. Room
+// thumbnails in this dataset are always exactly one real GB screen's
+// worth of tiles (20x16 = 160x128px, matches every `ROOM_MAPS` entry
+// currently exported), so `zone`/`landingX/Y` (already real screen-
+// space pixel coordinates, see rom_profiles.lua's own schema doc
+// comment) map directly onto the thumbnail canvas via one linear scale
+// factor -- no separate scroll-offset bookkeeping needed for THIS
+// dataset. An exit missing `zone`/landing data (shouldn't currently
+// happen -- all 8 live-wired exits have both) falls back to the old
+// node-edge-midpoint anchor rather than crashing.
 function render_rooms(main) {
   main.innerHTML = `
     <h1 class="page-title">Raum-System</h1>
@@ -9,7 +35,11 @@ function render_rooms(main) {
       gelesen. Zwei reale Mechanismen kommen vor: ein echter Hardware-Scroll
       (<span style="color:var(--accent2)">durchgezogen</span>) und ein echter „Cut“ &mdash;
       ein sofortiger Szenenwechsel über die relozierbare Zeiger-Pipeline
-      (<span style="color:var(--accent3)">gestrichelt</span>).
+      (<span style="color:var(--accent3)">gestrichelt</span>). Jeder Pfeil beginnt exakt an der
+      echten, empirisch eingegrenzten <span style="color:#e0a030;">Trigger-Zone</span> (gelbes
+      Rechteck) im Quellraum und endet am echten <span style="color:#40c0ff;">Landepunkt</span>
+      (blauer Punkt) im Zielraum &mdash; beides reale <code>zone</code>/<code>landingX</code>/
+      <code>landingY</code>-Werte, keine geschätzten Kantenmitten.
     </p>
     <p class="page-lede">
       <strong>Nur die tatsächlich im Spiel verdrahteten Übergänge</strong> &mdash; nicht
@@ -24,9 +54,18 @@ function render_rooms(main) {
       <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige Tabelle.
     </p>
     <div id="roomGraphRomBanner"></div>
-    <div id="roomGraphHost" style="position:relative; overflow:auto; border:1px solid var(--border); border-radius:8px; background:#10130c;">
-      <div id="roomGraphNodes" style="position:relative;"></div>
-      <svg id="roomGraphSvg" style="position:absolute; top:0; left:0; pointer-events:none;"></svg>
+    <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
+      <button class="btn small" id="roomZoomOut" type="button" title="Verkleinern">&minus;</button>
+      <span id="roomZoomLabel" class="meta" style="min-width:44px; text-align:center;">100%</span>
+      <button class="btn small" id="roomZoomIn" type="button" title="Vergrößern">+</button>
+      <button class="btn small" id="roomZoomReset" type="button" title="Ganzen Graphen einpassen">Einpassen</button>
+      <span class="meta" style="margin-left:8px;">Ziehen zum Verschieben, Mausrad/Pinch zum Zoomen (wie bei der Weltkarte).</span>
+    </div>
+    <div id="roomGraphHost" style="position:relative; overflow:hidden; border:1px solid var(--border); border-radius:8px; background:#10130c; height:70vh; min-height:420px; cursor:grab; touch-action:none; user-select:none;">
+      <div id="roomGraphScaled" style="position:absolute; top:0; left:0; transform-origin:0 0;">
+        <div id="roomGraphNodes" style="position:relative;"></div>
+        <svg id="roomGraphSvg" style="position:absolute; top:0; left:0; pointer-events:none;"></svg>
+      </div>
     </div>
     <div class="card-grid" id="roomCards" style="margin-top:20px;"></div>
   `;
@@ -109,7 +148,7 @@ function render_rooms(main) {
     for (const n of names) colWidth = Math.max(colWidth, nodeSize(n).w);
     x += colWidth + COL_GAP;
   }
-  let height = 20;
+  let contentHeight = 20;
   for (let lvl = 0; lvl <= maxLevel; lvl++) {
     const names = (byLevel[lvl] || []).slice().sort();
     let y = 20;
@@ -118,19 +157,17 @@ function render_rooms(main) {
       pos[n] = { x: colX[lvl], y, w: sz.w, h: sz.h };
       y += sz.h + ROW_GAP;
     }
-    height = Math.max(height, y);
+    contentHeight = Math.max(contentHeight, y);
   }
-  const width = x;
+  const contentWidth = x;
 
   const svg = document.getElementById("roomGraphSvg");
   const nodesHost = document.getElementById("roomGraphNodes");
-  document.getElementById("roomGraphHost").style.width = "100%";
-  document.getElementById("roomGraphHost").style.height = Math.min(height + 20, 640) + "px";
-  nodesHost.style.width = svg.style.width = width + "px";
-  nodesHost.style.height = svg.style.height = height + "px";
-  svg.setAttribute("width", width);
-  svg.setAttribute("height", height);
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  nodesHost.style.width = svg.style.width = contentWidth + "px";
+  nodesHost.style.height = svg.style.height = contentHeight + "px";
+  svg.setAttribute("width", contentWidth);
+  svg.setAttribute("height", contentHeight);
+  svg.setAttribute("viewBox", `0 0 ${contentWidth} ${contentHeight}`);
 
   // Node DOM: a small card per room, thumbnail canvas + label, real
   // pixel content filled in by drawThumbnails() below (needs a
@@ -156,28 +193,79 @@ function render_rooms(main) {
   }
   nodesHost.innerHTML = nodesHtml;
 
-  // Edges: connect the real right-edge/left-edge midpoints of the
-  // rendered node CARDS (not a fixed guess) -- same curved-path +
-  // arrowhead-marker convention as before, recomputed for the new,
-  // per-room-sized node boxes.
+  // Real thumbnail-space anchor for an exit's own trigger `zone`
+  // (center of the real bracketed rectangle, missing bounds treated
+  // as "unbounded to that room edge" per rom_profiles.lua's own exits
+  // schema doc comment) or landing point, converted from real GB
+  // screen-pixel space (0..160 x, 0..128/144 y) into this node's own
+  // thumbnail pixel space via one linear scale factor. Returns null
+  // if this node has no real ROOM_MAPS entry to scale against.
+  const SCREEN_W = 160, SCREEN_H = 128; // matches every current 20x16 ROOM_MAPS entry
+  function anchorAbs(name, screenX, screenY) {
+    const p = pos[name], m = mapByName[name];
+    if (!p || !m) return null;
+    const t = thumbSize(name);
+    const sx = t.w / SCREEN_W, sy = t.h / SCREEN_H;
+    return {
+      x: p.x + NODE_PAD + Math.max(0, Math.min(SCREEN_W, screenX)) * sx,
+      y: p.y + NODE_PAD + Math.max(0, Math.min(SCREEN_H, screenY)) * sy,
+    };
+  }
+  function zoneRectAbs(name, zone) {
+    const p = pos[name], m = mapByName[name];
+    if (!p || !m || !zone) return null;
+    const t = thumbSize(name);
+    const sx = t.w / SCREEN_W, sy = t.h / SCREEN_H;
+    const xMin = zone.xMin != null ? zone.xMin : 0;
+    const xMax = zone.xMax != null ? zone.xMax : SCREEN_W;
+    const yMin = zone.yMin != null ? zone.yMin : 0;
+    const yMax = zone.yMax != null ? zone.yMax : SCREEN_H;
+    return {
+      x: p.x + NODE_PAD + xMin * sx,
+      y: p.y + NODE_PAD + yMin * sy,
+      w: (xMax - xMin) * sx,
+      h: (yMax - yMin) * sy,
+      cx: p.x + NODE_PAD + ((xMin + xMax) / 2) * sx,
+      cy: p.y + NODE_PAD + ((yMin + yMax) / 2) * sy,
+    };
+  }
+
+  // Edges: real trigger-zone -> real landing-point anchors where the
+  // exit carries that data (all 8 currently do); falls back to the
+  // old node-edge-midpoint anchor otherwise, rather than guessing
+  // coordinates that don't exist.
   let markerDefs = `<defs>
     <marker id="arrow-scroll" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--accent2)"></path></marker>
     <marker id="arrow-cut" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--accent3)"></path></marker>
   </defs>`;
   let edgesSvg = "";
+  let overlaySvg = "";
   for (const e of edges) {
     const a = pos[e.from], b = pos[e.to];
     if (!a || !b) continue;
-    const x1 = a.x + a.w, y1 = a.y + a.h / 2;
-    const x2 = b.x, y2 = b.y + b.h / 2;
+    const zoneRect = e.zone ? zoneRectAbs(e.from, e.zone) : null;
+    const landing = (e.landingX != null && e.landingY != null) ? anchorAbs(e.to, e.landingX, e.landingY) : null;
+    let x1, y1, x2, y2;
+    if (zoneRect) {
+      x1 = zoneRect.cx; y1 = zoneRect.cy;
+      overlaySvg += `<rect class="zone-rect" x="${zoneRect.x}" y="${zoneRect.y}" width="${Math.max(2, zoneRect.w)}" height="${Math.max(2, zoneRect.h)}"></rect>`;
+    } else {
+      x1 = a.x + a.w; y1 = a.y + a.h / 2;
+    }
+    if (landing) {
+      x2 = landing.x; y2 = landing.y;
+      overlaySvg += `<circle class="landing-point" cx="${landing.x}" cy="${landing.y}" r="4"></circle>`;
+    } else {
+      x2 = b.x; y2 = b.y + b.h / 2;
+    }
     const midX = (x1 + x2) / 2;
     const cls = e.transitionType === "scroll" ? "edge-scroll" : "edge-cut";
     const marker = e.transitionType === "scroll" ? "arrow-scroll" : "arrow-cut";
-    edgesSvg += `<path class="${cls}" marker-end="url(#${marker})" d="M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2 - 6},${y2}"></path>`;
+    edgesSvg += `<path class="${cls}" marker-end="url(#${marker})" d="M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}"></path>`;
     const label = e.transitionType === "scroll" ? `scroll (${e.axis}, ${e.totalPixels}px)` : "cut";
     edgesSvg += `<text class="edge-label" x="${midX}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle">${label}</text>`;
   }
-  svg.innerHTML = markerDefs + edgesSvg;
+  svg.innerHTML = markerDefs + overlaySvg + edgesSvg;
 
   function drawThumbnails() {
     document.querySelectorAll(".room-thumb-canvas").forEach(canvas => {
@@ -218,6 +306,8 @@ function render_rooms(main) {
   }
   drawThumbnails();
 
+  wireRoomGraphPanZoom(contentWidth, contentHeight);
+
   // Cards with the raw exit facts underneath the diagram (unchanged).
   const cardsHost = document.getElementById("roomCards");
   for (const r of ROOMS) {
@@ -229,6 +319,119 @@ function render_rooms(main) {
     `;
     cardsHost.appendChild(card);
   }
+}
+
+// Google-Maps-style pan/zoom for the room graph -- see this file's own
+// top-of-file doc comment. `contentWidth`/`contentHeight` are the
+// graph's own real, unscaled pixel size (computed fresh in
+// render_rooms every visit, since the graph's real layout can change
+// as more exits get decoded); the view state itself is intentionally
+// a plain local (re-created per visit, not persisted module-wide like
+// worldmap.js's `WorldmapView`) -- this graph is small enough that
+// "start fresh, fitted, on every visit" is the more useful default.
+function wireRoomGraphPanZoom(contentWidth, contentHeight) {
+  const host = document.getElementById("roomGraphHost");
+  const scaled = document.getElementById("roomGraphScaled");
+  if (!host || !scaled) return;
+  const view = { scale: 1, tx: 0, ty: 0, minScale: 0.2, maxScale: 3 };
+  const zoomLabel = document.getElementById("roomZoomLabel");
+
+  function applyTransform() {
+    scaled.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
+    if (zoomLabel) zoomLabel.textContent = Math.round(view.scale * 100) + "%";
+  }
+
+  function fitToViewport() {
+    const vw = host.clientWidth, vh = host.clientHeight;
+    if (!vw || !vh || !contentWidth || !contentHeight) return;
+    const s = Math.min(vw / contentWidth, vh / contentHeight, 1);
+    view.scale = Math.max(view.minScale, s);
+    view.tx = (vw - contentWidth * view.scale) / 2;
+    view.ty = (vh - contentHeight * view.scale) / 2;
+    applyTransform();
+  }
+
+  function zoomAt(factor, anchorX, anchorY) {
+    const newScale = Math.min(view.maxScale, Math.max(view.minScale, view.scale * factor));
+    const worldX = (anchorX - view.tx) / view.scale;
+    const worldY = (anchorY - view.ty) / view.scale;
+    view.tx = anchorX - worldX * newScale;
+    view.ty = anchorY - worldY * newScale;
+    view.scale = newScale;
+    applyTransform();
+  }
+
+  document.getElementById("roomZoomIn").addEventListener("click", () => {
+    zoomAt(1.25, host.clientWidth / 2, host.clientHeight / 2);
+  });
+  document.getElementById("roomZoomOut").addEventListener("click", () => {
+    zoomAt(1 / 1.25, host.clientWidth / 2, host.clientHeight / 2);
+  });
+  document.getElementById("roomZoomReset").addEventListener("click", fitToViewport);
+
+  // Pointer Events unify mouse + touch, same convention as
+  // worldmap.js's own `wirePanZoom` (see that file for the fuller
+  // doc comment on the click-vs-drag / pinch-vs-pan disambiguation).
+  const pointers = new Map();
+  let pinchStartDist = null, pinchStartScale = null;
+  function dist() {
+    const pts = [...pointers.values()];
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+  function midpoint() {
+    const pts = [...pointers.values()];
+    return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+  }
+
+  host.addEventListener("pointerdown", (ev) => {
+    host.setPointerCapture(ev.pointerId);
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size === 2) {
+      pinchStartDist = dist();
+      pinchStartScale = view.scale;
+    }
+    host.style.cursor = "grabbing";
+  });
+  host.addEventListener("pointermove", (ev) => {
+    if (!pointers.has(ev.pointerId)) return;
+    const prev = pointers.get(ev.pointerId);
+    const dx = ev.clientX - prev.x, dy = ev.clientY - prev.y;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size === 2 && pinchStartDist) {
+      const d = dist();
+      const rect = host.getBoundingClientRect();
+      const mid = midpoint();
+      const factor = (d / pinchStartDist) * (pinchStartScale / view.scale);
+      zoomAt(factor, mid.x - rect.left, mid.y - rect.top);
+    } else if (pointers.size === 1) {
+      view.tx += dx;
+      view.ty += dy;
+      applyTransform();
+    }
+  });
+  function endPointer(ev) {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.delete(ev.pointerId);
+    pinchStartDist = null;
+    host.style.cursor = "grab";
+  }
+  host.addEventListener("pointerup", endPointer);
+  host.addEventListener("pointercancel", endPointer);
+
+  host.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const rect = host.getBoundingClientRect();
+    const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+    zoomAt(factor, ev.clientX - rect.left, ev.clientY - rect.top);
+  }, { passive: false });
+
+  function onResize() {
+    if (document.getElementById("roomGraphHost") === host) fitToViewport();
+  }
+  window.addEventListener("resize", onResize);
+  onSectionUnload(() => window.removeEventListener("resize", onResize));
+
+  fitToViewport();
 }
 
 // `gbDrawTile` (js/rombytes.js) always draws at an INTEGER `scale`

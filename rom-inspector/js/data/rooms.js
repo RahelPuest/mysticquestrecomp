@@ -4,9 +4,17 @@ const ROOMS = [
   {
     "exits": [
       {
+        "landingX": 16,
+        "landingY": 16,
         "reverse": false,
         "targetRoom": "ninthRoom",
-        "transitionType": "cut"
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 48,
+          "yMin": 0
+        }
       }
     ],
     "heightTiles": 16,
@@ -16,14 +24,30 @@ const ROOMS = [
   {
     "exits": [
       {
+        "landingX": 136,
+        "landingY": 32,
         "reverse": false,
         "targetRoom": "fifthRoom",
-        "transitionType": "cut"
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 128,
+          "xMin": 112,
+          "yMax": 96,
+          "yMin": 32
+        }
       },
       {
+        "landingX": 144,
+        "landingY": 80,
         "reverse": false,
         "targetRoom": "sixthRoom",
-        "transitionType": "cut"
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 16,
+          "xMin": 0,
+          "yMax": 96,
+          "yMin": 40
+        }
       }
     ],
     "heightTiles": 16,
@@ -34,11 +58,18 @@ const ROOMS = [
     "exits": [
       {
         "axis": "x",
+        "landingX": 80,
+        "landingY": 64,
         "reverse": false,
         "status": "VERIFIED",
         "targetRoom": "thirdRoom",
         "totalPixels": 160,
-        "transitionType": "scroll"
+        "transitionType": "scroll",
+        "zone": {
+          "xMin": 110,
+          "yMax": 68,
+          "yMin": 60
+        }
       }
     ],
     "heightTiles": 16,
@@ -48,9 +79,17 @@ const ROOMS = [
   {
     "exits": [
       {
+        "landingX": 88,
+        "landingY": 8,
         "reverse": false,
         "targetRoom": "eighthRoom",
-        "transitionType": "cut"
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 128,
+          "xMin": 64,
+          "yMax": 128,
+          "yMin": 112
+        }
       }
     ],
     "heightTiles": 16,
@@ -60,9 +99,17 @@ const ROOMS = [
   {
     "exits": [
       {
+        "landingX": 80,
+        "landingY": 112,
         "reverse": false,
         "targetRoom": "seventhRoom",
-        "transitionType": "cut"
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 144,
+          "xMin": 128,
+          "yMax": 32,
+          "yMin": 0
+        }
       }
     ],
     "heightTiles": 16,
@@ -72,10 +119,18 @@ const ROOMS = [
   {
     "exits": [
       {
+        "landingX": 120,
+        "landingY": 112,
         "reverse": false,
         "status": "VERIFIED",
         "targetRoom": "fourthRoom",
-        "transitionType": "cut"
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 143,
+          "xMin": 128,
+          "yMax": 31,
+          "yMin": 16
+        }
       }
     ],
     "heightTiles": 16,
@@ -86,11 +141,18 @@ const ROOMS = [
     "exits": [
       {
         "axis": "y",
+        "landingX": 72,
+        "landingY": 96,
         "reverse": true,
         "status": "VERIFIED",
         "targetRoom": "secondRoom",
         "totalPixels": 128,
-        "transitionType": "scroll"
+        "transitionType": "scroll",
+        "zone": {
+          "xMax": 86,
+          "xMin": 72,
+          "yMax": 24
+        }
       }
     ],
     "heightTiles": 16,

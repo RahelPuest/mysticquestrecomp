@@ -536,6 +536,16 @@ for name, room in pairs(profile.graphics) do
         axis = exit.transition and exit.transition.axis,
         totalPixels = exit.transition and exit.transition.totalPixels,
         reverse = exit.transition and exit.transition.reverse or false,
+        -- Real, empirically-bracketed screen-space trigger rectangle
+        -- (any bound may be nil -- "unbounded on that side", see
+        -- rom_profiles.lua's own exits schema doc comment) and the
+        -- real landing position in the target room, both already
+        -- decoded upstream -- exported as-is so the website can draw
+        -- an arrow from the actual trigger zone to the actual spawn
+        -- point instead of a generic node-to-node line.
+        zone = exit.zone,
+        landingX = exit.landingX,
+        landingY = exit.landingY,
       }
     end
     local widthTiles, heightTiles
