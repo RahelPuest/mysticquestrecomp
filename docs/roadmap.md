@@ -2443,6 +2443,34 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   boss card too, for consistency. Live-verified: Garuda's card switches
   between 3 real, individually coherent poses (a full bird silhouette,
   two creature-head poses) on one clean canvas. 575/575 tests pass.
+- **2026-08-17, same day, honest negative: re-checked every other
+  reachable room for further real NPC spawns**: direct instruction
+  "verfolge die vram zugriffe und leite darus ab wo die restlichen
+  liegen könnten" -- used the now-known real NPC/monster dispatch
+  destination address (`0x8400`-`0x84FF`) to instrument every other
+  currently-reachable room transition (thirdRoom, fourthRoom,
+  fifthRoom, sixthRoom). Zero hits across all four. One hit during
+  willyRoom's own dialogue sequence turned out to be the ALREADY-
+  documented, unrelated font/glyph loader (task #160's own bank-8
+  finding), not a creature spawn -- confirmed via a real Watcher
+  tooling gotcha caught and fixed along the way (`run_frame()`-based
+  polling needs an explicit `.resume()` or the debugger stays stuck on
+  the first-ever hit). Honest conclusion: characterA/characterB remain
+  the only 2 live-triggerable real NPC spawns this project can reach;
+  the other 89 `humanoid4pose` designs are real, statically-present ROM
+  data with no known live trigger. No code change, pure investigation.
+- **2026-08-17, same day, direct follow-up "ok jetzt mach das gleiche
+  für alle npcs": pose-tab UI extended to all 172 humanoid4pose NPC
+  records**: same treatment species 4's boss card and the 7 fully-
+  reconstructed monsters just got, now for every NPC whose own real
+  pose order is known (`arrangementFamily=="humanoid4pose"`).
+  `export_data.lua` builds `spritePoses` (4-tile pose chunks, already
+  reordered by `resolveSpriteTileOffsets`) for these; `graphics.js`'s
+  sprite catalog renders the SAME "Pose 1"/"Pose 2"/... tab UI, per-
+  entry state persisted across palette-switch redraws. Live-verified:
+  every one of the 218 NPC cards on the Grafiken page shows a small,
+  individually distinct, coherent 16x16 character, switchable pose by
+  pose. 575/575 tests pass (pure export/website wiring).
 - **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
   full "elevate this product" brief, scoped to the website (confirmed
   via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,

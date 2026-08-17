@@ -11180,3 +11180,58 @@ silhouette (wings spread), Pose 2/3 closer creature-head poses -- all
 on one clean 4x4 canvas, exactly matching species 4's own established
 UX. 575/575 Lua tests pass (no Lua-level change this pass, pure
 export/website wiring), zero console errors.
+
+## Re-checked every other reachable room for further real NPC spawns -- honest negative, using a new, more precise method (2026-08-17, same day)
+
+Direct instruction: "nein ich meine erstmal alle npcs suchen! du
+weisst wo die tiles liegen. verfolge die vram zugriffe und leite darus
+ab wo die restlichen liegen könnten" -- correcting course from the UI
+work above: use the now-known real NPC dispatch destination address to
+re-check every other currently-reachable room transition for further
+real spawns, not just style the ones already found.
+
+**Method**: a first attempt watched the WHOLE sprite VRAM tile bank
+(`0x8000`-`0x8FFF`) during each room transition -- too broad, caught
+constant unrelated routine writes (player animation, UI) within 2-3
+frames of every single button hold, drowning out any real signal.
+Narrowed to the ACTUAL confirmed real destination range every known
+NPC/monster spawn uses (`0x8400`-`0x84FF`, characterA/characterB/the
+boss's own resting-pose base) -- a real, checkable fact from this
+session's own earlier live traces, not a guess.
+
+**Real, live-checked, honest result**: instrumented every currently-
+reachable room transition this project has a checkpoint for
+(secondRoom->thirdRoom, thirdRoom->fourthRoom, fourthRoom->fifthRoom,
+fourthRoom->sixthRoom) -- **zero hits** in the real destination range
+across all four. One hit DID occur during willyRoom's own 14-tap
+dialogue sequence (tap 3, address `0x84FF`, `oldValue==newValue==0xFF`)
+-- investigated and explained: `rom-map.md`'s own task #160 entry
+already documents a SEPARATE, unrelated real mechanism at this exact
+shape (bank0 `$1ABD`/`$1AEC`, literal bank-8 font/portrait loader,
+"plausibly the real per-glyph font-tile loader") -- a single isolated
+tile write (not a multi-tile burst, unlike every real NPC/monster spawn
+this session found) with an unchanged 0xFF blank value is exactly what
+a dialogue box's own per-character glyph render would look like, not a
+creature sprite. Confirmed via a real gotcha in the Watcher tooling
+itself along the way: without calling `.resume()` after checking `.hit`
+via `run_frame()`-based polling (not `Watcher.step()`), the debugger
+state stays PAUSED indefinitely and every later check silently reports
+the SAME first-ever hit -- a real, documented limitation
+(`watcher.py`'s own doc comment already flags this for `run_frame()`
+users) that produced a misleading "hit on every tap 3-13" result before
+being caught and fixed (`bisect_willy_hit.py`, scratchpad).
+
+**Honest conclusion**: characterA and characterB remain the ONLY 2
+live-triggerable real NPC spawns in this project's own currently-
+reachable game content -- independently re-confirmed via a NEW, more
+precise method (the real dispatch destination address, not visual
+inspection) than the earlier session's own exhaustive room-by-room
+visual search that first reached this conclusion. The other 89 distinct
+`humanoid4pose`-family designs remain real, statically-present ROM data
+(pixel source AND probable on-screen arrangement both known, per this
+session's own earlier findings) -- but WHICH of them the game's own
+PRNG-driven placement table (`ActorDefinitionTable.lua`'s own doc
+comment) actually selects, for which room/moment, stays an honestly
+open question this project has no current live trigger to answer. No
+code changes this pass -- a pure investigation, reported honestly
+rather than forced into a "found more" narrative that isn't there.

@@ -272,6 +272,11 @@ function render_graphics(main) {
     return (entry.arrangementConfirmed || entry.arrangementFamily === "humanoid4pose" || entry.chunksReordered > 0) ? 4 : 8;
   }
 
+  // Per-entry current-pose state, keyed by "<kind>_<index>" -- survives
+  // across redraws (e.g. a palette switch) so switching to Pose 2 and
+  // then changing the palette doesn't silently reset back to Pose 1.
+  const spritePoseState = {};
+
   function renderSpriteCards() {
     spriteHost.innerHTML = "";
     const list = activeSpriteKind === "npcs" ? spriteNpcs : spriteMonsters;
@@ -296,6 +301,15 @@ function render_graphics(main) {
         badge = `<span class="badge unknown-b">Anordnung unbekannt</span>`;
         ariaLayout = "Bildschirm-Anordnung unbekannt";
       }
+      // 2026-08-17, direct follow-up "ok jetzt mach das gleiche für
+      // alle npcs": every humanoid4pose NPC's own `spritePoses` (see
+      // export_data.lua's own doc comment) gets EXACTLY the same
+      // treatment species 4's own boss card already has -- one small
+      // canvas + a "Pose 1"/"Pose 2"/... tab switcher, instead of a
+      // flat concatenated strip.
+      const hasPoseTabs = !!entry.spritePoses;
+      const stateKey = `${activeSpriteKind}_${entry.index}`;
+      if (hasPoseTabs && !(stateKey in spritePoseState)) spritePoseState[stateKey] = 0;
       card.innerHTML = `
         <h3>${label} #${entry.index}</h3>
         ${badge}
@@ -304,8 +318,25 @@ function render_graphics(main) {
           kindByte=0x${entry.kindByte.toString(16).padStart(2, "0")}, C=0x${entry.cByte.toString(16).padStart(2, "0")}
         </div>
         <canvas id="sc_${activeSpriteKind}_${entry.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="${label} #${entry.index}: ${entry.tileOffsets.length} echte Sprite-Kacheln, direkt aus der geladenen ROM gerendert (${ariaLayout})"></canvas>
+        ${hasPoseTabs ? `
+        <div class="toolbar" style="margin-top:8px;">
+          <div class="pill-tabs" id="scPoseTabs_${stateKey}">
+            ${entry.spritePoses.map((_, p) => `<div class="pill-tab ${p === spritePoseState[stateKey] ? "active" : ""}" data-pose="${p}">Pose ${p + 1}</div>`).join("")}
+          </div>
+        </div>` : ""}
       `;
       spriteHost.appendChild(card);
+      if (hasPoseTabs) {
+        document.querySelectorAll(`#scPoseTabs_${stateKey} .pill-tab`).forEach(tab => {
+          tab.addEventListener("click", () => {
+            document.querySelectorAll(`#scPoseTabs_${stateKey} .pill-tab`).forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            spritePoseState[stateKey] = parseInt(tab.dataset.pose, 10);
+            const canvas = document.getElementById(`sc_${stateKey}`);
+            if (canvas) drawSpriteGrid(canvas, entry.spritePoses[spritePoseState[stateKey]], 2, 2, 5, false);
+          });
+        });
+      }
     }
     redrawSpriteCatalog();
   }
@@ -313,8 +344,14 @@ function render_graphics(main) {
   function redrawSpriteCatalog() {
     const list = activeSpriteKind === "npcs" ? spriteNpcs : spriteMonsters;
     for (const entry of list) {
-      const canvas = document.getElementById(`sc_${activeSpriteKind}_${entry.index}`);
-      if (canvas) drawSpriteGrid(canvas, entry.tileOffsets, spriteCols(entry), Math.ceil(entry.tileOffsets.length / spriteCols(entry)), 3, false);
+      const stateKey = `${activeSpriteKind}_${entry.index}`;
+      const canvas = document.getElementById(`sc_${stateKey}`);
+      if (!canvas) continue;
+      if (entry.spritePoses) {
+        drawSpriteGrid(canvas, entry.spritePoses[spritePoseState[stateKey] || 0], 2, 2, 5, false);
+      } else {
+        drawSpriteGrid(canvas, entry.tileOffsets, spriteCols(entry), Math.ceil(entry.tileOffsets.length / spriteCols(entry)), 3, false);
+      }
     }
   }
 

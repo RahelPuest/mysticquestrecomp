@@ -1083,6 +1083,26 @@ do
       -- ActorDefinitionTable/NPCs, which use `arrangementFamily`
       -- instead (a whole-record flag, not a per-chunk count).
       local offsets, _, chunksReordered, chunksTotal = resolveFn(romData, record)
+      -- REAL POSE-BY-POSE PRESENTATION FOR NPCs TOO, same day, direct
+      -- follow-up ("ok jetzt mach das gleiche für alle npcs"): every
+      -- `humanoid4pose` family record's own `offsets` are ALREADY
+      -- reordered into the real logical pose order (4 tiles/pose,
+      -- `resolveSpriteTileOffsets` -> `reconstructPoseOrder`, the SAME
+      -- "swap the middle two" rule characterA/characterB's own real
+      -- down/up/left/left2 poses use) -- splitting them into
+      -- consecutive 4-tile groups gives real, individually-correct
+      -- poses in real order, the exact same shape as species 4's own
+      -- `spritePoses` (just 4 tiles/pose instead of 16, matching this
+      -- family's own real 16x16-not-32x32 sprite size).
+      local spritePoses = nil
+      if record.spriteSource.arrangementFamily == "humanoid4pose" and offsets and #offsets % 4 == 0 then
+        spritePoses = {}
+        for c = 0, (#offsets / 4) - 1 do
+          local pose = {}
+          for k = 1, 4 do pose[k] = offsets[c * 4 + k] end
+          spritePoses[c + 1] = pose
+        end
+      end
       entries[#entries + 1] = {
         index = record.index,
         bank = record.spriteSource.bank,
@@ -1093,6 +1113,7 @@ do
         arrangementFamily = record.spriteSource.arrangementFamily,
         chunksReordered = chunksReordered,
         chunksTotal = chunksTotal,
+        spritePoses = spritePoses,
       }
     end
     return entries
