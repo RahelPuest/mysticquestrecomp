@@ -805,8 +805,8 @@ RomProfiles.PROFILES = {
           [158]=0x324b0,[159]=0x324a0,[160]=0x324c0,[161]=0x324d0,[162]=0x32350,
           [163]=0x32270,[164]=0x32230,[165]=0x32320,[166]=0x32400,[167]=0x32420,
           [168]=0x32410,[169]=0x32430,[170]=0x32360,[171]=0x32370,
-          -- Real, NEW tile IDs (2026-08-09), found the same way, not
-          -- part of `willyRoom.tileOffsets`:
+          -- New tile IDs, found the same way, not part of
+          -- willyRoom.tileOffsets:
           [176]=0x32ec0,[177]=0x32ed0,[178]=0x32ee0,[179]=0x32ef0,
           [180]=0x32280,[181]=0x32290,[182]=0x32380,[183]=0x32390,
           [184]=0x322c0,[185]=0x323c0,[186]=0x322d0,[187]=0x323d0,
@@ -834,48 +834,46 @@ RomProfiles.PROFILES = {
           {130,162,165,166,165,166,165,166,184,152,151,186,168,165,168,165,168,165,170,147},
           {163,164,167,164,167,164,167,164,185,154,153,187,164,169,164,169,164,169,164,171},
         },
-        -- Real two new characters standing in this room -- neither
-        -- matches the known Willy sprite. Identity UNKNOWN (the room's
-        -- dialogue names a character "Amanda" but doesn't visually tag
-        -- which sprite is her).
+        -- Two new characters standing in this room -- neither matches
+        -- the known Willy sprite. Identity unknown (the room's dialogue
+        -- names a character "Amanda" but doesn't visually tag which
+        -- sprite is her).
         --
-        -- CORRECTED: `screenX`/`screenY` are NOT a stable, ROM-authored
-        -- fixed position -- live-traced to a real, general spawn
-        -- primitive (`$42BD`, bank 3) fed by a procedural placement
-        -- loop. The values below are one live-captured sample, used as
-        -- each character's starting point for the wander movement below.
+        -- CORRECTED: screenX/screenY are not a stable, ROM-authored
+        -- fixed position -- live-traced to a general spawn primitive
+        -- ($42BD, bank 3) fed by a procedural placement loop. The
+        -- values below are one live-captured sample, used as each
+        -- character's starting point for the wander movement below.
         --
-        -- `dialogue`: the real trigger is per-NPC PROXIMITY, not room
+        -- dialogue: the real trigger is per-NPC proximity, not room
         -- entry -- confirmed by walking up to each OAM-tracked NPC and
         -- watching a dialogue box appear on overlap, no button needed.
-        -- `characterA` (approached first): "Der Monsterein-gang fuehrt
-        -- nach drausen." `characterB`'s own line, found via a
-        -- `dump_strings.py` scan, sits immediately after characterA's
-        -- own box in the same ROM data stream: "Hallo!Willkommen\nin
-        -- Toppel!" (a real NPC greeting naming the ROM's own town,
+        -- characterA (approached first): "Der Monsterein-gang fuehrt
+        -- nach drausen." characterB's own line, found via a
+        -- dump_strings.py scan, sits immediately after characterA's own
+        -- box in the same ROM data stream: "Hallo!Willkommen\nin
+        -- Toppel!" (an NPC greeting naming the ROM's own town,
         -- "Toppel"). Stored as a plain string (not live-decoded) since
-        -- `NpcProximity.lua`'s existing dispatch expects one.
+        -- NpcProximity.lua's existing dispatch expects one.
         --
-        -- FOUND AND FIXED: three real problems, from one extended live
-        -- mgba re-trace (900 frames, OAM-tracked every frame):
-        -- (1) the old `tileOffsets` were simply WRONG -- real, readable
-        --     ROM bytes, but from the font region, not a creature sprite.
-        -- (2) the SHAPE was wrong too: modeled as 2x2-tile (16x16px)
-        --     like Willy/the player, but real OAM only uses two sprite
-        --     slots per character (one 8x16 column, top+bottom).
-        -- (3) both characters really do animate AND move -- each OAM
-        --     tile ID cycles through a real 4-direction, 2-phase walk
-        --     cycle while wandering, no obvious short fixed loop across
-        --     900 frames (a real, continuous random walk).
-        -- All 16 real tile IDs (8 per character, a clean +0x20 shift
-        -- between the two) were found via exact 16-byte ROM search
-        -- (each matched exactly one location) and are wired below as
-        -- `animation`. HONESTY NOTE: the real MOVEMENT algorithm itself
-        -- was not decoded -- `wander` below is this project's own
-        -- reasonable random-walk approximation, not a
-        -- reproduction of the real PRNG sequence. The animation TILES
-        -- and their direction/phase/flip pairing, by contrast, ARE the
-        -- real, directly-observed data.
+        -- FOUND AND FIXED: three problems, from one extended live mgba
+        -- re-trace (900 frames, OAM-tracked every frame): (1) the old
+        -- tileOffsets were simply wrong -- readable ROM bytes, but from
+        -- the font region, not a creature sprite. (2) the shape was
+        -- wrong too: modeled as 2x2-tile (16x16px) like Willy/the
+        -- player, but real OAM only uses two sprite slots per character
+        -- (one 8x16 column, top+bottom). (3) both characters really do
+        -- animate and move -- each OAM tile ID cycles through a
+        -- 4-direction, 2-phase walk cycle while wandering, no obvious
+        -- short fixed loop across 900 frames (a continuous random walk).
+        -- All 16 tile IDs (8 per character, a clean +0x20 shift between
+        -- the two) were found via exact 16-byte ROM search (each
+        -- matched exactly one location) and are wired below as
+        -- animation. HONESTY NOTE: the movement algorithm itself was
+        -- not decoded -- wander below is a reasonable random-walk
+        -- approximation, not a reproduction of the real PRNG sequence.
+        -- The animation tiles and their direction/phase/flip pairing,
+        -- by contrast, are the real, directly-observed data.
         scene = {
           characterA = {
             screenX = 128, screenY = 58,
@@ -891,30 +889,29 @@ RomProfiles.PROFILES = {
               { { fromOffset = 0x0378aa, toOffsetExclusive = 0x0378c6 } },
             },
             -- CORRECTED FOR REAL (direct user report from actual play):
-            -- this `animation` table was built on a wrong model (a
-            -- single 8x16-OBJ-mode column, 2 OAM entries stacked). A
-            -- fresh live OAM re-trace found the real shape: 2 OAM
-            -- entries at the same Y, 8px apart -- a real LEFT+RIGHT
-            -- pair, each already 8x16 in hardware, so the true on-screen
-            -- character is a 16x16 block using 4 real tiles, not 2.
+            -- this animation table was built on a wrong model (a single
+            -- 8x16-OBJ-mode column, 2 OAM entries stacked). A fresh
+            -- live OAM re-trace found the real shape: 2 OAM entries at
+            -- the same Y, 8px apart -- a LEFT+RIGHT pair, each already
+            -- 8x16 in hardware, so the true on-screen character is a
+            -- 16x16 block using 4 tiles, not 2.
             --
             -- SECOND CORRECTION (direct user report left/right halves
-            -- were swapped): reordering the 4 tiles by their own live
-            -- OAM screen X position was WRONG (produces 2 disconnected
+            -- were swapped): reordering the 4 tiles by their live OAM
+            -- screen X position was wrong (produces 2 disconnected
             -- blobs when rendered); the plain, unreordered sequential
-            -- order (`{ T, T+0x10, T+0x20, T+0x30 }`) renders a single,
+            -- order ({T, T+0x10, T+0x20, T+0x30}) renders a single,
             -- coherent 16x16 humanoid, confirmed for both characterA's
-            -- "left" and characterB's "up" capture. I.e. the ROM
-            -- simply stores each pose's 4 tiles consecutively in real
-            -- row-major file order already -- no OAM-position-based
-            -- reordering was ever needed; that extra step was the bug.
-            -- `flip`/`flipY` booleans are UNCHANGED from before this fix
-            -- (only the TILE ORDER was wrong) -- but HONESTLY FLAGGED:
-            -- the exact left-vs-right facing/flip semantics were NOT
-            -- independently re-verified this pass (a live capture
-            -- matched by VALUE to this "left" entry showed real hardware
-            -- X-flip SET, which doesn't obviously square with
-            -- `flip=false` here) -- a real, still-open follow-up (see
+            -- "left" and characterB's "up" capture -- the ROM simply
+            -- stores each pose's 4 tiles consecutively in row-major file
+            -- order already; no OAM-position-based reordering was ever
+            -- needed, that extra step was the bug. flip/flipY booleans
+            -- are unchanged (only the tile order was wrong) -- but
+            -- honestly flagged: the exact left-vs-right facing/flip
+            -- semantics were not independently re-verified this pass (a
+            -- live capture matched by value to this "left" entry showed
+            -- real hardware X-flip set, which doesn't obviously square
+            -- with flip=false here) -- a still-open follow-up (see
             -- roadmap.md), not silently claimed correct.
             animation = {
               framesPerPhase = 10, -- real captured runs varied 6-21f; a reasonable single cadence, not individually reproduced per-run
@@ -936,18 +933,17 @@ RomProfiles.PROFILES = {
             -- was found via simple ROM-adjacency and was wrong -- 3
             -- failed live re-verification attempts plus the user
             -- directly naming the character confirmed it. Found the
-            -- real line via a `dump_strings.py --gaps` scan for
-            -- "Bruder"/"Amanda": file offset `0x03783e` (bank 13), a
-            -- genuine first-person 3-page Amanda monologue mentioning
-            -- Willy and her little brother -- unmistakably right.
-            -- Decoded via TextDecoder's byte-exact formula except two
-            -- bytes (`0x82`/`0x5B`), resolved locally for "meinem"/"raus"
-            -- at the time. RESOLVED later: the real ROM digraph table
-            -- (found by disassembly) proved `0x5B="us"` universally --
-            -- these words were right all along ("Julia" was itself a
-            -- mis-read of "Julius", see `namedCharacters` above); the
-            -- shared global table now reads "us" directly, no local
-            -- override needed.
+            -- real line via a dump_strings.py --gaps scan for "Bruder"/
+            -- "Amanda": file offset 0x03783e (bank 13), a first-person
+            -- 3-page Amanda monologue mentioning Willy and her little
+            -- brother -- unmistakably right. Decoded via TextDecoder's
+            -- byte-exact formula except two bytes (0x82/0x5B), resolved
+            -- locally for "meinem"/"raus" at the time. RESOLVED later:
+            -- the real ROM digraph table (found by disassembly) proved
+            -- 0x5B="us" universally -- these words were right all along
+            -- ("Julia" was itself a mis-read of "Julius", see
+            -- namedCharacters above); the shared global table now reads
+            -- "us" directly, no local override needed.
             realName = "Amanda", -- unmistakable, appears 15+ times in this ROM's own real story text
             dialogue = {
               "Amanda:Das mit\nWilly tut mir\nleid.", -- no space after the speaker colon (0x2c never inserts one), same convention as Julius's own line
@@ -997,23 +993,22 @@ RomProfiles.PROFILES = {
             },
           },
         },
-        -- VERIFIED (2026-08-09): the real east exit -- a real, DIFFERENT
-        -- transition axis from `willyRoom`'s own door (horizontal, not
-        -- vertical) -- see rom-map.md "Yes, it keeps going". Real
-        -- working trigger window bracketed narrower than the north
-        -- door's: screen Y ~64-65 confirmed working; 16/32/48/80/96/112
-        -- all confirmed NOT to (a real, live position sweep, not a
-        -- guess) -- `zone` below uses a small margin around the one
-        -- confirmed-working value rather than the wider untested range.
+        -- VERIFIED: the real east exit -- a different transition axis
+        -- from willyRoom's own door (horizontal, not vertical) -- see
+        -- rom-map.md "Yes, it keeps going". Real working trigger window
+        -- bracketed narrower than the north door's: screen Y ~64-65
+        -- confirmed working; 16/32/48/80/96/112 all confirmed not to (a
+        -- live position sweep, not a guess) -- zone below uses a small
+        -- margin around the one confirmed-working value.
         exits = {
           {
             status = "VERIFIED",
-            -- Real working zone (`xMin=110`, y=60-68): an earlier
-            -- unbounded `zone` (no xMin/xMax) let a straight walk up
-            -- from the door false-trigger this east exit; a first fix
-            -- (`xMin=136`) then landed on a wall tile the player can
-            -- never stand on. `xMin=110` is real open floor the whole
-            -- way to this room's own reachable max (128) at this y band.
+            -- Real working zone (xMin=110, y=60-68): an earlier
+            -- unbounded zone (no xMin/xMax) let a straight walk up from
+            -- the door false-trigger this east exit; a first fix
+            -- (xMin=136) then landed on a wall tile the player can
+            -- never stand on. xMin=110 is open floor the whole way to
+            -- this room's reachable max (128) at this y band.
             zone = { xMin = 110, yMin = 60, yMax = 68 },
             -- totalPixels=160: code-verified as the ROM's own hardcoded
             -- horizontal-scroll constant (one screen width), see the
@@ -1027,19 +1022,19 @@ RomProfiles.PROFILES = {
             -- that extra walking got recorded as if it were the landing
             -- position. Re-measured by releasing RIGHT the instant SCX
             -- settles at 160 and confirming no drift over 40 more
-            -- frames. X=0 is thirdRoom's own real west edge (the door
-            -- threshold), landing on real verified floor tile 151.
+            -- frames. X=0 is thirdRoom's own west edge (the door
+            -- threshold), landing on verified floor tile 151.
             --
             -- Code-verified via a Watcher+CallTracer write-watchpoint on
-            -- `$C245`/`$C244` across the whole scroll: (1) the generic
+            -- $C245/$C244 across the whole scroll: (1) the generic
             -- per-frame position writer keeps running throughout, with
-            -- `X = 160 - SCX` holding frame-by-frame the entire way, so
+            -- X = 160 - SCX holding frame-by-frame the entire way, so
             -- X=0 the instant SCX finishes at 160 is real ROM
-            -- arithmetic; (2) a separate one-shot call chain (bank 1
-            -- `$4f0d`->`$4f48`->fixed-bank-0 `$29ba`->`$0611`->`$0659`/
-            -- `$065b`) explicitly RE-commits Y=64/X=0 via a path never
-            -- taken during ordinary movement -- the real ROM's own
-            -- "landing commit" step, not a byproduct of walk math alone.
+            -- arithmetic; (2) a separate one-shot call chain
+            -- (bank 1 $4f0d->$4f48->fixed-bank-0 $29ba->$0611->$0659/
+            -- $065b) explicitly re-commits Y=64/X=0 via a path never
+            -- taken during ordinary movement -- the ROM's own "landing
+            -- commit" step, not a byproduct of walk math alone.
             landingX = 0, landingY = 64,
           },
         },
