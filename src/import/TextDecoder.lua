@@ -3,6 +3,20 @@
 -- found (dynamic tracing with a real emulator, since static analysis
 -- alone could not crack it -- see docs/reverse-engineering/tooling.md).
 --
+-- PROVEN BY DISASSEMBLY (2026-08-17, see text.md's "FOUND: the real
+-- static message-text decoder, $3777" section): the real static-text
+-- decode dispatcher (ROM `$3777`, bank 0) was located and disassembled.
+-- For every byte >= 0x99 -- i.e. the whole MAIN_GLYPHS range (>=0xB0)
+-- and the UMLAUT_PARTIAL range 0x99-0x9F -- the real ROM formula is
+-- simply `vramTile = rawByte XOR 0x80` (== `rawByte - 0x80` for this
+-- range), executed at ROM `$3794`. This is no longer just a dynamically
+-- cross-checked pattern; it's a proven match against real CPU
+-- instructions. Bytes < 0x99 (the whole digraph range) take a
+-- genuinely different path (`$37DC`) that turned out to be word-wrap/
+-- line-cursor bookkeeping, not yet traced to a concrete digraph lookup
+-- table -- still open, see text.md for the exact disassembly reached
+-- so far.
+--
 -- Confirmed formula: a byte >= 0xB0 encodes a character as
 -- `MAIN_GLYPHS[byte - 0xB0 + 1]` (1-based Lua string indexing), covering
 -- the same 64-glyph alphabet as the font's own ROM tile order (digits,

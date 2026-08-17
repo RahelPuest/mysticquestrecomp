@@ -1726,3 +1726,65 @@ what that table encodes.** Extending this `$333D`-style disassembly
 technique to classify the STILL-undecoded digraph-range bytes (`0x27`,
 `0x63`, `0x82`, `0x90`-`0x98`) needs the STATIC decode routine
 specifically, not `$333D` -- that routine has not yet been found.
+
+## FOUND: the real static message-text decoder, `$3777` (2026-08-17, direct user instruction: "nach such den richtigen decoder")
+
+Found via live tracing, not guessing: `rom_profiles.lua` already
+documents a real, confirmed ROM source for `storyPages[1]` ("...und
+viele andere wurden gezwungen...") at bank 14, file `0x3A1E5`
+(CPU `$61E5` in that bank). Single-stepped the real black-wipe +
+first-story-box window from `courtyard_boss_defeated()`, watching for
+CPU `HL` to sit inside that exact source range, and walked the call
+stack up from there through 3 real, disassembled layers of "draw one
+glyph" wrappers (`$1D72`, the already-known generic HBlank-synced
+VRAM writer -> `$3899`/`$38AF`, a generic BG/window draw dispatcher
+-> `$386E`/`$384C`, scroll-position-adjusted glyph-draw entries -- the
+BOX BORDER and a fixed-width HUD number/label both turned out to share
+these same low-level primitives, a real dead end each time, correctly
+ruled out by their own return addresses and WRAM source pointers not
+lining up with the real dialogue text bank/offset) until landing on
+the real top-level per-character dispatcher itself:
+
+```
+$3777  CALL $374D          ; restore line cursor (D/E, B/C) from $D8B8-$D8BB
+$377A  PUSH AF
+$377B  LD A,(HL+)          ; *** read the real next source text byte, advance HL ***
+$377C  CP 0x7F
+$377E  JR Z,$3785
+$3780  CP 0x99
+$3782  JP C,$37DC          ; byte < 0x99 -> a separate, more complex path (word-wrap-aware; see below)
+$3785  PUSH AF
+$3786  LD A,($D84A) / INC A / JR NZ,$3793
+$378C  DEC D / LD A,0x7F / CALL $384C / INC D   ; (leading-blank-column handling, byte==0x7F case)
+$3793  POP AF
+$3794  XOR 0x80             ; *** THE REAL FORMULA ***
+$3796  CALL $384C            ; draw the transformed value as a glyph
+```
+
+**Byte `>= 0x99` (including `0xFF`, `0xB0`-`0xFF`, and `0x99`-`0x9F`):
+the real VRAM tile ID is `rawByte XOR 0x80`** -- proven by disassembly,
+not just cross-referenced dynamically. This is now a formal PROOF of
+what this whole document's earlier "The formula" section had already
+established by dynamic observation: for `byte in [0x80,0xFF]`,
+`byte XOR 0x80 == byte - 0x80`, so this is exactly
+`MAIN_GLYPHS[byte-0xB0+1]`'s own tile (`0x30 + (byte-0xB0) == byte -
+0x80`) for the main range, and exactly the already-VERIFIED umlaut
+tiles for `0x99`-`0x9F` (e.g. `0x99 XOR 0x80 = 0x19` = tile 25 = Ä,
+matching `UMLAUT_PARTIAL[0x99]` exactly). Every existing `MAIN_GLYPHS`
+and `UMLAUT_PARTIAL` entry in `TextDecoder.lua` is now real-disassembly-
+CONFIRMED for this domain, not just dynamically inferred.
+
+**Byte `< 0x99`** (the whole digraph-table range, `0x00`-`0x98`) takes
+a real, different path at `$37DC` -- disassembled this pass too, but it
+turned out to be **word-wrap/line-cursor bookkeeping**
+(`$D84A`/`$D849` state checks, saving the cursor to `$D8C5`/`$D8C6`,
+a real "does the current word still fit on this line" check via
+`$3736`/`$374D`), not yet the digraph EXPANSION/lookup itself -- the
+actual byte -> two-tile table (if it's a literal table at all, rather
+than more branching logic) sits further inside this same path and was
+not reached this pass. **Honest state**: the dispatcher and the exact
+formula for the already-mapped `>= 0x99` range are now proven; the
+real digraph mechanism for `< 0x99` is located (this same `$3777`/
+`$37DC` call tree, real ROM, real bank 0) but not yet fully traced to
+a concrete lookup -- a good, concrete next continuation point, not a
+dead end.
