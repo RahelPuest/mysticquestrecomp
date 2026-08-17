@@ -858,41 +858,32 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     --
     -- Real, honest differences from the old hand-transcription, kept
     -- as the real bytes decode (same "the real bytes win" rule as the
-    -- Willy exchange above), NOT reconciled to match the old guesses:
-    --   * Page 1's real ROM text uses actual mid-word HYPHENATION at
-    --     its own line breaks ("an-\ndere", "ge-\nzwungen" -- the real
-    --     `HYPHEN_BYTE`, see `TextDecoder.lua`) where the old hand-
-    --     wrap broke at word boundaries instead ("viele\nandere",
-    --     "jeden\nTag"). This project's own `TextBox.lua` doesn't
+    -- Willy exchange above), not reconciled to match the old guesses:
+    --   * Page 1's ROM text uses actual mid-word hyphenation at its
+    --     line breaks ("an-\ndere", "ge-\nzwungen" -- the real
+    --     HYPHEN_BYTE, see TextDecoder.lua) where the old hand-wrap
+    --     broke at word boundaries instead. TextBox.lua doesn't
     --     implement general word-wrap/hyphenation (see that module's
-    --     own doc comment) -- the real ROM's own line breaks are used
-    --     literally here instead, which is MORE correct, not less
-    --     (this project reproducing the ROM's own actual wrap points,
-    --     rather than inventing a readable substitute, whenever the
-    --     real bytes are available for a specific line -- see
-    --     `TextBox.lua`'s doc comment for why that's not done
-    --     automatically everywhere yet).
-    --   * Page 2's real ROM text wraps as "des Dark Lord, zu\nkämpfen."
-    --     -- the old hand-transcription had "des Dark Lord,\nzu
-    --     kaempfen." (a different, plausible-looking wrap point, and
-    --     the old ASCII "ae" instead of the real "ä").
-    --   * Page 3's real ROM text is "Viele ließen\ndabei unnötig ihr\n
+    --     own doc comment) -- the ROM's own line breaks are used
+    --     literally here, which is more correct, not less.
+    --   * Page 2's ROM text wraps as "des Dark Lord, zu\nkämpfen." --
+    --     the old hand-transcription had a different, plausible-
+    --     looking wrap point, plus the ASCII "ae" instead of "ä".
+    --   * Page 3's ROM text is "Viele ließen\ndabei unnötig ihr\n
     --     Leben" -- confirmed via the raw bytes immediately following
-    --     (a real `[0x12][0x11]` box-close marker, not a period byte)
-    --     that the real ROM box has NO trailing period here at all --
-    --     the old hand-transcription's "...Leben." period is not real
-    --     ROM data, so it's dropped, not kept.
+    --     (a [0x12][0x11] box-close marker, not a period byte) that the
+    --     box has no trailing period here at all -- the old hand-
+    --     transcription's period isn't real ROM data, so it's dropped.
     --
-    -- Only page 1 needs the real player-entered `heroName` (see
-    -- NameEntry.lua) prefixed on -- its own real ROM bytes start with
-    -- a literal SPACE_BYTE (" und viele an-...") right where the name
-    -- belongs, i.e. the real ROM's own name-insertion mechanism (a
-    -- `[0x14]`-style control byte immediately before this offset, the
-    -- same still-not-reverse-engineered family as the Willy exchange's
-    -- own `[14][2c]` speaker tags above -- not decoded here either)
-    -- sits OUTSIDE this decoded range, so simple string concatenation
-    -- reproduces the real result without needing to understand that
-    -- byte. Pages 2/3 are Willy/narration continuing, no name needed.
+    -- Only page 1 needs the player-entered heroName (see NameEntry.lua)
+    -- prefixed on -- its bytes start with a literal SPACE_BYTE right
+    -- where the name belongs, i.e. the ROM's own name-insertion
+    -- mechanism (a [0x14]-style control byte immediately before this
+    -- offset, the same still-not-reverse-engineered family as the
+    -- Willy exchange's own [14][2c] speaker tags -- not decoded here
+    -- either) sits outside this decoded range, so simple string
+    -- concatenation reproduces the result without needing that byte.
+    -- Pages 2/3 are Willy/narration continuing, no name needed.
     local STORY_PAGE_OFFSETS = { 0x3A1E5, 0x3A208, 0x3A234 }
     for i, offset in ipairs(STORY_PAGE_OFFSETS) do
       local text = TextDecoder.decodeString(romData, offset)
@@ -901,157 +892,121 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
       end
       self.pages[#self.pages + 1] = { text = text, box = "bottom" }
     end
-    -- CORRECTED (2026-08-10, same re-trace): this project's own earlier
-    -- Willy exchange was built from an incomplete/misremembered capture.
-    -- Re-walked the whole exchange live, one real `A` tap at a time, with
-    -- generous typewriter-reveal waits between each so no page's content
-    -- was missed (the same trap rom-map.md already documents: mashing
-    -- too fast skips real box content). Real corrections found, in
-    -- order: (1) the real ROM shows "<name>: WILLY!" and "Willy: Mana
-    -- ist in Gefahr." together in ONE box (this project previously split
-    -- them into two separate pages); (2) a whole real line was missing
-    -- between the "Bogard"/waterfalls hint and the "Gemma? -- Mana?"
-    -- panic line: "Er ist ein Gemma Ritter. Er weiss, was zu tun ist."
-    -- (Willy explaining who Bogard is); (3) the panic line itself was
-    -- truncated -- the real box continues "...WILLY!?" with a second,
-    -- louder "WILLY!!!"; (4) the real sequence ends with a genuinely new
-    -- line, "Willy entschlaeft" ("Willy falls still/asleep" -- the game's
-    -- own real, gentle phrasing for his death), immediately followed by
-    -- real free movement -- this project's own previous closing line,
-    -- "<name>: Willy... Ich raeche Dich!", never appeared anywhere in
-    -- this fresh trace and is REMOVED as a fabrication, not kept as a
-    -- stylistic addition.
+    -- CORRECTED (same re-trace): this project's own earlier Willy
+    -- exchange was built from an incomplete/misremembered capture.
+    -- Re-walked the whole exchange live, one A tap at a time, with
+    -- generous typewriter-reveal waits between each so no page's
+    -- content was missed (the same trap rom-map.md already documents:
+    -- mashing too fast skips box content). Corrections found, in
+    -- order: (1) the ROM shows "<name>: WILLY!" and "Willy: Mana ist
+    -- in Gefahr." together in one box (previously split into two); (2)
+    -- a whole line was missing between the "Bogard"/waterfalls hint
+    -- and the "Gemma? -- Mana?" panic line: "Er ist ein Gemma Ritter.
+    -- Er weiss, was zu tun ist." (Willy explaining who Bogard is); (3)
+    -- the panic line was truncated -- the box continues "...WILLY!?"
+    -- with a second, louder "WILLY!!!"; (4) the sequence ends with a
+    -- genuinely new line, "Willy entschlaeft" (the game's own gentle
+    -- phrasing for his death), immediately followed by free movement --
+    -- the previous closing line, "<name>: Willy... Ich raeche Dich!",
+    -- never appeared anywhere in this fresh trace and is removed as a
+    -- fabrication.
     --
-    -- CORRECTED AGAIN (2026-08-12, direct user report: "die texte
-    -- scheinen in fast allen dialogen nicht 100% korrekt"): a whole real
-    -- box was STILL missing, between "Mana ist in Gefahr." and "Gemma?"
-    -- -- found this time by decoding the real ROM bytes directly (not
-    -- live-watching a screenshot), now that `TextDecoder.lua`'s own
-    -- digraph table is far more complete than it was during the
-    -- 2026-08-10 re-trace: file offset `0x3A287`-ish (bank 14, the same
-    -- ~26KB dialogue region `storyPages` was independently found in)
-    -- decodes as `"Gemma Ritter\nm[81]ssen da[59]w[54]sen[12][1B]"` --
-    -- fully unambiguous German with 3 still-genuinely-unmapped bytes
-    -- (this project's own "2+ independent occurrences" bar isn't
-    -- cleared for them yet, so they're not added to `TextDecoder.lua`'s
-    -- digraph table from this alone) -- "Gemma Ritter müssen das
-    -- wissen." ("The Gemma Knights must know this"), real bytes, a real
-    -- `[0x12][0x1B]` box-close-continue immediately after, sitting
-    -- directly between the two already-VERIFIED boxes either side of
-    -- it. This is almost certainly the exact SAME fragment this
-    -- project's own much earlier 2026-08-08 pass ("sixth pass", see
-    -- text.md) read visually off a screenshot as "Die Gemma Ritter
-    -- müssen das wissen" -- back then a byte-level match attempt failed
-    -- and it was written off as a likely misread; it wasn't a misread,
-    -- the decoder just wasn't complete enough yet to confirm it. Left
-    -- as "Willy:" (matching the surrounding boxes' own speaker, and the
-    -- narrative -- Willy explaining, the hero replying "Gemma?" in
-    -- confusion right after) -- the raw bytes decoded here don't
-    -- themselves carry a `[14][0x2C]`/named-speaker tag the way the
-    -- neighboring boxes do, so the speaker attribution is this
-    -- project's own reasonable inference, not directly decoded.
+    -- CORRECTED AGAIN (direct user report the texts seem not 100%
+    -- correct in almost all dialogues): a whole box was still missing,
+    -- between "Mana ist in Gefahr." and "Gemma?" -- found this time by
+    -- decoding the ROM bytes directly, now that TextDecoder.lua's
+    -- digraph table is far more complete: file offset 0x3A287-ish
+    -- (bank 14, the same dialogue region storyPages was found in)
+    -- decodes as unambiguous German with 3 still-unmapped bytes --
+    -- "Gemma Ritter müssen das wissen." ("The Gemma Knights must know
+    -- this"), real bytes, a [0x12][0x1B] box-close-continue
+    -- immediately after, sitting directly between the two already-
+    -- verified boxes either side of it. Almost certainly the same
+    -- fragment an earlier pass read visually off a screenshot as "Die
+    -- Gemma Ritter müssen das wissen" -- back then a byte-level match
+    -- failed and it was written off as a likely misread; it wasn't,
+    -- the decoder just wasn't complete enough yet. Left as "Willy:"
+    -- (matching the surrounding boxes' speaker, and the narrative) --
+    -- the raw bytes here don't carry a named-speaker tag the way
+    -- neighboring boxes do, so the attribution is a reasonable
+    -- inference, not directly decoded.
     --
-    -- LIVE-DECODED (2026-08-12, quick win #3, "1 dann 2 dann 3 dann 4"):
-    -- this line used to be the hand-transcribed literal string above
-    -- (kept in the doc comment history above for the record) -- now that
-    -- every byte in this specific sentence has a real, 2+-occurrence-
-    -- verified `DIGRAPH_PARTIAL` entry (see `tests/import/
-    -- text_decoder_test.lua`'s own "the real missing Willy-exchange box"
-    -- test, which locks in this exact offset/output), it's decoded LIVE
-    -- from the real ROM bytes at file offset `0x3A28B` instead of typed
-    -- by hand. Real, honest difference from the old hand-transcription:
-    -- the decoded text has no trailing period and wraps after "Ritter"
-    -- (not after "das") -- the real ROM bytes end in a `[0x12][0x1B]`
-    -- box-close-continue control pair, not a punctuation byte, and the
-    -- real ROM's own single embedded newline lands there, not where the
-    -- old hand-wrap guessed. Not silently "corrected" to match the old
-    -- text -- the real bytes win. The "Willy:" speaker prefix stays a
-    -- reasonable inference (see the doc comment above), not itself
-    -- decoded.
+    -- LIVE-DECODED (quick win #3): this line used to be the hand-
+    -- transcribed literal string above -- now that every byte has a
+    -- 2+-occurrence-verified DIGRAPH_PARTIAL entry (see tests/import/
+    -- text_decoder_test.lua's "the real missing Willy-exchange box"
+    -- test), it's decoded live from file offset 0x3A28B instead of
+    -- typed by hand. Difference from the old hand-transcription: the
+    -- decoded text has no trailing period and wraps after "Ritter" (not
+    -- "das") -- the ROM bytes end in a [0x12][0x1B] box-close-continue
+    -- pair, not a punctuation byte. The "Willy:" speaker prefix stays a
+    -- reasonable inference, not itself decoded.
     --
-    -- The prefix gets its OWN line (`"Willy:\n" .. decoded`, not
-    -- `"Willy: " .. decoded`) rather than sharing a line with "Gemma
-    -- Ritter" -- caught live (2026-08-12, `love .` smoke screenshot,
-    -- per this project's own "look at the screenshot" rule): the "top"
-    -- box (`BOX_GEOMETRY.top`, 19 tiles wide, 8px padding each side) has
-    -- real room for only 17 characters per line (`(19*8 - 16) / 8`),
-    -- and "Willy: Gemma Ritter" is 19 -- two characters past the edge,
-    -- silently clipped off-screen instead of erroring. A real, general
-    -- box-width bug (not specific to live-decoded text -- the OLD
-    -- hand-typed line was the exact same 19-character string and would
-    -- have overflowed identically; it just never got its own live
-    -- screenshot check before now). This is a display-only rewrap
-    -- (moving where the SPEAKER PREFIX breaks, which was never itself
-    -- decoded ROM data) -- it does not touch the real decoded sentence's
+    -- The prefix gets its own line ("Willy:\n" .. decoded, not
+    -- "Willy: " .. decoded) rather than sharing a line with "Gemma
+    -- Ritter" -- caught live (a love . smoke screenshot, per this
+    -- project's "look at the screenshot" rule): the "top" box
+    -- (BOX_GEOMETRY.top, 19 tiles wide, 8px padding each side) has room
+    -- for only 17 characters per line ((19*8 - 16) / 8), and "Willy:
+    -- Gemma Ritter" is 19 -- two characters past the edge, silently
+    -- clipped instead of erroring. A general box-width bug (the old
+    -- hand-typed line was the same 19-character string and would have
+    -- overflowed identically; it just never got its own screenshot
+    -- check before). This is a display-only rewrap (moving where the
+    -- speaker prefix breaks) -- it doesn't touch the decoded sentence's
     -- own internal newline between "Ritter" and "müssen das wissen".
     local gemmaRitterLine = "Willy:\n" .. TextDecoder.decodeString(romData, 0x3A28B)
 
-    -- LIVE-DECODED, the rest of the Willy exchange (2026-08-12, "alle 3
-    -- in der vorgeschlagenen reinfolge", quick win #2 of this batch --
-    -- direct continuation of the `gemmaRitterLine` method above).
-    -- Found all 5 remaining real ROM offsets in one pass: fixed
-    -- `tools/rom/dump_strings.py`'s own `UMLAUT_PARTIAL` table first
-    -- (it had silently drifted out of sync with `TextDecoder.lua`'s
-    -- real UTF-8-umlaut correction from 2026-08-10 -- was still
-    -- emitting the old "ae"/"oe"/"ue"/"ss" 2-letter substitutions,
-    -- which made a few of these lines LOOK like they might have a
-    -- real ROM spelling quirk worth double-checking, and didn't --
-    -- see that file's own doc comment), then re-ran a full-ROM scan
-    -- and grepped for keywords from each hardcoded line ("Bogard",
-    -- "Wasserfaellen", "entschlaeft", ...) -- every one of them turned
-    -- up in the SAME bank-14 dialogue region `gemmaRitterLine` above
-    -- already lives in (file `0x3A1E5`-`0x3A416`), confirming this is
-    -- one continuous, fully real, fully decodable block, not isolated
-    -- lucky finds.
+    -- LIVE-DECODED, the rest of the Willy exchange (direct continuation
+    -- of the gemmaRitterLine method above). Found all 5 remaining
+    -- offsets in one pass: fixed dump_strings.py's own UMLAUT_PARTIAL
+    -- table first (it had drifted out of sync with TextDecoder.lua's
+    -- UTF-8-umlaut correction -- still emitting the old "ae"/"oe"/"ue"/
+    -- "ss" 2-letter substitutions), then re-ran a full-ROM scan and
+    -- grepped for keywords from each hardcoded line -- every one turned
+    -- up in the same bank-14 dialogue region gemmaRitterLine already
+    -- lives in (file 0x3A1E5-0x3A416), confirming this is one
+    -- continuous, decodable block, not isolated lucky finds.
     --
-    -- Cross-checked every fragment against `TextDecoder.decodeString`
-    -- directly (not just the scan's own maximal-run output) to confirm
-    -- each one decodes CLEANLY end to end with a real stop point (a
-    -- `[0x12]` box-close marker or a clean NUL terminator), the same
-    -- bar `gemmaRitterLine` above already had to clear. Two of the five
-    -- decode to text that's honestly, materially DIFFERENT from the
-    -- old hand-transcription -- kept as the real bytes decode, not
-    -- silently reconciled to match the old guess (same "the real bytes
-    -- win" rule as `gemmaRitterLine` above):
+    -- Cross-checked every fragment against TextDecoder.decodeString
+    -- directly to confirm each decodes cleanly end to end with a real
+    -- stop point (a [0x12] box-close marker or a clean NUL
+    -- terminator), the same bar gemmaRitterLine already had to clear.
+    -- Two of the five decode to text materially different from the old
+    -- hand-transcription -- kept as the bytes decode:
     --   * "Willy: Geh zu\nBogard bei den\nWasserfaellen." (old) vs. the
     --     real "Geh zu\nBogard beiden\nWasserfällen." (file 0x3A2AE) --
-    --     "beiden" is genuinely one word in the real ROM text (not "bei
-    --     den"), and "Wasserfällen" has its real umlaut (the old ASCII
-    --     "ae" substitution was this project's own earlier best-effort
-    --     transcription, not a real ROM spelling).
+    --     "beiden" is genuinely one word (not "bei den"), and
+    --     "Wasserfällen" has its real umlaut.
     --   * "Er ist ein Gemma\nRitter. Er weiß,..." (old) vs. the real
     --     "Er ist ein Gemma\nRitter! Er weiß,..." (file 0x3A2C9) -- an
     --     exclamation mark, not a period.
-    -- The third and fourth boxes below (`gemmaQuestionLine`, real file
-    -- offsets 0x3A2A3/0x3A2AE/0x3A2C9) need no box-width rewrap (all
-    -- their real lines measure under the "top" box's own 17-char
-    -- limit, see `gemmaRitterLine`'s own doc comment for where that
-    -- limit comes from) -- unlike `gemmaRitterLine`, the "Willy: "/
-    -- speaker prefix can stay on the same line as the real text here.
+    -- The third and fourth boxes below (gemmaQuestionLine, file offsets
+    -- 0x3A2A3/0x3A2AE/0x3A2C9) need no box-width rewrap (all their
+    -- lines measure under the "top" box's 17-char limit, see
+    -- gemmaRitterLine's own doc comment for where that limit comes
+    -- from) -- unlike gemmaRitterLine, the "Willy: " prefix can stay on
+    -- the same line as the text here.
     --
-    -- The panic-line box (`willyPanicLine` below, heroName..": Gemma?
-    -- --\nMana? Was ...\nWILLY!? WILLY!!!") is real ROM text spread
-    -- across FOUR separate `decodeString` runs (files 0x3A2ED/0x3A2F8/
-    -- 0x3A306/0x3A312), each separated by a real, consistent 3-byte gap
-    -- (`f0 1e 04` or `f0 3c 04`) that does NOT decode as text under
-    -- this project's own `TextDecoder` -- honestly NOT reverse-
-    -- engineered further this pass (this looks like a distinct,
-    -- context-dependent script-control grammar, reusing byte VALUES
-    -- `TextDecoder` otherwise treats as digraph text, e.g. `0x1e`/
-    -- `0x3c` -- a real, separate investigation, not solved here; see
-    -- rom-map.md's honest note). The four clean fragments concatenate,
-    -- with their own real embedded newlines, to the intended sentence
-    -- with zero manual rewrapping needed. One small, honest, real-bytes
-    -- difference from the old hand-transcription found here too: real
-    -- ROM has "Mana?Was ..." with NO space after "Mana?" (old
-    -- hand-transcription had "Mana? Was ..." with a space).
+    -- The panic-line box (willyPanicLine below, heroName..": Gemma? --
+    -- \nMana? Was ...\nWILLY!? WILLY!!!") is ROM text spread across
+    -- four separate decodeString runs (files 0x3A2ED/0x3A2F8/0x3A306/
+    -- 0x3A312), each separated by a consistent 3-byte gap (f0 1e 04 or
+    -- f0 3c 04) that doesn't decode as text under TextDecoder --
+    -- honestly not reverse-engineered further this pass (this looks
+    -- like a distinct, context-dependent script-control grammar,
+    -- reusing byte values TextDecoder otherwise treats as digraph
+    -- text; see rom-map.md's honest note). The four clean fragments
+    -- concatenate, with their own embedded newlines, to the intended
+    -- sentence with zero manual rewrapping needed. One small
+    -- difference from the old hand-transcription: real ROM has
+    -- "Mana?Was ..." with no space after "Mana?".
     --
-    -- The closing box (`willySleepsLine` below, file 0x3A322) decodes
-    -- to `"\nWilly entschläft"` -- WITH a real leading newline the old
-    -- hand-transcription never had, i.e. the real ROM box shows a
-    -- blank first line before "Willy entschläft" appears on line 2.
-    -- Kept as the real bytes decode (same rule as above) rather than
-    -- trimmed to match the old single-line version.
+    -- The closing box (willySleepsLine below, file 0x3A322) decodes to
+    -- "\nWilly entschläft" -- with a leading newline the old hand-
+    -- transcription never had, i.e. the box shows a blank first line
+    -- before "Willy entschläft" appears on line 2. Kept as the bytes
+    -- decode rather than trimmed to match the old single-line version.
     local gemmaQuestionLine = heroName .. ": " .. TextDecoder.decodeString(romData, 0x3A2A3)
     local bogardLine = "Willy: " .. TextDecoder.decodeString(romData, 0x3A2AE)
     local gemmaKnightLine = TextDecoder.decodeString(romData, 0x3A2C9)
