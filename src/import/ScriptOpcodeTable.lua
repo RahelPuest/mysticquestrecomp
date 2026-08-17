@@ -1293,177 +1293,162 @@ ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D5 = 0x3B3A
 ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D7 = 0x3B45
 ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D9 = 0x3B50
 
--- `0xE3` ($0FD5) -- FOUND 2026-08-13, task #86, same live shadow-run.
--- Real bytes: `PUSH HL / LD A,0x08 / CALL $22FE / POP HL / CALL $3727
--- / RET` -- byte-for-byte the SAME "no operand, fixed constant to a
--- helper, always continues" shape as `TRIGGER_EVENT_HANDLER_ADDRESS`/
--- `_E0`/`_E4`/`_A0` above, just a different real helper ($22FE vs
--- $235B) and constant (`0x08`). Reuses `StandardScriptHandlers
--- .triggerEvent` directly -- no new Lua code needed.
+-- 0xE3 ($0FD5) -- FOUND, task #86, same live shadow-run. Bytes: PUSH
+-- HL / LD A,0x08 / CALL $22FE / POP HL / CALL $3727 / RET -- byte-for-
+-- byte the same "no operand, fixed constant to a helper, always
+-- continues" shape as TRIGGER_EVENT_HANDLER_ADDRESS/_E0/_E4/_A0 above,
+-- just a different helper ($22FE vs $235B) and constant (0x08).
+-- Reuses StandardScriptHandlers.triggerEvent directly -- no new Lua
+-- code needed.
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E3 = 0x0FD5
 
--- `0xE7` ($0FA9, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xC8`): byte-for-byte the SAME real shape
--- as `0xE3` above (`PUSH HL / LD A,0x02 / CALL $22FE / POP HL / CALL
--- $3727 / RET`) -- the same real `$22FE` helper `0xE1` already uses,
--- just its own fixed constant (`0x02`). Reuses `StandardScriptHandlers
--- .triggerEvent` directly via the existing generic
--- `^TRIGGER_EVENT_HANDLER_ADDRESS` registration loop -- no new Lua
--- code needed.
+-- 0xE7 ($0FA9, whole-corpus scan's next untouched blocker after 0xC8):
+-- byte-for-byte the same shape as 0xE3 above (PUSH HL / LD A,0x02 /
+-- CALL $22FE / POP HL / CALL $3727 / RET) -- the same $22FE helper
+-- 0xE1 already uses, just its own fixed constant (0x02). Reuses
+-- StandardScriptHandlers.triggerEvent directly via the existing
+-- generic ^TRIGGER_EVENT_HANDLER_ADDRESS registration loop.
 ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E7 = 0x0FA9 -- group 0x02, via $22FE
 
--- `0xC9`/`0xCA` ($3916/$3921) -- FOUND 2026-08-13, task #86, same live
--- shadow-run, immediately adjacent to the already-wired `0xCB`
--- ($392C). Byte-for-byte the SAME shape (2 operand bytes read
--- big-endian into DE, fixed `BC`, `CALL $3937`, always continues),
--- just a different fixed `BC` each: `0xC9` -> `BC=0xD613`, `0xCA` ->
--- `BC=0xD623` (`0xCB`'s own is `BC=0xD633`) -- a real, evenly-spaced
--- 3-member family (`$D613`/`$D623`/`$D633`, stride `0x10`). Reuses
--- `.twoByteCommand` with their OWN dedicated `ctx` callbacks, same
--- reasoning as `0xCB`'s own doc comment.
+-- 0xC9/0xCA ($3916/$3921) -- FOUND, task #86, same live shadow-run,
+-- immediately adjacent to the already-wired 0xCB ($392C). Byte-for-
+-- byte the same shape (2 operand bytes read big-endian into DE, fixed
+-- BC, CALL $3937, always continues), just a different fixed BC each:
+-- 0xC9 -> BC=0xD613, 0xCA -> BC=0xD623 (0xCB's own is BC=0xD633) -- an
+-- evenly-spaced 3-member family ($D613/$D623/$D633, stride 0x10).
+-- Reuses .twoByteCommand with their own dedicated ctx callbacks, same
+-- reasoning as 0xCB's own doc comment.
 ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_C9 = 0x3916
 ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CA = 0x3921
 
--- `0xF3`/`0xF4` ($11CE/$11B7) -- FOUND 2026-08-13, task #86, same live
--- shadow-run. See `StandardScriptHandlers.peekTwoByteGate`'s own doc
--- comment for the full, carefully-decoded disassembly (a genuinely
--- unusual real shape: peeks 2 bytes without consuming them, gates on
--- WRAM $D499, and re-reads the SAME 2 bytes as the next opcode once
--- clear).
+-- 0xF3/0xF4 ($11CE/$11B7) -- FOUND, task #86, same live shadow-run.
+-- See StandardScriptHandlers.peekTwoByteGate's own doc comment for the
+-- full, carefully-decoded disassembly (a genuinely unusual shape:
+-- peeks 2 bytes without consuming them, gates on WRAM $D499, and
+-- re-reads the same 2 bytes as the next opcode once clear).
 --
--- **`0xF3`'s own real release condition FULLY DECODED, 2026-08-15**
--- (direct continuation of the palette-fade-family investigation --
--- `0xF3`'s own handler unconditionally calls a real `$1ED7` selector
--- `0x10` dispatch EVERY invocation, gated or not, BEFORE its own
--- `$D499==0` check): selector `0x10`'s own real target, `$414C`, is
--- ANOTHER real `$D499`-indexed jump table (same `$2B70` shape as
--- opcode `0xBA`'s own already-documented `$0EB2`), table base `$4158`,
--- cross-validated the SAME way the outer `$1ED7` table itself was
--- (matching the already-known selector `0x07` -> `$50AC` damage-
--- formula mapping before trusting a new result). Exactly 6 real
--- entries (index 6+ reads into unrelated code, confirmed by nonsense
--- target addresses) -- a real, finite 6-phase state machine sharing
--- `$D499` as a phase counter, DIFFERENT semantics than the palette-
--- fade opcodes' own 0-10 outer-pacing use of the SAME cell (same
--- "one real hardware byte, several unrelated real consumers,
--- sequenced not concurrent" pattern already established for `0xFB`/
--- `0xBF`/`0xBA`):
---   phase 0 ($41CA): `$D49A=0`, `$D499++` (0->1), unconditional.
---   phase 1 ($4477): checks the REAL, ALREADY-MODELED dual gate
---     `$C8E0`/`$CEE8` (the SAME gate `0xFC`/`0xFD`/`0xE8`-`0xEB` use --
---     see `ctx.isTriggerEventGateClear`) -- only `$D499++` (1->2) once
---     BOTH cells read 0; otherwise returns without incrementing (real
---     halt, re-dispatches).
---   phase 2 ($4387): calls `$26DC` (the ALREADY-KNOWN real transition-
---     dispatch entry, see rom-map.md's own "`$04138→$02B70→$04395→
---     $026DC`" chain) and `$04A4`, then `$D499++` (2->3) unconditional.
---   phase 3 (`$4477` again): the SAME dual-gate check as phase 1,
---     `$D499++` (3->4) once clear.
---   phase 4 ($43EE): real OAM/sprite-position work (calls `$0375`/
---     `$44A5`/`$28C2`/`$289B`/`$28AA`, several already-known real
---     helpers from the actor-readiness family), then `$D499++` (4->5)
---     unconditional.
---   phase 5 ($448C): final real cleanup call, then `$D499=0`
---     (unconditional reset) -- this SAME call's own caller-side check
---     (`$D499==0`, right after `$1ED7` returns) now succeeds
---     immediately, releasing via `CALL $3727` on this exact tick.
--- Crucially for cursor tracking: NONE of these 6 phases ever touch the
--- real script-stream HL (it's cached into `$C0B4`/`$C0B5` by `$1ED7`'s
--- own prologue and restored verbatim in its epilogue, regardless of
--- what any individual phase does to its own local HL) -- so this whole
--- state machine is "script-stream-inert," just real per-frame pacing
--- plus real (currently unmodeled, cosmetic) OAM/transition side
--- effects, matching the same "paced correctly, cosmetic writes left
--- optional" precedent as `0xFB`/`0xBF`/`0xBC`/`0xBD`/`0xBE`. See
--- `StandardScriptHandlers.paletteFadeCompletionGate`'s own doc comment
--- for the Lua port (wired for `0xF3` specifically -- `0xF4`'s own
--- selector, `0x0F`, remains untraced, so it keeps the old, honestly-
--- unwired `ctx.isPeekGateClear` default).
+-- 0xF3's own release condition fully decoded (direct continuation of
+-- the palette-fade-family investigation -- 0xF3's handler
+-- unconditionally calls a $1ED7 selector 0x10 dispatch every
+-- invocation, gated or not, before its own $D499==0 check): selector
+-- 0x10's own target, $414C, is another $D499-indexed jump table (same
+-- $2B70 shape as opcode 0xBA's own already-documented $0EB2), table
+-- base $4158, cross-validated the same way the outer $1ED7 table
+-- itself was. Exactly 6 entries (index 6+ reads into unrelated code,
+-- confirmed by nonsense target addresses) -- a finite 6-phase state
+-- machine sharing $D499 as a phase counter, different semantics than
+-- the palette-fade opcodes' own 0-10 outer-pacing use of the same
+-- cell (same "one hardware byte, several unrelated consumers,
+-- sequenced not concurrent" pattern already established for 0xFB/
+-- 0xBF/0xBA):
+--   phase 0 ($41CA): $D49A=0, $D499++ (0->1), unconditional.
+--   phase 1 ($4477): checks the already-modeled dual gate $C8E0/$CEE8
+--     (the same gate 0xFC/0xFD/0xE8-0xEB use -- see ctx
+--     .isTriggerEventGateClear) -- only $D499++ (1->2) once both cells
+--     read 0; otherwise returns without incrementing (halt, re-dispatches).
+--   phase 2 ($4387): calls $26DC (the already-known transition-dispatch
+--     entry, see rom-map.md's "$04138→$02B70→$04395→$026DC" chain) and
+--     $04A4, then $D499++ (2->3) unconditional.
+--   phase 3 ($4477 again): the same dual-gate check as phase 1,
+--     $D499++ (3->4) once clear.
+--   phase 4 ($43EE): OAM/sprite-position work (calls $0375/$44A5/
+--     $28C2/$289B/$28AA, several already-known helpers from the
+--     actor-readiness family), then $D499++ (4->5) unconditional.
+--   phase 5 ($448C): final cleanup call, then $D499=0 (unconditional
+--     reset) -- this call's own caller-side check ($D499==0, right
+--     after $1ED7 returns) now succeeds immediately, releasing via
+--     CALL $3727 on this exact tick.
+-- Crucially for cursor tracking: none of these 6 phases ever touch the
+-- script-stream HL (it's cached into $C0B4/$C0B5 by $1ED7's prologue
+-- and restored verbatim in its epilogue, regardless of what any
+-- individual phase does to its own local HL) -- so this state machine
+-- is "script-stream-inert," just per-frame pacing plus currently
+-- unmodeled, cosmetic OAM/transition side effects, matching the same
+-- "paced correctly, cosmetic writes left optional" precedent as
+-- 0xFB/0xBF/0xBC/0xBD/0xBE. See StandardScriptHandlers
+-- .paletteFadeCompletionGate's own doc comment for the Lua port
+-- (wired for 0xF3 specifically -- 0xF4's own selector, 0x0F, remains
+-- untraced, so it keeps the old, honestly-unwired ctx
+-- .isPeekGateClear default).
 ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3 = 0x11CE
 ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F4 = 0x11B7
 
--- `0xB8`/`0xB9` ($1178/$1186) -- FOUND 2026-08-14, first pass of the
--- newly-rebuilt whole-corpus shadow-run scan (`docs/reverse-
--- engineering/events.md`'s own dated entry has the full real
--- ranking): `0xB8` alone blocks 25 real scripts, the single highest-
--- count clean structural match among the top 40 most-blocking
--- undecoded handlers (`0xB9` never independently halts a script in
--- this corpus -- real, checked, not assumed to match). See
--- `StandardScriptHandlers.wramBitCommand`'s own doc comment for the
+-- 0xB8/0xB9 ($1178/$1186) -- FOUND, first pass of the newly-rebuilt
+-- whole-corpus shadow-run scan (docs/reverse-engineering/events.md's
+-- own dated entry has the full ranking): 0xB8 alone blocks 25 scripts,
+-- the single highest-count clean structural match among the top 40
+-- most-blocking undecoded handlers (0xB9 never independently halts a
+-- script in this corpus -- checked, not assumed to match). See
+-- StandardScriptHandlers.wramBitCommand's own doc comment for the
 -- full disassembly.
 ScriptOpcodeTable.WRAM_BIT_COMMAND_HANDLER_ADDRESS_B8 = 0x1178
 ScriptOpcodeTable.WRAM_BIT_COMMAND_HANDLER_ADDRESS_B9 = 0x1186
 
--- `0x0B`/`0x0C` ($344E/$345B) -- CLOSED 2026-08-14, direct follow-up
--- to `0x09`/`0x0A` -- this session's own next-largest combined
--- blocker (71 real scripts). Real, VERIFIED structure: genuinely
--- DIFFERENT from every other "list" shape this project has decoded --
--- the list searched is an IN-LINE sequence of `[idByte, payload...,
--- 0]` entries living directly in the script stream itself, matched
--- against a real external WRAM byte (`$D871`), gated by bit 7 of a
--- second real WRAM cell (`$D873`) with OPPOSITE polarity between the
--- two opcodes. See `StandardScriptHandlers.runListSearch`'s own doc
--- comment for the complete real disassembly.
+-- 0x0B/0x0C ($344E/$345B) -- CLOSED, direct follow-up to 0x09/0x0A --
+-- this session's next-largest combined blocker (71 scripts). Verified
+-- structure: genuinely different from every other "list" shape
+-- decoded so far -- the list searched is an in-line sequence of
+-- [idByte, payload..., 0] entries living directly in the script
+-- stream itself, matched against an external WRAM byte ($D871), gated
+-- by bit 7 of a second WRAM cell ($D873) with opposite polarity
+-- between the two opcodes. See StandardScriptHandlers.runListSearch's
+-- own doc comment for the complete disassembly.
 ScriptOpcodeTable.RUN_LIST_SEARCH_HANDLER_ADDRESS_0B = 0x344E
 ScriptOpcodeTable.RUN_LIST_SEARCH_HANDLER_ADDRESS_0C = 0x345B
 
--- `0xFB`/`0xBF` ($0E8C/$0FE0) -- CLOSED 2026-08-14, direct follow-up
--- ("dann geh jetzt die verbleibenden blocker an"): the next 2 highest-
--- ranked GENUINELY UNTOUCHED blockers (33 and 29 real scripts) after
--- the known-hard `$15A4`/`$10DC` pair. Both are real "periodic
--- cosmetic WRAM-effect" leaves sharing ONE structural shape (a private
--- phase counter driving a per-call WRAM write, wrapping modulo a fixed
--- period, consuming exactly one extra script-stream byte via the
--- already-known real `$3727` fetch primitive on wrap) -- see
--- `StandardScriptHandlers.periodicWramEffect`'s own doc comment for
--- the shared mechanism and `.waveOffsetEffect`/`.colorPulseEffect` for
--- each opcode's own real per-tick WRAM write. `0xBF` is also one of
--- the boss-defeat script's own real opcodes (see `ScriptRuntime.lua`'s
--- top-of-file "HONEST SCOPE" note).
+-- 0xFB/0xBF ($0E8C/$0FE0) -- CLOSED, direct follow-up to keep tackling
+-- the remaining blockers: the next 2 highest-ranked genuinely
+-- untouched blockers (33 and 29 scripts) after the known-hard
+-- $15A4/$10DC pair. Both are "periodic cosmetic WRAM-effect" leaves
+-- sharing one structural shape (a private phase counter driving a
+-- per-call WRAM write, wrapping modulo a fixed period, consuming
+-- exactly one extra script-stream byte via the already-known $3727
+-- fetch primitive on wrap) -- see StandardScriptHandlers
+-- .periodicWramEffect's own doc comment for the shared mechanism and
+-- .waveOffsetEffect/.colorPulseEffect for each opcode's own per-tick
+-- WRAM write. 0xBF is also one of the boss-defeat script's own
+-- opcodes (see ScriptRuntime.lua's top-of-file "HONEST SCOPE" note).
 ScriptOpcodeTable.WAVE_OFFSET_EFFECT_HANDLER_ADDRESS_FB = 0x0E8C
 ScriptOpcodeTable.COLOR_PULSE_EFFECT_HANDLER_ADDRESS_BF = 0x0FE0
 
--- `0x88`/`0x89` ($0153/$015E) -- CLOSED 2026-08-14, direct follow-up
--- ("konsolidiere unsere Entdeckungen und baue sie ein" -- closing the
--- boss-defeat script's own remaining real opcodes): `0x88` alone is
--- the whole-corpus scan's own rank-13 blocker (13 real scripts), and
--- `0x88`/`0x89` are BOTH real, live-confirmed opcodes of the boss-
--- defeat script itself (events.md's "every opcode it actually uses,
--- decoded" section). Real, fully-traced shape: writes a FIXED per-
--- opcode constant into the real PLAYER entity's own "TYPE" field via
--- a shared helper (`$02A5`/`$02AC` -> `$0C5D`), then consumes one real
--- (genuinely unused) padding byte. See `StandardScriptHandlers
--- .playerEntityTypeWrite`'s own doc comment for the complete real
--- disassembly.
+-- 0x88/0x89 ($0153/$015E) -- CLOSED, direct follow-up to consolidate
+-- discoveries and build them in -- closing the boss-defeat script's
+-- remaining opcodes: 0x88 alone is the whole-corpus scan's rank-13
+-- blocker (13 scripts), and 0x88/0x89 are both live-confirmed opcodes
+-- of the boss-defeat script itself (events.md's "every opcode it
+-- actually uses, decoded" section). Fully-traced shape: writes a
+-- fixed per-opcode constant into the player entity's "TYPE" field via
+-- a shared helper ($02A5/$02AC -> $0C5D), then consumes one (genuinely
+-- unused) padding byte. See StandardScriptHandlers
+-- .playerEntityTypeWrite's own doc comment for the complete disassembly.
 ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_88 = 0x0153
 ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_89 = 0x015E
 
--- `0x8F` ($168E) -- CLOSED 2026-08-14, direct follow-up ("was ist der
--- größte quick win" -> whole-corpus scan's own rank-3 blocker, 33 real
--- scripts): a real conditional halt on the SAME `$C5A0` 8-slot actor-
--- command table this session already traced twice (task #85's `$4B70`
--- enqueue finding; task #86's `$4B4F` "any pending entries" poll,
--- opcode `0x00`'s own real condition) -- a plain "wait until the raw
--- table is all-zero" gate, then consumes one real script-stream byte.
--- See `StandardScriptHandlers.actorCommandQueueEmptyGate`'s own doc
--- comment for the complete real disassembly.
+-- 0x8F ($168E) -- CLOSED, direct follow-up asking for the biggest
+-- quick win -> whole-corpus scan's rank-3 blocker, 33 scripts): a
+-- conditional halt on the same $C5A0 8-slot actor-command table this
+-- session already traced twice (task #85's $4B70 enqueue finding;
+-- task #86's $4B4F "any pending entries" poll, opcode 0x00's own
+-- condition) -- a plain "wait until the raw table is all-zero" gate,
+-- then consumes one script-stream byte. See StandardScriptHandlers
+-- .actorCommandQueueEmptyGate's own doc comment for the complete
+-- disassembly.
 ScriptOpcodeTable.ACTOR_COMMAND_QUEUE_EMPTY_GATE_HANDLER_ADDRESS_8F = 0x168E
 
--- `0x90`/`0x91`/`0x94`-`0x99` ($1606 cluster) -- CLOSED 2026-08-14
--- ("ok dann weiter mit den top blockern" -> whole-corpus scan's own
--- new rank-3 blocker after `0x8F`'s closure, 31 real scripts). A real,
--- self-caught correction: this cluster LOOKS like more members of the
--- already-known `actorAction`/`queuedAction`/`actorSlotPosition`
--- families (shares the exact same real `$28C2` "actor-record-7 ready"
--- gate and the exact same `$2879`/`$2859`/`$123E` leaves) -- but a
--- direct comparison against a real sibling routine (`$28D5`, `CALL
--- $28C2 / RET NZ`, a true halt) found this cluster's own real
--- not-ready behavior is genuinely DIFFERENT: a soft skip-and-continue
--- via the real `$3727`/`INC HL` fetch-and-discard convention, never a
--- halt. See `StandardScriptHandlers.actorActionOrSkip`/
--- `.queuedActionOrSkip`/`.actorSlotPositionOrSkip`'s own doc comments
--- for the complete real disassembly and evidence this is a real,
--- deliberate design difference, not a modeling inconsistency.
+-- 0x90/0x91/0x94-0x99 ($1606 cluster) -- CLOSED, direct follow-up to
+-- keep going with the top blockers -> whole-corpus scan's new rank-3
+-- blocker after 0x8F's closure, 31 scripts. A self-caught correction:
+-- this cluster looks like more members of the already-known
+-- actorAction/queuedAction/actorSlotPosition families (shares the
+-- exact same $28C2 "actor-record-7 ready" gate and the exact same
+-- $2879/$2859/$123E leaves) -- but a direct comparison against a
+-- sibling routine ($28D5, CALL $28C2 / RET NZ, a true halt) found this
+-- cluster's own not-ready behavior is genuinely different: a soft
+-- skip-and-continue via the $3727/INC HL fetch-and-discard convention,
+-- never a halt. See StandardScriptHandlers.actorActionOrSkip/
+-- .queuedActionOrSkip/.actorSlotPositionOrSkip's own doc comments for
+-- the complete disassembly and evidence this is a deliberate design
+-- difference, not a modeling inconsistency.
 ScriptOpcodeTable.ACTOR_ACTION_OR_SKIP_HANDLER_ADDRESS_90 = 0x1606 -- group 0x04
 ScriptOpcodeTable.ACTOR_ACTION_OR_SKIP_HANDLER_ADDRESS_91 = 0x1613 -- group 0x05
 ScriptOpcodeTable.ACTOR_ACTION_OR_SKIP_HANDLER_ADDRESS_96 = 0x1620 -- group 0x1C
