@@ -2403,6 +2403,67 @@ RomProfiles.PROFILES = {
       -- (`172`-`175`) were found this pass via the SAME live exact-
       -- byte VRAM-pattern ROM search this project's other rooms all
       -- used, each with exactly one real match.
+      --
+      -- CORRECTED/DEEPENED (2026-08-17, direct user claim: "ich bin mir
+      -- sehr sicher das er übergang von fourth in den fith room einfach
+      -- nur ein übergang zurück in den third room ist"): the paragraph
+      -- above's own "dynamicBank 7" framing was MISLEADING -- it read
+      -- as if dynamicBank=7 were something distinguishing fifthRoom
+      -- FROM the willyRoom/secondRoom/thirdRoom trio, but a fresh live
+      -- check (`checkpoints.willy_room_free()`/`second_room_free()`/
+      -- `third_room_free()`/`fifth_room_free()`, reading `$D392`/
+      -- `$D393`/`$C3F0`/`$C3F5` at each) found dynamicBank=7 IS ALSO
+      -- their own value -- never actually cross-checked against them
+      -- before. Real, live-confirmed table, all 4 rooms:
+      --   willyRoom:  D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=0/0
+      --   secondRoom: D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=0/128
+      --   thirdRoom:  D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=160/128
+      --   fifthRoom:  D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=0/0
+      -- ALL FOUR real "which room" identity registers this project
+      -- tracks (`$D392`/`$D393` tile-source pointer, `$C3F0`
+      -- dynamicBank, `$C3F5` roomSelector) are BYTE-IDENTICAL across
+      -- the whole set -- the user is right that this "cut" does not
+      -- land in a genuinely separate ROM room; by the real ROM's own
+      -- room-identity bookkeeping, fifthRoom IS willyRoom/secondRoom/
+      -- thirdRoom (same real record), not merely a sibling reusing the
+      -- same tileset. The only real difference across the 4 is SCX/SCY
+      -- (hardware scroll position): willyRoom/secondRoom/thirdRoom are
+      -- reached by CONTINUOUS SCROLLING and accumulate a nonzero SCX/
+      -- SCY along the way, while fifthRoom is reached via a genuine
+      -- "cut" (a real room-commit event, confirmed by `CutTransition
+      -- Table.lua`'s own table entry AND the live `0xF4` opcode trace
+      -- already cited above), which resets SCX/SCY to 0/0 -- landing
+      -- back at that same shared canvas's own origin corner, not
+      -- continuing from wherever the willyRoom walk had scrolled to.
+      --
+      -- HONEST NUANCE (real screenshots + raw VRAM tilemap compared,
+      -- not just registers): fifthRoom's SCX=0/SCY=0 view is visually
+      -- and structurally very close to `thirdRoom`'s own captured view
+      -- (same courtyard shape, same checkerboard floor, same general
+      -- wall layout, same left-side opening -- both screenshots read
+      -- as "the same room type" at a glance) but NOT byte-identical to
+      -- either `thirdRoom`'s or `willyRoom`'s own captured `grid`
+      -- (raw VRAM row 0, cols 8-11: willyRoom shows its own real closed
+      -- door tiles 135/136/139/140 there; fifthRoom shows different
+      -- tile IDs at the same cells) -- real, controlled programmatic
+      -- comparison of `thirdRoom.grid` vs `fifthRoom.grid` (matching
+      -- each cell's OWN room's real tileOffsets-resolved file offset,
+      -- not just raw tile-ID numbers) found only 56/320 (17.5%) cells
+      -- resolve to the identical ROM byte, vs. 264-284/320 (82-89%)
+      -- for any two of willyRoom/secondRoom/thirdRoom against each
+      -- other (the already-established "one continuous scrolled
+      -- canvas" trio) -- fifthRoom is measurably an outlier from that
+      -- trio's own mutual overlap, even though it shares their exact
+      -- room-identity registers. Most consistent honest reading: the
+      -- real underlying canvas behind roomSelector=4 is LARGER than
+      -- the 3 screens' worth willyRoom->secondRoom->thirdRoom's own
+      -- walking path has ever scrolled through, and this "cut" lands
+      -- the camera at a genuinely different, not-yet-walked section of
+      -- that SAME shared canvas (reached only via the cut's own real
+      -- landing tile coordinates) -- not literally the identical
+      -- screen already captured as `thirdRoom`, but real ROM-wise the
+      -- SAME room, not an independent one. See events.md's own dated
+      -- entry for the full trace, screenshots, and register table.
       fifthRoom = {
         status = "VERIFIED",
         romRoomSelectors = { 2, 3, 4, 5, 6 },

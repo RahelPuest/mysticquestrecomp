@@ -10324,3 +10324,82 @@ just a website cosmetic one. Re-verified visually via the rom-inspector
 website's own trigger-zone/landing-point overlay (`js/viz/rooms.js`):
 the landing marker now sits at thirdRoom's west edge instead of
 mid-room. 562/562 Lua tests unaffected.
+
+## fourthRoom -> fifthRoom is real ROM-wise the SAME room as willyRoom/secondRoom/thirdRoom, not a separate one (2026-08-17, same day)
+
+Direct user claim: "ich bin mir sehr sicher das er übergang von fourth
+in den fith room einfach nur ein übergang zurück in den third room
+ist" ("I'm very sure the fourthRoom->fifthRoom transition is simply a
+transition back into thirdRoom"). Investigated live, multi-angle. The
+user is substantively right, with one honest nuance.
+
+**Register-level check** (mGBA, real ROM -- `checkpoints.willy_room_
+free()`/`second_room_free()`/`third_room_free()`/`fifth_room_free()`,
+reading `$D392`/`$D393` [tile-source pointer], `$C3F0` [dynamicBank],
+`$C3F5` [roomSelector, the same byte `rom-map.md`'s `$026DC` writeup
+already documents] at each real settled position):
+
+| room       | D392/D393     | C3F0 | C3F5 | SCX/SCY |
+|------------|---------------|------|------|---------|
+| willyRoom  | (0xb0, 0x46)  | 7    | 4    | 0/0     |
+| secondRoom | (0xb0, 0x46)  | 7    | 4    | 0/128   |
+| thirdRoom  | (0xb0, 0x46)  | 7    | 4    | 160/128 |
+| fifthRoom  | (0xb0, 0x46)  | 7    | 4    | 0/0     |
+
+All 3 real "which room" identity registers this project tracks are
+BYTE-IDENTICAL across the whole set, including fifthRoom. This directly
+contradicts `fifthRoom`'s own PRIOR doc comment, which framed
+"dynamicBank 7" as if it were something specific to fifthRoom -- it was
+never actually cross-checked against willyRoom/secondRoom/thirdRoom's
+own live dynamicBank value before this pass. Real, corrected finding:
+the whole family shares dynamicBank 7. Only SCX/SCY differ, and that's
+fully explained by the transition MECHANISM, not a different room:
+willyRoom/secondRoom/thirdRoom are reached by continuous scrolling
+(hardware SCX/SCY accumulate along the walk), fifthRoom is reached via
+a genuine "cut" (a real room-commit event, `CutTransitionTable.lua`'s
+own table entry + the already-documented live `0xF4` opcode trace),
+which resets SCX/SCY to 0/0 -- landing back at that same shared
+canvas's own origin corner.
+
+**Visual check** (real screenshots, `checkpoints.*_free()` +
+`Session.screenshot()`): thirdRoom and fifthRoom read, at a glance, as
+the same room type -- same courtyard shape, same checkerboard floor,
+same general wall silhouette, same left-side opening. willyRoom looks
+visibly different (its own real north door arch, no left opening, no
+right-side structure) -- a real, meaningful visual contrast that lines
+up with the register data (willyRoom/secondRoom/thirdRoom being one
+continuously-scrolled corridor, fifthRoom being a "cut" back into a
+different section of that same underlying canvas).
+
+**Honest nuance** (real, controlled programmatic comparison, not just
+eyeballing): resolving each grid cell to its OWN room's real
+`tileOffsets`-mapped ROM file offset (not comparing raw tile-ID
+numbers, which differ per room even for identical graphics) and
+diffing `thirdRoom.grid` against `fifthRoom.grid` found only 56/320
+(17.5%) cells resolve to the byte-identical ROM offset -- vs. 264-289/320
+(82-89%) for any two of willyRoom/secondRoom/thirdRoom compared against
+each other (the trio already established as one continuous scrolled
+canvas). fifthRoom is a real, measurable outlier from that trio's own
+mutual overlap, even while sharing their exact room-identity registers.
+Raw VRAM tilemap also confirms: fifthRoom's own row-0/cols-8-11 do NOT
+show willyRoom's own real closed-door tiles (135/136/139/140) at the
+same cells.
+
+**Conclusion**: the most consistent honest reading of all the evidence
+together is that the real underlying canvas behind roomSelector=4 is
+LARGER than the 3 screens' worth willyRoom->secondRoom->thirdRoom's own
+walking path has ever scrolled through, and this "cut" lands the camera
+at a genuinely different, not-yet-walked section of that SAME shared
+canvas (reached only via the cut's own real landing-tile coordinates,
+not by walking/scrolling) -- not literally the identical screen already
+captured as `thirdRoom`, but real ROM-wise the SAME room (same tile-
+source pointer, same dynamicBank, same roomSelector), not an
+independent one. The user's core claim is correct in the substantive
+sense that matters: this transition does not lead to a genuinely
+separate ROM room.
+
+Documented in `rom_profiles.lua`'s own `fifthRoom` doc comment (dated
+addition, same content as here). No gameplay/engine code changed this
+pass -- `fifthRoom` keeps its own independently-captured `grid` for
+rendering (a real, different section of the shared canvas, still worth
+its own capture), this is a documentation correction, not a room-merge.
