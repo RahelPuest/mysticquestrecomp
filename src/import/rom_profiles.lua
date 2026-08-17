@@ -457,51 +457,42 @@ RomProfiles.PROFILES = {
       },
       -- VERIFIED (2026-08-09) real first-battle intro sequence -- traced
       -- against the actual ROM CODE (not just observed behavior), per
-      -- direct user request: "suche die entsprechenden stellen im rom
-      -- code anstatt das ganze evidenzbasiert zu machen." Used
-      -- `tools/rom/watcher.py` (real SM83 watchpoints) + `disasm.py`
-      -- (a real disassembler) to find and read the actual routines, not
-      -- just infer them from OAM/tilemap side effects.
+      -- direct user request to find the actual ROM code rather than do
+      -- this evidence-based (from side effects). Used tools/rom/
+      -- watcher.py (SM83 watchpoints) + disasm.py to find and read the
+      -- actual routines, not just infer them from OAM/tilemap effects.
       --
-      -- **Real walk-in**: right after the heroine name is confirmed, the
-      -- player is hidden for ~68 real frames, then appears already at
-      -- the entrance and walks from screen X=152 to X=72 (Y fixed at 80,
-      -- the same real spawn position `playerSprite` already uses) over
-      -- 80 real frames -- exactly 1px/frame, the SAME speed this
-      -- project already independently VERIFIED for ordinary player
-      -- movement (`Player.PIXELS_PER_STEP`), not a separate cutscene
-      -- speed. Confirmed at the CODE level, not just from OAM: ROM
-      -- `$0659`/`$065B` (ram addresses `$C244`=Y/`$C245`=X) initialize
-      -- the entrance position, then every single per-frame decrement is
-      -- executed by ROM `$09A6`, a store instruction INSIDE the same
-      -- generic "position += velocity, collision-check, write back"
-      -- entity-update routine at `$0961-$09BE` this project had already
-      -- found and documented (rom-map.md "Breakthrough") driving
-      -- ordinary player/enemy movement -- i.e. the real ROM does not
-      -- special-case this cutscene walk with separate code, it just
-      -- feeds the normal movement system a synthetic leftward input,
-      -- which is exactly how this entry is implemented (see
-      -- BattleIntro.lua: drives the real `Player:update` with a
-      -- synthetic held-left input, not custom position math).
+      -- Real walk-in: right after the heroine name is confirmed, the
+      -- player is hidden for ~68 frames, then appears already at the
+      -- entrance and walks from screen X=152 to X=72 (Y fixed at 80,
+      -- the same spawn position playerSprite uses) over 80 frames --
+      -- exactly 1px/frame, the same speed independently verified for
+      -- ordinary movement (Player.PIXELS_PER_STEP), not a separate
+      -- cutscene speed. Confirmed at the code level: ROM $0659/$065B
+      -- initialize the entrance position, then every per-frame
+      -- decrement is executed by ROM $09A6, inside the same generic
+      -- entity-update routine at $0961-$09BE already found driving
+      -- ordinary player/enemy movement -- the ROM doesn't special-case
+      -- this cutscene walk, it feeds the normal movement system a
+      -- synthetic leftward input (see BattleIntro.lua: drives the real
+      -- Player:update with a synthetic held-left input, not custom
+      -- position math).
       --
-      -- **Real "Kaempfe!" textbox**: a real bordered box (same border
-      -- tile IDs as `nameEntry.border` above -- confirmed shared UI
-      -- chrome) appears on the BACKGROUND layer (not the window -- a
-      -- real, deliberate difference from name-entry's own box) at the
-      -- top of the screen, ~208 real frames after the heroine name is
-      -- confirmed, then types its text one real letter every exactly 5
-      -- real frames (confirmed: 6 consecutive letter-reveal writes, all
-      -- exactly 5 frames apart). Real text (NOT "Kampf" as informally
-      -- guessed from an early low-resolution screenshot -- see
-      -- text.md): "Kaempfe!" (German imperative "Fight!"), found the
-      -- same two-independent-ways method as the intro text -- decoded
-      -- live from the real reveal, then found verbatim as literal ROM
-      -- bytes at file offset `0x346D4`. Box closes ~324 frames after
-      -- heroine-confirm (visible ~116 frames total).
+      -- Real "Kaempfe!" textbox: a bordered box (same border tile IDs
+      -- as nameEntry.border above) appears on the background layer (a
+      -- deliberate difference from name-entry's box) at the top of the
+      -- screen, ~208 frames after the heroine name is confirmed, then
+      -- types its text one letter every exactly 5 frames. Real text
+      -- (not "Kampf" as informally guessed from an early low-resolution
+      -- screenshot -- see text.md): "Kaempfe!" (German imperative
+      -- "Fight!"), found the same two-independent-ways method as the
+      -- intro text -- decoded live, then found verbatim as literal ROM
+      -- bytes at file offset 0x346D4. Box closes ~324 frames after
+      -- heroine-confirm.
       --
       -- Real enemy appearance: OAM stays fully hidden until ~468 frames
       -- after heroine-confirm, then appears already in motion, settling
-      -- into the existing `Enemy.MOVEMENT_CYCLE` by ~frame 513 -- no
+      -- into the existing Enemy.MOVEMENT_CYCLE by ~frame 513 -- no
       -- distinct entrance animation, it just becomes visible mid-cycle.
       battleIntro = {
         status = "VERIFIED",
@@ -522,12 +513,11 @@ RomProfiles.PROFILES = {
         },
         postBoxFrames = 144, -- pause after the box closes, before the enemy appears
         -- Real barred-gate open/close animation, position/tile IDs/
-        -- timing confirmed via a per-frame VRAM sweep. `openTileId`'s
-        -- real pattern is 16 bytes of 0xFF (a solid dark tile, not
-        -- blank). No dedicated ROM offset is recorded for it: the tile-
-        -- patch blob driving this (file `0x200B0`, bank 8) just repoints
-        -- tilemap cells to an already-VRAM-resident slot, no new pixel
-        -- data loaded.
+        -- timing confirmed via a per-frame VRAM sweep. openTileId's
+        -- pattern is 16 bytes of 0xFF (a solid dark tile, not blank).
+        -- No dedicated ROM offset recorded: the tile-patch blob driving
+        -- this (file 0x200B0, bank 8) just repoints tilemap cells to an
+        -- already-VRAM-resident slot, no new pixel data loaded.
         gate = {
           status = "VERIFIED",
           bgRow = 0, bgCol = 8, rows = 4, cols = 4, -- BG tilemap rows0-3, cols8-11
@@ -535,16 +525,16 @@ RomProfiles.PROFILES = {
           openTileId = 149,
           openTilePattern = string.rep("\255", 16), -- real live-captured 2bpp bytes, solid color-index-3
         },
-        -- Second, independent real tile-patch mechanic (direct user
-        -- report: an open tile in the right wall that closes after the
-        -- player walks through): the courtyard's own right wall, at the
-        -- walk-in spot, patches in a real 2x2 floor opening for the
-        -- walk-in then seals back to the normal wall tiles once the
-        -- player arrives. `startRoom.grid` models that spot as
-        -- permanently solid, so the player used to visually walk
-        -- through un-opened wall. Frame numbers calibrated relative to
-        -- `hiddenFrames` (same live run): opens 2 frames before the
-        -- player sprite appears, seals 117 frames later.
+        -- Second, independent tile-patch mechanic (direct user report:
+        -- an open tile in the right wall that closes after the player
+        -- walks through): the courtyard's right wall, at the walk-in
+        -- spot, patches in a 2x2 floor opening for the walk-in then
+        -- seals back to normal wall tiles once the player arrives.
+        -- startRoom.grid models that spot as permanently solid, so the
+        -- player used to visually walk through un-opened wall. Frame
+        -- numbers calibrated relative to hiddenFrames (same live run):
+        -- opens 2 frames before the player sprite appears, seals 117
+        -- frames later.
         entranceSeal = {
           status = "VERIFIED",
           bgRow = 10, bgCol = 18, rows = 2, cols = 2, -- BG tilemap row10-11, col18-19
@@ -606,54 +596,50 @@ RomProfiles.PROFILES = {
           { literal = "%HERO_NAME%" },
           { fromOffset = 0x03a1be, toOffsetExclusive = 0x03a1d1 }, -- real terminator (0x00) sits at 0x03a1d1
         },
-        -- Re-traced live. Found two real issues with the previous
-        -- single-page version below: (1) it silently stopped the
-        -- sentence early, at "...jeden Tag zu kaempfen." -- the real
-        -- ROM's own box continues onto A SECOND box with "zur
-        -- Unterhaltung des Dark Lord, zu kaempfen." (i.e. the full real
-        -- sentence names WHO the fighting is for, entirely missing
-        -- before); (2) the previously-honest "at least one more lore
-        -- page, cut off by this project's own capture window" gap is now
-        -- closed -- that page reads in full "Viele liessen dabei
-        -- unnoetig ihr Leben." (a plain single-page sentence, not a
-        -- longer cut-off block as the old capture's ellipsis implied).
-        -- SUPERSEDED (2026-08-12, "ja bitte alles in dieser reinfolge",
-        -- direct continuation of the Willy-exchange live-decoding work):
-        -- the hand-transcribed `storyPages` table that used to live here
-        -- is gone -- `VictorySequence.lua` now live-decodes all 3 pages
-        -- directly from their real ROM offsets (`STORY_PAGE_OFFSETS`,
-        -- file `0x3A1E5`/`0x3A208`/`0x3A234`, same bank-14 dialogue
-        -- block the Willy exchange lives in, immediately before it) via
-        -- `TextDecoder.decodeString`, matching the Willy-exchange lines'
-        -- own established convention of keeping a ROM offset directly in
-        -- app code rather than a second, parallel data table here that
-        -- could drift out of sync with it. See VictorySequence.lua's own
-        -- doc comment for the exact offsets, the real (not re-wrapped)
-        -- line breaks/hyphenation this uncovered, and the one real,
-        -- honest content difference found (page 3 has no real trailing
-        -- period). This comment intentionally stays -- the RESEARCH
-        -- HISTORY above (`victoryLine`'s own doc comment) is still real
-        -- and still explains how these 3 pages were originally found.
+        -- Re-traced live. Found two issues with the previous single-page
+        -- version below: (1) it silently stopped the sentence early, at
+        -- "...jeden Tag zu kaempfen." -- the real box continues onto a
+        -- second box with "zur Unterhaltung des Dark Lord, zu
+        -- kaempfen." (the full sentence names who the fighting is for,
+        -- entirely missing before); (2) the previously-honest "at least
+        -- one more lore page, cut off by this project's own capture
+        -- window" gap is now closed -- that page reads in full "Viele
+        -- liessen dabei unnoetig ihr Leben." (a plain single-page
+        -- sentence, not a longer cut-off block as the old ellipsis
+        -- implied).
+        -- SUPERSEDED (direct continuation of the Willy-exchange live-
+        -- decoding work): the hand-transcribed storyPages table that
+        -- used to live here is gone -- VictorySequence.lua now live-
+        -- decodes all 3 pages directly from their ROM offsets
+        -- (STORY_PAGE_OFFSETS, file 0x3A1E5/0x3A208/0x3A234, same
+        -- bank-14 dialogue block the Willy exchange lives in) via
+        -- TextDecoder.decodeString, matching the Willy-exchange lines'
+        -- own convention of keeping a ROM offset directly in app code
+        -- rather than a second, parallel data table here that could
+        -- drift out of sync. See VictorySequence.lua's own doc comment
+        -- for the exact offsets, the real line breaks/hyphenation this
+        -- uncovered, and the one content difference found (page 3 has
+        -- no trailing period). This comment intentionally stays -- the
+        -- research history above (victoryLine's own doc comment) is
+        -- still accurate and still explains how these 3 pages were
+        -- originally found.
         --
-        -- Real room transition (2026-08-09, traced and implemented --
-        -- see `graphics.willyRoom` below and `docs/reverse-engineering/
-        -- rom-map.md`'s "Real room-tile decompression pipeline, found"
-        -- entry): a genuinely different room loads before the Willy
-        -- dialogue plays. Real code path, bank 0: `$04E8` reads the
-        -- source pointer at WRAM `$D392`/`$D393` (resolves live to ROM
-        -- bank 8, file offset `0x206B0`), and for each raw source byte
-        -- looks it up through a real 256-entry tile-ID remap table
-        -- staged at WRAM `$D070-$D16F` before drawing 2x2 real tile
-        -- blocks via the same general cursor-relative blit (`$045D`/
-        -- `$048C`) and VRAM job-queue (`$1E9F`) this session already
-        -- found for the black-screen wipe -- i.e. this is the SAME
-        -- general drawing machinery, just fed a different (non-blank)
-        -- tile source. This is a real, newly-found room-decompression
-        -- pipeline, distinct from both the starting courtyard's own
-        -- hardcoded capture (`startRoom` below) and the still-not-
-        -- understood bank-5 RLE table (see rom-map.md's "Maps"
-        -- section) -- neither superseded nor explained by this finding,
-        -- just a third, now-real data point.
+        -- Real room transition (traced and implemented -- see
+        -- graphics.willyRoom below and rom-map.md's "Real room-tile
+        -- decompression pipeline, found"): a genuinely different room
+        -- loads before the Willy dialogue plays. Code path, bank 0:
+        -- $04E8 reads the source pointer at WRAM $D392/$D393 (resolves
+        -- live to ROM bank 8, file offset 0x206B0), and for each raw
+        -- source byte looks it up through a 256-entry tile-ID remap
+        -- table staged at WRAM $D070-$D16F before drawing 2x2 tile
+        -- blocks via the same general cursor-relative blit ($045D/
+        -- $048C) and VRAM job-queue ($1E9F) already found for the
+        -- black-screen wipe -- the same general drawing machinery, just
+        -- fed a different (non-blank) tile source. A newly-found room-
+        -- decompression pipeline, distinct from both the starting
+        -- courtyard's hardcoded capture (startRoom below) and the
+        -- still-not-understood bank-5 RLE table (see rom-map.md's
+        -- "Maps" section).
       },
       -- The real second room, captured the same way `startRoom` was: a
       -- live VRAM tilemap read (20x16, no scroll), not reconstructed
