@@ -140,7 +140,7 @@ Harness.test("TextDecoder.decodeByte: 12 more digraph/single-letter bytes decode
   Harness.assertEqual(TextDecoder.decodeByte(0x3F), "he") -- "hierher" (x2)
   Harness.assertEqual(TextDecoder.decodeByte(0x47), "ar") -- "Warte", "Bogard" (a real character name)
   Harness.assertEqual(TextDecoder.decodeByte(0x4C), " b") -- "...bezwungen" after 3 different monster names (space-inclusive)
-  Harness.assertEqual(TextDecoder.decodeByte(0x5B), "a") -- "Julia" (a real character name, single-letter code)
+  Harness.assertEqual(TextDecoder.decodeByte(0x5B), "us") -- "Julius" (a real character name; corrected 2026-08-17, see TextDecoder.lua's own 0x5B note -- was "a"/"Julia")
   Harness.assertEqual(TextDecoder.decodeByte(0x65), " h") -- "Sie haben das", "Warte hier" (space-inclusive)
   Harness.assertEqual(TextDecoder.decodeByte(0x6E), "mm") -- "Willkommen", "entkommen", "Komm hierher"
   Harness.assertEqual(TextDecoder.decodeByte(0x88), "Da") -- "Dark Lord" -- first confirmed CAPITALIZED digraph
@@ -328,7 +328,7 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "TextDecoder.decodeString: decodes the real character name 'Julia' (2026-08-11, systematic dialogue scan)",
+  "TextDecoder.decodeString: decodes the real character name 'Julius' (2026-08-11, systematic dialogue scan; name corrected 2026-08-17)",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -337,14 +337,18 @@ Harness.testIfAvailable(
     --
     -- UPDATED (2026-08-15, task #150: SPEAKER_COLON_BYTE 0x2C wired):
     -- decodes the FULL real speaker-tagged line now instead of just the
-    -- bare name -- a perfectly grammatical German sentence ("Julia:
-    -- Nun erfahre die wahre Macht des Mana!" = "Julia: Now learn the
-    -- true power of Mana!", the hyphen splitting "erfahre" across a
-    -- real line break exactly as HYPHEN_BYTE already models), stopping
-    -- cleanly at the real terminator -- itself a strong further
-    -- confirmation that 0x2C really does decode as ":" here.
+    -- bare name -- a perfectly grammatical German sentence, the hyphen
+    -- splitting "erfahre" across a real line break exactly as
+    -- HYPHEN_BYTE already models), stopping cleanly at the real
+    -- terminator -- itself a strong further confirmation that 0x2C
+    -- really does decode as ":" here.
+    --
+    -- NAME CORRECTED, 2026-08-17: was "Julia" (old 0x5B="a" reading).
+    -- The real ROM digraph table reads 0x5B as "us" -- see
+    -- TextDecoder.lua's own 0x5B note for the full evidence trail and
+    -- the direct user decision to apply it.
     local text, nextOffset = TextDecoder.decodeString(romData, 0x034963)
-    Harness.assertEqual(text, "Julia:Nun er-\nfahredie wahre\nMacht des Mana!")
+    Harness.assertEqual(text, "Julius:Nun er-\nfahredie wahre\nMacht des Mana!")
     Harness.assertEqual(nextOffset, 0x034981) -- one past the real terminator byte
   end
 )
@@ -380,8 +384,13 @@ Harness.testIfAvailable(
     -- you're stronger now.", grammatical apart from one small, real,
     -- PRE-EXISTING gap -- "aa" for "aus" -- a different, still-
     -- unmapped digraph this fix doesn't touch, left as-is).
+    --
+    -- GAP CLOSED, 2026-08-17: that "aa"/"aus" gap was 0x5B itself --
+    -- the old "a" reading produced literal-a + "a" = "aa"; the real
+    -- ROM digraph table's "us" reading (see TextDecoder.lua's own
+    -- 0x5B note) produces literal-a + "us" = "aus", the real word.
     local text, nextOffset = TextDecoder.decodeString(romData, 0x0352D4)
-    Harness.assertEqual(text, "Dark Lord:Sieht\nso aa, als w\195\164rst\ndu jetzt st\195\164rker.")
+    Harness.assertEqual(text, "Dark Lord:Sieht\nso aus, als w\195\164rst\ndu jetzt st\195\164rker.")
     Harness.assertEqual(nextOffset, 0x0352F8) -- one past the real terminator byte
   end
 )
@@ -485,7 +494,7 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "TextDecoder.decodeString: decodes a COMPLETE, gap-free real sentence -- 'Was hast du ihr angetan, Julia?' (2026-08-12, \"digraphs komplett schliessen\")",
+  "TextDecoder.decodeString: decodes a COMPLETE, gap-free real sentence -- 'Was hast du ihr angetan, Julius?' (2026-08-12, \"digraphs komplett schliessen\"; name corrected 2026-08-17)",
   romData ~= nil,
   "no development ROM found",
   function()
@@ -495,10 +504,20 @@ Harness.testIfAvailable(
     -- remaining gaps, decoded end to end using only entries from
     -- DIGRAPH_PARTIAL -- something that would have stopped after just
     -- "as" before this pass (0x65/0x28/0x45/0x3A/0x34/0x2B/0x41 were
-    -- all still unmapped). Real dialogue: Julia's mother confronting
-    -- her after the Dark Lord kidnapping.
+    -- all still unmapped).
+    --
+    -- NAME CORRECTED, 2026-08-17: was "Julia" (from the old 0x5B="a"
+    -- reading). The real ROM digraph table (found by disassembly, see
+    -- text.md's "FOUND: the real digraph lookup table" section) reads
+    -- 0x5B as "us", not "a" -- the real name is "Julius", not "Julia"
+    -- (also independently supported by 5 clean, unrelated words this
+    -- project already found requiring "us": "Ausrüstung", "Daraus",
+    -- "raus!", "grausamer", "grausam!" -- see DIGRAPH_PARTIAL's own
+    -- 0x5B note). Confirmed and applied by direct user decision after
+    -- the conflict was presented. Real dialogue: Julius's mother
+    -- confronting him after the Dark Lord kidnapping.
     local text, nextOffset = TextDecoder.decodeString(romData, 0x3A625)
-    Harness.assertEqual(text, "Was hast du ihr\nangetan, Julia?")
+    Harness.assertEqual(text, "Was hast du ihr\nangetan, Julius?")
     Harness.assertEqual(nextOffset, 0x3A63A)
   end
 )

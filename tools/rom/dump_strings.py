@@ -72,8 +72,11 @@ DIGRAPH_PARTIAL = {
     0x51: "it", 0x55: "ll", 0x58: "or", 0x5A: "ma", 0x5C: "em",
     0x5F: "li",
     # 2026-08-11 additions (see TextDecoder.lua's own DIGRAPH_PARTIAL).
+    # 0x5B REVISED 2026-08-17: was "a" ("Julia") -- the real ROM digraph
+    # table (found by disassembly) reads it as "us" ("Julius"). See
+    # TextDecoder.lua's own 0x5B note for the full evidence trail.
     0x23: "er", 0x25: "n ", 0x29: "in", 0x2B: "ge", 0x34: "an",
-    0x3F: "he", 0x47: "ar", 0x4C: " b", 0x5B: "a", 0x65: " h",
+    0x3F: "he", 0x47: "ar", 0x4C: " b", 0x5B: "us", 0x65: " h",
     0x6E: "mm", 0x88: "Da", 0x21: "de", 0x43: "n",
     # 2026-08-12 additions ("versuche die text decoder digraphs komplett
     # zu schliessen" -- see TextDecoder.lua's own DIGRAPH_PARTIAL for the
@@ -88,8 +91,11 @@ DIGRAPH_PARTIAL = {
     # screen cross-check that fixed the 0x35/0x38/0x8D boundary split,
     # and the honest 0x6C contradiction it also caught, deliberately
     # NOT included here).
+    # 0x86 REVISED 2026-08-17: was "ih" -- the real ROM digraph table
+    # reads it as "Di" ("wird Dir helfen"). See TextDecoder.lua's own
+    # 0x86 note.
     0x35: "ic", 0x38: "h ", 0x69: "we", 0x6A: "d ", 0x80: "rt",
-    0x86: "ih", 0x8D: "Ic", 0x8F: "eg",
+    0x86: "Di", 0x8D: "Ic", 0x8F: "eg",
     0x6C: "si",  # dialogue-region value; one honest credits-screen
     # counter-example ("Yoshinori" wanting "shi") -- see TextDecoder.lua.
     # Third round ("na dann loese was noch offen ist" / "versuche ...
@@ -97,16 +103,26 @@ DIGRAPH_PARTIAL = {
     # own DIGRAPH_PARTIAL for the full per-entry evidence.
     0x32: "nd", 0x40: "ne", 0x42: " e", 0x44: "is", 0x46: " s",
     0x48: "rd", 0x4A: " g", 0x4B: "ht", 0x4D: " w", 0x52: " M",
-    0x56: "el", 0x57: " m", 0x61: " n", 0x62: "nn", 0x66: "! ",
+    0x56: "el", 0x57: " m", 0x61: " n", 0x62: "nn",
     0x67: "ef", 0x68: "mi", 0x6F: " B", 0x81: " a", 0x85: "di",
     0x8A: "eh", 0x8B: "ns", 0x8C: "ha",
-    # NOTE (2026-08-15): 0x82 was checked again while hunting
-    # secondRoom's real "Amanda" dialogue and reads cleanly as "me" in
-    # every occurrence that hunt touched -- but see TextDecoder.lua's
-    # own DIGRAPH_PARTIAL doc comment: this byte was ALREADY found
-    # genuinely CONTRADICTORY elsewhere in the full ROM (2026-08-12),
-    # and this pass's narrower sample doesn't overturn that. Left
-    # unmapped here on purpose, kept in sync with TextDecoder.lua.
+    # 0x66 REVISED 2026-08-17: was "! " -- the real ROM digraph table
+    # AND a direct font-tile-bitmap render both independently confirm
+    # tile 0x70 is a period, not an exclamation mark. See
+    # TextDecoder.lua's own 0x66 note.
+    0x66: ". ",
+    # FOUND, 2026-08-17: the real ROM digraph lookup table itself (ROM
+    # `$3F3F`, see docs/reverse-engineering/text.md). 0x82 was
+    # previously left unmapped on purpose (see the retired note this
+    # replaces) as genuinely CONTRADICTORY across dynamic occurrences --
+    # the real table proves a single, unambiguous answer instead. Also
+    # adds 0x27/0x63/0x70-0x7F, previously unmapped. Kept in sync with
+    # TextDecoder.lua's own DIGRAPH_PARTIAL.
+    0x82: "me", 0x27: "..", 0x63: "ng",
+    0x70: "rt", 0x71: " a", 0x72: "me", 0x73: " G", 0x74: "ac",
+    0x75: "di", 0x76: "Di", 0x77: "na", 0x78: "Da", 0x79: "a ",
+    0x7A: "eh", 0x7B: "ns", 0x7C: "ha", 0x7D: "Ic", 0x7E: "ra",
+    0x7F: "eg",
 }
 
 

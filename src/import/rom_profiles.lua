@@ -1500,27 +1500,28 @@ RomProfiles.PROFILES = {
             -- cross-check that had turned up "Aarüstung" as PART of
             -- confirming this): a first pass left "raa!" as an "honest,
             -- unresolved oddity", reasoning that its 2 bytes (`0x8E`
-            -- ="ra", `0x5B`="a", both independently well-confirmed
-            -- elsewhere) mathematically can't spell "raus!" (4 decoded
-            -- symbols vs. 5 needed). That reasoning was right about the
-            -- MATH but wrong to stop there -- searching the WHOLE ROM
-            -- for every other occurrence of the exact byte pair `8E 5B`
-            -- (only 4 total) found `0x5B` is ALSO genuinely
-            -- contradictory (same shape as `0x82`, just never
-            -- previously flagged): the "a" reading is airtight for
-            -- "Julia" (25+ occurrences), but EVERY ONE of the other 4
-            -- `8E 5B` contexts -- "Ausrüstung" (equipment, `A[5B]r...`,
-            -- no `0x8E` even involved), "Daraus mache" (from that I
-            -- make), "grausamer als" (crueler than -- ALSO
-            -- independently reconfirms `0x82`="me"), "grausam!"
-            -- (terrible!) -- reads perfectly, cleanly, as real German
-            -- ONLY if `0x5B`="us" there, not "a". `0x5B` stays "a" in
-            -- the SHARED global table (still correct for "Julia" and
-            -- everything else that already uses it) -- see
-            -- TextDecoder.lua's own updated `DIGRAPH_PARTIAL` doc
-            -- comment for the full 5-word evidence trail -- but THIS
-            -- hand-transcribed string reads it locally as "us",
-            -- exactly like `0x82` already does two words later.
+            -- ="ra", `0x5B`="a" at the time, both independently well-
+            -- confirmed elsewhere) mathematically can't spell "raus!"
+            -- (4 decoded symbols vs. 5 needed). That reasoning was
+            -- right about the MATH but wrong to stop there -- searching
+            -- the WHOLE ROM for every other occurrence of the exact
+            -- byte pair `8E 5B` (only 4 total) found `0x5B` is ALSO
+            -- genuinely contradictory against the OLD "a" reading (same
+            -- shape as `0x82`, just never previously flagged):
+            -- "Ausrüstung" (equipment, `A[5B]r...`, no `0x8E` even
+            -- involved), "Daraus mache" (from that I make), "grausamer
+            -- als" (crueler than -- ALSO independently reconfirms
+            -- `0x82`="me"), "grausam!" (terrible!) all needed "us", not
+            -- "a". At the time, `0x5B` stayed "a" in the SHARED global
+            -- table (the byte was also assumed to spell "Julia") with a
+            -- LOCAL override to "us" just for this hand-transcribed
+            -- string. RESOLVED, 2026-08-17: the real ROM digraph table
+            -- (found by disassembly) proved `0x5B="us"` universally --
+            -- these 4 words were right all along, and "Julia" was
+            -- itself a mis-read (really "Julius", see
+            -- `namedCharacters` above and TextDecoder.lua's own `0x5B`
+            -- note). The shared global table now reads "us" directly,
+            -- so this string no longer needs (or has) a local override.
             realName = "Amanda", -- her name is unmistakable and appears
             -- 15+ times throughout this ROM's own real story text (see
             -- dump_strings.py's own scan output) -- confident enough to
@@ -1532,9 +1533,9 @@ RomProfiles.PROFILES = {
               -- speaker colon (`SPEAKER_COLON_BYTE`, `0x2c`) -- the real
               -- ROM byte stream never inserts one; this project already
               -- established the SAME "no added space" convention for
-              -- Julia's own line ("Julia:Nun er-\nfahre..."), this was
-              -- just never applied here yet.
-              "Wir müssen hier\nraus!", -- see doc comment above: 0x5B locally reads "us" here, not the shared table's "a"
+              -- Julius's own line ("Julius:Nun er-\nfahre..."), this
+              -- was just never applied here yet.
+              "Wir müssen hier\nraus!", -- 0x5B reads "us" here via the shared table directly (see doc comment above)
               "Ich möchte nach\nHause zu meinem\nkleinen Bruder.",
             },
             -- REAL ROM SOURCE FOUND (task "komplett autark
@@ -4709,8 +4710,17 @@ RomProfiles.PROFILES = {
       namedCharacters = {
         { name = "Bogard", occurrences = 16, positionKnown = false,
           role = "Mentor-Figur -- gibt dem Held Excalibur, schickt ihn zu Cibba nach Wendel" },
-        { name = "Julia", occurrences = 14, positionKnown = false,
-          role = "Hauptgegnerin -- wird König von Glaive, erlangt die Macht des Mana" },
+        -- NAME CORRECTED, 2026-08-17: was "Julia" (old TextDecoder
+        -- 0x5B="a" reading). The real ROM digraph table (found by
+        -- disassembly, see docs/reverse-engineering/text.md's "FOUND:
+        -- the real digraph lookup table" section) reads 0x5B as "us",
+        -- not "a" -- the real name is "Julius". This ALSO resolves a
+        -- pre-existing inconsistency in this very entry's own `role`
+        -- text, written independently before this correction: "wird
+        -- König" (becomes KING, grammatically masculine) never fit a
+        -- character named "Julia" -- it fits "Julius" exactly.
+        { name = "Julius", occurrences = 14, positionKnown = false,
+          role = "Hauptgegner -- wird König von Glaive, erlangt die Macht des Mana" },
         { name = "Cibba", occurrences = 13, positionKnown = false,
           role = "wiederkehrender Verbündeter -- reist per Luftschiff, pflegt den verletzten Dodo" },
         { name = "Amanda", occurrences = 10, positionKnown = true, room = "secondRoom",

@@ -473,22 +473,38 @@ TextDecoder.DIGRAPH_PARTIAL = {
   [0x3F] = "he", -- "hier[3F]r?"/"Komm hier[3F]r!"="hierher" (x2, "Komm hierher!" and a standalone "hierher?")
   [0x47] = "ar", -- "W[47]te...ier"="Warte hier", "Bog[47]d"="Bogard" (a real character name, 20+ identical occurrences)
   [0x4C] = " b", -- "Zyklop[4C]ezwungen"/"Garuda[4C]ezwungen"/"Chimä[4F][4C]ezwungen"="...bezwungen" (3 different monster names, space-inclusive)
-  [0x5B] = "a", -- "Juli[5B]"="Julia" (a real character name, 25+ identical occurrences) -- single-letter code, same shape as the already-flagged 0x43="n" lead
-  -- NEWLY FOUND CONTRADICTION (2026-08-15, checked while hunting
-  -- secondRoom's real "Amanda" dialogue -- direct user report "es muss
-  -- ja ganz klar ausrüstung heißen"): this byte ALSO wants "us" (not
-  -- "a") in every one of 5 independent real words this pass found --
-  -- "A[5B]rüstung"="Ausrüstung" (equipment), "Da[8E][5B]"="Daraus"
-  -- (from that), "[8E][5B]!"="raus!" (get out, Amanda's own line),
-  -- "gr[8E][5B]a[82]r"="grausamer" (crueler), "gr[8E][5B]am!"=
-  -- "grausam!" (terrible!) -- all clean, all real, all contradict the
-  -- "a" reading above just as directly as "Julia" demands it. Same
-  -- genuinely-contradictory shape as `0x82` below (not force-picked a
-  -- side) -- the default here stays "a" (unchanged, still correct for
-  -- "Julia" and any other caller of this shared decoder), but any
-  -- HAND-transcribed string built from bytes matching one of the 5
-  -- "us" words above should read it as "us" locally, not call
-  -- `TextDecoder.decodeString` and trust the default blindly.
+  -- REVISED, 2026-08-17 (direct user decision after the real digraph
+  -- table conflict was presented -- see this table's own header note):
+  -- was "a" (25+ occurrences of "Juli[5B]", read as "Julia"). The real
+  -- ROM digraph table (`$3F3F`, formula proven against ~85 other
+  -- entries with zero exceptions) reads this byte as "us" -- i.e. the
+  -- name is really "Julius", not "Julia". This also reads MORE
+  -- grammatically natural in the flagship regression sentence ("Was
+  -- hast du ihr angetan, Julius?" = "What have you done to HER,
+  -- Julius?" -- Julius asked about a THIRD person, "ihr"/her, rather
+  -- than Julia implausibly being asked about herself in the 3rd
+  -- person). User explicitly chose to trust the disassembly-proven
+  -- table over the old pattern-matched guess. See text.md's own
+  -- "FOUND: the real digraph lookup table" section for the full
+  -- evidence trail; every doc/comment elsewhere in this project that
+  -- still says "Julia" for this character reflects the OLD, now-
+  -- corrected reading and should be read as "Julius" instead.
+  [0x5B] = "us", -- "Juli[5B]"="Julius" (a real character name, 25+
+  -- identical occurrences)
+  -- RESOLVED, 2026-08-17 (was: "NEWLY FOUND CONTRADICTION", 2026-08-15,
+  -- checked while hunting secondRoom's real "Amanda" dialogue -- direct
+  -- user report "es muss ja ganz klar ausrüstung heißen"): this byte
+  -- ALREADY wanted "us" (not "a") in every one of 5 independent real
+  -- words that pass found -- "A[5B]rüstung"="Ausrüstung" (equipment),
+  -- "Da[8E][5B]"="Daraus" (from that), "[8E][5B]!"="raus!" (get out,
+  -- Amanda's own line), "gr[8E][5B]a[82]r"="grausamer" (crueler),
+  -- "gr[8E][5B]am!"="grausam!" (terrible!) -- all clean, all real. At
+  -- the time this was left as a genuinely-contradictory, not-force-
+  -- picked open question against the "Julia" reading (same shape as
+  -- `0x82` below). The real ROM digraph table found 2026-08-17 (see
+  -- this table's own header note) settles it: "us" is correct --
+  -- these 5 words were right all along, and "Julia" was a mis-read
+  -- (really "Julius", see the revision above).
   [0x65] = " h", -- "Sie[65]abe[25]das"="Sie haben das", "W[47]te[65]ier"="Warte hier" (space-inclusive, same shape as 0x3A/0x25)
   [0x6E] = "mm", -- "Willko[6E]en"="Willkommen" (x2), "entko[6E]en"="entkommen", "Ko[6E][65]ier[3F]r"="Komm hierher"
   [0x88] = "Da", -- "[88]rk Lord"="Dark Lord" (10+ identical occurrences) -- first confirmed CAPITALIZED 2-letter code, a proper noun/title
@@ -699,8 +715,17 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- helfen"="wird ihr helfen" (will help her, x2, using 0x86 below).
   [0x80] = "rt", -- 2 words: "Sch[69][80]"="Schwert" (sword, x3, see
   -- 0x69 above) and "O[80] heute"="Ort heute" (place, today).
-  [0x86] = "ih", -- 2 words: "wir[6A][86]r helfen"="wird ihr helfen"
-  -- (will help her, x2, see 0x6A above).
+  -- REVISED, 2026-08-17: was "ih" (from "wir[6A][86]r helfen"="wird
+  -- ihr helfen", will help her, x2) -- a real conflict against the real
+  -- ROM digraph table (`$3F3F`, see this table's own header note),
+  -- which reads this byte as "Di". Applying the same standard the user
+  -- explicitly chose for the 0x5B/"Julia"->"Julius" conflict above (the
+  -- table is a proven, structural source, not per-byte word-count
+  -- dependent): "wir[6A]Dir helfen"="wird Dir helfen" (will help YOU,
+  -- capitalized formal "Dir") is equally natural German and now the
+  -- one this table uses.
+  [0x86] = "Di", -- "wir[6A][86]r helfen"="wird Dir helfen" (will help
+  -- you, formal, x2, see 0x6A above).
   [0x8D] = "Ic", -- capitalized, 3-letter, paired with 0x38 above
   -- forming "Ich" (I) -- see 0x35's own note for why this split (not
   -- "I"+"ch ") is the one the credits cross-check supports: 3+
@@ -851,24 +876,18 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- range: exact match, zero contradictions, for every entry except 5
   -- pre-existing single-LETTER codes (`0x30`,`0x3D`,`0x43`,`0x5E`,
   -- `0x60` -- the real table technically encodes a 2nd character there
-  -- too, a trailing space or `!`, left AS-IS below rather than
-  -- overwritten since it's unclear whether that 2nd tile actually
-  -- renders in practice or is swallowed by word-wrap logic -- a real,
-  -- open follow-up, not resolved by this table alone) and 2 direct
-  -- conflicts with earlier single-word dynamic findings, LEFT UNCHANGED
-  -- below rather than overwritten: `0x5B="a"` (25+ occurrences, all
-  -- "Julia") reads as table slot 0x3B = "us" by this formula, and
-  -- `0x86="ih"` (2 words) reads as table slot 0x56 = "Di" -- both real
-  -- mismatches, not just an extra invisible tile like the 5 above. A
-  -- static lookup table can't legitimately disagree with itself, so
-  -- ONE of these two readings per byte is wrong -- but 0x5B's dynamic
-  -- evidence (25+ identical, unambiguous occurrences of a real name)
-  -- is strong enough that swapping it on a single table read felt too
-  -- risky without understanding WHY they'd disagree first (e.g. proper
-  -- names could plausibly route through a different substitution
-  -- mechanism than general dialogue prose -- not confirmed either way).
-  -- Flagged here as a genuine, unresolved open question rather than
-  -- guessed in either direction.
+  -- too, a trailing space or (as corrected below) a period, left
+  -- AS-IS below rather than overwritten since it's unclear whether
+  -- that 2nd tile actually renders in practice or is swallowed by
+  -- word-wrap logic -- attempted live via injection 2026-08-17, real
+  -- effort, inconclusive (see text.md's own follow-up section for why)
+  -- -- a real, open follow-up, not resolved by this table alone) and 2
+  -- direct conflicts with earlier single-word dynamic findings, both
+  -- since RESOLVED (2026-08-17, after presenting the conflict to the
+  -- user -- see `0x5B`'s and `0x86`'s own entries below for the full
+  -- reasoning): `0x5B` revised from "a" ("Julia") to "us" ("Julius"),
+  -- `0x86` revised from "ih" to "Di" (same reasoning, applied for
+  -- consistency).
   --
   -- Bytes `0x80-0x8F` alias the SAME table slots as `0x70-0x7F`
   -- (verified: both formulas index the identical bytes) via a real
@@ -938,12 +957,16 @@ TextDecoder.DIGRAPH_PARTIAL = {
 --     wants "ute" for "Kraeuterlaeden"; "bekom[82]n" wants "me" for
 --     "bekommen") -- a single fixed byte can't be all three; recorded
 --     honestly as unresolved rather than picking the majority reading
---   0x63 = mostly "ng" (eingesperrt, Angriff, eingefroren -- 3 clean,
---     common words) but ONE real counter-example wants just "r"
---     ("Watts verkauft\nih[0x86]"+[63]+"e aus Silber" = "...ihre aus
---     Silber", using the ALREADY-confirmed 0x86="ih" digraph) --
---     same shape of conflict as 0x6C above, left unresolved rather
---     than picking a winner off 3-vs-1 evidence alone
+--   0x63 = RESOLVED 2026-08-17 -- see DIGRAPH_PARTIAL's own entry
+--     above: the real ROM digraph table decisively confirms "ng"
+--     (eingesperrt, Angriff, eingefroren -- 3 clean, common words).
+--     The "one real counter-example" this note used to describe
+--     ("Watts verkauft\nih[0x86]"+[63]+"e aus Silber") depended on the
+--     OLD 0x86="ih" reading, itself since revised to "Di" (see
+--     DIGRAPH_PARTIAL's own 0x86 note) -- both the "ng" majority and
+--     the apparent "r" counter-example trace back to the same table
+--     now, so this was never a real conflict, just built on a since-
+--     corrected neighboring byte.
 -- (0x52, 0x66, 0x40, and 0x6C used to be listed here too -- see the
 -- table above instead, all now resolved with real evidence.)
 -- Also: several messages show a MISSING space where grammar expects

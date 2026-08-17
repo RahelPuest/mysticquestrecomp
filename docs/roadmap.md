@@ -581,12 +581,29 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       `DIGRAPH_PARTIAL` from **30 → 91 confirmed entries** across 3
       rounds. Whole-region real-byte coverage: ~66%. Full multi-
       sentence passages now decode completely, e.g. *"Was hast du ihr
-      angetan, Julia?"*. **Remaining, honestly**: 2 bytes (`0x82`,
-      `0x63`) are genuinely CONTRADICTORY across their own occurrences,
-      not just unconfirmed — left open rather than guessed; ~55 low-
-      frequency byte values in the digraph range still unmapped (real,
-      bounded, not worth chasing without more data); still no general
-      word-wrap/hyphenation (hand-wrapped strings throughout
+      angetan, Julius?"* (name corrected 2026-08-17; see below).
+      **UPDATE (2026-08-17)**: the real ROM digraph lookup table itself
+      was found by disassembly (ROM `$3F3F`) and used to resolve
+      almost all of the previously-open range, including both bytes
+      this paragraph used to call genuinely contradictory (`0x82`="me",
+      `0x63`="ng") and 20 more previously-unmapped bytes (`0x27`,
+      `0x70`-`0x7F`, punctuation tiles `0x71`-`0x74` identified by
+      direct font-tile-bitmap inspection). One real, disassembly-
+      confirmed conflict against a strong 25+-occurrence dynamic
+      finding surfaced along the way: `0x5B` really decodes to "us",
+      not "a" — the character previously read as "Julia" is really
+      "Julius" (independently corroborated by `namedCharacters`'s own
+      pre-existing "wird König", grammatically masculine, description
+      of that same character). See
+      `docs/reverse-engineering/text.md`'s own "FOUND: the real
+      digraph lookup table" and follow-up sections for the full
+      evidence trail. Still genuinely open: ~30 low-frequency byte
+      values remain unmapped (real, bounded); the single-letter-code
+      question (does a technically-encoded 2nd character actually
+      render for `0x30`/`0x3D`/`0x43`/`0x5E`/`0x60`?) needs a live
+      trace this pass's own injection attempt couldn't cleanly settle;
+      still no general word-wrap/hyphenation (hand-wrapped strings
+      throughout
       `rom_profiles.lua` instead); and — the actual remaining gap for
       this milestone now — none of this real, decoded ROM text is
       wired into actual gameplay yet (`FIELD_EVENTS`/`VictorySequence`
@@ -1629,13 +1646,17 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       heißen")**: the "raa!" reading above was itself wrong -- a
       whole-ROM search for the same 2-byte pattern found `0x5B` is
       ALSO genuinely contradictory (same shape as the already-known
-      `0x82`, just never flagged before): "a" is airtight for "Julia"
+      `0x82`, just never flagged before): "a" was airtight for "Julia"
       (25+ occurrences) but 5 OTHER real words -- "Ausrüstung",
       "Daraus", "raus!" (this line), "grausamer", "grausam!" -- all
       need "us" instead. Fixed in `rom_profiles.lua` (locally, the
-      shared default stays "a"); full evidence in `TextDecoder.lua`'s
-      own updated doc comment and `progress.md`. 458/458 tests pass.
-      Task #137 closed.
+      shared default stayed "a" at the time); full evidence in
+      `TextDecoder.lua`'s own updated doc comment and `progress.md`.
+      458/458 tests pass. Task #137 closed. **RESOLVED 2026-08-17**:
+      the real ROM digraph table settled this in favor of "us" -- the
+      shared default now reads "us" directly, and "Julia" was itself
+      corrected to "Julius" (see this milestone's own 2026-08-17 update
+      above).
 
       **Full ROM-wide search, same investigation thread (direct user
       request "suchen alle monster und npcs mit allen daten, texten
