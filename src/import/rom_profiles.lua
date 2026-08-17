@@ -1339,219 +1339,88 @@ RomProfiles.PROFILES = {
         -- watching for PC==0x242B -- the same real RLE-decompressor
         -- entry point willyRoom/unknownRoomB's own metatile tables were
         -- found through -- zero hits; this room's real load genuinely
-        -- does not go through that pipeline, matching `rom-map.md`'s
-        -- own earlier "fourthRoom has no known metatile source" note).
+        -- does not go through that pipeline).
         --
-        -- Fell back to the SAME rigor willyRoom's own collision got
-        -- (real, live-movement-verified ground truth), but via direct
-        -- probing instead of a decoded table: `mgba`, real held-button
-        -- input from the real landing spot, `save_raw_state`/
-        -- `load_raw_state` to reset between probes (NOT position
-        -- teleporting -- a raw $C244/$C245 WRAM poke was tried FIRST
-        -- and found unreliable, real movement silently no-ops for 100+
-        -- frames afterward in this environment; a real, reproducible
-        -- mgba-python-bindings limitation, not a ROM fact, so every
-        -- number below comes from a genuinely WALKED real path).
+        -- Fell back to direct live-movement probing instead of a
+        -- decoded table (a raw WRAM position poke proved unreliable in
+        -- this environment -- every number below comes from a
+        -- genuinely walked real path).
         --
         -- Real, decisive, twice-reproduced finding: holding LEFT from
-        -- the real landing spot (row 14, the bottom-most row) OR from
-        -- row 13 (one row up) moves the player NOT AT ALL for 100+ real
-        -- frames -- a real wall, west of column 14 specifically. The
-        -- EXACT SAME LEFT input from row 12 (one row further from the
-        -- stairs) moves freely all the way to the real west wall
-        -- (column 0). A companion probe (UP from row 12 at a smaller X,
-        -- reached via a real detour) found DOWN is ALSO blocked at that
-        -- same column range, re-entering rows 13-14 -- consistent with
-        -- one coherent real structure, not two unrelated glitches: the
-        -- staircase landing is a real, narrow ALCOVE (columns ~14-19
-        -- only, matching this room's own real `135` feature-block
-        -- columns), not full-width open floor the way the identical-
-        -- looking `131`/`129`/`130` tiles read everywhere else in this
-        -- room. `floorTileIds` above cannot express this (same tile IDs
-        -- appear both inside and outside the real alcove) -- exactly
-        -- the class of bug `TileWalkability.build`'s new, general
-        -- `blockedRects` escape hatch exists for (see that module's own
-        -- doc comment). Columns 14-19 are deliberately NOT listed here
-        -- (already correctly handled: 14-17 read real floor per the
-        -- existing tile IDs, 18-19 are the room's own already-known
-        -- solid `128` wall) -- only the real, newly-discovered west
-        -- alcove wall (columns 0-13, rows 13-15 -- row 15 included for
-        -- footprint-math consistency with row 14's own anchor checks,
-        -- even though no player anchor can independently rest there)
-        -- needs an explicit override.
-        -- CORRECTED (2026-08-15, same pass, direct live re-check after
-        -- the first live screenshot verification): `colMax` was
-        -- initially 13 -- off by one. The real evidence is "holding
-        -- LEFT from the landing spot (column 15) moves NOT AT ALL",
-        -- but a 2-wide player footprint moving from column 15 to 14
-        -- only touches columns 14-15 -- with `colMax=13`, column 14
-        -- stayed real floor, so the footprint check still passed and
-        -- the player took one real, wrong 8px step before stopping
-        -- (caught live: `MYSTICQUEST_SCRIPT=left@10-120` landed at
-        -- x=112, not the real ROM's own x=120). `colMax=14` blocks
-        -- that first step too, matching the real, live-observed "zero
-        -- movement, 100+ frames" result exactly.
+        -- the landing spot (row 14) or row 13 moves the player NOT AT
+        -- ALL for 100+ frames -- a real wall west of column 14. The
+        -- same input from row 12 moves freely to the west wall (column
+        -- 0); DOWN is also blocked at that same column range. The
+        -- staircase landing is a real, narrow alcove (columns ~14-19),
+        -- not full-width open floor -- `floorTileIds` can't express
+        -- this (same tile IDs appear inside and outside the alcove),
+        -- so `TileWalkability.build`'s `blockedRects` escape hatch is
+        -- used instead. `colMax=14` (not 13): a first attempt at 13 let
+        -- the player's 2-wide footprint take one wrong 8px step before
+        -- stopping (caught live), landing at x=112 instead of x=120.
         blockedRects = {
           { rowMin = 13, rowMax = 15, colMin = 0, colMax = 14 },
         },
-        -- Real, LIVE-TRACED exit (2026-08-12, "fourthRoom systematisch
-        -- flutfüllen") -- see `fifthRoom`'s own doc comment for the
-        -- full evidence trail.
+        -- Real, live-traced exit -- see fifthRoom's own doc comment for
+        -- the full evidence trail.
         --
-        -- RESOLVED (2026-08-14, task #75 "reconcile live zone coords
-        -- with static grid"): the previously-flagged "HONEST LIMIT"
-        -- (below, kept for the record) is now fully understood, not
-        -- just narrowed. A dedicated live mgba session (loading the
-        -- `third_room_free` checkpoint, replaying the real staircase
-        -- cut, then walking the corridor while logging `$C244`/`$C245`
-        -- (Y/X), the real SCX/SCY scroll shadows (`$C0A6`/`$C0A7`), and
-        -- the FULL 32x32 VRAM tilemap every step) found:
-        --   1. The zone below (raw WRAM Y/X) IS correct and needs no
-        --      change -- `VictorySequence.player.x/y` already use this
-        --      project's own local coordinate convention, which is
-        --      literally the same raw WRAM values these zones were
-        --      built from (`switchToTargetRoom` sets `player.x/y`
-        --      straight from `exit.landingX/Y`), so "raw WRAM" and
-        --      "this project's own coordinate space" were never two
-        --      different things here -- there is no transform to apply.
-        --   2. The real, general reconciliation formula for turning a
-        --      live WRAM Y/X + SCX/SCY sample into the exact real BG
-        --      tile underfoot IS simply `bgRow = (Y+SCY)//8 mod 32`,
-        --      `bgCol = (X+SCX)//8 mod 32` (no OAM +16/+8 sprite-offset
-        --      correction -- that convention applies to the real
-        --      hardware sprite/OAM position, confirmed a DIFFERENT,
-        --      non-offset thing here since this ROM's own real
-        --      `$C244`/`$C245`->OAM-copy writes the WRAM value into OAM
-        --      directly unshifted, live-confirmed via direct `$FE00`
-        --      OAM reads matching WRAM exactly). Cross-verified against
-        --      the ALREADY-established ground truth (the 2026-08-12
-        --      130/129 landing-spot fix below) and against this
-        --      formula predicting known floor tiles correctly at every
-        --      sampled position along both real corridor paths.
-        --   3. Using that formula with `SCX` restricted to its real,
-        --      currently-scrolled value (not assumed 0) DOES turn up
-        --      real, previously-uncaptured tile content -- 10 new tile
-        --      IDs (136-140/143-147, see `tileOffsets` above) that only
-        --      scroll into the visible 20-column window once the
-        --      corridor's own real SCX genuinely moves away from 0 --
-        --      confirming the original investigator's "discrepancy" was
-        --      real, not a false alarm. BUT: every one of these newly-
-        --      found tiles is a WALL/BORDER decoration near the TOP of
-        --      the screen (native BG row 0-1), never anywhere the
-        --      player's own feet are -- the floor the player actually
-        --      stands on (and the exit trigger zones below) stayed
-        --      ordinary, already-known floor (131/133/134) at every
-        --      sampled position on both paths. So the zones below never
-        --      needed correcting either way.
-        --   4. Genuinely NOT fixable further within this room's own
-        --      static single-screen `grid`: `TileGridBackground`/
-        --      `Field.lua` have no camera-scroll implementation at all
-        --      (confirmed -- `Field.lua`'s own doc comment: "no camera
-        --      scroll") -- this project's "cut" transition (matching
-        --      the real ROM's own transition TYPE for both these exits)
-        --      never needs to render the scrolled-past corridor
-        --      content, so extending `grid`/`cols` to include the new
-        --      136-140/143-147 tiles wouldn't currently be drawn
-        --      anywhere without ALSO building real scroll-camera
-        --      support -- a genuinely separate, much larger feature,
-        --      out of this task's own scope. The new tile IDs are kept
-        --      in `tileOffsets` above purely as real, decoded
-        --      documentation for that future work, not wired into
-        --      `grid` (which stays the original, still-accurate,
-        --      landing-spot capture).
+        -- RESOLVED: a dedicated live mgba session (replaying the real
+        -- staircase cut, walking the corridor while logging Y/X, SCX/
+        -- SCY, and the full VRAM tilemap every step) found: (1) the
+        -- zones below (raw WRAM Y/X) are already correct, no transform
+        -- needed -- this project's own coordinate space already uses
+        -- the same raw WRAM values. (2) the real reconciliation formula
+        -- for a live sample -> exact BG tile is `bgRow=(Y+SCY)//8 mod
+        -- 32`, `bgCol=(X+SCX)//8 mod 32` (no OAM offset correction --
+        -- this ROM's own WRAM->OAM copy is unshifted, confirmed via
+        -- direct OAM reads). (3) restricting SCX to its real scrolled
+        -- value DOES turn up 10 real, previously-uncaptured tile IDs
+        -- (136-140/143-147) -- but all are wall/border decoration near
+        -- the top of the screen, never where the player's feet are; the
+        -- floor the player stands on stayed ordinary known floor at
+        -- every sampled position, so the exit zones never needed
+        -- correcting. (4) not further fixable within this room's own
+        -- static single-screen grid: Field.lua has no camera-scroll
+        -- implementation, so a "cut" transition never needs to render
+        -- the scrolled-past corridor -- the new tile IDs are kept in
+        -- `tileOffsets` as real documentation, not wired into `grid`.
         --
-        -- Original 2026-08-12 "HONEST LIMIT" text, kept for the record:
-        -- the zone below uses the REAL WRAM `$C244`/`$C245` (Y/X)
-        -- values directly observed at the live trigger point, NOT
-        -- values re-derived from this room's own already-decoded static
-        -- `grid` -- a real, live-confirmed discrepancy was found
-        -- between the two (the same screen Y/X the corridor's own real
-        -- screenshot was captured at reads back as an ordinary already-
-        -- decoded floor tile in this room's own static grid, not the
-        -- real brick-corridor content actually shown -- most likely a
-        -- real hardware SCROLL offset this project hasn't reconciled
-        -- against the static grid's own coordinate origin.
-        --
-        -- CLOSED (2026-08-13, "fourthRoom->fifthRoom-Lücken schließen"):
-        -- the second real, honest gap -- the actual ROM trigger needs
-        -- the player held against a real wall for ~64 real frames
-        -- before it fires (confirmed live, frame-by-frame) -- is now
-        -- reproduced. `holdFrames=64`/`holdDirection="down"` (see
-        -- events.md's "fourthRoom systematisch flutfüllen" section:
-        -- "holding DOWN there for ~64 real frames against what looks
-        -- like a wall") are read by `VictorySequence:matchedExit`'s own
-        -- extended logic (`HoldTrigger.lua`) -- the exit no longer
-        -- fires the instant the zone is entered, matching the real ROM
-        -- delay instead of this project's own previous, faster,
-        -- unverified-against-the-real-ROM default.
+        -- CLOSED: the real ROM trigger needs the player held against a
+        -- wall for ~64 frames before it fires (confirmed live, frame-
+        -- by-frame) -- now reproduced via `holdFrames=64`/
+        -- `holdDirection="down"`, read by `HoldTrigger.lua`.
         exits = {
           {
-            -- CORRECTED (2026-08-14, direct user report: "der übergang
-            -- zum nächsten raum geht nicht" for this exact room, two
-            -- real bugs found together): the zone's own `yMin`/`yMax`
-            -- (100-108) never actually overlapped a real wall --
-            -- `TileWalkability` reports open floor continuously from
-            -- y=32 down to y=112 (the landing spot), so a player
-            -- holding UP from the landing spot walks straight through
-            -- 100-108 without stopping, and this project's own
-            -- `ZoneMatch` only checks CURRENT position (not collision)
-            -- -- holding DOWN once past the zone fails the check again
-            -- before `HoldTrigger`'s 64-frame counter can ever
-            -- accumulate. The exit could never fire.
+            -- CORRECTED (direct user report the transition doesn't
+            -- fire, two real bugs found together): the zone's own
+            -- `yMin`/`yMax` (100-108) never actually overlapped a real
+            -- wall -- open floor continues from y=32 to y=112 (the
+            -- landing spot), so `ZoneMatch` (current-position-only, no
+            -- collision) never accumulates the 64-frame hold. Live-
+            -- verified where the player actually stops walking up:
+            -- exactly y=32 -- the real wall sits between y=30 (blocked)
+            -- and y=32 (open), matching this exit's own `landingY`.
             --
-            -- Live-verified where the player ACTUALLY stops walking up
-            -- (`MYSTICQUEST_VICTORY_START_ROOM=fourthRoom
-            -- MYSTICQUEST_SCRIPT=up@3-120`): settles at EXACTLY y=32 --
-            -- the real wall sits between y=30 (blocked) and y=32
-            -- (open), and 32 is ALSO this exit's own already-correct
-            -- `landingY` for fifthRoom, a real, decisive cross-check
-            -- this is the right spot to be standing at.
-            --
-            -- BUT (the second real bug, found live-testing the first
-            -- fix): a naive small zone right at y=32 still never
-            -- fires, because holding the required `down` direction
-            -- there is NOT blocked (`canMoveTo(120,33)` etc. are all
-            -- real open floor too, confirmed by the exact same sweep)
-            -- -- the player just walks back down and out of a small
-            -- zone within ~8 frames, nowhere near the 64 needed. This
-            -- project's own `HoldTrigger`/`ZoneMatch` pair has no
-            -- concept of "blocked while held" (see their own doc
-            -- comments) -- only "currently inside the zone, this
-            -- frame, while the button is down." Rather than inventing
-            -- unverified additional wall tiles this room's own real,
-            -- captured static data doesn't contain (this room's own
-            -- doc history already flags the REAL ROM's own exact wall
-            -- position "beyond Y=88" as honestly uncharacterized, see
-            -- the older text below), the zone is sized tall enough
-            -- (64px, `yMax = yMin + holdFrames`, one real game pixel
-            -- per real held frame at this project's own verified 1px/
-            -- frame vertical speed) that a continuous 64-frame down-
-            -- hold starting at the real y=32 stopping point stays
-            -- inside it for the entire hold, by construction -- a
-            -- deliberate, documented engineering choice (not a claimed
-            -- ROM fact) to make the ALREADY-real, ALREADY-verified
-            -- `holdFrames=64`/`holdDirection="down"` finding actually
-            -- reachable in this project's own current model, honestly
-            -- flagged as such rather than silently left broken.
+            -- Second bug, found testing the first fix: a small zone
+            -- right at y=32 still never fires, because holding DOWN
+            -- there isn't blocked either -- the player just walks back
+            -- out within ~8 frames. `HoldTrigger`/`ZoneMatch` have no
+            -- "blocked while held" concept, only "inside the zone this
+            -- frame." Rather than inventing unverified wall tiles, the
+            -- zone is sized tall enough (64px, one pixel per held
+            -- frame) that a continuous 64-frame down-hold starting at
+            -- y=32 stays inside it for the whole hold, by construction
+            -- -- a documented engineering choice, not a claimed ROM fact.
             zone = { xMin = 112, xMax = 128, yMin = 32, yMax = 96 },
             transition = { type = "cut" },
             targetRoom = "fifthRoom",
             landingX = 136, landingY = 32,
-            -- ROM-TABLE-VERIFIED (2026-08-16, same pass as
-            -- thirdRoom->fourthRoom's own citation above): real,
-            -- decoded tile coordinate (16,2) at ROM file `0x38c82`
-            -- (bank 14) or its sibling record at `0x38c8c` (both
-            -- resolve to the identical real pixel pair) -- see
-            -- `src/import/CutTransitionTable.lua`'s own doc comment.
-            -- `(16+1)*8=136`, `(2+2)*8=32` -- exact match.
-            -- LIVE ENTRY POINT FOUND (2026-08-16, same live single-step
-            -- methodology as thirdRoom->fourthRoom's own `scriptEntry`
-            -- below -- see `CutTransitionInterpreter.lua`'s own
-            -- `ENTRY_POINTS.fourthRoomToFifthRoom` doc comment for the
-            -- full trace): real opcode `0xF4` at bank 14, file `0x38c84`
-            -- -- `VictorySequence.lua`'s own `switchToTargetRoom` now
-            -- live-captures and cross-checks this exit's roomSelector
-            -- too, same as thirdRoom->fourthRoom.
+            -- ROM-table-verified: real tile coordinate (16,2) at ROM
+            -- file `0x38c82` (bank 14) -- `(16+1)*8=136`, `(2+2)*8=32`,
+            -- exact match. Live entry point: real opcode 0xF4 at bank
+            -- 14, file `0x38c84` -- VictorySequence.lua's own
+            -- `switchToTargetRoom` live-captures and cross-checks this
+            -- exit's roomSelector too, same as thirdRoom->fourthRoom.
             scriptEntry = {
               bank = 14,
               cpuAddress = 0x4C84,
