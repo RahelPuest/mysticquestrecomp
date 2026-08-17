@@ -669,35 +669,34 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
       end
     end
 
-    -- ADDED (2026-08-15, second-boss feature -- see rom_profiles.lua's
-    -- `sixthRoom.secondBoss` doc comment for the full evidence trail
-    -- and honesty caveat: an evidence-based implementation choice, NOT
-    -- a claimed ROM-confirmed trigger. CORRECTED twice same day, direct
-    -- user reports: first moved from `fourthRoom` to `fifthRoom` (the
-    -- room reached through `fourthRoom`'s own real NORTH exit), then
-    -- moved AGAIN to `sixthRoom` -- the room reached by walking WEST out
-    -- of `fourthRoom`'s own corridor, confirmed via live back-and-forth
-    -- with the user in this exact app -- see `sixthRoom.secondBoss`'s
-    -- own doc comment for the full correction history). Reuses the
-    -- exact same real entities/combat modules
-    -- Field.lua's own first-boss fight uses (Enemy/KnockbackFlicker/
+    -- ADDED (second-boss feature -- see rom_profiles.lua's
+    -- sixthRoom.secondBoss doc comment for the full evidence trail and
+    -- honesty caveat: an evidence-based implementation choice, not a
+    -- claimed ROM-confirmed trigger. CORRECTED twice same day, direct
+    -- user reports: first moved from fourthRoom to fifthRoom (reached
+    -- through fourthRoom's north exit), then moved again to sixthRoom
+    -- -- the room reached by walking west out of fourthRoom's corridor,
+    -- confirmed via live back-and-forth in this exact app -- see
+    -- sixthRoom.secondBoss's own doc comment for the full correction
+    -- history). Reuses the exact same entities/combat modules Field
+    -- .lua's own first-boss fight uses (Enemy/KnockbackFlicker/
     -- AttackSwing/AttackThrust/CombatNoise/CombatFormulas) rather than
-    -- a second, parallel implementation -- and the SAME real sprite/
-    -- species ROM data (`enemySprite`/`enemyHitFlash`/`enemyDeath`),
-    -- matching the user's own "gleiche Grafik" observation.
-    -- `self.secondBossDefeated` is real, tracked state (surfaced via
-    -- `:debugState()`/the HUD) -- HONEST GAP: `sixthRoom` has no
-    -- further real exit recorded at all yet (see that room's own doc
-    -- comment), so there is currently no gate for this flag to open.
+    -- a second, parallel implementation -- and the same sprite/species
+    -- ROM data (enemySprite/enemyHitFlash/enemyDeath), matching the
+    -- user's own "same graphic" observation. self.secondBossDefeated
+    -- is real, tracked state (surfaced via :debugState()/the HUD) --
+    -- HONEST GAP: sixthRoom has no further exit recorded yet (see that
+    -- room's own doc comment), so there's currently no gate for this
+    -- flag to open.
     --
     -- HONEST SCOPE, simplifications vs. Field.lua's own first-boss
     -- fight: this creature does not move (Field.lua's own
-    -- `EnemyMovementInterpreter`/`Enemy.MOVEMENT_CYCLE` patrol is real
-    -- ROM-decoded behavior FOR THE FIRST BOSS specifically -- porting
-    -- it here would imply the same real per-tick AI drives this second,
+    -- EnemyMovementInterpreter/Enemy.MOVEMENT_CYCLE patrol is ROM-
+    -- decoded behavior for the first boss specifically -- porting it
+    -- here would imply the same per-tick AI drives this second,
     -- unconfirmed encounter too, which this project has no evidence
-    -- for) -- it stands at `spawnX`/`spawnY` and fights on contact/
-    -- attack exactly like the first boss otherwise does.
+    -- for) -- it stands at spawnX/spawnY and fights on contact/attack
+    -- exactly like the first boss otherwise does.
     if profile.graphics.sixthRoom and profile.graphics.sixthRoom.secondBoss
         and profile.graphics.enemySprite then
       local sb = profile.graphics.sixthRoom.secondBoss
@@ -727,69 +726,62 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
       if profile.graphics.attackThrust then
         self.secondBossAttackThrust = AttackThrust.new(romData, profile)
       end
-      -- Shared real combat PRNG (ROM $2B1E, see Field.lua's own
-      -- `combatNoise` doc comment) -- built here too (not shared with
-      -- Field.lua's own instance, which belongs to a different state
-      -- object entirely by the time this fight is reachable) so the
-      -- real damage formula has a genuine noise source instead of
-      -- falling back to the fixed placeholder.
+      -- Shared combat PRNG (ROM $2B1E, see Field.lua's own combatNoise
+      -- doc comment) -- built here too (not shared with Field.lua's own
+      -- instance, which belongs to a different state object entirely
+      -- by the time this fight is reachable) so the damage formula has
+      -- a genuine noise source instead of falling back to the fixed
+      -- placeholder.
       if profile.noiseTable then
         self.combatNoise = CombatNoise.new(NoiseTable.decode(romData, profile.noiseTable))
       end
     end
 
-    -- CORRECTED (2026-08-10, direct user report: "alle NPC und sprites
-    -- ... richtig geladen werden"): every OTHER state that creates a
-    -- `CreatureSprite` (TitleScreen/NameEntry/BattleIntro/Field) sets
-    -- the real hardware sprite palette first (`CreatureSprite
-    -- .setDefaultPalette`, real DMG OBP0/OBP1, both $D0 -- see
-    -- rom_profiles.lua's `spritePalette` doc comment) -- this state
-    -- never did, silently relying on Field.lua having already set it
-    -- earlier in the SAME app session (true in the real game flow this
-    -- project drives today, TitleScreen->NameEntry->BattleIntro->
-    -- Field->VictorySequence, so not an observed failure yet) rather
-    -- than being self-sufficient. `PlayerSprite.new` below reads this
-    -- exact default (`CreatureSprite.getDefaultPalette()`), so a wrong
-    -- pixel index 1 rendering isn't just theoretical for the player
-    -- sprite either.
+    -- CORRECTED (direct user report that all NPCs and sprites should
+    -- load correctly): every other state that creates a CreatureSprite
+    -- (TitleScreen/NameEntry/BattleIntro/Field) sets the hardware
+    -- sprite palette first (CreatureSprite.setDefaultPalette, DMG
+    -- OBP0/OBP1, both $D0 -- see rom_profiles.lua's spritePalette doc
+    -- comment) -- this state never did, silently relying on Field.lua
+    -- having already set it earlier in the same app session (true in
+    -- the real game flow this project drives today, so not an observed
+    -- failure yet) rather than being self-sufficient. PlayerSprite.new
+    -- below reads this exact default (CreatureSprite
+    -- .getDefaultPalette()), so a wrong pixel index 1 rendering isn't
+    -- just theoretical for the player sprite either.
     if profile.graphics.spritePalette then
       CreatureSprite.setDefaultPalette(
         TileImage.paletteFromShadeIndices(profile.graphics.spritePalette.shadeIndices))
     end
 
-    -- Real player + Willy sprites for the INTRO cutscene specifically
-    -- (see rom_profiles.lua's `graphics.willyScene` doc comment). The
-    -- shared palette below is reused for every OTHER room's own `scene`
-    -- characters too (same real OBP1 register, not a separate guess
-    -- per room).
+    -- Player + Willy sprites for the intro cutscene specifically (see
+    -- rom_profiles.lua's graphics.willyScene doc comment). The shared
+    -- palette below is reused for every other room's own scene
+    -- characters too (same OBP1 register, not a separate guess per room).
     --
-    -- CORRECTED (2026-08-12, direct user report: "die npc sprites
-    -- stimmen nicht"): this used to build `sharedPalette` from
-    -- `scene.paletteShadeIndices` (`willyScene`'s own real `0xFB`
-    -- capture) -- real bytes, but from the exact instant of a dialogue
-    -- box (live re-check found it does NOT hold outside that moment --
-    -- see rom_profiles.lua's own corrected doc comment on that field
-    -- for the full live re-trace). Every scene character in every room
-    -- (Willy at rest, secondRoom's two NPCs) was rendered through this
-    -- one-off, dialogue-specific value instead of the real resting
-    -- palette. Now uses the SAME already-VERIFIED `spritePalette
-    -- .shadeIndices` the player/enemy sprites use (confirmed live to
-    -- match secondRoom's and willyRoom's own real free-roam OBP1
-    -- exactly, modulo the hardware-transparent id0 slot sprites never
-    -- paint anyway).
-    -- CORRECTED (2026-08-10, direct user report: "die charakter
-    -- animation soll bitte ueberall funktionieren"): the player used a
-    -- STATIC `CreatureSprite` here (a single fixed pose) instead of the
-    -- real, VERIFIED walk-cycle animation (`PlayerSprite.lua`,
-    -- `profile.graphics.playerAnimation`) Field.lua already uses --
-    -- meaning the player's own sprite never animated anywhere in this
-    -- state (the cutscene, or the whole willyRoom/secondRoom/thirdRoom/
-    -- fourthRoom interactive room-chain that follows it). Now uses the
-    -- SAME real animation data/logic as Field.lua -- see `:update()`'s
-    -- own `self.playerSprite:update(...)` call below for the per-frame
-    -- driving half of this fix. Willy himself has no known ROM-side
-    -- animation data (only ever captured as a single static pose) so
-    -- stays a plain `CreatureSprite`, not a claimed-but-unverified one.
+    -- CORRECTED (direct user report NPC sprites don't match): this used
+    -- to build sharedPalette from scene.paletteShadeIndices (willyScene's
+    -- own 0xFB capture) -- real bytes, but from the exact instant of a
+    -- dialogue box (live re-check found it doesn't hold outside that
+    -- moment -- see rom_profiles.lua's own corrected doc comment on
+    -- that field). Every scene character in every room (Willy at rest,
+    -- secondRoom's two NPCs) was rendered through this one-off,
+    -- dialogue-specific value instead of the resting palette. Now uses
+    -- the same already-verified spritePalette.shadeIndices the player/
+    -- enemy sprites use (confirmed live to match secondRoom's and
+    -- willyRoom's own free-roam OBP1 exactly, modulo the hardware-
+    -- transparent id0 slot sprites never paint anyway).
+    -- CORRECTED (direct user report character animation should work
+    -- everywhere): the player used a static CreatureSprite here (a
+    -- single fixed pose) instead of the verified walk-cycle animation
+    -- (PlayerSprite.lua, profile.graphics.playerAnimation) Field.lua
+    -- already uses -- the player's sprite never animated anywhere in
+    -- this state. Now uses the same animation data/logic as Field.lua
+    -- -- see :update()'s own self.playerSprite:update(...) call below
+    -- for the per-frame driving half of this fix. Willy himself has no
+    -- known ROM-side animation data (only ever captured as a single
+    -- static pose) so stays a plain CreatureSprite, not a claimed-but-
+    -- unverified one.
     local scene = profile.graphics.willyScene
     local sharedPalette
     if scene then
@@ -806,9 +798,9 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     self.sharedPalette = sharedPalette
 
     -- willyRoom's own persistent NPC (Willy) is stored under the
-    -- separate `willyScene.willy` key (an existing, pre-general-system
+    -- separate willyScene.willy key (an existing, pre-general-system
     -- convention -- kept as-is rather than duplicated into
-    -- `willyRoom.scene`) -- bridge it into the SAME general per-room
+    -- willyRoom.scene) -- bridge it into the same general per-room
     -- scene shape every other room uses, so the general sprite-drawing
     -- code below doesn't need a willyRoom-specific special case.
     if scene and scene.willy and profile.graphics.willyRoom then
@@ -819,51 +811,49 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     self.currentRoomKey = "willyRoom"
     self.phase = "cutscene" -- cutscene -> interactive -> transitioning -> dialogue -> interactive ...
 
-    -- FOUND AND FIXED (2026-08-10, direct user report: "wärend des boss
-    -- fights hatte ich plötzlich einen schwarten screen"): `:draw()`'s
-    -- "top" page branch (the whole 6-line Willy exchange, see `self
-    -- .pages` below) shows `willyRoom`'s real background/scene ONLY when
-    -- `self:backgroundFor("willyRoom")` returns non-nil -- but
-    -- `self.roomBg.willyRoom` was previously populated ONLY by
-    -- `ensureRoomLoaded`, which this constructor never called for
-    -- willyRoom itself (only `beginTransition`/`completeTransition`/
-    -- `enterGameplay` call it, all of which run AFTER every cutscene
-    -- page, including the Willy exchange, per this state's own
-    -- `phase` doc comment above). So every "top" page silently fell
-    -- into the "else" branch (the real black-wipe rectangle, meant only
-    -- for "bottom" pages) instead of showing willyRoom -- live-
-    -- reproduced via a scripted F6-kill + MYSTICQUEST_SCREENSHOT run:
-    -- the Willy dialogue box appeared correctly, but the room art/
-    -- player/Willy sprites behind it were solid black the whole time,
-    -- matching exactly what the user described. Loading the room here
-    -- (AFTER the roomSceneData bridging just above, so Willy's own
-    -- sprite scene entry exists in time -- `ensureRoomLoaded` reads it
-    -- if present, and only falls back to `room.scene`, which willyRoom
-    -- doesn't have, on a first call) fixes both the background AND the
-    -- Willy/player sprites for the whole cutscene, not just the later
-    -- interactive phase.
+    -- FOUND AND FIXED (direct user report of a sudden black screen
+    -- during the boss fight): :draw()'s "top" page branch (the whole
+    -- 6-line Willy exchange, see self.pages below) shows willyRoom's
+    -- background/scene only when self:backgroundFor("willyRoom")
+    -- returns non-nil -- but self.roomBg.willyRoom was previously
+    -- populated only by ensureRoomLoaded, which this constructor never
+    -- called for willyRoom itself (only beginTransition/
+    -- completeTransition/enterGameplay call it, all of which run after
+    -- every cutscene page, including the Willy exchange, per this
+    -- state's own phase doc comment above). So every "top" page
+    -- silently fell into the "else" branch (the black-wipe rectangle,
+    -- meant only for "bottom" pages) instead of showing willyRoom --
+    -- live-reproduced via a scripted F6-kill + screenshot run: the
+    -- Willy dialogue box appeared correctly, but the room art/player/
+    -- Willy sprites behind it were solid black the whole time, matching
+    -- exactly what the user described. Loading the room here (after
+    -- the roomSceneData bridging just above, so Willy's sprite scene
+    -- entry exists in time -- ensureRoomLoaded reads it if present, and
+    -- only falls back to room.scene, which willyRoom doesn't have, on
+    -- a first call) fixes both the background and the Willy/player
+    -- sprites for the whole cutscene, not just the later interactive
+    -- phase.
     self:ensureRoomLoaded("willyRoom")
 
     self.pages = {}
-    -- CORRECTED (2026-08-10, direct user report: "die gesammte start
-    -- boss sequence ist noch nicht komplett... der willy dialog ist
-    -- nicht vollstaendig"): `data.victoryLine` is REAL text but a fresh
-    -- live re-trace found it does NOT open this sequence (see that
-    -- field's own doc comment in rom_profiles.lua) -- no longer inserted
-    -- here. `data.storyPages` used to be the real, complete 3-page
-    -- sequence AS A HAND-TRANSCRIPTION (was 1 page, silently truncated
-    -- mid-sentence, with an honestly-flagged-but-unfilled gap after it
-    -- -- both closed on 2026-08-10, but still by hand-typing what a
-    -- screenshot showed, same status as the old Willy-exchange lines).
+    -- CORRECTED (direct user report the start boss sequence isn't
+    -- complete -- the Willy dialog isn't complete): data.victoryLine
+    -- is real text but a fresh live re-trace found it doesn't open
+    -- this sequence (see that field's own doc comment in rom_profiles
+    -- .lua) -- no longer inserted here. data.storyPages used to be the
+    -- complete 3-page sequence as a hand-transcription (was 1 page,
+    -- silently truncated mid-sentence, with an honestly-flagged-but-
+    -- unfilled gap after it -- both closed, but still by hand-typing
+    -- what a screenshot showed, same status as the old Willy-exchange
+    -- lines).
     --
-    -- LIVE-DECODED (2026-08-12, "ja bitte alles in dieser reinfolge",
-    -- direct continuation of the SAME session's Willy-exchange work
-    -- above): these 3 pages sit in the exact same bank-14 dialogue
-    -- block the Willy-exchange offsets do, immediately BEFORE them
-    -- (file `0x3A1E5`-`0x3A24F`, vs. the Willy exchange's own
-    -- `0x3A268` onward) -- found as a direct side effect of that same
+    -- LIVE-DECODED (direct continuation of the same session's Willy-
+    -- exchange work above): these 3 pages sit in the exact same
+    -- bank-14 dialogue block the Willy-exchange offsets do, immediately
+    -- before them (file 0x3A1E5-0x3A24F, vs. the Willy exchange's own
+    -- 0x3A268 onward) -- found as a direct side effect of that same
     -- full-ROM scan, not a fresh investigation. Each offset confirmed
-    -- via `TextDecoder.decodeString` decoding cleanly end to end, same
+    -- via TextDecoder.decodeString decoding cleanly end to end, same
     -- bar every other live-wired line here has to clear.
     --
     -- Real, honest differences from the old hand-transcription, kept
