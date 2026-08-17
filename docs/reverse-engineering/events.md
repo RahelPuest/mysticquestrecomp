@@ -10110,3 +10110,52 @@ in `rom_profiles.lua` already said "IMPLEMENTATION CHOICE, not
 independently ROM-confirmed" -- this pass adds real, if imperfect,
 evidence pointing AGAINST that specific placement, not just noting the
 absence of confirmation.
+
+## Searching willyRoom/secondRoom/thirdRoom for the real second-Jackal/gate event -- comprehensive negative result, one real story-text confirmation (2026-08-17, same day)
+
+Direct user instruction ("ja mach"), continuing to look for the real
+room the gamesurge.com walkthrough's "north door -> Amanda and another
+man... approach the arena again -> another Jackal is released...
+through the gate" sequence actually happens in, now that `sixthRoom`
+has real evidence against it (above).
+
+**Real, decisive confirmation found first**: `secondRoom.scene
+.characterA`'s own real, already-decoded dialogue ("Der Monsterein-
+gang führt nach draußen." = "The monster entrance leads outside.")
+is an EXACT match for the walkthrough's own "the gate used to admit
+monsters into the arena leads outside" line -- not a loose thematic
+match, a precise real-ROM-text confirmation this project already had
+sitting in `rom_profiles.lua` without connecting it to this specific
+walkthrough moment before. `secondRoom` genuinely IS "the Amanda +
+other man room," exactly as the walkthrough describes.
+
+**Live exploration, comprehensive, all negative**: watched real WRAM
+`$D3F4`/`$D3F5` (boss-HP field) and the real tile-source pointer
+continuously while navigating `courtyard_boss_defeated` ->
+`post_black_wipe` -> `willy_room_free` -> `second_room_free` ->
+`third_room_free` (the full currently-known real path), then probed
+ALL FOUR directions from the landing spot in `willyRoom`, `secondRoom`,
+AND `thirdRoom` (up to 900 real frames per direction in willyRoom's
+own case) -- no second monster encounter, no boss-HP field
+population, no unexpected real tile-source-pointer change anywhere.
+Every direction in every room hits an ordinary wall at the room's own
+already-known boundary.
+
+**Honest interpretation**: the "approach the arena again" moment in
+the walkthrough is almost certainly a real, SCRIPTED story beat (most
+likely gated behind talking to `characterA`/`characterB`, or a flag
+set after their dialogue -- not simply reachable by walking in any
+direction from the already-explored landing spots) -- consistent with
+this project's own MUCH earlier "Second boss investigation" (2026-08-
+15) already hitting a real wall trying to find which of 3 real
+triggering scripts (533/1092/1240) ties to which room via static
+analysis. This pass adds a real, live, comprehensive NEGATIVE result
+across the entire currently-known walkable room chain (not just a
+"didn't look" gap) -- the real trigger, wherever it is, is not a
+simple directional walk from any of these 3 rooms' own landing spots.
+Not resolved this pass; a real, well-bounded next step would be
+`NpcProximity.lua`'s own interaction/dialogue-trigger mechanism (does
+approaching/dismissing `characterA`'s box set a real flag this
+project doesn't yet track?) or a fresh live script-runtime trace
+specifically watching WRAM writes DURING the characterA/characterB
+dialogue boxes, not just before/after them.
