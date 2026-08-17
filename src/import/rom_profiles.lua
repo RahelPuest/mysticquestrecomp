@@ -1430,200 +1430,109 @@ RomProfiles.PROFILES = {
             holdFrames = 64, holdDirection = "down",
           },
           {
-          -- RE-ADDED (2026-08-15, direct user bug report: "dann sollte
-          -- wenn der spieler dem weg nach westen folgt eun neuer raum
-          -- da sein... bau das ein" -- build it in). History: this exit
-          -- was RETRACTED on 2026-08-14 (see the evidence trail kept
-          -- below) after live re-tracing found the real ROM corridor
-          -- keeps scrolling as ONE continuous `fourthRoom` canvas rather
-          -- than cutting to a genuinely separate room -- that structural
-          -- finding still stands, unchanged. What's different now: this
-          -- project's own renderer has NO camera-scroll implementation
-          -- (`Field.lua`'s own doc comment, unchanged this pass -- a
-          -- real, separate, much bigger feature) and, independently,
-          -- the user directly confirmed (three separate, insistent
-          -- corrections, live-walked together) that walking west from
-          -- here in THIS APP is expected to lead somewhere, not dead-
-          -- end at x=0. Rather than leave `sixthRoom`'s own real,
-          -- already-captured tile grid (see its own doc comment) sitting
-          -- unused, this exit exposes it as a static "cut" screen --
-          -- exactly the same pragmatic choice this project already made
-          -- for willyRoom/secondRoom/thirdRoom (also literally one
-          -- scrolling ROM canvas, also exposed here as separate static
-          -- rooms joined by cuts). HONEST STATUS: the ROM itself never
-          -- "cuts" here -- this is a deliberate ENGINEERING CHOICE to
-          -- make real, already-decoded ROM tile content reachable
-          -- within this project's own no-scroll engine, not a claimed
-          -- ROM transition fact (contrast with the `down` exit above,
-          -- which IS a live-confirmed real cut). `holdFrames=220`
-          -- reuses the original real-measured value from BEFORE the
-          -- 2026-08-14 retraction (the corridor genuinely does pause
-          -- around there, see finding 1 below -- a real, measured
-          -- number, just not a "cut" trigger in the actual ROM). The
-          -- zone deliberately excludes the extreme top/bottom of the
-          -- room (`yMin=40`, short of the north exit's own `yMin=32`;
-          -- direct match to the user's own live-tested correction "ja
-          -- aber auch noch nicht ganz nach oben", yes but also not all
-          -- the way at the top).
+          -- RE-ADDED (direct user bug report that walking west should
+          -- lead somewhere). History: this exit was RETRACTED after
+          -- live re-tracing found the real ROM corridor keeps scrolling
+          -- as one continuous fourthRoom canvas rather than cutting to
+          -- a separate room (still true). This project's renderer has
+          -- no camera-scroll implementation though, and the user
+          -- directly confirmed walking west is expected to lead
+          -- somewhere in THIS app -- so sixthRoom's own already-
+          -- captured tile grid is exposed as a static "cut" screen,
+          -- the same pragmatic choice already made for willyRoom/
+          -- secondRoom/thirdRoom. HONEST STATUS: the ROM itself never
+          -- cuts here -- a deliberate engineering choice to make real,
+          -- already-decoded content reachable in this project's no-
+          -- scroll engine, not a claimed ROM fact (contrast the `down`
+          -- exit above, which IS a live-confirmed real cut).
+          -- `holdFrames=220` reuses the original real-measured pause
+          -- value (real, just not a "cut" trigger in the actual ROM).
           --
-          -- CORRECTED (2026-08-15, same pass as this room's own new
-          -- `blockedRects` collision fix): `yMax` used to be 110 --
-          -- REQUIRED to shrink to 96 now that real, live-verified
-          -- collision blocks LEFT entirely below row 12 (y>=104, see
-          -- `blockedRects`'s own doc comment above) -- the old zone
-          -- silently relied on a west edge (y=104-110) the corrected,
-          -- real collision no longer lets the player reach by holding
-          -- LEFT at all, which would have made this exit unreachable
-          -- from part of its own declared trigger zone.
+          -- CORRECTED: `yMax` shrunk from 110 to 96 -- real collision
+          -- blocks LEFT entirely below row 12 (see `blockedRects`
+          -- above), so the old zone relied on a west edge the player
+          -- can no longer reach by holding LEFT.
           zone = { xMin = 0, xMax = 16, yMin = 40, yMax = 96 },
           transition = { type = "cut" },
           targetRoom = "sixthRoom",
           landingX = 144, landingY = 80,
           holdFrames = 220, holdDirection = "left",
           },
-          -- RETRACTED-THEN-RECONSIDERED (2026-08-14 investigation, kept
-          -- verbatim for the record -- still an accurate account of what
-          -- the real ROM itself does, just no longer read as "so don't
-          -- build this"): a dedicated re-investigation found THREE
-          -- independent, converging real pieces of evidence that this
-          -- was never a real "cut" transition in the ROM:
-          --   1. Live re-tested the documented holdFrames=220 trigger
-          --      with much longer, more careful holds (up to 3000+
-          --      frames, continuous AND intermittent-tapped) -- it never
-          --      fires. The real corridor is bigger than originally
-          --      captured (a second real wall exists further west, at
-          --      WRAM X=24, with further real walkable space beyond
-          --      that too) -- the original "settles at X=80" claim was
-          --      a real, understandable false read of a TEMPORARY pause
-          --      (~260 frames), not the room's own true boundary.
-          --   2. The original "confirmation" evidence (`dynamicBank`
-          --      `$C3F0`=6, "matches the willyRoom/secondRoom/thirdRoom
-          --      family") turned out to be non-discriminating: `$C3F0`
-          --      already reads 6 the instant `fourthRoom` itself is
-          --      entered via the staircase (roomSelector 1's own real
-          --      dynamicBank value) -- observing 6 anywhere in the
-          --      corridor is equally consistent with STILL being in
-          --      fourthRoom.
-          --   3. DECISIVE: live-captured the real `$1E9F`/`$1EB6` scroll-
-          --      time VRAM-write-queue calls during the corridor walk --
-          --      the EXACT SAME real mechanism (same ROM address,
-          --      `$1EB6`) already proven for `secondRoom`'s own real
-          --      continuation of `willyRoom`'s single continuous room
-          --      space. Captured 160 real tile-ID pairs (a full 16-row
-          --      x 20-col real strip) whose values are the literal same
-          --      tile vocabulary `fourthRoom` already uses (129-134 plus
-          --      the 145/146 corridor-decoration tiles). A completely
-          --      independent, pre-existing doc comment (see
-          --      `StandardScriptHandlers.lua`'s own `peekTwoByteGate`
-          --      doc comment) had ALSO already flagged, from an entirely
-          --      different investigation (the real cut-sequence landing-
-          --      tile-source table), that no real table entry for
-          --      fourthRoom->sixthRoom was ever found, unlike the real,
-          --      confirmed thirdRoom->fourthRoom and fourthRoom->
-          --      fifthRoom entries -- a fourth, independent corroboration.
+          -- RETRACTED-THEN-RECONSIDERED (kept for the record -- still an
+          -- accurate account of what the real ROM does, just no longer
+          -- read as "don't build this"): a re-investigation found three
+          -- converging pieces of evidence this was never a real "cut":
+          -- (1) much longer live holds (3000+ frames) never fire it --
+          -- the corridor is bigger than originally captured, with a
+          -- second real wall further west; the original "settles at
+          -- X=80" was a false read of a temporary ~260-frame pause.
+          -- (2) the original "confirmation" (dynamicBank $C3F0=6) is
+          -- non-discriminating -- it already reads 6 the instant
+          -- fourthRoom itself is entered. (3) decisive: live-captured
+          -- the real scroll-time VRAM-write-queue calls during the
+          -- corridor walk -- the same mechanism already proven for
+          -- secondRoom's own continuation of willyRoom's single
+          -- continuous space, with the same tile vocabulary fourthRoom
+          -- already uses. A separate, pre-existing doc comment
+          -- (StandardScriptHandlers.lua's own `peekTwoByteGate`) had
+          -- also already flagged no real cut-sequence table entry for
+          -- fourthRoom->sixthRoom exists, unlike the confirmed
+          -- thirdRoom->fourthRoom/fourthRoom->fifthRoom entries.
           --
           -- Conclusion, still true: "sixthRoom" is real further columns
-          -- of `fourthRoom`'s own single continuous room space (the same
-          -- "one room, several screens" pattern as `willyRoom`/
-          -- `secondRoom`), not a genuinely separate room in the ROM's
-          -- own terms. The 160 real captured tile-pairs from that pass's
-          -- own full-corridor scan remain a real, concrete foundation
-          -- for properly extending `fourthRoom.grid` itself westward
-          -- with genuine scroll support, whenever that larger feature
-          -- gets built -- this exit is the smaller, honestly-labeled
-          -- stand-in until then.
+          -- of fourthRoom's own single continuous space, not a
+          -- genuinely separate ROM room -- this exit is an honestly-
+          -- labeled stand-in until real scroll-camera support exists.
         },
       },
-      -- Real room found LIVE (2026-08-12, "fourthRoom systematisch
-      -- flutfüllen" -- a direct user instruction to systematically
-      -- probe fourthRoom for further real exits, after an EARLIER,
-      -- wrong "fourthRoom is a dead end" conclusion this same pass
-      -- had to retract -- see events.md's own "Correction and a real
-      -- find" section for the complete disassembly-free, pure live-
-      -- ROM-tracing evidence trail). Reached by walking north from
-      -- fourthRoom's own landing spot into a real, previously-
-      -- uncaptured corridor (still `fourthRoom`'s own tile source,
-      -- `$40B0` -- a real continuous-scroll extension, same "one
-      -- underlying room, several named screens" pattern already
-      -- established for willyRoom/secondRoom/thirdRoom), then holding
-      -- `DOWN` there for ~64 real frames against what looks like a
-      -- wall -- which fires a genuine, live-confirmed "cut" transition
-      -- (a real, sudden, non-gradual position jump, not ordinary
-      -- walking) into THIS room.
+      -- Real room found live (a direct user instruction to
+      -- systematically probe fourthRoom for further exits, after an
+      -- earlier, wrong "dead end" conclusion had to be retracted).
+      -- Reached by walking north from fourthRoom's landing spot into a
+      -- previously-uncaptured corridor (still fourthRoom's own tile
+      -- source, a continuous-scroll extension), then holding DOWN for
+      -- ~64 frames against what looks like a wall -- a genuine,
+      -- live-confirmed "cut" transition into this room.
       --
-      -- Real tile-source pointer `$46B0`, dynamicBank 7 -- confirmed
-      -- LIVE (read directly from WRAM `$D392`/`$D393`/`$C3F0` at the
-      -- landed position) to be the EXACT SAME source as the willyRoom/
-      -- secondRoom/thirdRoom family (`roomSelectorTable`'s own
-      -- selectors 2-6) -- this is a real, different SCREEN/LAYOUT of
-      -- that same shared underlying tileset, not a new ROM tile
-      -- region. 44 of this room's own 48 distinct real tile IDs
-      -- already had a real, verified ROM offset from `willyRoom`'s own
-      -- `tileOffsets` (reused directly, unchanged); the remaining 4
-      -- (`172`-`175`) were found this pass via the SAME live exact-
-      -- byte VRAM-pattern ROM search this project's other rooms all
-      -- used, each with exactly one real match.
+      -- Real tile-source pointer $46B0, dynamicBank 7 -- confirmed live
+      -- to be the exact same source as the willyRoom/secondRoom/
+      -- thirdRoom family -- a different screen/layout of that same
+      -- shared tileset, not a new ROM tile region. 44 of 48 distinct
+      -- tile IDs already had a verified offset from willyRoom's own
+      -- tileOffsets (reused directly); the remaining 4 (172-175) were
+      -- found via the same live exact-byte ROM search, one match each.
       --
-      -- CORRECTED/DEEPENED (2026-08-17, direct user claim: "ich bin mir
-      -- sehr sicher das er übergang von fourth in den fith room einfach
-      -- nur ein übergang zurück in den third room ist"): the paragraph
-      -- above's own "dynamicBank 7" framing was MISLEADING -- it read
-      -- as if dynamicBank=7 were something distinguishing fifthRoom
-      -- FROM the willyRoom/secondRoom/thirdRoom trio, but a fresh live
-      -- check (`checkpoints.willy_room_free()`/`second_room_free()`/
-      -- `third_room_free()`/`fifth_room_free()`, reading `$D392`/
-      -- `$D393`/`$C3F0`/`$C3F5` at each) found dynamicBank=7 IS ALSO
-      -- their own value -- never actually cross-checked against them
-      -- before. Real, live-confirmed table, all 4 rooms:
-      --   willyRoom:  D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=0/0
-      --   secondRoom: D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=0/128
-      --   thirdRoom:  D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=160/128
-      --   fifthRoom:  D392/D393=(0xb0,0x46) C3F0=7 C3F5=4 SCX/SCY=0/0
-      -- ALL FOUR real "which room" identity registers this project
-      -- tracks (`$D392`/`$D393` tile-source pointer, `$C3F0`
-      -- dynamicBank, `$C3F5` roomSelector) are BYTE-IDENTICAL across
-      -- the whole set -- the user is right that this "cut" does not
-      -- land in a genuinely separate ROM room; by the real ROM's own
-      -- room-identity bookkeeping, fifthRoom IS willyRoom/secondRoom/
-      -- thirdRoom (same real record), not merely a sibling reusing the
-      -- same tileset. The only real difference across the 4 is SCX/SCY
-      -- (hardware scroll position): willyRoom/secondRoom/thirdRoom are
-      -- reached by CONTINUOUS SCROLLING and accumulate a nonzero SCX/
-      -- SCY along the way, while fifthRoom is reached via a genuine
-      -- "cut" (a real room-commit event, confirmed by `CutTransition
-      -- Table.lua`'s own table entry AND the live `0xF4` opcode trace
-      -- already cited above), which resets SCX/SCY to 0/0 -- landing
-      -- back at that same shared canvas's own origin corner, not
-      -- continuing from wherever the willyRoom walk had scrolled to.
+      -- CORRECTED/DEEPENED (direct user claim this transition just goes
+      -- back to thirdRoom): the "dynamicBank 7" framing above was
+      -- misleading -- a fresh live check across willyRoom/secondRoom/
+      -- thirdRoom/fifthRoom found dynamicBank=7 is ALSO their own value
+      -- (never cross-checked before). All four real room-identity
+      -- registers this project tracks ($D392/$D393 tile-source
+      -- pointer, $C3F0 dynamicBank, $C3F5 roomSelector) are byte-
+      -- identical across the whole set -- the user is right that this
+      -- "cut" does not land in a genuinely separate ROM room; by the
+      -- real ROM's own bookkeeping, fifthRoom IS willyRoom/secondRoom/
+      -- thirdRoom (same real record). The only real difference is
+      -- SCX/SCY (scroll position): the trio accumulates nonzero SCX/SCY
+      -- via continuous scrolling, while fifthRoom is reached via a
+      -- genuine cut that resets SCX/SCY to 0/0 -- landing at that same
+      -- shared canvas's own origin corner, not continuing from wherever
+      -- the willyRoom walk had scrolled to.
       --
-      -- HONEST NUANCE (real screenshots + raw VRAM tilemap compared,
-      -- not just registers): fifthRoom's SCX=0/SCY=0 view is visually
-      -- and structurally very close to `thirdRoom`'s own captured view
-      -- (same courtyard shape, same checkerboard floor, same general
-      -- wall layout, same left-side opening -- both screenshots read
-      -- as "the same room type" at a glance) but NOT byte-identical to
-      -- either `thirdRoom`'s or `willyRoom`'s own captured `grid`
-      -- (raw VRAM row 0, cols 8-11: willyRoom shows its own real closed
-      -- door tiles 135/136/139/140 there; fifthRoom shows different
-      -- tile IDs at the same cells) -- real, controlled programmatic
-      -- comparison of `thirdRoom.grid` vs `fifthRoom.grid` (matching
-      -- each cell's OWN room's real tileOffsets-resolved file offset,
-      -- not just raw tile-ID numbers) found only 56/320 (17.5%) cells
-      -- resolve to the identical ROM byte, vs. 264-284/320 (82-89%)
-      -- for any two of willyRoom/secondRoom/thirdRoom against each
-      -- other (the already-established "one continuous scrolled
-      -- canvas" trio) -- fifthRoom is measurably an outlier from that
-      -- trio's own mutual overlap, even though it shares their exact
-      -- room-identity registers. Most consistent honest reading: the
-      -- real underlying canvas behind roomSelector=4 is LARGER than
-      -- the 3 screens' worth willyRoom->secondRoom->thirdRoom's own
-      -- walking path has ever scrolled through, and this "cut" lands
-      -- the camera at a genuinely different, not-yet-walked section of
-      -- that SAME shared canvas (reached only via the cut's own real
-      -- landing tile coordinates) -- not literally the identical
-      -- screen already captured as `thirdRoom`, but real ROM-wise the
-      -- SAME room, not an independent one. See events.md's own dated
-      -- entry for the full trace, screenshots, and register table.
+      -- HONEST NUANCE: fifthRoom's SCX=0/SCY=0 view is visually close
+      -- to thirdRoom's own captured view (same courtyard shape,
+      -- checkerboard floor, wall layout) but not byte-identical to
+      -- either thirdRoom's or willyRoom's own grid -- a controlled
+      -- cell-by-cell comparison (matching real file offsets, not raw
+      -- tile-ID numbers) found only 56/320 (17.5%) cells match, vs.
+      -- 264-284/320 (82-89%) for any two of the willyRoom/secondRoom/
+      -- thirdRoom trio against each other. Most consistent reading: the
+      -- real underlying canvas behind roomSelector=4 is LARGER than the
+      -- trio's own walking path has ever scrolled through, and this cut
+      -- lands at a genuinely different, not-yet-walked section of that
+      -- same shared canvas -- real ROM-wise the same room, not an
+      -- independent one. See events.md's own dated entry for the full
+      -- trace, screenshots, and register table.
       fifthRoom = {
         status = "VERIFIED",
         romRoomSelectors = { 2, 3, 4, 5, 6 },
