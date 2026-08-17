@@ -2369,6 +2369,27 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   blobs, retracted rather than shipped as a real layout. 570/570 Lua
   tests pass (new `sprite_tile_formula_test.lua`, including a pure-math
   regression lock independent of any ROM).
+- **2026-08-17, same day, direct follow-up ("du sollst mehr npcs
+  suchen"): the real on-screen pose ARRANGEMENT for 91 more NPCs**:
+  grouping all 218 `ActorDefinitionTable` records by their own sprite
+  identity found 190 share the EXACT SAME `innerPtr` as characterA/
+  characterB (172 of those with an even `count`, i.e. real pose
+  structure) -- 91 DISTINCT `kindByte` values among them, i.e. 91 real,
+  individually different NPC sprite designs, not just repeats of the 2
+  already known. The shared list's own real copy order (`0,2,1,3,4,6,
+  5,7,...`) compared against characterA's/characterB's own already-known
+  real pose grouping revealed the exact reconstruction rule (swap the
+  middle two of every 4-tile group) -- applied to a sample of brand-new
+  designs, rendered coherent, individually distinct, clearly humanoid
+  sprite sheets (confirmed both in a scratchpad render and live on the
+  actual website). Honest confidence tier kept explicit throughout (NOT
+  claimed as strong as the 2 individually live-OAM-verified ones):
+  `arrangementFamily="humanoid4pose"` field, a 3-tier website badge
+  ("bestätigt" / "wahrscheinlich (Familie)" / "unbekannt"). Strengthened
+  the characterA/characterB tests from set- to strict ordered-equality
+  now that the real order is known. 572/572 Lua tests pass, Playwright-
+  verified live (170 family-badged NPC cards render as coherent 4-pose
+  sheets).
 - **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
   full "elevate this product" brief, scoped to the website (confirmed
   via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,

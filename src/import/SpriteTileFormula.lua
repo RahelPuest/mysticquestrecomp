@@ -131,4 +131,73 @@ function SpriteTileFormula.resolveTileOffsets(romData, outerRecord, tableBank)
   return offsets, spriteBank
 end
 
+-- REAL ON-SCREEN POSE ARRANGEMENT, found 2026-08-17, direct follow-up
+-- to the pixel-source formula above (direct user instruction "du
+-- sollst mehr npcs suchen"): `ActorDefinitionTable`'s own 218 NPC
+-- records are NOT all one-off -- 190 of them share the EXACT SAME
+-- `innerPtr` (0x7B5A, same bank), meaning they all read raw GFX-tile
+-- indices from the identical shared list, just through a different
+-- `kindByte` (a different real pixel pool -- a different visual
+-- design). Of those 190, 172 have an even `count` (their raw tiles
+-- divide cleanly into 4-tile pose groups -- see the reordering logic
+-- below); the other 18 have `count=1` (a single 2-tile icon, no pose
+-- structure to speak of) and are left out of the family. Across the
+-- 172, there are 91 DISTINCT `kindByte` values -- i.e. 91 real,
+-- individually different NPC sprite designs, not just 91 placements of
+-- the same 2 already-known ones.
+--
+-- The shared list itself reads `0,2,1,3, 4,6,5,7, 8,10,9,11, ...` --
+-- NOT plain sequential order -- a real, live-confirmed "swapped middle
+-- pair" pattern PER 4-TILE GROUP. Comparing this raw order against
+-- characterA's/characterB's own already-independently-known real
+-- on-screen pose grouping (`rom_profiles.lua`'s own `down`/`up`/`left`
+-- animation table, each a real 4-tile pose) found the exact
+-- correspondence: raw-order position [a,b,c,d] within each group of 4
+-- is on-screen position [a,c,b,d] -- i.e. swap the middle two. Applying
+-- this SAME swap to a sample of brand-new `kindByte` values (never
+-- independently live-captured) rendered coherent, clearly humanoid,
+-- individually DISTINCT sprite sheets (4 real poses: down/up/left-
+-- frame1/left-frame2) -- see events.md's own dated entry for the
+-- rendered examples -- confirming the reconstruction generalizes across
+-- the whole shared-`innerPtr` family, not just the 2 already-known
+-- members.
+--
+-- HONEST CONFIDENCE TIER: this is FAMILY-level evidence (2 independent
+-- live ground truths + a consistent, coherent visual result across a
+-- sample of the other 89), NOT an individual live OAM capture for each
+-- of the 91 -- kept as a clearly separate, weaker confidence tier from
+-- `arrangementConfirmed` (characterA/characterB only) wherever this
+-- project's own data distinguishes the two (see `ActorDefinitionTable
+-- .lua`'s own `spriteSource.arrangementFamily` field and rom-inspector's
+-- own "Anordnung bestätigt" vs. "Anordnung wahrscheinlich (Familie)"
+-- badges). Only applies to records whose own `count` is even (so raw
+-- tiles divide evenly into groups of 4) -- 18 of the 190 have
+-- `count=1` (a single 2-tile icon, no pose structure to reorder) and
+-- are left in raw order, honestly unclassified.
+SpriteTileFormula.HUMANOID_4POSE_INNER_PTR = 0x7B5A
+
+--- Reorders a flat, raw-DMA-order tile-offset list (see
+-- `resolveTileOffsets`) into the real on-screen pose order -- swaps the
+-- middle two entries of every 4-tile group, a no-op for any trailing
+-- group smaller than 4. See this module's own doc comment above for the
+-- live evidence this reordering is correct.
+function SpriteTileFormula.reconstructPoseOrder(offsets)
+  local reordered = {}
+  local n = #offsets
+  local i = 1
+  while i <= n do
+    local groupLen = math.min(4, n - i + 1)
+    if groupLen == 4 then
+      reordered[#reordered + 1] = offsets[i]
+      reordered[#reordered + 1] = offsets[i + 2]
+      reordered[#reordered + 1] = offsets[i + 1]
+      reordered[#reordered + 1] = offsets[i + 3]
+    else
+      for k = 0, groupLen - 1 do reordered[#reordered + 1] = offsets[i + k] end
+    end
+    i = i + groupLen
+  end
+  return reordered
+end
+
 return SpriteTileFormula

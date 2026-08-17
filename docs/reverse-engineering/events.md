@@ -10976,3 +10976,68 @@ with the full derivation), `ActorDefinitionTable.lua` extended
 formula itself, plus all 3 ground-truth exact-match tests (as sets,
 with an honest comment explaining why order differs from
 rom_profiles.lua's own logical grouping). 570/570 Lua tests pass.
+
+## The real on-screen pose ARRANGEMENT for 91 more NPCs, found -- direct follow-up ("du sollst mehr npcs suchen") (2026-08-17, same day)
+
+Direct, terse follow-up instruction after the pixel-source formula
+above: "du sollst mehr npcs suchen" (you should search for more NPCs).
+
+**The lead**: grouping all 218 `ActorDefinitionTable` records by their
+own `(bank, kindByte, cByte)` sprite identity found only 136 DISTINCT
+real sprite designs behind 218 placements -- lots of reuse. Digging
+further: 190 of the 218 records share the EXACT SAME `innerPtr`
+(0x7B5A) as characterA (index 121) and characterB (index 99) -- meaning
+they all read raw GFX-tile indices from the identical shared list, just
+through a different `kindByte` (a different real pixel pool, i.e. a
+different visual design). Of those 190, 172 have an even `count` (raw
+tiles divide cleanly into 4-tile groups); the other 18 have `count=1`
+(a single 2-tile icon, no pose structure). Across the 172: **91 distinct
+`kindByte` values -- 91 real, individually different NPC sprite
+designs**, not just repeat placements of the 2 already known.
+
+**The real on-screen arrangement, reconstructed, not guessed**: the
+shared list itself reads `0,2,1,3, 4,6,5,7, 8,10,9,11, ...` -- a real,
+live-confirmed "swapped middle pair" pattern per 4-tile group (already
+directly observed in the live trace that found the pixel-source
+formula, `trace_npc_sprite_dispatch2.py`'s own captured HL sequence).
+Comparing this raw order against characterA's/characterB's own
+already-independently-known real on-screen pose grouping
+(`rom_profiles.lua`'s `down`/`up`/`left` animation table, each a real
+4-tile pose) found the exact correspondence: raw-order position
+`[a,b,c,d]` within each group of 4 is on-screen position `[a,c,b,d]` --
+swap the middle two. Applying this SAME swap to a SAMPLE of brand-new
+`kindByte` values (indices 1, 7, 110, 118, 127, 135 -- never
+independently live-captured) and rendering them
+(`render_family_npcs.py`, scratchpad) produced coherent, clearly
+humanoid, INDIVIDUALLY DISTINCT sprite sheets (4 real poses each) --
+confirmed both in the scratchpad render and, after shipping, live on
+the actual rom-inspector website (Grafiken page, Playwright screenshot:
+dozens of visibly distinct, correctly-assembled NPC portraits render
+side by side).
+
+**Honest confidence tier, kept explicit everywhere this is surfaced**:
+this is FAMILY-level evidence (2 independent live ground truths + a
+coherent visual result across a sample of the other 89), NOT an
+individual live OAM capture for each of the 91 -- `SpriteTileFormula
+.lua`'s own new `HUMANOID_4POSE_INNER_PTR` constant and
+`reconstructPoseOrder` function are kept clearly separate from the
+individually-verified `arrangementConfirmed` tier. `ActorDefinitionTable
+.readRecord`'s own `spriteSource.arrangementFamily` field
+(`"humanoid4pose"` or `nil`) carries this distinction through
+`resolveSpriteTileOffsets` (which now auto-reorders family members into
+the real pose order) all the way to the website (3-tier badge:
+"Anordnung bestätigt" / "Anordnung wahrscheinlich (Familie)" / "Anordnung
+unbekannt").
+
+**Shipped**: `SpriteTileFormula.reconstructPoseOrder` +
+`HUMANOID_4POSE_INNER_PTR`; `ActorDefinitionTable.readRecord`'s new
+`spriteSource.arrangementFamily` field; `resolveSpriteTileOffsets` now
+auto-applies the reordering for family members. Strengthened the
+existing characterA/characterB tests from set-equality to STRICT
+ordered equality (now that the real order is known) -- both pass
+exactly, position for position. New regression test locks the real
+family size (172 records, 91 distinct designs). rom-inspector's Grafiken
+page: 3-tier badge system, family members render as real 4-wide pose
+sheets instead of an 8-wide raw strip. 572/572 Lua tests pass,
+Playwright-verified live (170 family badges visible on the NPCs tab,
+zero console errors).

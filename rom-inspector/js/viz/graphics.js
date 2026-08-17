@@ -42,6 +42,10 @@ function render_graphics(main) {
   const spriteMonsters = spriteCatalog.monsters;
   const spriteConfirmedCount = spriteNpcs.filter(e => e.arrangementConfirmed).length
     + spriteMonsters.filter(e => e.arrangementConfirmed).length;
+  const spriteFamilyCount = spriteNpcs.filter(e => e.arrangementFamily === "humanoid4pose").length;
+  const spriteFamilyDistinct = new Set(
+    spriteNpcs.filter(e => e.arrangementFamily === "humanoid4pose").map(e => e.kindByte)
+  ).size;
 
   main.innerHTML = `
     <h1 class="page-title">Grafiken</h1>
@@ -108,19 +112,31 @@ function render_graphics(main) {
       die Kachel-Pipeline gefunden: eine reale, disassemblierte
       ROM-&gt;VRAM-DMA-Formel, live an 3 unabhängigen, bereits bekannten
       echten Sprites exakt bestätigt (siehe <code>SpriteTileFormula.lua</code>
-      für die volle Herleitung). <strong>Ehrlicher Umfang:</strong> die
-      gezeigten Kacheln sind echte, einzeln korrekte ROM-Pixel &mdash;
-      die Bildschirm-ANORDNUNG (welche Kachel wohin gehört) ist nur für
-      die ${spriteConfirmedCount} unten mit
-      <span class="badge verified">Anordnung bestätigt</span> markierten
-      Einträge unabhängig bekannt; alle anderen zeigen die Kacheln in
-      der rohen ROM-Kopierreihenfolge, eine ehrlich UNBEKANNTE
-      Bildschirm-Anordnung, kein geratenes Raster.
+      für die volle Herleitung). Direkter Nutzer-Auftrag "du sollst mehr
+      npcs suchen" führte zu einem zweiten Fund: ${spriteFamilyCount}
+      weitere NPC-Einträge (${spriteFamilyDistinct} davon mit
+      unterschiedlichem <code>kindByte</code>, also wirklich
+      unterschiedliche NPC-Designs) teilen exakt dieselbe reale
+      Kopierreihenfolge wie characterA/characterB &mdash; ihre Kacheln
+      werden automatisch in die echte, logische Pose-Reihenfolge
+      umsortiert (nicht mehr die rohe DMA-Reihenfolge).
+      <strong>Ehrlicher Umfang, 3 Vertrauensstufen:</strong> die
+      gezeigten Kacheln sind für JEDEN Eintrag echte, einzeln korrekte
+      ROM-Pixel. Die Bildschirm-ANORDNUNG ist für
+      ${spriteConfirmedCount} Einträge mit
+      <span class="badge verified">Anordnung bestätigt</span> individuell
+      live verifiziert; für ${spriteFamilyCount} Einträge mit
+      <span class="badge partial">Anordnung wahrscheinlich (Familie)</span>
+      per Familien-Zugehörigkeit übernommen (echt, aber nicht einzeln
+      live geprüft); alle anderen zeigen
+      <span class="badge unknown-b">Anordnung unbekannt</span> in roher
+      ROM-Kopierreihenfolge, kein geratenes Raster.
     </p>
     <div class="stat-grid">
       <div class="stat-card"><div class="value">${spriteNpcs.length}</div><div class="label">NPC-Einträge</div></div>
       <div class="stat-card"><div class="value">${spriteMonsters.length}</div><div class="label">Monster/Boss-Einträge</div></div>
-      <div class="stat-card"><div class="value">${spriteConfirmedCount}</div><div class="label">Anordnung unabhängig bestätigt</div></div>
+      <div class="stat-card"><div class="value">${spriteConfirmedCount}</div><div class="label">Anordnung individuell bestätigt</div></div>
+      <div class="stat-card"><div class="value">${spriteFamilyCount} (${spriteFamilyDistinct} Designs)</div><div class="label">Anordnung wahrscheinlich (Familie)</div></div>
     </div>
     <div class="toolbar" style="margin-top:18px;">
       <div class="pill-tabs" id="spriteCatalogTabs">
@@ -227,12 +243,15 @@ function render_graphics(main) {
   let activeSpriteKind = "npcs";
 
   function spriteCols(entry) {
-    // The 3 independently-confirmed entries use their own real,
-    // known shape (4 wide); every other entry has an honestly unknown
-    // arrangement, so a neutral 8-wide strip is used purely for
-    // compact display -- NOT a claimed layout (see this section's own
-    // page-lede text).
-    return entry.arrangementConfirmed ? 4 : 8;
+    // The 3 individually-confirmed entries AND the 172 humanoid4pose
+    // family members (2026-08-17, "du sollst mehr npcs suchen") use
+    // their own real, known shape (4 wide, tileOffsets already
+    // reordered into real logical pose order by resolveSpriteTileOffsets
+    // -- see that function's own doc comment). Every other entry has an
+    // honestly unknown arrangement, so a neutral 8-wide strip is used
+    // purely for compact display -- NOT a claimed layout (see this
+    // section's own page-lede text).
+    return (entry.arrangementConfirmed || entry.arrangementFamily === "humanoid4pose") ? 4 : 8;
   }
 
   function renderSpriteCards() {
@@ -244,16 +263,25 @@ function render_graphics(main) {
       const rows = Math.ceil(entry.tileOffsets.length / cols);
       const card = document.createElement("div");
       card.className = "card";
+      let badge, ariaLayout;
+      if (entry.arrangementConfirmed) {
+        badge = `<span class="badge verified">Anordnung bestätigt</span>`;
+        ariaLayout = "Bildschirm-Anordnung individuell live bestätigt";
+      } else if (entry.arrangementFamily === "humanoid4pose") {
+        badge = `<span class="badge partial" title="Teilt characterA/characterBs eigene, live bestätigte Kopierreihenfolge -- dieselbe Vertrauensstufe wie andere Familien-Funde dieses Projekts, keine individuelle Live-Verifikation.">Anordnung wahrscheinlich (Familie)</span>`;
+        ariaLayout = "Bildschirm-Anordnung wahrscheinlich, per Familien-Zugehörigkeit zu characterA/characterB übernommen";
+      } else {
+        badge = `<span class="badge unknown-b">Anordnung unbekannt</span>`;
+        ariaLayout = "Bildschirm-Anordnung unbekannt";
+      }
       card.innerHTML = `
         <h3>${label} #${entry.index}</h3>
-        ${entry.arrangementConfirmed
-          ? `<span class="badge verified">Anordnung bestätigt</span>`
-          : `<span class="badge unknown-b">Anordnung unbekannt</span>`}
+        ${badge}
         <div class="meta">
           Bank ${entry.bank} &middot; ${entry.tileOffsets.length} Kacheln &middot;
           kindByte=0x${entry.kindByte.toString(16).padStart(2, "0")}, C=0x${entry.cByte.toString(16).padStart(2, "0")}
         </div>
-        <canvas id="sc_${activeSpriteKind}_${entry.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="${label} #${entry.index}: ${entry.tileOffsets.length} echte Sprite-Kacheln, direkt aus der geladenen ROM gerendert (rohe Kopierreihenfolge, ${entry.arrangementConfirmed ? "Bildschirm-Anordnung bestätigt" : "Bildschirm-Anordnung unbekannt"})"></canvas>
+        <canvas id="sc_${activeSpriteKind}_${entry.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="${label} #${entry.index}: ${entry.tileOffsets.length} echte Sprite-Kacheln, direkt aus der geladenen ROM gerendert (${ariaLayout})"></canvas>
       `;
       spriteHost.appendChild(card);
     }

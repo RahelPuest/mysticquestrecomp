@@ -17,6 +17,11 @@ Harness.test("SpriteTileFormula.resolveFileOffset: exact-matches characterA's ow
   Harness.assertEqual(bank, 9)
 end)
 
+Harness.test("SpriteTileFormula.reconstructPoseOrder: swaps the middle two of every 4-tile group, leaves a trailing partial group untouched", function()
+  local reordered = SpriteTileFormula.reconstructPoseOrder({ "a", "b", "c", "d", "e", "f", "g", "h", "x", "y" })
+  Harness.assertEqual(table.concat(reordered, ","), "a,c,b,d,e,g,f,h,x,y")
+end)
+
 Harness.test("SpriteTileFormula.resolveFileOffset: bank = 8 + floor(kindByte/64), covering all 4 real graphics banks", function()
   local _, bank0 = SpriteTileFormula.resolveFileOffset(0, 0x00, 0x00)
   local _, bank1 = SpriteTileFormula.resolveFileOffset(0, 0x51, 0x00) -- 0x51 = 0b01010001 -> top 2 bits 01
@@ -72,28 +77,63 @@ local function assertSameOffsetSet(offsets, expected, label)
 end
 
 Harness.testIfAvailable(
-  "ActorDefinitionTable.resolveSpriteTileOffsets: characterA (index 121) exactly reproduces all 16 already-known real tileOffsets (as a set)",
+  "ActorDefinitionTable.resolveSpriteTileOffsets: characterA (index 121) exactly reproduces all 16 already-known real tileOffsets, IN THE REAL ON-SCREEN POSE ORDER",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local record = ActorDefinitionTable.readRecord(romData, 121)
+    Harness.assertEqual(record.spriteSource.arrangementFamily, "humanoid4pose")
     local offsets = ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
     local expected = flatPoseOffsets(profile.graphics.secondRoom.scene.characterA)
-    assertSameOffsetSet(offsets, expected, "characterA")
+    -- Now a STRICT ordered match, not just a set: `resolveSpriteTileOffsets`
+    -- auto-reorders `humanoid4pose` records into the real logical pose
+    -- order (see SpriteTileFormula.reconstructPoseOrder's own doc
+    -- comment) -- position-for-position identical to rom_profiles.lua's
+    -- own already-known real down/up/left/left2 tile grouping.
+    Harness.assertEqual(#offsets, #expected)
+    for i = 1, #expected do
+      Harness.assertEqual(offsets[i], expected[i],
+        string.format("characterA tile %d: formula=%s known=%s", i, tostring(offsets[i]), tostring(expected[i])))
+    end
   end
 )
 
 Harness.testIfAvailable(
-  "ActorDefinitionTable.resolveSpriteTileOffsets: characterB (index 99) exactly reproduces all 16 already-known real tileOffsets (as a set)",
+  "ActorDefinitionTable.resolveSpriteTileOffsets: characterB (index 99) exactly reproduces all 16 already-known real tileOffsets, IN THE REAL ON-SCREEN POSE ORDER",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local record = ActorDefinitionTable.readRecord(romData, 99)
+    Harness.assertEqual(record.spriteSource.arrangementFamily, "humanoid4pose")
     local offsets = ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
     local expected = flatPoseOffsets(profile.graphics.secondRoom.scene.characterB)
-    assertSameOffsetSet(offsets, expected, "characterB")
+    Harness.assertEqual(#offsets, #expected)
+    for i = 1, #expected do
+      Harness.assertEqual(offsets[i], expected[i],
+        string.format("characterB tile %d: formula=%s known=%s", i, tostring(offsets[i]), tostring(expected[i])))
+    end
+  end
+)
+
+Harness.testIfAvailable(
+  "ActorDefinitionTable: the real humanoid4pose family has exactly 91 distinct real NPC sprite designs (172 records share it, the other 18 sharing the same innerPtr have count=1 -- a single icon, no pose structure -- and are correctly excluded)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local records = ActorDefinitionTable.scanTable(romData)
+    local familyCount, distinctKindBytes = 0, {}
+    for _, record in ipairs(records) do
+      if record.spriteSource.arrangementFamily == "humanoid4pose" then
+        familyCount = familyCount + 1
+        distinctKindBytes[record.spriteSource.kindByte] = true
+      end
+    end
+    local distinctCount = 0
+    for _ in pairs(distinctKindBytes) do distinctCount = distinctCount + 1 end
+    Harness.assertEqual(familyCount, 172)
+    Harness.assertEqual(distinctCount, 91)
   end
 )
 

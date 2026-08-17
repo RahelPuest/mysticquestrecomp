@@ -997,16 +997,19 @@ end
 -- rows) and every monster/boss (MonsterDefinitionTable, 21 rows),
 -- 2026-08-17. See SpriteTileFormula.lua's own doc comment for the full
 -- disassembly/live-validation. HONEST SCOPE, carried into every entry
--- below: this closes the PIXEL-SOURCE half only -- `tileOffsets` are
--- real, individually-correct ROM pixel data, in the ROM's own raw DMA
--- copy order (NOT necessarily on-screen reading order). The on-screen
--- ARRANGEMENT is only independently confirmed for the 3 entries flagged
--- `arrangementConfirmed=true` below (characterA/characterB/the real
--- first boss) -- every other entry's `tileOffsets` is real pixel data
--- with an HONESTLY UNKNOWN on-screen layout, not a guessed grid.
+-- below: this closes the PIXEL-SOURCE half for everyone. The on-screen
+-- ARRANGEMENT has 3 honest tiers: `arrangementConfirmed=true`
+-- (characterA/characterB/the real first boss -- individually live-OAM-
+-- verified) beats `arrangementFamily="humanoid4pose"` (172 further NPC
+-- records, 91 distinct designs, sharing characterA/B's own exact real
+-- copy-order list -- `resolveSpriteTileOffsets` already reorders these
+-- into the real logical pose order, same confidence tier as any other
+-- family-level, not individually-verified, finding in this project)
+-- beats plain unflagged (an HONESTLY UNKNOWN on-screen layout, shown in
+-- raw DMA copy order, not a guessed grid).
 ----------------------------------------------------------------------
 do
-  local function buildSpriteEntries(records, resolveFn, tableBank, confirmedIndices)
+  local function buildSpriteEntries(records, resolveFn, confirmedIndices)
     local entries = {}
     for _, record in ipairs(records) do
       local offsets = resolveFn(romData, record)
@@ -1017,17 +1020,18 @@ do
         cByte = record.spriteSource.cByte,
         tileOffsets = offsets,
         arrangementConfirmed = confirmedIndices[record.index] or false,
+        arrangementFamily = record.spriteSource.arrangementFamily,
       }
     end
     return entries
   end
 
   local npcEntries = buildSpriteEntries(
-    ActorDefinitionTable.scanTable(romData), ActorDefinitionTable.resolveSpriteTileOffsets, 3,
+    ActorDefinitionTable.scanTable(romData), ActorDefinitionTable.resolveSpriteTileOffsets,
     { [121] = true, [99] = true }
   )
   local monsterEntries = buildSpriteEntries(
-    MonsterDefinitionTable.scanTable(romData), MonsterDefinitionTable.resolveSpriteTileOffsets, 4,
+    MonsterDefinitionTable.scanTable(romData), MonsterDefinitionTable.resolveSpriteTileOffsets,
     { [16] = true }
   )
   writeJs("sprite-catalog.js", "SPRITE_CATALOG", { npcs = npcEntries, monsters = monsterEntries },
@@ -1035,8 +1039,12 @@ do
     "121=characterA/99=characterB confirmed) and every monster/boss (MonsterDefinitionTable, 21 " ..
     "rows, index 16=the real first boss confirmed) -- found 2026-08-17 (direct user instruction " ..
     "\"versuche mal über einen ähnlichen hebel wie bei den tiles alle npc, boss und " ..
-    "monstersprites zu extrahieren\"), see SpriteTileFormula.lua's own doc comment for the full " ..
-    "disassembly/live-validation. HONEST SCOPE: tileOffsets are real, individually-correct ROM " ..
+    "monstersprites zu extrahieren\", then \"du sollst mehr npcs suchen\"), see " ..
+    "SpriteTileFormula.lua's own doc comment for the full disassembly/live-validation. 172 further " ..
+    "NPC records (91 distinct designs) carry arrangementFamily=\"humanoid4pose\" -- their " ..
+    "tileOffsets are ALREADY reordered into the real logical pose order (same family as " ..
+    "characterA/characterB), a real but not individually live-verified confidence tier, distinct " ..
+    "from arrangementConfirmed. HONEST SCOPE: tileOffsets are real, individually-correct ROM " ..
     "pixel data for every entry -- the on-screen ARRANGEMENT (which tile goes where) is only " ..
     "independently confirmed for the 3 arrangementConfirmed=true entries; every other entry's " ..
     "tileOffsets are shown in the ROM's own raw DMA copy order, an HONESTLY UNKNOWN on-screen " ..

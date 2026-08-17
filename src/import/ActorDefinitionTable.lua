@@ -187,6 +187,17 @@ function ActorDefinitionTable.readRecord(romData, index)
       kindByte = raw:byte(6),
       innerPtr = raw:byte(7) + raw:byte(8) * 256,
       bank = 8 + math.floor(raw:byte(6) / 64),
+      -- Real, live-corroborated "family" membership (2026-08-17, see
+      -- SpriteTileFormula.lua's own `HUMANOID_4POSE_INNER_PTR` doc
+      -- comment): true when this record shares the exact same
+      -- `innerPtr` as characterA/characterB AND its own `count` is
+      -- even (so its raw tiles divide cleanly into 4-tile pose groups)
+      -- -- 172 of 218 records qualify (190 share the innerPtr, 18 of
+      -- those have an odd count=1 and are excluded), 91 of them with a
+      -- DISTINCT `kindByte` (a genuinely different real NPC design, not
+      -- a repeat placement of an already-known one).
+      arrangementFamily = (raw:byte(7) + raw:byte(8) * 256 == 0x7B5A and raw:byte(4) % 2 == 0)
+        and "humanoid4pose" or nil,
     },
   }
 end
@@ -197,9 +208,17 @@ end
 -- see `SpriteTileFormula.lua`'s own doc comment for the formula and its
 -- live validation. `tableBank` defaults to this module's own `BANK`
 -- (3) since the outer record's `innerPtr` is a same-bank pointer.
+-- When `record.spriteSource.arrangementFamily == "humanoid4pose"`, the
+-- result is ALREADY reordered into the real on-screen pose order (see
+-- `SpriteTileFormula.reconstructPoseOrder`'s own doc comment) -- callers
+-- don't need to reorder it themselves.
 function ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
   local SpriteTileFormula = require("src.import.SpriteTileFormula")
-  return SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
+  local offsets, bank = SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
+  if record.spriteSource.arrangementFamily == "humanoid4pose" then
+    offsets = SpriteTileFormula.reconstructPoseOrder(offsets)
+  end
+  return offsets, bank
 end
 
 --- Reads every real record across the table's own measured extent
