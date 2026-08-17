@@ -28,11 +28,14 @@ Harness.testIfAvailable(
     Harness.assertEqual(exit.holdDirection, "up")
     Harness.assertEqual(exit.landingX, 80)
     Harness.assertEqual(exit.landingY, 112)
-    -- The zone sits directly under this room's own real, already-
-    -- decoded gate/pillar tiles (136/137, rows 0-3, cols 16-17) --
-    -- see rom_profiles.lua's own doc comment for the full reasoning.
-    Harness.assertEqual(sixth.grid[1][17], 136)
-    Harness.assertEqual(sixth.grid[1][18], 137)
+    -- RETRACTED (2026-08-17, see rom_profiles.lua's own capture-bug
+    -- retraction on `sixthRoom.grid`): this used to assert the zone
+    -- sits under real gate/pillar tiles (136/137) at grid[1][17]/[18]
+    -- -- true of the OLD, now-retracted (capture-bug) grid, false of
+    -- the corrected one (`sixthRoom.grid` is now `startRoom.grid`,
+    -- plain wall tiles at that position, no gate-like feature). The
+    -- exit's own real fields (target/flag/direction/landing) above are
+    -- unaffected -- only this grid-content assumption was wrong.
   end
 )
 

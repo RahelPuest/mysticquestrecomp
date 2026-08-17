@@ -16,71 +16,65 @@ local DevRomLocator = require("tests.dev_rom_locator")
 -- already uses; the remaining 9 were newly found this pass.
 local romData = DevRomLocator.find()
 
+-- CORRECTED (2026-08-17, direct user claim "und der sixth raum muss
+-- ganz klar der startraum sein. das habe ich 1000 mal im rom
+-- beobachtet" -- confirmed correct via a live WRAM register trace,
+-- see rom_profiles.lua's own dated retraction on `sixthRoom` for the
+-- full evidence): this test used to assert the WRONG family
+-- (`{2,3,4,5,6}`, the willyRoom/secondRoom/thirdRoom group) even
+-- though this same file's own top-of-file doc comment already said
+-- `sixthRoom` reuses `fourthRoom`'s own real tile source (`$40B0`) --
+-- an internal inconsistency nobody had cross-checked live before now.
+-- The real, live-confirmed family is `startRoom`/`fourthRoom` (`{0,1}`,
+-- roomSelector 1 specifically).
 Harness.testIfAvailable(
-  "sixthRoom: shares the willyRoom/secondRoom/thirdRoom real roomSelector family",
+  "sixthRoom: shares the startRoom/fourthRoom real roomSelector family, not willyRoom's",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local sixth = profile.graphics.sixthRoom
     Harness.assertTrue(sixth ~= nil, "expected profile.graphics.sixthRoom to exist")
-    Harness.assertEqual(#sixth.romRoomSelectors, 5)
+    Harness.assertEqual(#sixth.romRoomSelectors, 2)
     for i, sel in ipairs(sixth.romRoomSelectors) do
-      Harness.assertEqual(sel, i + 1) -- {2,3,4,5,6}
+      Harness.assertEqual(sel, i - 1) -- {0,1}
     end
+    Harness.assertEqual(sixth.romRoomSelectorConfirmed, 1)
+    Harness.assertTrue(sixth.sameRomIdentityAs ~= nil, "expected a real sameRomIdentityAs cross-reference")
+    Harness.assertEqual(sixth.sameRomIdentityAs[1], "startRoom")
+    Harness.assertEqual(sixth.sameRomIdentityAs[2], "fourthRoom")
   end
 )
 
+-- RETIRED (2026-08-17, see rom_profiles.lua's own capture-bug
+-- retraction on `sixthRoom.grid`/`tileOffsets`/`floorTileIds` for the
+-- full evidence): the 2 tests that used to sit here ("real tileOffsets
+-- for shared tile IDs (128-134) exactly match fourthRoom's own" and
+-- "the 9 newly-found real tile offsets...") asserted properties of a
+-- `sixthRoom.tileOffsets` table that turned out to be a real, caught
+-- capture bug -- a raw VRAM read that never corrected for the room's
+-- own nonzero hardware SCX, producing a "half brick corridor, half
+-- courtyard" tile arrangement that never appears on real hardware.
+-- Replaced below with a test of the REAL fix: `sixthRoom` now reuses
+-- `startRoom`'s own already-correct `grid`/`tileOffsets`/
+-- `floorTileIds` directly (a real Lua table reference, not a
+-- duplicate), since a live WRAM register trace (`$D392`/`$D393`/
+-- `$C3F0`/`$C3F5`, see the test above) confirmed they're the same real
+-- ROM room.
 Harness.testIfAvailable(
-  "sixthRoom: real tileOffsets for shared tile IDs (128-134) exactly match fourthRoom's own",
+  "sixthRoom: render data (grid/tileOffsets/floorTileIds) is startRoom's own, not a separate (buggy) capture",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
-    local fourth = profile.graphics.fourthRoom
+    local start = profile.graphics.startRoom
     local sixth = profile.graphics.sixthRoom
-    local sharedCount = 0
-    for id, offset in pairs(sixth.tileOffsets) do
-      if fourth.tileOffsets[id] then
-        sharedCount = sharedCount + 1
-        Harness.assertEqual(offset, fourth.tileOffsets[id],
-          string.format("tile %d should match fourthRoom's own real offset", id))
-      end
-    end
-    -- UPDATED (2026-08-14, task #75 "reconcile live zone coords with
-    -- static grid"): was 7 -- fourthRoom's own tileOffsets gained 7 MORE
-    -- real entries this pass (136-140/143/144/147, found via a live
-    -- corridor-scroll trace, see fourthRoom's own doc comment), and
-    -- every one of the 5 that overlap sixthRoom's own independently-
-    -- found set (136/137/143/144/147, plus 145/146 already counted
-    -- before) landed on the EXACT SAME real ROM offset -- a genuine,
-    -- unplanned cross-validation between two separately-run
-    -- investigations, not a coincidence this project should quietly
-    -- collapse back to the old count.
-    Harness.assertEqual(sharedCount, 14)
-  end
-)
-
-Harness.testIfAvailable(
-  "sixthRoom: the 9 newly-found real tile offsets are real, in-bounds ROM addresses with genuine tile data",
-  romData ~= nil,
-  "no development ROM found",
-  function()
-    local profile = RomProfiles.match(RomIdentity.identify(romData))
-    local sixth = profile.graphics.sixthRoom
-    local newIds = { 136, 137, 142, 143, 144, 145, 146, 147, 150 }
-    for _, id in ipairs(newIds) do
-      local offset = sixth.tileOffsets[id]
-      Harness.assertTrue(offset ~= nil, "expected a real offset for tile " .. id)
-      Harness.assertTrue(offset >= 0 and offset + 16 <= #romData,
-        "expected tile " .. id .. "'s offset to be a real, in-bounds ROM address")
-      -- Real tile data is never all-zero (a real, if weak, "not garbage" sanity check).
-      local allZero = true
-      for i = 0, 15 do
-        if romData:byte(offset + i + 1) ~= 0 then allZero = false; break end
-      end
-      Harness.assertTrue(not allZero, "expected tile " .. id .. "'s real bytes to be non-trivial")
-    end
+    Harness.assertTrue(sixth.grid == start.grid,
+      "expected sixthRoom.grid to be the exact same real table as startRoom.grid")
+    Harness.assertTrue(sixth.tileOffsets == start.tileOffsets,
+      "expected sixthRoom.tileOffsets to be the exact same real table as startRoom.tileOffsets")
+    Harness.assertTrue(sixth.floorTileIds == start.floorTileIds,
+      "expected sixthRoom.floorTileIds to be the exact same real table as startRoom.floorTileIds")
   end
 )
 

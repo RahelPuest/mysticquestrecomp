@@ -25,6 +25,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142096,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -33,6 +34,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142128,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -41,6 +43,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142224,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -49,6 +52,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142240,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -57,6 +61,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142272,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -65,6 +70,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142288,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -73,6 +79,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142304,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -81,6 +88,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142368,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -89,6 +97,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142416,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -97,6 +106,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142448,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -105,6 +115,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142464,
       "rooms": [
+        "sixthRoom",
         "startRoom"
       ]
     },
@@ -112,6 +123,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142496,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -120,6 +132,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142512,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -128,6 +141,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142528,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -136,6 +150,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142544,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -144,6 +159,7 @@ const MAP_TILE_CATALOG = {
       "bank": 8,
       "fileOffset": 142560,
       "rooms": [
+        "sixthRoom",
         "startRoom",
         "titleScreen"
       ]
@@ -914,6 +930,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200000,
       "rooms": [
         "fourthRoom",
+        "sixthRoom",
         "startRoom"
       ]
     },
@@ -921,6 +938,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 200016,
       "rooms": [
+        "sixthRoom",
         "startRoom"
       ]
     },
@@ -928,6 +946,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 200032,
       "rooms": [
+        "sixthRoom",
         "startRoom"
       ]
     },
@@ -971,6 +990,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200112,
       "rooms": [
         "fourthRoom",
+        "sixthRoom",
         "startRoom"
       ]
     },
@@ -988,6 +1008,7 @@ const MAP_TILE_CATALOG = {
       "fileOffset": 200272,
       "rooms": [
         "fourthRoom",
+        "sixthRoom",
         "startRoom"
       ]
     },
@@ -995,6 +1016,7 @@ const MAP_TILE_CATALOG = {
       "bank": 12,
       "fileOffset": 200288,
       "rooms": [
+        "sixthRoom",
         "startRoom"
       ]
     },

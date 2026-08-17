@@ -126,6 +126,11 @@ const ROOMS = [
     ],
     "heightTiles": 16,
     "name": "sixthRoom",
+    "sameRomIdentityAs": [
+      "startRoom",
+      "fourthRoom"
+    ],
+    "sameRomIdentityNote": "Reale ROM-Identitaetsregister ($D392/$D393 Tile-Source-Pointer, $C3F0 dynamicBank, $C3F5 roomSelector) sind byte-identisch mit startRoom/fourthRoom (live bestaetigt 2026-08-17) -- derselbe reale ROM-Raum (die 'Glaive Castle prison arena'), ein anderer, per Scroll erreichter Ausschnitt derselben Leinwand, kein unabhaengiger Raum. Zusaetzlich bestaetigt: die reale ROM-eigene \"Kaempfe!\"-Textbox (dieselbe wie in startRoom) erscheint auch hier. Siehe events.md 2026-08-17.",
     "widthTiles": 20
   },
   {

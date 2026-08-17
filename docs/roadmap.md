@@ -409,6 +409,43 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       the rom-inspector website's Room-System graph (violet badge on
       `fifthRoom`'s own node) and `rom_profiles.lua`'s `fifthRoom.
       sameRomIdentityAs`/`sameRomIdentityNote` fields.
+      **SECOND ROOM-IDENTITY CORRECTION, 2026-08-17** (same day, direct
+      user claim "und der sixth raum muss ganz klar der startraum
+      sein. das habe ich 1000 mal im rom beobachtet"): also confirmed
+      live and correct — `sixthRoom`'s real WRAM identity registers are
+      byte-identical to `startRoom`/`fourthRoom`'s own, forming a
+      SECOND real "one continuous canvas" chain. This one also caught
+      a real, previously-wrong claim already sitting in this project's
+      own data: `sixthRoom.romRoomSelectors` said the wrong family
+      (`{2,3,4,5,6}`, willyRoom's own) with no live confirmation ever
+      done, and an "HONEST CAVEAT" paragraph had explicitly (and
+      wrongly) dismissed an EARLIER user's own "sieht aus wie der
+      Start-Raum" observation as an imprecise recollection — both
+      retracted this pass. Independent corroboration beyond the
+      registers: `sixthRoom`'s own screenshot shows the real ROM's
+      "Kämpfe!" battle-intro textbox, the same real UI `startRoom`'s
+      own boss-encounter script drives. Fixed a stale test
+      (`tests/import/sixth_room_test.lua` used to assert the wrong
+      family). Same website mechanism as the fifthRoom finding (generic
+      `sameRomIdentityAs` rendering, no rom-inspector code changes
+      needed beyond re-exporting).
+      **CAPTURE-BUG FIX, 2026-08-17, immediate direct follow-up**
+      ("der raum sieht wie eine kombination aus dem startraum und dem
+      fourth room aus... als ob da was beim lesen verschoben wurde
+      oder so. prüfe erstmal ob das vielleicht das problem ist" —
+      exactly right): `sixthRoom`'s own STORED `grid`/`tileOffsets`
+      turned out to be a real, reproduced capture bug — a raw VRAM
+      tilemap read that never corrected for the room's own real,
+      nonzero hardware SCX (96), producing a "half brick corridor,
+      half courtyard" combination that never appears on real hardware.
+      A correctly SCX-windowed read of the same live moment shows only
+      real `startRoom` content (the "Kämpfe!" textbox over ordinary
+      courtyard floor). Fixed by pointing `sixthRoom.grid`/
+      `tileOffsets`/`floorTileIds` at `startRoom`'s own real tables
+      directly (a Lua table reference, not a copy). 4 tests across 3
+      files had baked-in assumptions from the buggy data — fixed, one
+      retired outright as circular. Full suite 560/560 green. See
+      `events.md`'s own dated follow-up entry for the full trace.
       **What this changes**: Milestone 3's real DoD (a general,
       ROM-driven way to load ANY room) now has a concrete, verified,
       SHIPPED mechanism behind it for willyRoom — but still not fully

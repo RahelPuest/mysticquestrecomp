@@ -10403,3 +10403,124 @@ addition, same content as here). No gameplay/engine code changed this
 pass -- `fifthRoom` keeps its own independently-captured `grid` for
 rendering (a real, different section of the shared canvas, still worth
 its own capture), this is a documentation correction, not a room-merge.
+
+## sixthRoom is real ROM-wise the SAME room as startRoom/fourthRoom -- direct user claim confirmed, corrected a real prior mistake (2026-08-17, same day)
+
+Direct user claim: "und der sixth raum muss ganz klar der startraum
+sein. das habe ich 1000 mal im rom beobachtet". Investigated live,
+same methodology as the fifthRoom finding above -- the user is right,
+and this one also caught a real, previously-wrong claim already sitting
+in `rom_profiles.lua`'s own doc comment.
+
+**Register-level check** (mGBA, real ROM -- `reach_room.reach_first_
+room()` for `startRoom`, `checkpoints.fourth_room_free()`/`sixth_room_
+free()` for the other two, reading `$D392`/`$D393`/`$C3F0`/`$C3F5` at
+each real settled position):
+
+| room       | D392/D393     | C3F0 | C3F5 | SCX/SCY |
+|------------|---------------|------|------|---------|
+| startRoom  | (0xb0, 0x40)  | 6    | 1    | 0/0     |
+| fourthRoom | (0xb0, 0x40)  | 6    | 1    | 0/0     |
+| sixthRoom  | (0xb0, 0x40)  | 6    | 1    | 96/0    |
+
+All 3 real identity registers are byte-identical across all three
+rooms. Unlike the fifthRoom case, `sixthRoom`'s own prior
+`rom_profiles.lua` entry didn't just carry an ambiguous "dynamicBank"
+framing -- it stated the WRONG family outright (`romRoomSelectors =
+{2,3,4,5,6}`, the willyRoom/secondRoom/thirdRoom group) with no
+`romRoomSelectorConfirmed` field at all, i.e. never live-checked. Worse,
+this room's own "HONEST CAVEAT" paragraph (written during the
+second-boss placement saga) explicitly told a PAST user's own "sieht
+aus wie der Start-Raum" observation was probably an imprecise
+recollection, reasoning from a tileset comparison that turned out to
+be comparing against the wrong reference family. Both were wrong;
+retracted this pass, see `rom_profiles.lua`'s own dated correction on
+`sixthRoom` for the full text.
+
+**Independent behavioral corroboration** (beyond the registers): a
+fresh `sixth_room_free()` screenshot shows the real ROM's own
+"Kämpfe!" battle-intro textbox on screen -- the same real UI element
+`startRoom`'s own courtyard/boss-encounter script drives. Only
+consistent with `sixthRoom` genuinely being that same real room's own
+live logic, not a coincidence -- real ROM behavior, not just static
+register equality.
+
+**Conclusion**: `startRoom`/`fourthRoom`/`sixthRoom` are, together, a
+SECOND real "one continuous scrolled canvas, several named screens"
+chain in this project's data, alongside the already-established
+willyRoom/secondRoom/thirdRoom(/fifthRoom) chain. Fixed in
+`rom_profiles.lua` (`sixthRoom.romRoomSelectors` corrected to `{0,1}`,
+added `romRoomSelectorConfirmed = 1` and structured `sameRomIdentityAs`/
+`sameRomIdentityNote` fields, same shape as `fifthRoom`'s own) and in
+`tests/import/sixth_room_test.lua` (the old test asserting the wrong
+family is corrected, not just relaxed -- 562/562 full suite green
+again). Does NOT change the still-separately-documented, still-open
+`secondBoss` gate-mechanic question (that has its own real, honest
+negative live-ROM test) -- only the room-identity claim was wrong.
+Surfaced on the rom-inspector website's Room-System graph via the
+same generic `sameRomIdentityAs` rendering built for the fifthRoom
+finding (violet badge, no code changes needed on the website side
+beyond re-running `export_data.lua`).
+
+## sixthRoom's own stored grid was a real capture bug -- fixed by pointing it at startRoom's own correct data (2026-08-17, same day, direct follow-up)
+
+Direct user follow-up, immediately after the finding above: "und der
+sixth raum muss ganz klar der startraum sein. das habe ich 1000 mal im
+rom beobachtet... der raum sieht wie eine kombination aus dem
+startraum und dem fourth room aus... als ob da was beim lesen
+verschoben wurde oder so. prüfe erstmal ob das vielleicht das problem
+ist". Exactly right -- and it explains why the finding above's own
+grid-overlap comparison (56/320, 17.5%, cited as "a real, measurable
+outlier") was itself measuring a bug, not a real ROM fact.
+
+**Root cause, reproduced directly**: rendered `sixthRoom.grid` (the
+data this project had stored) into a real image by decoding it against
+real ROM bytes -- it showed a "half brick corridor wall, half
+checkerboard courtyard" combination. Then live re-checked
+`checkpoints.sixth_room_free()`'s own real settled position, reading
+the REAL hardware SCX register (`$FF43`) directly, not just the WRAM
+shadow: **SCX=96, SCY=0**. A raw VRAM background-tilemap read that
+does NOT correct for this (reading tilemap columns 0-19 directly,
+ignoring the real 96px/12-tile scroll offset) reproduces the exact
+same "half wall, half courtyard" combination, pixel-for-pixel, as the
+stored grid -- proving the original capture never applied the real SCX
+correction, hitting the exact same "ignoring hardware SCX/SCY" pitfall
+this project has already caught and fixed elsewhere (`docs/reverse-
+engineering/rom-map.md`). A CORRECTLY SCX-windowed read of the exact
+same live moment shows something completely different: the real ROM's
+own "Kämpfe!" battle-intro textbox over an ordinary courtyard floor --
+i.e. genuinely more of `startRoom`'s own real content, visually
+confirming (not just via WRAM registers) the room-identity finding
+above.
+
+**Fix**: `rom_profiles.lua` now points `sixthRoom.grid`/`tileOffsets`/
+`floorTileIds` at `startRoom`'s own already-correct tables directly
+(a real Lua table reference via a post-construction fixup loop, not a
+duplicated copy -- the two can never drift apart again). The old,
+buggy grid literal is kept in the file, unedited, purely as the
+historical record the retraction comments cite. `sixthRoom.gate`'s own
+doc comment (built on the false premise that a real gate/pillar
+structure already existed at that screen position) is corrected too --
+the mechanism still works (real, valid tile IDs, still resolve via the
+corrected `tileOffsets`), but the "matches the real surrounding art"
+claim is retracted; a real visual redesign against the corrected
+background is open, separate follow-up work.
+
+**Test fallout, all fixed**: 4 tests across 3 files had baked in
+assumptions from the buggy data (`fourth_room_test.lua`'s own
+"cross-validation" test -- turned out to be circular, since the old
+`sixthRoom.tileOffsets` had directly copied several entries from
+`fourthRoom`'s own table by construction, not independently
+re-discovered them; `sixth_room_test.lua`'s 2 tileOffsets tests,
+replaced with one asserting the real fix -- `sixthRoom.grid`/
+`tileOffsets`/`floorTileIds` are literally the same table as
+`startRoom`'s own; `seventh_room_test.lua`'s 2 grid-content
+assertions, retracted along with the fake gate look). Full suite green
+again (560/560 -- down from 562: 2 tests retired outright, 1 replacement
+added).
+
+Honest scope: `secondBoss`'s own placement/spawn fields are untouched
+(a separate, already-documented open question with its own real-ROM
+negative test, see the "second boss investigation" and "Real-ROM test
+of the sixthRoom gate mechanic" entries elsewhere in this file) --
+only the ROOM RENDER DATA was ever wrong.

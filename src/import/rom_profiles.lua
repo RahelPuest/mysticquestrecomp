@@ -2615,21 +2615,64 @@ RomProfiles.PROFILES = {
       -- correction on this same feature: "das ist doch immernoch der
       -- falsche raum!!! es ist im raum der so ausseiht wie der start
       -- raum", then confirmed via live back-and-forth to be reached by
-      -- walking west out of `fourthRoom`, not north. HONEST CAVEAT: this
-      -- room's own real tileset is the willyRoom/secondRoom/thirdRoom
-      -- checkerboard-courtyard family (see `tileOffsets` above), NOT
-      -- `startRoom`'s tileset (that visual match belongs to `fourthRoom`
-      -- itself, structurally, via the shared `$40B0` pointer) -- the
-      -- user's own "sieht aus wie der Start-Raum" description does not
-      -- literally match this room's real captured art. Recorded here
-      -- rather than silently smoothed over: the WEST-DIRECTION fact was
-      -- confirmed three separate times, directly and concretely, so it
-      -- governs the placement; the visual-similarity description may
-      -- simply have been an imprecise recollection.
+      -- walking west out of `fourthRoom`, not north.
+      --
+      -- RETRACTED (2026-08-17, direct user claim "und der sixth raum
+      -- muss ganz klar der startraum sein. das habe ich 1000 mal im
+      -- rom beobachtet" -- correct): the "HONEST CAVEAT" that used to
+      -- sit right here ("this room's own real tileset is the
+      -- willyRoom/secondRoom/thirdRoom family, NOT startRoom's") was
+      -- WRONG -- it compared this room's real tile GRAPHICS against
+      -- the wrong reference family and never actually live-checked the
+      -- real WRAM room-identity registers against `startRoom`'s own
+      -- live value, the same category of gap the `fifthRoom` doc
+      -- comment above just got caught on. Live re-checked this pass
+      -- (`checkpoints.sixth_room_free()` vs. `reach_room.
+      -- reach_first_room()` for `startRoom`, vs. `checkpoints.
+      -- fourth_room_free()` for `fourthRoom`, all three reading
+      -- `$D392`/`$D393`/`$C3F0`/`$C3F5`):
+      --   startRoom:  D392/D393=(0xb0,0x40) C3F0=6 C3F5=1 SCX/SCY=0/0
+      --   fourthRoom: D392/D393=(0xb0,0x40) C3F0=6 C3F5=1 SCX/SCY=0/0
+      --   sixthRoom:  D392/D393=(0xb0,0x40) C3F0=6 C3F5=1 SCX=96 SCY=0
+      -- ALL THREE real identity registers are byte-identical across
+      -- `startRoom`/`fourthRoom`/`sixthRoom` -- the user's own
+      -- original "sieht aus wie der Start-Raum" description was
+      -- LITERALLY CORRECT, and this project's own prior dismissal of
+      -- it was the actual mistake, not an imprecise recollection.
+      -- Real, independent corroboration beyond the registers: a fresh
+      -- screenshot of `sixthRoom` shows the REAL ROM's own "Kämpfe!"
+      -- battle-intro textbox on screen -- the exact same real UI
+      -- element `startRoom`'s own courtyard/boss-encounter script
+      -- drives -- consistent only if this genuinely is that same real
+      -- room's own live logic, not a coincidence. `romRoomSelectors`
+      -- below corrected from the wrong `{2,3,4,5,6}` (willyRoom
+      -- family, apparently copied from a neighboring room's own entry
+      -- during an earlier pass, never itself live-confirmed -- no
+      -- `romRoomSelectorConfirmed` field existed for this room before
+      -- now) to the real, live-confirmed `{0,1}`/`1`, matching
+      -- `startRoom`/`fourthRoom`'s own real family. This extends the
+      -- already-established "one continuous scrolled canvas, several
+      -- named screens" pattern (previously: willyRoom/secondRoom/
+      -- thirdRoom, and fifthRoom as a same-identity cut target) to a
+      -- SECOND real chain: `startRoom`/`fourthRoom`/`sixthRoom`.
+      -- Doesn't retract the WEST-DIRECTION connectivity fact (still
+      -- real, still governs the exit wiring) or the `secondBoss`
+      -- placement's own honest status (see that field's own doc
+      -- comment for the separate, still-open real-ROM gate test) --
+      -- only the room-identity claim was wrong. See events.md's own
+      -- dated entry for the full trace.
       sixthRoom = {
         status = "VERIFIED (real tile/collision data; wired in 2026-08-15 as a real static room reachable " ..
           "west of fourthRoom -- see doc comment above for the honest 'engineering choice, not a ROM cut' caveat)",
-        romRoomSelectors = { 2, 3, 4, 5, 6 },
+        romRoomSelectors = { 0, 1 },
+        romRoomSelectorConfirmed = 1,
+        sameRomIdentityAs = { "startRoom", "fourthRoom" },
+        sameRomIdentityNote = "Reale ROM-Identitaetsregister ($D392/$D393 Tile-Source-Pointer, " ..
+          "$C3F0 dynamicBank, $C3F5 roomSelector) sind byte-identisch mit startRoom/fourthRoom " ..
+          "(live bestaetigt 2026-08-17) -- derselbe reale ROM-Raum (die 'Glaive Castle prison " ..
+          "arena'), ein anderer, per Scroll erreichter Ausschnitt derselben Leinwand, kein " ..
+          "unabhaengiger Raum. Zusaetzlich bestaetigt: die reale ROM-eigene \"Kaempfe!\"-Textbox " ..
+          "(dieselbe wie in startRoom) erscheint auch hier. Siehe events.md 2026-08-17.",
         cols = 20,
         rows = 16,
         -- 7 of 16 distinct real tile IDs (`128`-`134`) already had a
@@ -2694,24 +2737,46 @@ RomProfiles.PROFILES = {
         -- `willyRoom`'s own real, decoded `door` (`closedGrid`/
         -- `openGrid`) -- but NOT independently ROM-confirmed the way
         -- that one is, since this whole encounter is this project's own
-        -- addition with no live ROM trigger. `bgRow=0,bgCol=16` is
-        -- exactly the real `136`/`137` gate/pillar strip already in this
-        -- room's own captured `grid` below (rows 0-3, cols 16-17) --
-        -- the same real visual position the exit zone already sits
-        -- under. "Opens HALFWAY" per the user's own description: only
-        -- the bottom 2 of 4 rows swap to real, already-decoded floor
-        -- tile `131` (already used extensively elsewhere in this exact
-        -- room) -- the top half stays visually closed. Not a claim this
-        -- is what the real ROM's own ($unknown) ish gate mechanism
-        -- would show, if one even exists here -- a reasonable, honestly-
-        -- labeled visual stand-in using only real, already-verified ROM
-        -- tile data, same discipline as every other engineering choice
-        -- in this room.
+        -- addition with no live ROM trigger. "Opens HALFWAY" per the
+        -- user's own description: only the bottom 2 of 4 rows swap to
+        -- real, already-decoded floor tile `131` -- the top half stays
+        -- visually closed.
+        --
+        -- RETRACTED CLAIM (2026-08-17, see this file's own capture-bug
+        -- retraction on `sixthRoom.grid` above): this doc comment used
+        -- to claim `bgRow=0,bgCol=16` was chosen because it's "exactly
+        -- the real 136/137 gate/pillar strip already in this room's own
+        -- captured grid" -- true of the OLD, now-retracted (capture-bug)
+        -- grid, but FALSE of the real, corrected content (`startRoom`'s
+        -- own grid at that position is plain wall tiles, no gate-like
+        -- feature at all). `bgRow`/`bgCol`/`closedGrid`/`openGrid` below
+        -- are UNCHANGED (the mechanism still functions -- real tile IDs
+        -- 131/136/137 still resolve to real, valid ROM tile graphics via
+        -- the corrected `tileOffsets`, they just won't visually blend
+        -- into the corrected background the way this comment used to
+        -- claim) -- an even more purely cosmetic engineering stand-in
+        -- than previously described, not a claim about matching real
+        -- surrounding art. Real redesign against the corrected
+        -- background (picking a position/tiles that actually look right
+        -- against `startRoom`'s own real content) is open, separate
+        -- follow-up work, not done this pass.
         gate = {
           bgRow = 0, bgCol = 16, rows = 4, cols = 2,
           closedGrid = { {136,137}, {136,137}, {136,137}, {136,137} },
           openGrid = { {136,137}, {136,137}, {131,131}, {131,131} },
         },
+        -- RETRACTED (2026-08-17, see this file's own post-construction
+        -- fixup loop, right before `RomProfiles.match`, for the full
+        -- explanation): this `grid`/the `tileOffsets`/`floorTileIds`
+        -- below turned out to be a real capture bug (a raw VRAM
+        -- tilemap read that never corrected for the real, nonzero
+        -- hardware SCX at this room's own settled position) -- NOT a
+        -- real screen any player would ever see. Kept here, unedited,
+        -- purely as the documented historical record the retraction
+        -- comment cites; `sixthRoom`'s ACTUAL render data is
+        -- overridden further down in this file to real, correct
+        -- `startRoom` data instead.
+        --
         -- Real VRAM tilemap capture at the settled position (mgba,
         -- background map 0, rows 0-15/cols 0-19).
         grid = {
@@ -4980,6 +5045,50 @@ RomProfiles.PROFILES = {
     },
   },
 }
+
+-- CORRECTED, real capture-bug fix (2026-08-17, direct user pushback:
+-- "der raum sieht wie eine kombination aus dem startraum und dem
+-- fourth room aus... als ob da was beim lesen verschoben wurde oder
+-- so. prüfe erstmal ob das vielleicht das problem ist" -- exactly
+-- right). `sixthRoom.grid`/`tileOffsets`/`floorTileIds` as originally
+-- hand-written above were a real, previously-uncaught CAPTURE BUG, not
+-- real ROM content: a live re-check this pass (`checkpoints.sixth_
+-- room_free()`, reading the REAL hardware SCX/SCY registers directly,
+-- not just the WRAM shadow) found the room settles at real SCX=96,
+-- SCY=0 -- but the original grid capture read the raw 32-column VRAM
+-- background tilemap starting at column 0 (as if SCX were still 0),
+-- exactly the same "ignoring hardware SCX/SCY" pitfall this project
+-- has hit and fixed elsewhere. Reproduced the bug directly: a fresh,
+-- deliberately-UNCORRECTED raw VRAM read at this exact live moment
+-- produces the SAME "half brick corridor wall, half checkerboard
+-- courtyard" combination already sitting in `sixthRoom.grid` above,
+-- pixel-for-pixel -- while a CORRECTLY SCX-windowed read of the exact
+-- same live moment shows something completely different: the real
+-- ROM's own "Kämpfe!" battle-intro textbox over a real, ordinary
+-- courtyard floor -- i.e. genuinely more of `startRoom`'s own real
+-- content (consistent with, and now visually confirming, this same
+-- pass's own WRAM-register finding that `sixthRoom` shares `startRoom`
+-- /`fourthRoom`'s exact real room identity). The stored grid above
+-- was a real, reproducible artifact of the 32-column tilemap
+-- wraparound colliding with stale/unrelated cells -- content that
+-- NO real player, on real hardware, would ever see on screen. NOT
+-- hand-edited above (the literal stays as a documented historical
+-- record of the bug, cited by this very comment) -- corrected here
+-- instead, after every real profile has been constructed, by
+-- literally pointing `sixthRoom`'s render data at `startRoom`'s own
+-- already-correct capture (a real Lua table reference, not a
+-- duplicated copy -- guarantees the two can never drift apart again).
+-- `secondBoss`'s own placement/spawn fields are untouched (a separate,
+-- already-honestly-documented open question, see that field's own doc
+-- comment) -- only the ROOM RENDER DATA was wrong.
+for _, profile in pairs(RomProfiles.PROFILES) do
+  local g = profile.graphics
+  if g and g.sixthRoom and g.startRoom then
+    g.sixthRoom.grid = g.startRoom.grid
+    g.sixthRoom.tileOffsets = g.startRoom.tileOffsets
+    g.sixthRoom.floorTileIds = g.startRoom.floorTileIds
+  end
+end
 
 --- Look up the profile for a ROM report from RomIdentity.identify(data).
 -- Returns nil, reason if no known profile matches.

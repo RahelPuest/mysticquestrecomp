@@ -35,22 +35,20 @@ Harness.testIfAvailable(
   end
 )
 
-Harness.testIfAvailable(
-  "fourthRoom: 5 of the newly-found tile offsets exactly cross-validate against sixthRoom's independently-found real offsets",
-  romData ~= nil,
-  "no development ROM found",
-  function()
-    local profile = RomProfiles.match(RomIdentity.identify(romData))
-    local fourth = profile.graphics.fourthRoom
-    local sixth = profile.graphics.sixthRoom
-    -- These 5 IDs were found by TWO separately-run live investigations
-    -- (fourthRoom's own corridor-scroll trace here, and sixthRoom's own
-    -- earlier "gate/pillar" tileset capture) -- landing on the exact
-    -- same real ROM offset each time is strong, unplanned corroboration
-    -- that neither disambiguation pick was a fluke.
-    for _, id in ipairs({ 136, 137, 143, 144, 147 }) do
-      Harness.assertEqual(fourth.tileOffsets[id], sixth.tileOffsets[id],
-        string.format("tile %d: fourthRoom and sixthRoom should have independently found the exact same real offset", id))
-    end
-  end
-)
+-- RETIRED (2026-08-17, direct user report "der raum sieht wie eine
+-- kombination aus dem startraum und dem fourth room aus... als ob da
+-- was beim lesen verschoben wurde" -- confirmed correct): this test's
+-- own "unplanned corroboration" framing turned out to be backwards.
+-- `sixthRoom`'s own OLD tileOffsets (independently captured, or so it
+-- seemed) were a real, caught capture bug -- a raw VRAM read that
+-- never corrected for the room's own nonzero hardware SCX at capture
+-- time. The apparent "cross-validation" agreement on 5 tile IDs was
+-- real, but for a mundane reason, not independent corroboration: the
+-- OLD `sixthRoom.tileOffsets` had directly copied 7 of its 16 entries
+-- from `fourthRoom`'s own table by construction (see that room's own
+-- doc comment history), so matching on already-shared entries proved
+-- nothing about the OTHER, buggy entries. `sixthRoom` now reuses
+-- `startRoom`'s own real `tileOffsets` directly (see
+-- `sixth_room_test.lua`'s own replacement test) -- a completely
+-- different real ID scheme than `fourthRoom`'s, so this specific
+-- cross-check no longer applies at all.
