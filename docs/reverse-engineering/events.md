@@ -10266,3 +10266,61 @@ Not force-resolved either way -- a real, substantial investment (this
 whole session's worth of live tracing + disassembly across `sixthRoom`,
 the full known room chain, and now this dialogue script) has not found
 it, which is itself a meaningful, honestly-reported result.
+
+## secondRoom -> thirdRoom real landingX was wrong (room middle, not the door threshold) -- fixed and CODE-VERIFIED (2026-08-17, same day)
+
+Direct user report: "die end position im third room ist falsch. das
+sollte nicht die mitte des raums sein sondern in dem türdurchgang".
+Correct -- `rom_profiles.lua`'s `secondRoom.exits[1].landingX = 80`
+(dated 2026-08-10) was a real methodology bug, not a ROM fact.
+
+**Root cause**: that value was captured via
+`checkpoints.third_room_free()`, which deliberately holds `RIGHT` for
+200 frames *after* the real horizontal scroll settles, to walk the
+player clear of the landing spot for later, unrelated investigation
+convenience (a documented, deliberate choice in that checkpoint's own
+doc comment -- just never meant to double as a "landing position"
+measurement). That extra ~160px of self-inflicted walking (the scroll
+itself only needs 40 frames/160px) got mistakenly recorded as if it
+were the real landing spot.
+
+**Re-measured live** (mGBA, real ROM): released `RIGHT` on the exact
+frame the real SCX scroll shadow (`$C0A6`) reaches its settled 160,
+then confirmed via 40 further real frames with zero input that the
+real position (`$C245`=X, `$C244`=Y) does not drift. Real, stable
+result: **(0, 64)**, not (80, 64) -- Y was already correct; only X was
+wrong. X=0 is thirdRoom's own real west edge (the door threshold,
+scrolling in from `secondRoom`), landing cleanly on already-verified
+floor tile 151 -- exactly the user's own description.
+
+**Then CODE-VERIFIED** (direct follow-up: "kann das auch mit dem rom
+code verifiziert werden?"), via a real `Watcher`+`CallTracer`
+write-watchpoint trace on `$C245`/`$C244` at single-SM83-instruction
+granularity across the whole 40-frame scroll:
+
+1. The generic per-frame position writer (fixed bank 0, `$09a1`=Y /
+   `$09a6`=X -- the SAME routine that runs during ordinary walking)
+   keeps running unchanged through the scroll, and its own real X
+   writes decrement in exact lockstep with SCX climbing: a real
+   `X = 160 - SCX` relationship, confirmed frame-by-frame the entire
+   way (SCX=4->X=156, SCX=80->X=80, ..., SCX=156->X=4->0). X=0 the
+   instant SCX finishes at 160 is real ROM arithmetic, not a sampling
+   artifact.
+2. Immediately after, a separate, one-shot call chain fires -- bank 1
+   `$4f0d`->`$4f48` into fixed-bank-0 `$29ba`->`$0611` (bank 1 is the
+   same bank this project already documented elsewhere as hosting the
+   real scroll-completion routine `$46C4` -- consistent with, and now
+   traced one level deeper into, an already-known mechanism), falling
+   through to `$0659`/`$065b` (`LD (HL),D` / `LD (HL),E`, writing DE
+   into an entity struct's Y/X fields at a real `+4` offset),
+   explicitly RE-committing Y=64/X=0 via a call path never taken
+   during ordinary per-frame movement -- the real ROM's own deliberate
+   "landing commit" step, not a byproduct of generic walk math alone.
+
+Fixed in `rom_profiles.lua` with the full trace documented inline;
+`VictorySequence.lua:1548-1549` assigns `exit.landingX`/`landingY`
+straight to `self.player.x/y`, so this is a real gameplay fix, not
+just a website cosmetic one. Re-verified visually via the rom-inspector
+website's own trigger-zone/landing-point overlay (`js/viz/rooms.js`):
+the landing marker now sits at thirdRoom's west edge instead of
+mid-room. 562/562 Lua tests unaffected.

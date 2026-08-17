@@ -1672,6 +1672,38 @@ RomProfiles.PROFILES = {
             -- verified floor tile 151 (see this room's own `grid`/
             -- `floorTileIds` below) -- exactly matching the user's own
             -- description, not a coincidence.
+            --
+            -- CODE-VERIFIED (2026-08-17, same pass, direct user follow-
+            -- up "kann das auch mit dem rom code verifiziert werden?"):
+            -- a real `Watcher`+`CallTracer` write-watchpoint trace on
+            -- `$C245`/`$C244` (bank-accurate, single-SM83-instruction
+            -- granularity) across the whole scroll found TWO separate,
+            -- real, corroborating ROM mechanisms, not just one lucky
+            -- measurement:
+            --  1. The SAME generic per-frame position writer (fixed
+            --     bank 0, `$09a1`=Y/`$09a6`=X) that runs during ordinary
+            --     walking keeps running unchanged throughout the whole
+            --     scroll -- and its own real X writes decrement in
+            --     lockstep with `$C0A6` (SCX) climbing, an exact
+            --     `X = 160 - SCX` relationship confirmed frame-by-frame
+            --     the entire way (SCX=4->X=156, SCX=80->X=80, ...,
+            --     SCX=156->X=4->0) -- i.e. X=0 the instant SCX finishes
+            --     at 160 is real ROM arithmetic, not an artifact of
+            --     when the trace happened to sample it.
+            --  2. Immediately after, a SEPARATE, one-shot call chain
+            --     fires -- bank 1 `$4f0d`->`$4f48` into fixed-bank-0
+            --     `$29ba`->`$0611` (bank 1 is the SAME bank this file
+            --     already documents as hosting the real scroll-
+            --     completion routine `$46C4` elsewhere, so this is
+            --     consistent with, and now traces one level deeper
+            --     into, an already-known real mechanism) -- falling
+            --     through to `$0659`/`$065b` (`LD (HL),D` / `LD (HL),E`,
+            --     writing the DE register pair into an entity struct's
+            --     Y/X fields at a real `+4` byte offset), explicitly
+            --     RE-committing Y=64/X=0 via a call path never taken
+            --     during ordinary per-frame movement. This is the real
+            --     ROM's own "landing commit" step -- genuine, deliberate
+            --     ROM code, not a byproduct of generic walk math alone.
             landingX = 0, landingY = 64,
           },
         },
