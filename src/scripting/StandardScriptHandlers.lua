@@ -17,22 +17,19 @@ local ScriptInterpreter = require("src.scripting.ScriptInterpreter")
 -- text", not a second, separately-guessed copy. `TextDecoder.lua` has
 -- no dependency back on this module (verified -- no circularity).
 local TextDecoder = require("src.import.TextDecoder")
--- LuaJIT's own `bit` library, NOT the `|`/`&`/`<<`/`~` infix bitwise
--- operators (Lua 5.3+ syntax) -- CORRECTED 2026-08-13, direct
--- consequence of "einen interpreter start bitte": this file's own
--- `setFlagBit`/`clearFlagBit` originally used those infix operators,
--- which the LOCAL `luajit` CLI in this dev environment happens to
--- tolerate (a newer/patched build), but real LÖVE 11.5's OWN bundled
--- LuaJIT does not -- a real, live `love .` launch crashed immediately
--- with `Syntax error ... unexpected symbol near '|'` the FIRST time
--- this module was ever pulled into the app's own real require chain
--- (ScriptRuntime.lua, itself required unconditionally by
--- VictorySequence.lua's own top-level `require`, regardless of the
--- `MYSTICQUEST_SCRIPT_INTERPRETER` switch -- meaning this bug broke the
--- WHOLE app's boot, not just the interpreter feature, until fixed here).
--- `bit.bor`/`bit.band`/`bit.bnot`/`bit.lshift` are standard LuaJIT
--- library functions (not language syntax), portable across every real
--- LuaJIT build.
+-- LuaJIT's `bit` library, not the `|`/`&`/`<<`/`~` infix bitwise
+-- operators (Lua 5.3+ syntax) -- CORRECTED, direct consequence of a
+-- request to start the interpreter for real: setFlagBit/clearFlagBit
+-- originally used those infix operators, which the local luajit CLI in
+-- this dev environment tolerates (a newer/patched build), but real
+-- LÖVE 11.5's bundled LuaJIT does not -- a live love . launch crashed
+-- immediately with a syntax error the first time this module was ever
+-- pulled into the app's real require chain (ScriptRuntime.lua, required
+-- unconditionally by VictorySequence.lua regardless of the
+-- MYSTICQUEST_SCRIPT_INTERPRETER switch -- this bug broke the whole
+-- app's boot, not just the interpreter feature, until fixed here).
+-- bit.bor/bit.band/bit.bnot/bit.lshift are standard LuaJIT library
+-- functions (not language syntax), portable across every LuaJIT build.
 local bit = require("bit")
 
 local StandardScriptHandlers = {}
@@ -91,144 +88,95 @@ function StandardScriptHandlers.skip()
   end
 end
 
---- Real "chain to next message page" handler (opcode `0x02`, ROM
--- `$32FE`, see events.md's "Opcode 0x00, resolved" section for the
--- complete, corrected disassembly). Reads TWO real operand bytes and
--- jumps the cursor there -- the same real shape already known from the
--- `[0x12][0x1B]` control-byte pair (this project's own already-decoded
--- "close this box, show the next box in the same conversation"
--- mechanism), just reached via its own dedicated opcode instead.
+--- Real "chain to next message page" handler (opcode 0x02, ROM $32FE,
+-- see events.md's "Opcode 0x00, resolved" for the full disassembly).
+-- Reads two operand bytes and jumps the cursor there -- the same shape
+-- already known from the [0x12][0x1B] control-byte pair (the "close
+-- this box, show the next box" mechanism), reached via its own
+-- dedicated opcode instead.
 --
--- CORRECTED (2026-08-12, direct continuation of resolving opcode
--- `0x00`'s own real WRAM queue -- see `ScriptContinuationQueue.lua`):
--- a fresh, careful re-disassembly (re-deriving the exact real SM83
--- `PUSH DE`/`POP HL` byte semantics twice, independently) found this
--- project's own PREVIOUS implementation genuinely wrong on two counts,
--- not just incomplete: the real ROM reads the two operand bytes
--- BIG-ENDIAN (`byte1*256 + byte2`, not little-endian `byte1 +
--- byte2*256`), and ALWAYS adds a real, UNCONDITIONAL `0x4000` bank-
--- window offset (not the conditional adjustment this project's own
--- earlier "HONEST LIMIT" note described -- that note was itself based
--- on an incomplete read: the real conditional `+0x4000` this project
--- found earlier affects a DIFFERENT value -- see below -- not the jump
--- target at all).
+-- CORRECTED (continuation of resolving opcode 0x00's WRAM queue -- see
+-- ScriptContinuationQueue.lua): a careful re-disassembly found the
+-- previous implementation wrong on two counts: the ROM reads the two
+-- operand bytes big-endian (byte1*256 + byte2, not little-endian), and
+-- always adds an unconditional 0x4000 bank-window offset.
 --
--- Real, NEW side effect this project's own earlier implementation
--- didn't reproduce at all: the real ROM ALSO pushes a real entry onto
--- the SAME WRAM queue opcode `0x00` pops from (`CALL $36DF`, always
--- with `B=2` -- i.e. every real CHAIN is a "jump away now, remember to
--- come back right here" bookmark; a later `0x00` dispatch that pops
--- this exact entry redirects the persistent cursor BACK to the
--- position immediately after this CHAIN's own 2 operand bytes).
--- `queue` is optional (a caller not yet wiring opcode `0x00` doesn't
--- need one, matching this project's own "onTick optional" convention
--- elsewhere) -- when supplied, this pushes the real, evidence-backed
--- entry via `ScriptContinuationQueue:push(true, <cursor after this
--- opcode's own 2 bytes>)`.
+-- New side effect the earlier implementation didn't reproduce: the ROM
+-- also pushes an entry onto the same WRAM queue opcode 0x00 pops from
+-- (CALL $36DF, always with B=2 -- every CHAIN is a "jump away now,
+-- remember to come back here" bookmark; a later 0x00 dispatch that
+-- pops this entry redirects the cursor back to right after this
+-- CHAIN's 2 operand bytes). queue is optional (a caller not yet wiring
+-- opcode 0x00 doesn't need one) -- when supplied, pushes via
+-- ScriptContinuationQueue:push(true, <cursor after this opcode's 2 bytes>).
 --
--- HONEST LIMIT, NARROWED (not eliminated): the real ROM computes the
--- QUEUED resume value from a version of the cursor that's
--- conditionally `+0x4000`-adjusted first (when the cursor's own high
--- byte is `<0x80` AND WRAM `$D86A` reads `0x0E`) -- this project does
--- NOT reproduce that specific adjustment (pushes the un-adjusted
--- cursor always) -- a narrow, flagged gap, not a silent guess.
--- CORRECTED AGAIN (2026-08-13, task #86, direct continuation of "weiter
--- machen, das muss stehen" after a real, decisive cursor mismatch
--- surfaced by `BossSequenceInterpreter`'s own tests): the earlier claim
--- that the real ROM "selects the bank AMBIENTLY, not from any formula"
--- was based on comparing the RAW `byte1*256+byte2+0x4000` value against
--- the real observed post-CHAIN cursor and finding they didn't match --
--- but CHAIN's own real handler (`$32FE`) does NOT stop at that raw
--- value: it unconditionally calls a SECOND real routine (`$3c4f`) that
--- reads the just-committed cursor back out of WRAM and applies a real,
--- decisive correction, confirmed via fresh disassembly:
---   `$3c4f`: reads the cursor's own high byte H. If `H < 0x80`: no
---   change (real bank stays whatever it already was for this window).
---   If `0x80 <= H < 0xC0`: the cursor gets a real `-0x4000` correction
---   (`H -= 0x40`) -- this is the case this project's real boss-defeat
---   CHAIN actually hits (raw target `$a1b2`, corrected to the real,
---   live-observed `$61b2`). If `H >= 0xC0`: no change either (a real,
---   distinct third case, not exercised by this project's own known
---   scene). `$3c4f` ALSO writes a real, small "which of two adjacent
---   banks" marker (`0x0D`/`0x0E`) into WRAM `$D86A` -- HONEST SCOPE:
---   this project does NOT claim to understand what `$D86A`'s own
---   real, ROM-wide purpose is (the literal `0x0D`/`0x0E` constants are
---   curious -- possibly specific to whatever banked "chapter" this
---   scene's own dialogue lives in, not independently verified as a
---   general formula) -- only the OBSERVABLE cursor-normalization
---   EFFECT is modeled here, and it is real, unconditional ROM code
---   that runs on EVERY real CHAIN dispatch, not scene-specific.
--- `onChainTarget` (added 2026-08-13, task #86): optional
--- `function(normalizedCursor, bankOffset)`, fired with the real, POST-
--- correction jump target (matching what the real persistent cursor
--- actually becomes) right before this handler returns it. This
--- project's own `RomScriptStream` is bound to ONE fixed bank per
--- instance (it has no way to know which real MBC bank a normalized
--- cursor >= `$8000` maps into on its own), so a caller that needs to
--- follow a real cross-bank CHAIN can use this callback to swap which
--- stream it feeds the NEXT `ScriptRuntime:step` call -- `$3c4f`'s own
--- real "0x0D"/"0x0E" marker is a hint, not a proven general bank
--- number, so callers should still verify their own real target bank
--- empirically (see `BossSequenceInterpreter`) rather than trust it
--- blindly. `bankOffset` (added 2026-08-16, task #81, see below) is `0`
--- for the already-VERIFIED `$3c4f` same-window case; a caller that
--- ignores the 2nd argument (every existing caller does) keeps working
--- unchanged.
+-- HONEST LIMIT, NARROWED: the ROM computes the queued resume value from
+-- a cursor conditionally +0x4000-adjusted first (when the cursor's high
+-- byte is <0x80 AND WRAM $D86A reads 0x0E) -- not reproduced here
+-- (pushes the un-adjusted cursor always) -- a narrow, flagged gap.
 --
--- TASK #81 FOLLOW-UP (2026-08-16, "erst 151 dann 81"): the real "7
--- scripts CHAIN to a cursor that overflows the current bank's own
--- $4000-$7FFF window" mystery (rom-map.md/events.md, indices 489/530/
--- 703/879/1141/1324/1325) turned out to be TWO separate things, not
--- one:
+-- CORRECTED AGAIN (task #86, direct continuation after a decisive
+-- cursor mismatch surfaced by BossSequenceInterpreter's own tests): the
+-- earlier claim that the ROM "selects the bank ambiently, not from any
+-- formula" compared the raw byte1*256+byte2+0x4000 value against the
+-- observed post-CHAIN cursor and found a mismatch -- but CHAIN's real
+-- handler ($32FE) doesn't stop there: it unconditionally calls a second
+-- routine ($3c4f) that reads the just-committed cursor back out of WRAM
+-- and applies a correction, confirmed via fresh disassembly:
+--   $3c4f: reads the cursor's high byte H. If H < 0x80: no change. If
+--   0x80 <= H < 0xC0: the cursor gets a -0x4000 correction (H -= 0x40)
+--   -- the case the real boss-defeat CHAIN actually hits (raw target
+--   $a1b2, corrected to the live-observed $61b2). If H >= 0xC0: no
+--   change either (a distinct third case, not exercised by this
+--   project's known scene). $3c4f also writes a small "which of two
+--   adjacent banks" marker (0x0D/0x0E) into WRAM $D86A -- HONEST SCOPE:
+--   $D86A's broader ROM-wide purpose isn't understood (possibly
+--   specific to whatever banked "chapter" this scene's dialogue lives
+--   in) -- only the observable cursor-normalization effect is modeled
+--   here, and it's unconditional ROM code that runs on every CHAIN
+--   dispatch, not scene-specific.
+-- onChainTarget (task #86): optional function(normalizedCursor,
+-- bankOffset), fired with the post-correction jump target right before
+-- this handler returns it. RomScriptStream is bound to one fixed bank
+-- per instance (no way to know which MBC bank a normalized cursor >=
+-- $8000 maps into), so a caller following a cross-bank CHAIN can use
+-- this to swap which stream it feeds the next ScriptRuntime:step call
+-- -- $3c4f's 0x0D/0x0E marker is a hint, not a proven general bank
+-- number, so callers should still verify their target bank empirically
+-- (see BossSequenceInterpreter). bankOffset (task #81, see below) is 0
+-- for the verified $3c4f same-window case; callers ignoring the 2nd
+-- argument (every existing caller does) keep working unchanged.
 --
--- 1. Script 489's own CHAIN (operand `0x53 0x03`) was NEVER actually
---    cross-bank -- `byte1*256+byte2+0x4000` = `0x9303`, which DOES
---    fit in 16 bits, so the already-implemented `$3c4f` correction
---    above applies and resolves it to `0x5303` -- squarely inside the
---    SAME bank's own `$4000`-`$7FFF` window. Re-shadow-running from
---    there (this project's own `ScriptRuntime`, real ROM bytes) plays
---    80 clean real steps through 41 distinct, richly varied real
---    opcodes with zero errors -- a DECISIVE confirmation (matching
---    this project's own established "real, sensible opcode content,
---    not coincidence" standard) that this one script's "mystery" was
---    simply that the 2026-08-13 scan predates the `$3c4f` discovery,
---    not a real cross-bank case at all.
+-- TASK #81 FOLLOW-UP: the "7 scripts CHAIN to a cursor that overflows
+-- the current bank's $4000-$7FFF window" mystery (indices 489/530/703/
+-- 879/1141/1324/1325) turned out to be two separate things:
 --
--- 2. The other 6 residual CHAIN operands (530/703/879/1141, plus the
---    SECOND CHAIN reached from 1324/1325's first) are a genuinely
---    DIFFERENT case: `byte1*256+byte2` itself is large enough
---    (>= `0xC000`) that `+0x4000` overflows the Game Boy's own 16-bit
---    CPU address space entirely -- not just landing in the `$3c4f`
---    high-byte window, but exceeding `0xFFFF` outright. A real, GB
---    CPU address can never do that, so the `$3c4f` correction's own
---    premise (a normal 16-bit address needing a high-byte nudge)
---    doesn't apply here at all. NEW HYPOTHESIS, tested via static
---    analysis (not yet live-confirmed -- see below): apply the SAME
---    "roll into a later real bank" formula this project's own
---    `ScriptPointerTable.resolve` already uses (and already verified,
---    independently, via real byte content) for the script table's OWN
---    entries -- `bankOffset = floor((byte1*256+byte2) / 0x4000)`,
---    `target = 0x4000 + ((byte1*256+byte2) % 0x4000)`, RELATIVE to
---    whatever bank the CHAIN itself executed from (this handler has no
---    way to know the absolute bank, same reasoning as the `$3c4f`
---    case above). Re-shadow-running all 6 with this hybrid rule (a
---    scratch probe, not yet a permanent tool) resolved every one of
---    them into a real, in-window address with ZERO interpreter errors
---    across the whole real budget -- but the resulting opcode content
---    is a MUCH weaker confirmation than case 1 above: several land in
---    long runs of real opcode `0x00` bytes (this project's own
---    "QUEUE_GATE" opcode, which trivially self-advances under a stub
---    context and is also this ROM's own unprogrammed-filler byte
---    value elsewhere -- ambiguous either way, not decisive). CANDIDATE
---    status, not VERIFIED: structurally plausible (reuses an
---    independently-proven formula, zero crashes), but genuinely
---    UNCONFIRMED whether real hardware actually does this for CHAIN's
---    own operand bytes specifically -- no known live trigger reaches
---    any of these 7 specific `scriptPointerTable` entries in normal
---    gameplay, so the honest next step (a live `$2100`-write
---    watchpoint) still has an unmet prerequisite: finding what, if
---    anything, actually calls these scripts. See rom-map.md's own
---    dated task #81 entry for the full trail.
+-- 1. Script 489's CHAIN (operand 0x53 0x03) was never actually
+--    cross-bank -- byte1*256+byte2+0x4000 = 0x9303, which fits in 16
+--    bits, so the $3c4f correction resolves it to 0x5303 -- inside the
+--    same bank's window. Re-shadow-running from there plays 80 clean
+--    steps through 41 distinct opcodes with zero errors -- decisive
+--    confirmation this "mystery" simply predated the $3c4f discovery.
+--
+-- 2. The other 6 residual CHAIN operands are genuinely different:
+--    byte1*256+byte2 itself is large enough (>= 0xC000) that +0x4000
+--    overflows the 16-bit CPU address space entirely, not just the
+--    $3c4f high-byte window. NEW HYPOTHESIS, tested via static
+--    analysis (not live-confirmed): apply the same "roll into a later
+--    bank" formula ScriptPointerTable.resolve already uses --
+--    bankOffset = floor((byte1*256+byte2) / 0x4000), target = 0x4000 +
+--    ((byte1*256+byte2) % 0x4000), relative to whatever bank the CHAIN
+--    executed from. Re-shadow-running all 6 with this hybrid rule
+--    resolved every one into an in-window address with zero errors --
+--    but the resulting opcode content is a much weaker confirmation
+--    than case 1: several land in long runs of opcode 0x00 (ambiguous
+--    -- also this ROM's own unprogrammed-filler byte value elsewhere).
+--    CANDIDATE status, not VERIFIED: structurally plausible, but
+--    unconfirmed whether real hardware actually does this for CHAIN's
+--    operand bytes -- no known live trigger reaches any of these 7
+--    scriptPointerTable entries in normal gameplay, so the next step
+--    (a live $2100-write watchpoint) still needs finding what, if
+--    anything, calls these scripts. See rom-map.md's task #81 entry.
 function StandardScriptHandlers.chain(queue, onChainTarget)
   return function(stream, cursor)
     local byte1, afterByte1 = ScriptInterpreter.fetch(stream, cursor)
