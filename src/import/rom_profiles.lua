@@ -3905,41 +3905,34 @@ RomProfiles.PROFILES = {
   },
 }
 
--- CORRECTED, real capture-bug fix (2026-08-17, direct user pushback:
--- "der raum sieht wie eine kombination aus dem startraum und dem
--- fourth room aus... als ob da was beim lesen verschoben wurde oder
--- so. prüfe erstmal ob das vielleicht das problem ist" -- exactly
--- right). `sixthRoom.grid`/`tileOffsets`/`floorTileIds` as originally
--- hand-written above were a real, previously-uncaught CAPTURE BUG, not
--- real ROM content: a live re-check this pass (`checkpoints.sixth_
--- room_free()`, reading the REAL hardware SCX/SCY registers directly,
--- not just the WRAM shadow) found the room settles at real SCX=96,
--- SCY=0 -- but the original grid capture read the raw 32-column VRAM
--- background tilemap starting at column 0 (as if SCX were still 0),
--- exactly the same "ignoring hardware SCX/SCY" pitfall this project
--- has hit and fixed elsewhere. Reproduced the bug directly: a fresh,
--- deliberately-UNCORRECTED raw VRAM read at this exact live moment
--- produces the SAME "half brick corridor wall, half checkerboard
--- courtyard" combination already sitting in `sixthRoom.grid` above,
--- pixel-for-pixel -- while a CORRECTLY SCX-windowed read of the exact
--- same live moment shows something completely different: the real
--- ROM's own "Kämpfe!" battle-intro textbox over a real, ordinary
--- courtyard floor -- i.e. genuinely more of `startRoom`'s own real
--- content (consistent with, and now visually confirming, this same
--- pass's own WRAM-register finding that `sixthRoom` shares `startRoom`
--- /`fourthRoom`'s exact real room identity). The stored grid above
--- was a real, reproducible artifact of the 32-column tilemap
--- wraparound colliding with stale/unrelated cells -- content that
--- NO real player, on real hardware, would ever see on screen. NOT
--- hand-edited above (the literal stays as a documented historical
--- record of the bug, cited by this very comment) -- corrected here
--- instead, after every real profile has been constructed, by
--- literally pointing `sixthRoom`'s render data at `startRoom`'s own
--- already-correct capture (a real Lua table reference, not a
--- duplicated copy -- guarantees the two can never drift apart again).
--- `secondBoss`'s own placement/spawn fields are untouched (a separate,
--- already-honestly-documented open question, see that field's own doc
--- comment) -- only the ROOM RENDER DATA was wrong.
+-- CORRECTED, capture-bug fix (direct user pushback that the room looks
+-- like a combination of startRoom and fourthRoom, as if something got
+-- shifted while reading -- exactly right). sixthRoom.grid/tileOffsets/
+-- floorTileIds as originally hand-written above were a previously-
+-- uncaught capture bug, not real ROM content: a live re-check (reading
+-- the real hardware SCX/SCY registers directly, not just the WRAM
+-- shadow) found the room settles at real SCX=96, SCY=0 -- but the
+-- original grid capture read the raw 32-column VRAM background tilemap
+-- starting at column 0 (as if SCX were still 0), the same "ignoring
+-- hardware SCX/SCY" pitfall this project has hit and fixed elsewhere.
+-- Reproduced the bug directly: a fresh, deliberately-uncorrected raw
+-- VRAM read at this exact live moment produces the same "half brick
+-- corridor wall, half checkerboard courtyard" combination already
+-- sitting in sixthRoom.grid, pixel-for-pixel -- while a correctly
+-- SCX-windowed read shows something completely different: the real
+-- "Kämpfe!" battle-intro textbox over an ordinary courtyard floor --
+-- more of startRoom's own content (consistent with, and now visually
+-- confirming, this pass's WRAM-register finding that sixthRoom shares
+-- startRoom/fourthRoom's exact room identity). The stored grid above
+-- was a reproducible artifact of the 32-column tilemap wraparound
+-- colliding with stale/unrelated cells -- content no real player would
+-- ever see on screen. Not hand-edited above (the literal stays as a
+-- documented historical record of the bug, cited by this comment) --
+-- corrected here instead, after every profile has been constructed, by
+-- pointing sixthRoom's render data at startRoom's own already-correct
+-- capture (a Lua table reference, not a duplicated copy -- guarantees
+-- the two can never drift apart again). secondBoss's own placement/
+-- spawn fields are untouched -- only the room render data was wrong.
 for _, profile in pairs(RomProfiles.PROFILES) do
   local g = profile.graphics
   if g and g.sixthRoom and g.startRoom then
