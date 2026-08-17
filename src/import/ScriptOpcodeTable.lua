@@ -1462,84 +1462,77 @@ ScriptOpcodeTable.ACTOR_SLOT_POSITION_OR_SKIP_HANDLER_ADDRESS_99 = 0x1663
 -- part of these 3 opcodes' own real dependency is NOW fully
 -- understood (see `ACTOR_ACTION_HANDLER_ADDRESS_80`'s own doc
 -- comment above and `EntityStructLayout.PLAYER_FACING_BIT` -- `$02AB`
--- is a plain read of the player's own real facing-direction byte, and
--- these 3 opcodes mask it the SAME way (`AND 0x0F`) before use). Full
--- re-disassembly confirms the REAL parameters `$3213` (the downstream
--- leaf) receives: `A` = the player's own real facing bits (0-15, same
--- computation `0x80` now uses), `C` = a FIXED `0xC9` (the SAME real
--- "attack" command byte from the bank-4 entity-command dispatcher,
--- see combat.md's own P1 entries), `HL` = the real dereferenced
--- cross-actor pointer (task #85's own `$C3FE`/`$C3FF` finding, offset
--- `+0`/`+1`/`+2` for `0xEC`/`0xED`/`0xEE` respectively). **Still
--- genuinely NOT closed**: unlike `0x80` (which never touches the
--- `$C3F0`-staged dynamic-bank/cross-actor mechanism at all), these 3
--- opcodes dereference it FIRST, before ever reaching the now-
--- understood `$02AB` computation -- and THAT mechanism (which real
--- content gets staged into `$C3F0`/`$C3FE`/`$C3FF` for a given real
--- scene) remains a genuinely separate, still-unmodeled real gap (task
--- #85's own already-documented scope). Left deliberately unwired for
--- THAT reason now, not because `$02AB` itself is unknowable -- a
--- real, precise narrowing of the remaining gap, not a full closure.
+-- is a plain read of the player's own facing-direction byte, and these
+-- 3 opcodes mask it the same way (AND 0x0F) before use). Full re-
+-- disassembly confirms the parameters $3213 (the downstream leaf)
+-- receives: A = the player's facing bits (0-15, same computation 0x80
+-- now uses), C = a fixed 0xC9 (the same "attack" command byte from the
+-- bank-4 entity-command dispatcher, see combat.md's own P1 entries),
+-- HL = the dereferenced cross-actor pointer (task #85's own $C3FE/
+-- $C3FF finding, offset +0/+1/+2 for 0xEC/0xED/0xEE respectively).
+-- Still genuinely not closed: unlike 0x80 (which never touches the
+-- $C3F0-staged dynamic-bank/cross-actor mechanism at all), these 3
+-- opcodes dereference it first, before ever reaching the now-
+-- understood $02AB computation -- and that mechanism (which content
+-- gets staged into $C3F0/$C3FE/$C3FF for a given scene) remains a
+-- separate, still-unmodeled gap (task #85's own already-documented
+-- scope). Left deliberately unwired for that reason now, not because
+-- $02AB itself is unknowable -- a precise narrowing of the remaining
+-- gap, not a full closure.
 --
--- `0xEC`/`0xED`/`0xEE` -- TRACED, DELIBERATELY NOT WIRED, 2026-08-14
--- ("jetzt sukzessive mit allen restlichen blockern" -> whole-corpus
--- scan's own rank-3 blocker). SELF-CAUGHT CORRECTION (same day, same
--- pass): this doc comment originally recorded these 3 opcodes' real
--- handler addresses as `$24D4`/`$24F9`/`$251F` -- WRONG, one level of
--- indirection off. Cross-checked directly against
--- `ScriptOpcodeTable.decode`'s own real output: the REAL opcode-table
--- addresses are **`$0E73`/`$0E77`/`$0E7B`** (immediately BEFORE
--- `TILE_CURSOR_SET_HANDLER_ADDRESS_EF`'s own `$0E7F`, below) -- each a
--- tiny, real, literal 3-byte `CALL $24D4|$24F9|$251F / RET` trampoline.
--- `$24D4`/`$24F9`/`$251F` are the trampolines' own CALL TARGETS, not
--- the opcode-table entries themselves; this is exactly why `$0E73`
--- itself (not `$24D4`) kept showing up as the whole-corpus scan's own
--- undecoded rank-3 blocker even after this family was first "closed"
--- in an earlier pass -- nothing had actually been registered at the
--- real address. The underlying finding is unaffected by the
--- correction: each of the 3 trampoline targets switches to `$C3F0`'s
--- dynamic bank, dereferences the SAME `$C3FE`/`$C3FF` cross-actor
--- pointer this session's own task #85 fully mapped, dereferences ONE
--- MORE level (`+0`/`+1`/`+2` bytes respectively -- the only real
--- difference between the 3 opcodes), then calls **`$02AB`** -- the
--- EXACT SAME already-known-hard real leaf behind opcode `0x80`/`$15A4`
--- (`ACTOR_ACTION_HANDLER_ADDRESS_80` below), masking its result with
--- `AND 0x0F` just like `0x80`'s own real group computation. **A third
--- confirmed sibling of the SAME known-hard family**: needs live
--- player-entity WRAM simulation this project doesn't have --
--- deliberately left unwired rather than guessing, same reasoning as
--- `0x80` itself (and matching the `$10DC`/`$15A4` precedent: these 3
--- addresses are EXPECTED to remain at the top of the scan's own
--- blocker ranking permanently, not a sign of unfinished work). `$3213`
--- (the real leaf both the computed value and the dereferenced pointer
--- feed into) was not traced further -- moot until the upstream `$02AB`
--- dependency is resolved.
+-- 0xEC/0xED/0xEE -- TRACED, DELIBERATELY NOT WIRED (task to
+-- successively work through all remaining blockers -> whole-corpus
+-- scan's rank-3 blocker). SELF-CAUGHT CORRECTION (same pass): this doc
+-- comment originally recorded these 3 opcodes' handler addresses as
+-- $24D4/$24F9/$251F -- wrong, one level of indirection off. Cross-
+-- checked directly against ScriptOpcodeTable.decode's own output: the
+-- real opcode-table addresses are $0E73/$0E77/$0E7B (immediately
+-- before TILE_CURSOR_SET_HANDLER_ADDRESS_EF's own $0E7F, below) --
+-- each a tiny, literal 3-byte CALL $24D4|$24F9|$251F / RET trampoline.
+-- $24D4/$24F9/$251F are the trampolines' own call targets, not the
+-- opcode-table entries themselves; this is exactly why $0E73 itself
+-- (not $24D4) kept showing up as the whole-corpus scan's own undecoded
+-- rank-3 blocker even after this family was first "closed" in an
+-- earlier pass -- nothing had actually been registered at the real
+-- address. The underlying finding is unaffected by the correction:
+-- each of the 3 trampoline targets switches to $C3F0's dynamic bank,
+-- dereferences the same $C3FE/$C3FF cross-actor pointer this session's
+-- task #85 fully mapped, dereferences one more level (+0/+1/+2 bytes
+-- respectively -- the only difference between the 3 opcodes), then
+-- calls $02AB -- the exact same already-known-hard leaf behind opcode
+-- 0x80/$15A4 (ACTOR_ACTION_HANDLER_ADDRESS_80 below), masking its
+-- result with AND 0x0F just like 0x80's own group computation. A third
+-- confirmed sibling of the same known-hard family: needs live player-
+-- entity WRAM simulation this project doesn't have -- deliberately
+-- left unwired rather than guessing, same reasoning as 0x80 itself
+-- (and matching the $10DC/$15A4 precedent: these 3 addresses are
+-- expected to remain at the top of the scan's blocker ranking
+-- permanently, not a sign of unfinished work). $3213 (the leaf both
+-- the computed value and the dereferenced pointer feed into) wasn't
+-- traced further -- moot until the upstream $02AB dependency is resolved.
 --
--- `0xEF` ($0E7F) -- CLOSED same pass, immediate neighbor: a real,
--- simple "store 2 operand bytes into WRAM $C344/$C345" primitive (the
--- real leaf `$0454` has no branch, no computation) plus a real 3rd
--- byte consumed via the standard `$3727` skip convention. See
--- `StandardScriptHandlers.tileCursorSet`'s own doc comment for the
--- complete real disassembly.
+-- 0xEF ($0E7F) -- CLOSED same pass, immediate neighbor: a simple
+-- "store 2 operand bytes into WRAM $C344/$C345" primitive (the leaf
+-- $0454 has no branch, no computation) plus a 3rd byte consumed via
+-- the standard $3727 skip convention. See StandardScriptHandlers
+-- .tileCursorSet's own doc comment for the complete disassembly.
 ScriptOpcodeTable.TILE_CURSOR_SET_HANDLER_ADDRESS_EF = 0x0E7F
 
--- `0xBD` ($1046) / `0xBC` ($10DC) / `0xBE` ($10A7) -- the palette-fade
--- family. TRACED, DELIBERATELY LEFT UNWIRED 2026-08-14 (real disassembly
--- confirmed each reads real `$D499`/`$D49A`, indexes into real palette-
--- gradient DATA tables `$101A`/`$1030`/`$107B`/`$1091`, and writes the
--- result into the real pending-palette-write cell `$C0AA`-`$C0AC` or
--- WRAM `$D3A3` via a `$D3A0==0x7E` mode check, before calling a further
--- real leaf `$1142` -- deemed "genuinely known-hard... this project
--- doesn't simulate live palette-fade WRAM state" and left unwired).
+-- 0xBD ($1046) / 0xBC ($10DC) / 0xBE ($10A7) -- the palette-fade
+-- family. TRACED, DELIBERATELY LEFT UNWIRED (disassembly confirmed
+-- each reads WRAM $D499/$D49A, indexes into palette-gradient data
+-- tables $101A/$1030/$107B/$1091, and writes the result into the
+-- pending-palette-write cell $C0AA-$C0AC or WRAM $D3A3 via a
+-- $D3A0==0x7E mode check, before calling a further leaf $1142 --
+-- deemed "genuinely known-hard" and left unwired).
 --
--- **REVERSED, 2026-08-15** (direct continuation of the boss-defeat
--- cursor-desync investigation -- `BossSequenceInterpreter`'s own
--- shadow run reaches real cursor `0x61d8` and stops HONESTLY on `0xBD`,
--- the immediate next real, live-confirmed boundary): the 2026-08-14
--- assessment above was too pessimistic FOR CURSOR-TRACKING PURPOSES.
--- `$1142` -- previously "not traced" -- is now fully disassembled and
--- turns out to be a small, self-contained, completely real 66-tick
--- pacing gate, no different in kind from the control-byte-`0x11`
+-- REVERSED (direct continuation of the boss-defeat cursor-desync
+-- investigation -- BossSequenceInterpreter's own shadow run reaches
+-- cursor 0x61d8 and stops honestly on 0xBD, the next live-confirmed
+-- boundary): the earlier assessment above was too pessimistic for
+-- cursor-tracking purposes. $1142 -- previously "not traced" -- is now
+-- fully disassembled and turns out to be a small, self-contained
+-- 66-tick pacing gate, no different in kind from the control-byte-0x11
 -- pacing this same investigation already modeled:
 --   $1142: LD A,(0xD49A) / INC A / LD (0xD49A),A / CP 0x06 / RET C
 --          ; -- $D49A (inner) counts 1..5 -> RET C (halt, no $3727)
@@ -1547,33 +1540,28 @@ ScriptOpcodeTable.TILE_CURSOR_SET_HANDLER_ADDRESS_EF = 0x0E7F
 --          LD A,(0xD499) / INC A / LD (0xD499),A / CP 0x0B / RET C
 --          ; -- $D499 (outer) counts 1..10 -> RET C (halt, no $3727)
 --          LD A,0x00 / LD (0xD499),A       ; on the 11th outer step: reset
---          CALL 0x3727                      ; RELEASE: fetch next real opcode
+--          CALL 0x3727                      ; RELEASE: fetch next opcode
 --          RET
--- i.e. a genuine 6x11=66-call halt (≈66 real frames at this project's
--- established one-`step()`-per-real-frame cadence, matching the pacing
--- shape of every other real per-frame-gated opcode this project has
--- modeled -- not a guess). Crucially, all THREE opcodes read ZERO real
--- operand bytes from the script stream (each pushes/pops HL around its
--- own WRAM computation, never dereferences it) -- only the shared real
--- `$D499`/`$D49A` cells drive the pacing length. Live byte-dump
--- cross-check (file offset `0x3a1d7`-`0x3a1e5`, bank 14, the exact real
--- boss-defeat script bytes this project's own interpreter is running):
--- `c0 bd f3 0f 55 14 00 bc f0 32 dd 04 10 14 ff` -- `0xBD` releasing
--- resets `$D499` to 0 exactly where the VERY NEXT real opcode, `0xF3`
--- (`PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3`, already wired -- see that
--- opcode's own doc comment), gates on `$D499==0` -- a decisive,
--- unplanned cross-validation that this reconstruction is correct, not
--- coincidental.
+-- A genuine 6x11=66-call halt (~66 frames at this project's
+-- established one-step()-per-frame cadence, matching the pacing shape
+-- of every other per-frame-gated opcode already modeled). Crucially,
+-- all three opcodes read zero operand bytes from the script stream
+-- (each pushes/pops HL around its own WRAM computation, never
+-- dereferences it) -- only the shared $D499/$D49A cells drive the
+-- pacing length. Live byte-dump cross-check (file offset 0x3a1d7-
+-- 0x3a1e5, bank 14, the exact boss-defeat script bytes this project's
+-- interpreter is running): c0 bd f3 0f 55 14 00 bc f0 32 dd 04 10 14
+-- ff -- 0xBD releasing resets $D499 to 0 exactly where the very next
+-- opcode, 0xF3 (PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3, already wired),
+-- gates on $D499==0 -- a decisive, unplanned cross-validation.
 --
--- What's STILL honestly not modeled: the real fade CURVE itself (which
--- exact color the 4 lookup tables encode at each step) -- exactly the
--- same "paced correctly, but the cosmetic write is an optional,
--- unwired callback" shape already established for `0xFB`/`0xBF` (see
--- `COLOR_PULSE_EFFECT_HANDLER_ADDRESS_BF`/`WAVE_OFFSET_EFFECT_HANDLER
--- _ADDRESS_FB` above) -- this project has no renderer hook for a live
--- palette fade yet, and doesn't need one just to track the script
--- cursor correctly past these opcodes. See
--- `StandardScriptHandlers.paletteFadeCycle`'s own doc comment for the
+-- What's still not modeled: the fade curve itself (which exact color
+-- the 4 lookup tables encode at each step) -- the same "paced
+-- correctly, but the cosmetic write is an optional, unwired callback"
+-- shape already established for 0xFB/0xBF (see COLOR_PULSE_EFFECT_
+-- HANDLER_ADDRESS_BF/WAVE_OFFSET_EFFECT_HANDLER_ADDRESS_FB above) --
+-- this project has no renderer hook for a live palette fade yet. See
+-- StandardScriptHandlers.paletteFadeCycle's own doc comment for the
 -- Lua port.
 ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC = 0x10DC
 ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD = 0x1046
