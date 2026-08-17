@@ -230,12 +230,49 @@ would likely see them fine.
   been named in Japanese in official guidebooks" -- meaning REGULAR
   field-monster English names may not exist as a reference at all,
   only the 21-boss list this pass already captured.
-- [vgmaps.de: Final Fantasy Adventure maps](https://vgmaps.de/maps/game-boy/final-fantasy-adventure)
-  -- real, drawn overworld/dungeon maps exist here (confirmed via web
-  search, e.g. "Temple Of Mana 1", "Cave Of Snowfields (N4)"); blocked
-  to this tool (HTTP 403) -- the single most promising still-untried
-  lead for cross-checking this project's own decoded room-connectivity
-  graph against a human-drawn map, not yet attempted.
+- ~~[vgmaps.de: Final Fantasy Adventure maps]~~ blocked to this tool
+  (HTTP 403) -- SUPERSEDED, see the fantasyanime.com entry below,
+  which hosts the same kind of content and IS reachable.
+- [fantasyanime.com: Final Fantasy Adventure maps](https://fantasyanime.com/mana/ffadventmap.htm)
+  (2026-08-17, direct user instruction "dann die maps anschauen",
+  follow-up to the weapon-stat-table win above) -- real, drawn,
+  room-by-room dungeon maps (17 dungeons + 10 overworld areas + a full
+  world map), reachable by this tool (unlike vgmaps.de/GameFAQs/
+  Fandom/archive.org, all blocked) and confirmed clean under this
+  site's own `robots.txt` (only disallows `.zip`/media files, not
+  `.png`). Downloaded and visually inspected 2 dungeon maps so far:
+  - **The Marsh Cave** (the first dungeon) -- a real, labeled room
+    grid with a `Start` marker, lettered sub-area connectors (A-F),
+    2 mattock-crackable walls, 2 key-locked doors, item pickups
+    ("Iron Shield", "Sickle" -- the same real weapon this project's
+    own `WeaponStatTable`/`WeaponTable` already decode), and exactly
+    **ONE** labeled `Boss` room (bottom, reached via connector F).
+  - **Kett's Dungeon** (the second dungeon) -- same style map, own
+    `Start`/lettered connectors/item pickups (a "Chain" [Flail]
+    weapon pickup), but **no room is labeled `Boss` anywhere on this
+    map**, despite gamesurge.com's own boss list naming a "Werewolf
+    (Kett's guard)" fight here -- either this map's own author didn't
+    mark it, or it's a smaller/scripted encounter this particular fan
+    map doesn't call out.
+  - **Real, still-open relevance to this project's own long-running
+    "second boss" placement question** (see events.md's "Second boss
+    investigation" and this project's own `sixthRoom.gate` work): The
+    Marsh Cave map shows only ONE boss for the entire first dungeon,
+    which is where this project's OWN 9 decoded rooms (`startRoom`
+    through `ninthRoom`) most plausibly sit (matching item names
+    already found: Sickle, and this project's own `startRoom`
+    checkerboard/gate imagery). If this project's 2 in-ROM boss
+    fights are really BOTH inside "the first dungeon" as currently
+    modeled, that would be one MORE boss than this specific fan map
+    shows for that dungeon -- not a contradiction (fan maps can miss
+    optional/scripted encounters, and this project's own live-testing
+    already independently confirmed `sixthRoom`'s own boss+gate
+    mechanic really exists in the ROM), but a real, honest data point
+    worth keeping in mind, NOT yet resolved either way. A full room-
+    by-room visual cross-check (rendering this project's own 9 decoded
+    rooms as images and comparing tile-for-tile against this map's own
+    grid) was NOT attempted this pass -- a substantial, concrete next
+    step, not started here.
 
 ## Open research leads (not yet followed up)
 
