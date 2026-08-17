@@ -2090,18 +2090,17 @@ function StandardScriptHandlers.wipeCompletionGate(state, isDualGateClear, isMar
   end
 end
 
---- Generic "call a completion predicate each real tick; release once
--- it returns true" handler shape -- zero explicit script-stream
--- operand bytes, matching `chainedOpaqueEffectCommand`'s/
--- `waitForAnyButtonCommand`'s own `$3727`-tail convention (this
--- project's standard "no real operand, but still consumes exactly 1
--- byte via the trailing skip" shape). Used for opcodes `0xAC`/`0xAE`'s
--- own outer wrapper (`PUSH AF / LD A,<selector> / JP $1ED7` trampoline,
--- then `LD A,($D499) / CP 0 / RET NZ / CALL $3727 / RET` -- release
--- exactly when `$D499` returns to 0) -- see
--- `.wipeCompletionGate`'s own doc comment for what actually drives
--- `isComplete()` in that specific case; this wrapper itself is fully
--- generic and doesn't know or care what `isComplete` represents.
+--- Generic "call a completion predicate each tick; release once it
+-- returns true" handler shape -- zero explicit script-stream operand
+-- bytes, matching chainedOpaqueEffectCommand's/waitForAnyButtonCommand's
+-- own $3727-tail convention (this project's standard "no operand, but
+-- still consumes exactly 1 byte via the trailing skip" shape). Used
+-- for opcodes 0xAC/0xAE's own outer wrapper (PUSH AF / LD A,<selector>
+-- / JP $1ED7 trampoline, then LD A,($D499) / CP 0 / RET NZ / CALL
+-- $3727 / RET -- release exactly when $D499 returns to 0) -- see
+-- .wipeCompletionGate's own doc comment for what actually drives
+-- isComplete() in that specific case; this wrapper itself is fully
+-- generic and doesn't know or care what isComplete represents.
 function StandardScriptHandlers.completionPredicateCommand(isComplete)
   return function(stream, cursor)
     if isComplete() then
@@ -2112,22 +2111,20 @@ function StandardScriptHandlers.completionPredicateCommand(isComplete)
   end
 end
 
---- Real opcode `0x88`/`0x89` handler family (`$0153`/`$015E`, found
--- 2026-08-14, direct follow-up to the whole-corpus scan's rank-13
--- blocker -- `0x88` alone blocks 13 real scripts) -- writes a FIXED
--- per-opcode constant (2 for `0x88`, 1 for `0x89`) into the real
--- PLAYER entity's own "TYPE" field (`EntityStructLayout.FIELD.TYPE`,
--- real WRAM `$C241` -- slot 4, the already-confirmed player slot) via
--- a shared helper (`$02A5`/`$02AC` -> `$0C5D`, a real "swap: write A,
--- return the old value" primitive; the returned old value is read but
--- genuinely discarded by both real callers, so not modeled here).
--- Consumes exactly ONE real operand byte -- confirmed via disassembly
--- (`CALL $3727` right before the real `RET`, its result never used
--- afterward) to be a genuine, always-present padding byte the real ROM
--- itself never reads back, not a guess or omission in this project's
--- own port. `onWrite(fixedValue)`, if given, is an optional observer
--- -- this project's own entity model doesn't currently expose a
--- writable "TYPE" field to hook up live.
+--- Real opcode 0x88/0x89 handler family ($0153/$015E, found, direct
+-- follow-up to the whole-corpus scan's rank-13 blocker -- 0x88 alone
+-- blocks 13 scripts) -- writes a fixed per-opcode constant (2 for
+-- 0x88, 1 for 0x89) into the player entity's own "TYPE" field
+-- (EntityStructLayout.FIELD.TYPE, WRAM $C241 -- slot 4, the already-
+-- confirmed player slot) via a shared helper ($02A5/$02AC -> $0C5D, a
+-- "swap: write A, return the old value" primitive; the returned old
+-- value is read but genuinely discarded by both callers, so not
+-- modeled here). Consumes exactly one operand byte -- confirmed via
+-- disassembly (CALL $3727 right before RET, its result never used
+-- afterward) to be an always-present padding byte the ROM itself never
+-- reads back, not a guess or omission. onWrite(fixedValue), if given,
+-- is an optional observer -- this project's entity model doesn't
+-- currently expose a writable "TYPE" field to hook up live.
 function StandardScriptHandlers.playerEntityTypeWrite(fixedValue, onWrite)
   return function(stream, cursor)
     if onWrite then
@@ -2138,29 +2135,28 @@ function StandardScriptHandlers.playerEntityTypeWrite(fixedValue, onWrite)
   end
 end
 
---- Real "actor-command-queue-empty gate" handler (opcode `0x8F`, ROM
--- `$168E`, found 2026-08-14, whole-corpus scan's own rank-3 blocker --
--- 33 real scripts). Byte-for-byte disassembly:
+--- Real "actor-command-queue-empty gate" handler (opcode 0x8F, ROM
+-- $168E, found, whole-corpus scan's own rank-3 blocker -- 33 scripts).
+-- Byte-for-byte disassembly:
 --   LD HL,0xC5A0 / LD B,0x08
 --   loop: LD A,(HL+) / CP 0x00 / JR NZ,<halt> / DEC B / JR NZ,loop
---   ; all 8 slots real zero:
+--   ; all 8 slots zero:
 --   CALL $3727 / RET
---   ; a real nonzero slot found:
---   RET                                     ; real halt, no bytes consumed
--- **The SAME real `$C5A0` 8-slot actor-command table this project
--- already traced twice this session** (task #85's own `$4B70`
--- "enqueue" finding; task #86's own `$4B4F` "any genuinely-pending
--- entries" poll, the real condition behind opcode `0x00`'s own bit-0
--- gate) -- this opcode is a THIRD, simpler real consumer: a plain
--- conditional halt on the RAW table being non-all-zero (no per-entry
--- completion-sentinel filtering the way `$4B4F` does), then consumes
--- exactly one real script-stream byte via the same real `$3727`
--- fetch-and-discard convention documented in `.periodicWramEffect`'s
--- own doc comment.
+--   ; a nonzero slot found:
+--   RET                                     ; halt, no bytes consumed
+-- The same $C5A0 8-slot actor-command table already traced twice this
+-- session (task #85's own $4B70 "enqueue" finding; task #86's own
+-- $4B4F "any genuinely-pending entries" poll, the condition behind
+-- opcode 0x00's own bit-0 gate) -- this opcode is a third, simpler
+-- consumer: a plain conditional halt on the raw table being non-all-
+-- zero (no per-entry completion-sentinel filtering the way $4B4F
+-- does), then consumes exactly one script-stream byte via the same
+-- $3727 fetch-and-discard convention documented in
+-- .periodicWramEffect's own doc comment.
 --
--- `isQueueEmpty`, if given, should report the real table's own current
+-- isQueueEmpty, if given, should report the table's own current
 -- emptiness. No live WRAM actor-command simulation exists in this
--- project (same honest gap as `ctx.isActorReady`/`ctx.isQueueBlocked`
+-- project (same honest gap as ctx.isActorReady/ctx.isQueueBlocked
 -- elsewhere) -- defaults to "always empty" (the opcode always succeeds
 -- immediately) rather than guessing a fake pending state.
 function StandardScriptHandlers.actorCommandQueueEmptyGate(isQueueEmpty)
@@ -2175,35 +2171,33 @@ function StandardScriptHandlers.actorCommandQueueEmptyGate(isQueueEmpty)
 end
 
 --- Real "actor-ready action, SOFT-SKIP on not-ready" handler (opcodes
--- `0x90`/`0x91`/`0x94`/`0x95`/`0x96`/`0x97`, real ROM `$1606`/`$1613`/
--- `$163A`/`$1647`/`$1620`/`$162D`, found 2026-08-14, whole-corpus scan
--- rank-3 blocker `$1606`, 31 real scripts). Byte-for-byte disassembly
--- (all 6 members structurally identical, only the literal `group`
--- differs -- `0x04`/`0x05`/`0x1E`/`0x1F`/`0x1C`/`0x1D` respectively):
+-- 0x90/0x91/0x94/0x95/0x96/0x97, ROM $1606/$1613/$163A/$1647/$1620/
+-- $162D, found, whole-corpus scan rank-3 blocker $1606, 31 scripts).
+-- Byte-for-byte disassembly (all 6 members structurally identical,
+-- only the literal group differs -- 0x04/0x05/0x1E/0x1F/0x1C/0x1D
+-- respectively):
 --   CALL $28C2 / JR NZ,<not-ready> / LD A,<group> / LD C,0x00 /
 --   CALL $2879 / RET
 --   <not-ready>: CALL $3727 / RET
 --
--- Shares the EXACT SAME real `$28C2` gate this project's own
--- `ctx.isActorReady` already models (WRAM `$C272`'s own high nibble
--- `==0xD0` -- the SAME real condition `.actorAction`'s own family
--- checks, confirmed by direct comparison against `$28C2`'s own
--- disassembly, not assumed). **But a GENUINELY DIFFERENT real
--- not-ready behavior**: a real, DIFFERENT sibling routine (`$28D5`,
--- checked directly to confirm this isn't a misread) uses the exact
--- same `$28C2` gate with a real `RET NZ` -- a TRUE halt, matching
--- `.actorAction`'s own model exactly. THIS family does NOT halt --
--- it calls the real `$3727` fetch-and-discard primitive (the SAME
--- "consume one real stream byte and move on" convention already
--- documented in `.periodicWramEffect`'s own doc comment) and
--- continues immediately, never retrying. A real, deliberate design
--- difference between two real families sharing one gate check, not
--- an inconsistency in this project's own model.
+-- Shares the exact same $28C2 gate ctx.isActorReady already models
+-- (WRAM $C272's high nibble ==0xD0 -- the same condition .actorAction's
+-- family checks, confirmed by direct comparison against $28C2's
+-- disassembly). But a genuinely different not-ready behavior: a
+-- different sibling routine ($28D5, checked directly to confirm this
+-- isn't a misread) uses the exact same $28C2 gate with a RET NZ -- a
+-- true halt, matching .actorAction's own model exactly. This family
+-- does not halt -- it calls the $3727 fetch-and-discard primitive
+-- (the same "consume one stream byte and move on" convention already
+-- documented in .periodicWramEffect's own doc comment) and continues
+-- immediately, never retrying. A deliberate design difference between
+-- two families sharing one gate check, not an inconsistency in this
+-- project's model.
 --
--- `group` is the real fixed per-opcode constant (never dynamic for
--- this family, unlike `.actorAction`'s own `0x80`/`0x85` exception).
--- `onAction(group)` fires once, only on the real ready path (matching
--- `.actorAction`'s own contract) -- the not-ready path never calls it.
+-- group is the fixed per-opcode constant (never dynamic for this
+-- family, unlike .actorAction's own 0x80/0x85 exception).
+-- onAction(group) fires once, only on the ready path (matching
+-- .actorAction's own contract) -- the not-ready path never calls it.
 function StandardScriptHandlers.actorActionOrSkip(group, isReady, onAction)
   return function(stream, cursor)
     if isReady() then
@@ -2217,17 +2211,16 @@ function StandardScriptHandlers.actorActionOrSkip(group, isReady, onAction)
   end
 end
 
---- Real "queued action, SOFT-SKIP on not-ready" handler (opcode `0x98`,
--- real ROM `$1654`, found in the SAME `$1606` cluster this same pass).
--- Byte-for-byte identical shape to `.actorActionOrSkip` above, just
--- tail-calling the real `$2859` queued-action leaf (no group) instead
--- of `$2879`:
+--- Real "queued action, SOFT-SKIP on not-ready" handler (opcode 0x98,
+-- ROM $1654, found in the same $1606 cluster this same pass). Byte-
+-- for-byte identical shape to .actorActionOrSkip above, just tail-
+-- calling the $2859 queued-action leaf (no group) instead of $2879:
 --   CALL $28C2 / JR NZ,<not-ready> / LD C,0x00 / CALL $2859 / RET
 --   <not-ready>: CALL $3727 / RET
--- See `.actorActionOrSkip`'s own doc comment for the full real
--- evidence behind the shared `$28C2` gate and the soft-skip
--- not-ready behavior (a genuine, confirmed difference from
--- `.queuedAction`'s own true-halt sibling family).
+-- See .actorActionOrSkip's own doc comment for the full evidence
+-- behind the shared $28C2 gate and the soft-skip not-ready behavior (a
+-- confirmed difference from .queuedAction's own true-halt sibling
+-- family).
 function StandardScriptHandlers.queuedActionOrSkip(isReady, onAction)
   return function(stream, cursor)
     if isReady() then
@@ -2242,21 +2235,20 @@ function StandardScriptHandlers.queuedActionOrSkip(isReady, onAction)
 end
 
 --- Real "actor-slot-position set, SOFT-SKIP on not-ready" handler
--- (opcode `0x99`, real ROM `$1663`, found in the SAME `$1606` cluster
--- this same pass). Byte-for-byte:
+-- (opcode 0x99, ROM $1663, found in the same $1606 cluster this same
+-- pass). Byte-for-byte:
 --   CALL $28C2 / JR NZ,<not-ready> / LD C,0x00 / CALL $123E / RET
 --   <not-ready>: INC HL / INC HL / RET
--- The SAME real `$123E` mechanism as opcodes `0x49`/`0x19`/`0x39`/
--- `0x59`/`0x29` (see `.actorSlotPosition`'s own doc comment) -- a real
--- 2-operand-byte opcode. The not-ready path's own `INC HL / INC HL`
--- confirms this family's real "soft-skip" convention generalizes past
--- the always-1-byte `$3727` shape: it skips exactly the SAME 2 real
--- bytes the ready path would otherwise consume as its own operands
--- (not an unrelated extra byte) -- a real, internally-consistent
--- design (this opcode always consumes exactly 2 bytes, ready or not),
--- distinct from `.actorActionOrSkip`/`.queuedActionOrSkip`'s own
--- 0-real-operand shape (where the skipped byte belongs to whatever
--- comes NEXT, not to this opcode itself).
+-- The same $123E mechanism as opcodes 0x49/0x19/0x39/0x59/0x29 (see
+-- .actorSlotPosition's own doc comment) -- a 2-operand-byte opcode.
+-- The not-ready path's INC HL / INC HL confirms this family's "soft-
+-- skip" convention generalizes past the always-1-byte $3727 shape: it
+-- skips exactly the same 2 bytes the ready path would otherwise
+-- consume as its own operands (not an unrelated extra byte) -- an
+-- internally-consistent design (this opcode always consumes exactly 2
+-- bytes, ready or not), distinct from .actorActionOrSkip/
+-- .queuedActionOrSkip's own 0-operand shape (where the skipped byte
+-- belongs to whatever comes next, not to this opcode itself).
 function StandardScriptHandlers.actorSlotPositionOrSkip(isReady, onSetPosition)
   return function(stream, cursor)
     if isReady() then
@@ -2273,31 +2265,31 @@ function StandardScriptHandlers.actorSlotPositionOrSkip(isReady, onSetPosition)
   end
 end
 
---- Real "tile-cursor set" handler (opcode `0xEF`, ROM `$0E7F`, found
--- 2026-08-14 while chasing `$0E73`'s own neighborhood). Byte-for-byte:
---   LD A,(HL+) / LD E,A / LD A,(HL+) / LD D,A   ; 2 real operand bytes
---   PUSH HL / CALL $0454 / POP HL                ; $0454: a real, plain
---                                                  leaf -- NO branch, NO
+--- Real "tile-cursor set" handler (opcode 0xEF, ROM $0E7F, found while
+-- chasing $0E73's own neighborhood). Byte-for-byte:
+--   LD A,(HL+) / LD E,A / LD A,(HL+) / LD D,A   ; 2 operand bytes
+--   PUSH HL / CALL $0454 / POP HL                ; $0454: a plain leaf
+--                                                  -- no branch, no
 --                                                  computation, just
---                                                  `LD (0xC345),A(D) /
+--                                                  LD (0xC345),A(D) /
 --                                                  LD (0xC344),A(E) /
---                                                  RET` -- stores the 2
+--                                                  RET -- stores the 2
 --                                                  bytes into 2 fixed
 --                                                  WRAM cells, nothing
 --                                                  else.
---   CALL $3727 / RET                              ; a real 3rd byte,
---                                                  consumed via the SAME
+--   CALL $3727 / RET                              ; a 3rd byte,
+--                                                  consumed via the same
 --                                                  fetch-and-discard
 --                                                  convention documented
---                                                  in `.periodicWramEffect`'s
+--                                                  in .periodicWramEffect's
 --                                                  own doc comment.
--- `$C344`/`$C345` are read back by neighboring VRAM BG-tilemap-address
--- resolvers (`$045D`/`$047C` family) NOT called by this opcode itself
--- -- plausibly a real "set the tile cursor" primitive some OTHER real
--- opcode/leaf consumes later; not modeled further (HYPOTHESIS on the
--- real-world meaning only, the mechanism itself is fully traced).
--- `onSet(byte1, byte2)` fires once with the 2 real operand bytes in
--- their own real stream order (`byte1`=E, `byte2`=D).
+-- $C344/$C345 are read back by neighboring VRAM BG-tilemap-address
+-- resolvers ($045D/$047C family) not called by this opcode itself --
+-- plausibly a "set the tile cursor" primitive some other opcode/leaf
+-- consumes later; not modeled further (HYPOTHESIS on the real-world
+-- meaning only, the mechanism itself is fully traced). onSet(byte1,
+-- byte2) fires once with the 2 operand bytes in stream order (byte1=E,
+-- byte2=D).
 function StandardScriptHandlers.tileCursorSet(onSet)
   return function(stream, cursor)
     local byte1, afterByte1 = ScriptInterpreter.fetch(stream, cursor)
