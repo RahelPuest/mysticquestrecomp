@@ -480,115 +480,108 @@ ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E5 = 0x0F93 -- group 0x01, via $
 --                                            anywhere in this routine
 ScriptOpcodeTable.BYTE_WORD_COMMAND_HANDLER_ADDRESS = 0x0F1E
 
--- Real opcode `0xD0` (ROM `$3A4F`) -- byte-for-byte disassembled:
---   LD E,(HL) / INC HL / LD D,(HL) / INC HL   ; real 16-bit little-
+-- Opcode 0xD0 (ROM $3A4F) -- byte-for-byte disassembled:
+--   LD E,(HL) / INC HL / LD D,(HL) / INC HL   ; 16-bit little-
 --                                             endian operand word -> DE
---   LD HL,($D7BE)/($D7BF) [as a 16-bit real WRAM counter] / ADD HL,DE
---   JR NC,<skip> / LD HL,0xFFFF                ; real clamp-at-0xFFFF
+--   LD HL,($D7BE)/($D7BF) [as a 16-bit WRAM counter] / ADD HL,DE
+--   JR NC,<skip> / LD HL,0xFFFF                ; clamp-at-0xFFFF
 --                                              on overflow
 --   <write the (possibly clamped) HL back to $D7BE/$D7BF>
---   CALL $3117 / POP HL / CALL $3727 / RET      ; ALWAYS continues --
+--   CALL $3117 / POP HL / CALL $3727 / RET      ; always continues --
 --                                              no conditional branch
--- Real, plausible role (HYPOTHESIS, not confirmed): a saturating
--- 16-bit WRAM counter add -- gold/experience/step-counter shaped, but
--- not independently verified. This project does not reproduce the
--- real WRAM counter itself -- `onCommand` receives the raw operand
--- word, what to do with it is the caller's business.
+-- Plausible role (HYPOTHESIS, not confirmed): a saturating 16-bit WRAM
+-- counter add -- gold/experience/step-counter shaped, but not
+-- independently verified. This project doesn't reproduce the WRAM
+-- counter itself -- onCommand receives the raw operand word, what to
+-- do with it is the caller's business.
 ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS = 0x3A4F
 
--- Real opcodes `0xD2`/`0xD3` (ROM `$3A0D`/`$3A1C`) -- CLOSED 2026-08-15
--- (direct user request "ok dann mal die fehlenden opcodes dekodieren"):
--- a SIBLING pair of `WORD_COMMAND_HANDLER_ADDRESS` above -- SAME
--- shape (2-byte little-endian operand, `CALL $3727 / RET`, ALWAYS
--- continues), but operating on a DIFFERENT real WRAM counter, and with
--- a real, decoded, specific meaning this pass:
---   `0xD2` ($3A0D): `LD E,(HL)/INC HL/LD D,(HL)/INC HL` (operand word)
---     `/ PUSH HL / PUSH DE / POP HL / CALL $3D21 / POP HL / CALL $3727
---     / RET` -- delegates the real add to `$3D21`.
---   `$3D21`: reads the real 24-bit WRAM counter `$D7BB`(low)/`$D7BC`
---     (mid)/`$D7BD`(high, only ever 0 or a small carry) and does
---     `HL,A = ($D7BC:$D7BB) + DE`, `A += carry`, then clamps to a
---     SPECIFIC real ceiling: `high==0x0F` and `mid==0x42` and
---     `low==0x3F` (i.e. the 24-bit value `0x0F423F` = decimal
---     **999999**) -- writes the clamped result back to the SAME 3
---     cells (`$3D48` onward, not shown here).
---   `0xD3` ($3A1C): the exact mirror -- `HL,C = ($D7BC:$D7BB:$D7BD) -
---     DE` (SUBTRACT instead of add), clamps to 0 on underflow instead
---     of to the ceiling, writes back to the same 3 cells.
--- **Real, well-evidenced role (still HYPOTHESIS -- inferred from the
--- exact cap value, not independently live-verified via gameplay)**:
--- the real 24-bit GOLD counter (`$D7BB`-`$D7BD`) -- a classic RPG
--- "999999 max gold" ceiling is a much more specific, decisive signal
--- than a generic 0xFFFF/0xFF overflow clamp would be, and this
--- project's own decoded shop dialogue ("Du hast nicht genug
--- Goldstuecke!" = "You don't have enough gold!", see rom-map.md's
--- text-decoding section) independently confirms a real gold system
--- exists in this game. `0xD2` = ADD gold, `0xD3` = SUBTRACT gold (shop
--- purchase). This project does not reproduce the real WRAM counter
--- itself (same honest scope as `WORD_COMMAND_HANDLER_ADDRESS` above)
--- -- `onCommand` receives the raw operand word, what to do with it
--- (and which direction) is the caller's business; both share the SAME
--- generic `ctx.onWordCommand` callback via `ScriptRuntime.lua`'s own
--- existing `^WORD_COMMAND_HANDLER_ADDRESS` sweep, same as `0xD0`.
-ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_D2 = 0x3A0D -- ADD (real 24-bit gold counter, capped at 999999)
-ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_D3 = 0x3A1C -- SUBTRACT (same real counter, clamped to 0)
+-- Opcodes 0xD2/0xD3 (ROM $3A0D/$3A1C) -- CLOSED (direct user request
+-- to decode the missing opcodes): a sibling pair of WORD_COMMAND_
+-- HANDLER_ADDRESS above -- same shape (2-byte little-endian operand,
+-- CALL $3727 / RET, always continues), but operating on a different
+-- WRAM counter, with a specific decoded meaning this pass:
+--   0xD2 ($3A0D): LD E,(HL)/INC HL/LD D,(HL)/INC HL (operand word) /
+--     PUSH HL / PUSH DE / POP HL / CALL $3D21 / POP HL / CALL $3727 /
+--     RET -- delegates the add to $3D21.
+--   $3D21: reads the 24-bit WRAM counter $D7BB(low)/$D7BC(mid)/$D7BD
+--     (high, only ever 0 or a small carry) and does HL,A =
+--     ($D7BC:$D7BB) + DE, A += carry, then clamps to a specific
+--     ceiling: high==0x0F and mid==0x42 and low==0x3F (the 24-bit
+--     value 0x0F423F = decimal 999999) -- writes the clamped result
+--     back to the same 3 cells ($3D48 onward, not shown here).
+--   0xD3 ($3A1C): the exact mirror -- HL,C = ($D7BC:$D7BB:$D7BD) - DE
+--     (subtract instead of add), clamps to 0 on underflow instead of
+--     to the ceiling, writes back to the same 3 cells.
+-- Well-evidenced role (still HYPOTHESIS -- inferred from the exact cap
+-- value, not independently live-verified via gameplay): the 24-bit
+-- gold counter ($D7BB-$D7BD) -- a classic RPG "999999 max gold"
+-- ceiling is a much more specific signal than a generic 0xFFFF/0xFF
+-- overflow clamp, and this project's own decoded shop dialogue ("Du
+-- hast nicht genug Goldstuecke!" = "You don't have enough gold!", see
+-- rom-map.md's text-decoding section) independently confirms a gold
+-- system exists in this game. 0xD2 = ADD gold, 0xD3 = SUBTRACT gold
+-- (shop purchase). This project doesn't reproduce the WRAM counter
+-- itself (same honest scope as WORD_COMMAND_HANDLER_ADDRESS above) --
+-- onCommand receives the raw operand word, what to do with it (and
+-- which direction) is the caller's business; both share the same
+-- generic ctx.onWordCommand callback via ScriptRuntime.lua's own
+-- existing ^WORD_COMMAND_HANDLER_ADDRESS sweep, same as 0xD0.
+ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_D2 = 0x3A0D -- ADD (24-bit gold counter, capped at 999999)
+ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS_D3 = 0x3A1C -- SUBTRACT (same counter, clamped to 0)
 
--- Real opcode `0xE8` (ROM `$0F5A`) -- CLOSED 2026-08-14 (the
--- `$1ED7` dispatcher this session separately, fully mapped while
--- tracing the real cut-transition tile-coordinate mechanism is
--- exactly what this note's own earlier "condition not characterized"
--- was waiting on). See `StandardScriptHandlers.dualGateLeafCommand`'s
--- own doc comment for the complete real chain (`$0232`/`$049E` are
--- real `$1ED7`-selector trampolines; the real halt is the SAME
--- `$C8E0`/`$CEE8` dual gate already modeled for `0xFC`/`0xFD`).
+-- Opcode 0xE8 (ROM $0F5A) -- CLOSED (the $1ED7 dispatcher this session
+-- separately, fully mapped while tracing the cut-transition tile-
+-- coordinate mechanism is exactly what this note's earlier "condition
+-- not characterized" was waiting on). See StandardScriptHandlers
+-- .dualGateLeafCommand's own doc comment for the complete chain
+-- ($0232/$049E are $1ED7-selector trampolines; the halt is the same
+-- $C8E0/$CEE8 dual gate already modeled for 0xFC/0xFD).
 --   PUSH HL / LD B,0 / LD A,0x88 / CALL $0232 / LD D,4 / LD A,4 /
 --   CALL $049E / POP HL / CP 0x00 / RET NZ / CALL $3727 / RET
 ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_E8 = 0x0F5A
 
--- Real opcode `0xE9` (ROM `$0F71`) -- FOUND 2026-08-13, direct
--- response to "bitte alle fäden nacheinander verfolgen" (the
--- "spawn position / trigger zones" investigation): sits immediately
--- before the already-known `0xE4` handler (`$0F88`) -- structurally
--- BYTE-IDENTICAL to `0xE8` above, just different literal parameters:
+-- Opcode 0xE9 (ROM $0F71) -- FOUND, direct response to a request to
+-- follow all the threads one after another (the "spawn position/
+-- trigger zones" investigation): sits immediately before the already-
+-- known 0xE4 handler ($0F88) -- structurally byte-identical to 0xE8
+-- above, just different literal parameters:
 --   PUSH HL / LD B,0 / LD A,0x84 / CALL $0232 / LD D,4 / LD A,0x08 /
 --   CALL $049E / POP HL / CP 0x00 / RET NZ / CALL $3727 / RET
--- (`0xE8`'s own real parameters are `A=0x88` then `A=0x04`; `0xE9`'s
--- are `A=0x84` then `A=0x08`.) A real correction to how `$0232`/`$049E`
--- were first read: they are NOT case-selector dispatchers indexed by
--- the incoming `A` -- each is itself one of a real cluster of 6-byte
--- `PUSH AF / LD A,<fixed case> / JP $1ED7` trampolines (`$1ED7`, a
--- real SIBLING of the already-fully-mapped `$1F35`/`$1F06` cross-bank
--- dispatcher family, switching to BANK 1 instead of bank 2 -- see
--- events.md's own "spawn position + trigger zones" section for the
--- full trace) -- `CALL $0232` always reaches the SAME real case (1,
--- `$48BE`) regardless of caller; the incoming `A` (`0x88`/`0x84` here)
--- is a genuine PARAMETER passed through to that case's own real
--- handler, preserved across the trampoline via `PUSH AF`/`POP AF`, not
--- a selector. CLOSED 2026-08-14, same real chain as `0xE8` above --
--- see `StandardScriptHandlers.dualGateLeafCommand`'s own doc comment.
+-- (0xE8's own parameters are A=0x88 then A=0x04; 0xE9's are A=0x84
+-- then A=0x08.) A correction to how $0232/$049E were first read: they
+-- aren't case-selector dispatchers indexed by the incoming A -- each
+-- is itself one of a cluster of 6-byte PUSH AF / LD A,<fixed case> /
+-- JP $1ED7 trampolines ($1ED7, a sibling of the already-fully-mapped
+-- $1F35/$1F06 cross-bank dispatcher family, switching to bank 1
+-- instead of bank 2 -- see events.md's "spawn position + trigger
+-- zones" section for the full trace) -- CALL $0232 always reaches the
+-- same case (1, $48BE) regardless of caller; the incoming A (0x88/
+-- 0x84 here) is a genuine parameter passed through to that case's
+-- handler, preserved across the trampoline via PUSH AF/POP AF, not a
+-- selector. CLOSED, same chain as 0xE8 above -- see
+-- StandardScriptHandlers.dualGateLeafCommand's own doc comment.
 ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_E9 = 0x0F71
 
--- Real opcodes `0xEA`/`0xEB` (ROM `$0F2C`/`$0F43`) -- CLOSED 2026-08-14
--- ("ok dann weiter mit den top blockern" -> whole-corpus scan's own
--- rank-3 blocker after `0x8F`'s own closure, 32 real scripts):
--- structurally BYTE-IDENTICAL to `0xE8`/`0xE9` above, completing a
--- real, coherent 4-direction family -- `0xEA`'s own real parameters
--- are `A=0x82` then `A=0x01`; `0xEB`'s are `A=0x81` then `A=0x02`
--- (vs. `0xE8`=`0x88`/`0x04`, `0xE9`=`0x84`/`0x08`) -- the SAME real
--- direction-bit convention already known from the door/exit-reveal
--- family (North=4, East=1, South=8, West=2): `0xE8`=North, `0xE9`=
--- South, `0xEA`=East, `0xEB`=West. Same real shared gate (`$44D8`'s
--- own `$C8E0`/`$CEE8` check, reached via `$049E`), same unconditional
--- `$48BE`/`$02AB` leaf work first -- see `StandardScriptHandlers
--- .dualGateLeafCommand`'s own doc comment, unchanged, for the full
--- real chain (no new Lua code needed, these reuse the EXACT SAME
--- factory as `0xE8`/`0xE9`).
+-- Opcodes 0xEA/0xEB (ROM $0F2C/$0F43) -- CLOSED (continuing with the
+-- top blockers -> whole-corpus scan's own rank-3 blocker after 0x8F's
+-- closure, 32 scripts): structurally byte-identical to 0xE8/0xE9
+-- above, completing a coherent 4-direction family -- 0xEA's parameters
+-- are A=0x82 then A=0x01; 0xEB's are A=0x81 then A=0x02 (vs.
+-- 0xE8=0x88/0x04, 0xE9=0x84/0x08) -- the same direction-bit convention
+-- already known from the door/exit-reveal family (North=4, East=1,
+-- South=8, West=2): 0xE8=North, 0xE9=South, 0xEA=East, 0xEB=West. Same
+-- shared gate ($44D8's own $C8E0/$CEE8 check, reached via $049E), same
+-- unconditional $48BE/$02AB leaf work first -- see
+-- StandardScriptHandlers.dualGateLeafCommand's own doc comment,
+-- unchanged, for the full chain (no new Lua code needed, these reuse
+-- the exact same factory as 0xE8/0xE9).
 ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_EA = 0x0F2C
 ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_EB = 0x0F43
 
--- Round 4 (2026-08-12, same "mach erstmal 2" pass, a 3rd re-scan): 4
--- MORE Family-A actor-flag opcodes, 1 more `triggerEvent`-shaped
--- opcode, and 3 more genuinely new always-continuing shapes.
+-- Round 4 (same "do 2 first" pass, a 3rd re-scan): 4 more Family-A
+-- actor-flag opcodes, 1 more triggerEvent-shaped opcode, and 3 more
+-- genuinely new always-continuing shapes.
 --   0x15 ($1298): base 0x00, group 0x1F
 --   0x17 ($1280): base 0x00, group 0x1D
 --   0x56 ($1444): base 0x04, group 0x1C
