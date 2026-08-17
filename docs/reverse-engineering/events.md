@@ -10185,3 +10185,84 @@ NPC-interaction code path (the same rigor this project already applied
 to the text-decode work, e.g. `$3777`/`$34A4`), not another diff pass.
 A real, correctly-scoped, but meaningfully bigger next step than
 anything else tried in this whole investigation -- not started here.
+
+## Real disassembly of the NPC-dialogue trigger + its full script content -- FOUND the mechanism, another honest negative on the Jackal question (2026-08-17, same day)
+
+Direct user instruction ("ja dissasembliere bitte"), doing exactly
+what the previous entry called for.
+
+**Method**: frame-accurate two-phase live trace (real `s.run(1)` to
+find the EXACT real frame the persistent script cursor `$D8B6`/`$D8B7`
+first enters bank 13's text region, then a full single-step + real
+`CallTracer` replay of ONLY that one frame) -- pinpointed the exact
+real call chain, no guessing:
+
+```
+bank 0  $073b -> $0961     (generic actor-collision/movement resolver,
+                             NOT dialogue-specific -- ordinary per-
+                             frame movement code that happens to run
+                             this same frame)
+bank 2  $427f -> $42a5
+bank 3  $45f3 -> $31ad     (bank 3 -- matches the US disassembly's own
+                             "bank03_npc.asm" naming, a real structural
+                             echo even though bank NUMBERS aren't
+                             guaranteed to match between US/EU)
+```
+
+**`$31ad` (fixed bank 0) is a real, general "start an NPC proximity
+dialogue" routine, fully disassembled**: guards re-entry via `$C0A1`
+bit 1, primes the real `runListSearch` gate bytes (`$D871`/`$D873`,
+already known from the earlier "sie stoppen und warten auf was?"
+investigation), sets `$D874` bit 7 (queue-continuation flag) and
+resets the real 5-tick throttle counter `$D864` (already known from
+the text-decoder work), picks a target `HL` via a real branch
+comparing against `$D613`/`$D623`/`$D633`-based offsets (a genuine,
+not-yet-decoded per-room/per-actor selector), writes it into the
+persistent script cursor `$D8B6`/`$D8B7`, then calls **`$3727` -- the
+real top-level script dispatch loop** -- i.e. an NPC's "dialogue" is
+not a special text-only mechanism, it's a REAL SCRIPT, run through the
+exact same interpreter as every other script this project has already
+decoded. Finishes by setting real "busy" bits on BOTH `$C0A1` AND
+`$C0A2` (two actor slots at once) -- explains why this triggered for a
+TWO-NPC scene specifically.
+
+**Statically decoded the real script content this pointed at** (using
+this project's own `TextDecoder`/`ScriptRuntime`, no emulator needed
+once the real cursor was known) -- found a real, repeating `12 11 00
+00 04 10` record marker separating a whole SEQUENCE of real NPC lines
+in this bank-13 region, not just characterA/B's own two boxes:
+
+1. `characterA`: "Der Monsterein-gang führt nach draußen." (the
+   already-known anchor)
+2. `characterB`: "Hallo!Willkommen in Toppel!"
+3. "Dark Lord ist so grausam. Nicht auszuhalten!"
+4. "Ich hörte, daß Dark Lord nach einem Mädchen sucht" -- real, direct
+   story foreshadowing (Julius/Dark Lord's own hunt for "a girl")
+5. "Der alte Mann bei den Wasserfällen ist mürrisch." -- likely
+   foreshadowing Bogard (gamesurge.com's own walkthrough: an old man
+   "by the waterfalls")
+6. "Der Mana Baum wacht über uns von ganz weit oben"
+7. "Mädchen:Hasim ist schwer verletzt" -- matches the real Topple-town
+   screenshot already found this session (fantasyanime.com
+   `ffashot006.png`, the girl saying "Don't leave me alone, Hasim!")
+
+**Honest conclusion**: this is a real, whole flavor-text/NPC-hint
+block for the wider town/countryside area (Topple and its
+surroundings), not a room-specific trigger table -- and critically,
+**none of these 7 real, fully-decoded boxes is followed by anything
+resembling a monster-spawn or gate-open opcode**; each one's own `12
+11 00 00 04 10` marker just leads straight into the NEXT NPC's own
+ordinary flavor line. This is now a comprehensive negative result
+from THREE independent angles (live WRAM diffing, live CALL-stack
+disassembly, and static full-script decoding) against "characterA's
+own dialogue is what triggers the second Jackal/gate event." Real,
+honest interpretation: either that event sits at a genuinely different
+location this project hasn't found yet, or (increasingly plausible
+given how thoroughly this specific lead has now been checked) the
+walkthrough's own "approach the arena again" phrasing was a loose
+narrative summary of the ALREADY-implemented first-boss/gate event,
+not a second, distinct in-ROM encounter this project is still missing.
+Not force-resolved either way -- a real, substantial investment (this
+whole session's worth of live tracing + disassembly across `sixthRoom`,
+the full known room chain, and now this dialogue script) has not found
+it, which is itself a meaningful, honestly-reported result.
