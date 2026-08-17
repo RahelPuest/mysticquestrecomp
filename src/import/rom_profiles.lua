@@ -2000,17 +2000,13 @@ RomProfiles.PROFILES = {
           },
         },
       },
-      -- ADDED (2026-08-16, same continuation): real bank-5 catalog
-      -- record 237 -- eighthRoom's own east neighbor, same byte-exact
-      -- shared-edge standard (both rooms' own east/west columns read
-      -- `WWWWWW` at the real reachable rows 0-5). BFS-confirmed 36 real
-      -- cells reachable from the landing spot; this room's own further
-      -- neighbors were not investigated this pass -- real, concrete
-      -- leads for whoever continues, not exhausted.
-      -- TILESET CORRECTED (2026-08-17): same fix, same evidence as
-      -- `seventhRoom`'s own doc comment above -- see that one and
-      -- `mapTable.tilesetFileOffset`'s own dated correction for the
-      -- full formula/trace. `grid` unchanged, only `tileOffsets`.
+      -- ADDED (same continuation): real bank-5 catalog record 237 --
+      -- eighthRoom's own east neighbor, same byte-exact shared-edge
+      -- standard (both rooms' east/west columns read WWWWWW at rows
+      -- 0-5). BFS-confirmed 36 cells reachable from the landing spot;
+      -- further neighbors not investigated this pass.
+      -- TILESET CORRECTED: same fix/evidence as seventhRoom's own doc
+      -- comment above. grid unchanged, only tileOffsets.
       ninthRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 237; " ..
           "chosen via a byte-exact shared-edge match with eighthRoom's own east column, not independently " ..
@@ -2032,10 +2028,9 @@ RomProfiles.PROFILES = {
           [83] = 0x30530, [84] = 0x30540, [127] = 0x307F0, [132] = 0x30840,
           [133] = 0x30850, [134] = 0x30860, [135] = 0x30870,
         },
-        -- Same real, position-dependent tile-68 imprecision as
-        -- eighthRoom above (see that room's own doc comment) -- every
-        -- WALL instance here also sits outside the real, BFS-reachable
-        -- region from this room's own landing spot.
+        -- Same position-dependent tile-68 imprecision as eighthRoom
+        -- above -- every wall instance here also sits outside the
+        -- BFS-reachable region from the landing spot.
         floorTileIds = { [66] = true, [67] = true, [68] = true, [69] = true,
           [70] = true, [71] = true, [72] = true, [73] = true,
           [78] = true, [79] = true, [80] = true, [81] = true },
@@ -2057,70 +2052,56 @@ RomProfiles.PROFILES = {
           { 12, 13, 12, 13, 12, 13, 12, 27, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67},
           { 14, 15, 14, 15, 14, 15, 14, 28, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69},
         },
-        -- No further real exits wired this pass -- this room's own
-        -- real, BFS-confirmed reachable region (36 of 320 cells, the
-        -- top-left block) has no further edge opening beyond the west
-        -- column already used to enter it. A real, honest dead end for
-        -- now, not silently glossed over -- and not chased further
-        -- given this pass's own real, caught mistake earlier (see
-        -- seventhRoom's own doc comment): every further claim here is
-        -- now BFS-verified, not just edge-pattern-matched.
+        -- No further exits wired this pass -- the BFS-confirmed
+        -- reachable region (36 of 320 cells, top-left block) has no
+        -- further edge opening beyond the west column used to enter it.
+        -- An honest dead end, not chased further given seventhRoom's
+        -- earlier caught mistake: every claim here is BFS-verified, not
+        -- just edge-pattern-matched.
       },
       -- Real player + "Willy" sprites standing in the room above, found
-      -- by direct user report ("dort befindet sich dann der spieler
-      -- sprite sowie der sprite für willy???" -- i.e. this project's
-      -- first implementation drew the room but neither character).
-      -- Live OAM capture at the real settled frame: 4 active hardware
-      -- sprite entries (real 8x16 OBJ mode -- LCDC bit 2 set), 2 real
-      -- 16x16 characters standing side by side. Real per-tile ROM
-      -- offsets found the same way as `willyRoom.tileOffsets` (exact
-      -- live-VRAM-pattern byte search) -- a THIRD, distinct real ROM
-      -- region from either the room's own tileset or the field
-      -- player/enemy sprites (see `playerSprite`/`enemySprite` above) --
-      -- this scene loads its own dedicated small sprite set, not a
-      -- reuse of the normal field-player art.
+      -- by direct user report (the first implementation drew the room
+      -- but neither character). Live OAM capture: 4 active sprite
+      -- entries (8x16 OBJ mode), 2 16x16 characters side by side.
+      -- Per-tile ROM offsets found the same way as willyRoom.tileOffsets
+      -- (VRAM-pattern byte search) -- a third, distinct ROM region from
+      -- either the room's tileset or the field player/enemy sprites --
+      -- this scene loads its own dedicated small sprite set.
       willyScene = {
         status = "VERIFIED",
         -- Real screen position (OAM Y/X minus the standard 16/8 hardware
-        -- offset -- same convention as `playerSprite`/`enemySprite`).
+        -- offset, same convention as playerSprite/enemySprite).
         player = {
           screenX = 80, screenY = 80,
-          -- Row-major top-left/top-right/bottom-left/bottom-right (real
-          -- 8x16-mode tile pairs: OAM tile 0x00 implies 0x00+0x01
-          -- stacked, 0x02 implies 0x02+0x03 -- same convention decoded
-          -- for `attackSwing`/other 2x2 creature blocks).
+          -- Row-major top-left/top-right/bottom-left/bottom-right
+          -- (8x16-mode tile pairs: OAM tile 0x00 implies 0x00+0x01
+          -- stacked, same convention as attackSwing/other 2x2 blocks).
           tileOffsets = { 0x21b00, 0x21b10, 0x21b20, 0x21b30 },
           flipX = false,
         },
         willy = {
           screenX = 64, screenY = 80,
           tileOffsets = { 0x26d80, 0x26d90, 0x26da0, 0x26db0 },
-          -- Real: OAM attribute byte 0x10 (bit 4 set) -- Willy renders
-          -- with OBP1, not the player's own OBP0 (same real palette-
-          -- select mechanism already found for the enemy sprite).
+          -- OAM attribute byte 0x10 (bit 4 set) -- Willy renders with
+          -- OBP1, not the player's OBP0 (same palette-select mechanism
+          -- already found for the enemy sprite).
           palette = "OBP1",
           flipX = false,
         },
-        -- CORRECTED (2026-08-12, direct user report: "die npc sprites
-        -- stimmen nicht"): this `0xFB` capture was real, but turned out
-        -- to be a momentary value specific to the EXACT instant it was
-        -- read (mid-dialogue-box, likely a text-box flash/highlight
-        -- effect), not Willy's or any NPC's real resting sprite palette
-        -- -- and this project's own `VictorySequence.lua` was reusing
-        -- it for EVERY room's scene characters (Willy AND secondRoom's
-        -- two NPCs), not just this one cutscene moment. Live re-checked
-        -- (mgba, `willy_room_free()`/`second_room_free()` -- i.e. well
-        -- after any dialogue box, free-roaming): real OBP0/OBP1 are
-        -- BOTH `0xD3` in willyRoom during free-roam AND in secondRoom --
-        -- i.e. the SAME (functionally, ignoring id0 which sprites never
-        -- paint -- hardware-transparent) as the already-VERIFIED
-        -- `spritePalette.shadeIndices` above (`0xD0` -> `{0,0,1,3}`;
-        -- `0xD3` differs only in id0, `{3,0,1,3}` -- id1/id2/id3 both
-        -- `0,1,3`). `VictorySequence.lua` now uses `spritePalette
-        -- .shadeIndices` for its shared NPC/Willy palette instead of
-        -- this field -- this field itself is kept as an honest record
-        -- of the real live capture, just no longer treated as "the
-        -- general resting palette" (that claim was the actual bug).
+        -- CORRECTED (direct user report NPC sprites don't match): this
+        -- 0xFB capture was real, but a momentary value specific to the
+        -- exact instant read (mid-dialogue-box flash effect), not
+        -- Willy's/any NPC's resting palette -- and VictorySequence.lua
+        -- was reusing it for every room's scene characters, not just
+        -- this cutscene moment. Live re-checked well after any dialogue
+        -- box: real OBP0/OBP1 are both 0xD3 in willyRoom AND secondRoom
+        -- during free-roam -- functionally the same (ignoring the
+        -- hardware-transparent id0) as the VERIFIED spritePalette
+        -- .shadeIndices above (0xD0 -> {0,0,1,3}; 0xD3 differs only in
+        -- id0). VictorySequence.lua now uses spritePalette.shadeIndices
+        -- for its shared NPC/Willy palette instead -- this field is
+        -- kept as an honest record of the capture, no longer treated as
+        -- "the general resting palette" (that was the actual bug).
         paletteShadeIndices = { 3, 2, 3, 3 },
       },
       startRoom = {
@@ -2129,44 +2110,41 @@ RomProfiles.PROFILES = {
         -- `fourthRoom`'s own doc comment above for the full "same
         -- pointer, partially-different capture" note.
         romRoomSelectors = { 0, 1 },
-        -- ADDED (2026-08-17, direct user instruction "der startraum muss
-        -- im raumsystem auch anders dargestellt werden"): the reciprocal
-        -- side of `sixthRoom.sameRomIdentityAs` above -- this room's own
-        -- real WRAM identity registers are byte-identical to sixthRoom's
-        -- (already live-confirmed, see sixthRoom's own doc comment), so
-        -- this room is not merely "isolated" in the play-flow graph --
-        -- it's the exact same real ROM room as sixthRoom, which DOES
-        -- have live-traced connections (fourthRoom->sixthRoom,
-        -- sixthRoom->seventhRoom). The website now shows this via the
-        -- same violet "same identity" styling sixthRoom already carries,
-        -- taking visual priority over the plain amber "isoliert" framing
-        -- (see rooms.js's own border-priority doc comment) -- accurate:
-        -- THIS graph node has no traced exit of its own, but the real
-        -- room it represents is not disconnected at all.
+        -- ADDED (direct user instruction that startRoom needs different
+        -- treatment in the room-system graph): the reciprocal side of
+        -- sixthRoom.sameRomIdentityAs above -- this room's WRAM identity
+        -- registers are byte-identical to sixthRoom's (already
+        -- confirmed), so this room isn't merely "isolated" in the
+        -- play-flow graph -- it's the exact same ROM room as sixthRoom,
+        -- which DOES have live-traced connections (fourthRoom->
+        -- sixthRoom->seventhRoom). The website shows this via the same
+        -- violet "same identity" styling sixthRoom carries, taking
+        -- visual priority over the plain amber "isolated" framing (see
+        -- rooms.js's border-priority doc comment) -- accurate: this
+        -- graph node has no traced exit of its own, but the real room
+        -- it represents is not disconnected.
         sameRomIdentityAs = { "sixthRoom" },
-        sameRomIdentityNote = "Reale ROM-Identitaetsregister sind byte-identisch mit sixthRoom (live bestaetigt 2026-08-17, siehe sixthRoom's eigenen Kommentar) -- derselbe reale ROM-Raum. Dieser Graph-Knoten selbst hat keinen eigenen live erfassten Exit (er wird nur ueber die separate Bosskampf-Einleitung erreicht), aber der reale Raum dahinter IST verbunden (fourthRoom -> sixthRoom -> seventhRoom).",
-        -- CONFIRMED (2026-08-17, direct user report -- same discovery as
-        -- `fourthRoom`'s own doc comment above, see there for the full
-        -- verification methodology): this room is directly present in
-        -- the bank6 (8x8) world-map catalog at grid (row=7,col=4), i.e.
-        -- `mapTableBank6` record index `row*8+col=60`. Cell-by-cell
+        sameRomIdentityNote = "Reale ROM-Identitaetsregister sind byte-identisch mit sixthRoom (live bestaetigt, siehe sixthRoom's eigenen Kommentar) -- derselbe reale ROM-Raum. Dieser Graph-Knoten selbst hat keinen eigenen live erfassten Exit (er wird nur ueber die separate Bosskampf-Einleitung erreicht), aber der reale Raum dahinter IST verbunden (fourthRoom -> sixthRoom -> seventhRoom).",
+        -- CONFIRMED (direct user report -- same discovery as fourthRoom's
+        -- own doc comment above, see there for the verification
+        -- methodology): this room is directly present in the bank6
+        -- (8x8) world-map catalog at grid (row=7,col=4), i.e.
+        -- mapTableBank6 record index row*8+col=60. Cell-by-cell
         -- real-file-offset comparison: 316/320 cells (98.8%) match this
-        -- room's own `tileOffsets` below exactly -- an even stronger
-        -- match than `fourthRoom`'s own 67.5%, consistent with this
-        -- being the room's own "clean", unobstructed base capture.
-        -- Directly EAST of `fourthRoom`'s own (row=7,col=5) record. A
-        -- 10-room neighbor sweep around this catalog position ((6,3)-
-        -- (6,6), (7,2),(7,3),(7,6),(7,7)) was also rendered and checked
-        -- against every other known live-captured room -- CONFIRMED
-        -- (2026-08-17, direct user correction: "die anderen räume sind
-        -- nicht auf der weltmap") that none of these are further known
-        -- rooms: the (7,6) record LOOKS like a checkerboard courtyard,
-        -- structurally similar to the willyRoom/secondRoom/thirdRoom
-        -- family, but is 0/320 real-file-offset matches -- a
-        -- coincidental shared tile motif, not the same room; (7,7)'s
-        -- weak 26.9%/34.1% overlap with eighthRoom/ninthRoom is likewise
-        -- NOT a real identity, just a tileset-family overlap, per the
-        -- same confirmation. `startRoom`/`fourthRoom` are the only two
+        -- room's tileOffsets below -- even stronger than fourthRoom's
+        -- own 67.5%, consistent with this being the room's "clean",
+        -- unobstructed base capture. Directly east of fourthRoom's own
+        -- (row=7,col=5) record. A 10-room neighbor sweep around this
+        -- catalog position was also rendered and checked against every
+        -- other known live-captured room -- confirmed (direct user
+        -- correction that the other rooms are not on the world map)
+        -- that none of these are further known rooms: the (7,6) record
+        -- looks like a checkerboard courtyard, structurally similar to
+        -- the willyRoom/secondRoom/thirdRoom family, but is 0/320
+        -- real-file-offset matches -- a coincidental shared tile motif,
+        -- not the same room; (7,7)'s weak 26.9%/34.1% overlap with
+        -- eighthRoom/ninthRoom is likewise not a real identity, just a
+        -- tileset-family overlap. startRoom/fourthRoom are the only two
         -- rooms this project has live-confirmed on the 8x8 world map so
         -- far. See events.md's "startRoom and fourthRoom are on the 8x8
         -- world map" entry for the complete trace.
