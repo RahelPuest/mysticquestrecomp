@@ -53,6 +53,15 @@ function render_rooms(main) {
       <code>unknownRoomA</code>-Familie) sind reale ROM-Daten ohne bekannten Trigger. Siehe den
       <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige Tabelle.
     </p>
+    <p class="page-lede">
+      <span style="color:#e0a030;">&#9888; <code>startRoom</code></span> (amber gestrichelter
+      Rahmen unten): ein echter, VERIFIED Raum &mdash; hostet den echten ersten Bosskampf
+      (<code>BattleIntro.lua</code>s reale „Kaempfe!“-Sequenz, das Startbild von
+      <code>Field.lua</code>) &mdash; aber OHNE live gefundene Verbindung zur
+      <code>willyRoom</code>-Kette (die nur über den separaten VictorySequence/RoomExplorer-
+      Debug-Walker erreichbar ist, nicht über den normalen Spielfluss). Ehrlich als
+      eigenständiger, unverbundener Knoten gezeigt statt weggelassen.
+    </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
       <button class="btn small" id="roomZoomOut" type="button" title="Verkleinern">&minus;</button>
@@ -179,16 +188,28 @@ function render_rooms(main) {
     const p = pos[n];
     const m = mapByName[n];
     const isLeaf = !roomByName[n];
+    // A real, VERIFIED room with a `note` (currently: startRoom, the
+    // real first-boss-fight room -- see export_data.lua's own
+    // ISOLATED_BUT_REAL_ROOMS comment) that has no live-traced exits
+    // AND nothing else points to it -- shown as its own honestly-
+    // disconnected node (distinct amber dashed border + a small
+    // "isoliert" badge + the real reason as a hover tooltip) instead
+    // of looking like an ordinary, silently-unconnected leaf.
+    const roomEntry = roomByName[n];
+    const isIsolated = !!(roomEntry && roomEntry.note);
+    const borderStyle = isIsolated ? "2px dashed #e0a030" : "1px solid var(--border)";
     nodesHtml += `
       <div class="room-node-card${isLeaf ? " leaf" : ""}" data-room="${escapeHtml(n)}"
+           ${isIsolated ? `title="${escapeHtml(roomEntry.note)}"` : ""}
            style="position:absolute; left:${p.x}px; top:${p.y}px; width:${p.w}px; height:${p.h}px;
-                  box-sizing:border-box; border:1px solid var(--border); border-radius:8px;
+                  box-sizing:border-box; border:${borderStyle}; border-radius:8px;
                   background:var(--bg-card,#171b10); padding:${NODE_PAD}px; text-align:center;">
         <canvas class="room-thumb-canvas" width="10" height="10"
                 style="image-rendering:pixelated; max-width:100%; border:1px solid var(--border-faint,#2a331b); border-radius:4px;"
                 role="img" aria-label="Echte Raum-Kachelkarte für ${escapeHtml(n)}"></canvas>
         <div style="font-size:11px; margin-top:4px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(n)}</div>
         <div style="font-size:9px; color:var(--text-faint);">${m ? m.cols + "&times;" + m.rows + " Tiles" : (roomByName[n] ? "kein Kartenraster" : "kein eigener Exit-Eintrag")}</div>
+        ${isIsolated ? `<div style="font-size:9px; color:#e0a030; margin-top:2px;" title="${escapeHtml(roomEntry.note)}">&#9888; isoliert &mdash; 1. Bosskampf</div>` : ""}
       </div>`;
   }
   nodesHost.innerHTML = nodesHtml;

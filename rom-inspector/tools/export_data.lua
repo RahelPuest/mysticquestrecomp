@@ -556,9 +556,48 @@ for name, room in pairs(profile.graphics) do
     rooms[#rooms + 1] = { name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = exits }
   end
 end
+-- Real, decoded, VERIFIED rooms that exist as genuine ROM screens but
+-- have no live-traced `exits` field of their own AND are never any
+-- other room's real `targetRoom` either -- the exits-only loop above
+-- would otherwise silently omit them from the graph entirely, even
+-- though they're just as real as every other room here. `startRoom`
+-- is the one current case (2026-08-17, direct user question "wo ist
+-- denn der boss raum in dem graf? der existiert ja definitiv"): it's
+-- the actual room `Field.lua`/`BattleIntro.lua` use for the real,
+-- live FIRST boss fight (the real "Kaempfe!" battle-intro sequence,
+-- with its own real gate/entranceSeal tile-patch mechanics) -- a
+-- genuinely VERIFIED room, real tile grid + ROM tile offsets, not a
+-- guess. Its connection onward into the willyRoom -> ... -> ninthRoom
+-- exit chain (itself only reachable via the separate VictorySequence/
+-- RoomExplorer debug room-graph walker, not the normal Field.lua play
+-- flow -- see main.lua's own state wiring) was simply never live-
+-- traced, so it has no `exits` entry to read. Exported here as its
+-- own real, honestly DISCONNECTED node (empty `exits`, a `note`
+-- explaining why) instead of being silently left off the map.
+local ISOLATED_BUT_REAL_ROOMS = { "startRoom" }
+local roomNamesSoFar = {}
+for _, r in ipairs(rooms) do roomNamesSoFar[r.name] = true end
+for _, name in ipairs(ISOLATED_BUT_REAL_ROOMS) do
+  local room = profile.graphics[name]
+  if room and not roomNamesSoFar[name] then
+    local widthTiles, heightTiles
+    if room.grid then
+      heightTiles = #room.grid
+      widthTiles = room.grid[1] and #room.grid[1]
+    end
+    rooms[#rooms + 1] = {
+      name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = {},
+      note = "Echter, VERIFIED Raum (rom_profiles.lua) -- hostet den echten ersten Bosskampf " ..
+        "(BattleIntro.lua's reale \"Kaempfe!\"-Sequenz). Keine live entdeckte Verbindung zur " ..
+        "willyRoom-Kette (die ihrerseits nur ueber den separaten VictorySequence/RoomExplorer-" ..
+        "Debug-Walker erreichbar ist, nicht ueber den normalen Field.lua-Spielfluss) -- ehrlich " ..
+        "als eigenstaendiger Knoten ohne Pfeile gezeigt, nicht weggelassen.",
+    }
+  end
+end
 table.sort(rooms, function(a, b) return a.name < b.name end)
 writeJs("rooms.js", "ROOMS", rooms,
-  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room).")
+  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A small number of real, VERIFIED rooms with no live-traced exits (currently: startRoom, the real first-boss-fight room) are still included as their own honestly-disconnected node, via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted.")
 
 ----------------------------------------------------------------------
 -- 6b. Room MAPS (grid + tileOffsets) -- for the Tile/Map viewers. Only
