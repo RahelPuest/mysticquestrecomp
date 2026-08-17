@@ -3184,78 +3184,66 @@ RomProfiles.PROFILES = {
       },
     },
 
-    -- VERIFIED (2026-08-11, "loese die map komplett" -- see rom-map.md
-    -- "MILESTONE 3 SOLVED" for the full disassembly/live-tracing chain):
-    -- the real, general room-FLOOR-layout decompression pipeline. PORTED
-    -- (same day, "ja mach das bitte") to a real Lua decoder --
-    -- `src/import/RoomFloorLayout.lua`, cross-checked end to end against
-    -- a fresh, real ROM load in `tests/import/room_floor_layout_test.lua`
-    -- (not just this pass's own one-off Python scratch verification).
-    -- `src/import/MapTable.lua` still separately implements the older,
-    -- bank-5-specific RLE scheme (a different table shape, see rom-map.md
-    -- "Bank 5, revisited" for how the two relate).
+    -- VERIFIED (direct user instruction to fully solve the map -- see
+    -- rom-map.md "MILESTONE 3 SOLVED" for the full trace): the general
+    -- room-floor-layout decompression pipeline. Ported to a real Lua
+    -- decoder -- src/import/RoomFloorLayout.lua, cross-checked end to
+    -- end in tests/import/room_floor_layout_test.lua (not just one-off
+    -- Python scratch verification). src/import/MapTable.lua still
+    -- separately implements the older, bank-5-specific RLE scheme (a
+    -- different table shape, see rom-map.md "Bank 5, revisited").
     --
-    -- Per room (indexed via the SAME roomSelectorTable record used for
+    -- Per room (indexed via the same roomSelectorTable record used for
     -- the metatile table below):
-    --   1. `targetPointer` (this table's own DE field) + `dynamicBank`
-    --      point to a real METATILE TABLE: 6-byte records
-    --      `[gfxTileTL, gfxTileTR, gfxTileBL, gfxTileBR, collision, interaction]`
-    --      (matches the FFA-Disassembly project's own documented US-ROM
-    --      format exactly -- see rom-map.md's external-source section).
-    --      The 4 GFX-tile bytes are NOT final tile IDs directly -- each
-    --      must be remapped through the live WRAM `$D070-$D16F` table
-    --      (`table[byte] = real tile ID`, populated at runtime, not
-    --      ROM-static -- this project used a single targeted live dump
-    --      to get it for willyRoom; a generic extractor needs the same
+    --   1. targetPointer + dynamicBank point to a metatile table:
+    --      6-byte records [gfxTileTL, gfxTileTR, gfxTileBL, gfxTileBR,
+    --      collision, interaction] (matches the FFA-Disassembly
+    --      project's documented US-ROM format exactly). The 4 GFX-tile
+    --      bytes aren't final tile IDs directly -- each must be
+    --      remapped through the live WRAM $D070-$D16F table (populated
+    --      at runtime, not ROM-static -- this project used a targeted
+    --      live dump for willyRoom; a generic extractor needs the same
     --      per-room, or to find $D070's own real populator).
-    --   2. A SEPARATE compressed layout stream (found this pass via
-    --      `$2740`'s `$C3F8`-gated `$25F6`/`$25D1` resolvers, indexed by
-    --      `$C3FB` and the roomSelector's own `ptr` field -- for
-    --      willyRoom this resolves to real file offset `0x1DA50`, bank
-    --      7, i.e. a DIFFERENT bank than the metatile table's own bank
-    --      8) holds the room's real per-cell metatile-index grid,
-    --      RLE-compressed: a source byte with bit 7 SET means "write
-    --      `byte & 0x7F`, repeated **`$C3F9`** times" (live-confirmed
-    --      `$C3F9=4` for willyRoom -- the real per-room RLE run-length,
-    --      NOT a fixed global constant); bit 7 clear is a literal
-    --      metatile index. `$242B` is the real ROM decompressor,
-    --      writing 80 output bytes (for willyRoom's real 8-row x 10-col
-    --      metatile grid, stride 10 -- see `$23F1`'s own real
-    --      `$C350 + row*10 + col` addressing) into WRAM `$C350`.
+    --   2. A separate compressed layout stream (found via $2740's
+    --      $C3F8-gated $25F6/$25D1 resolvers, indexed by $C3FB and the
+    --      roomSelector's own ptr field -- for willyRoom this resolves
+    --      to file offset 0x1DA50, bank 7, a different bank than the
+    --      metatile table's bank 8) holds the room's per-cell metatile-
+    --      index grid, RLE-compressed: bit 7 set means "write byte &
+    --      0x7F, repeated $C3F9 times" (live-confirmed $C3F9=4 for
+    --      willyRoom -- a per-room run-length, not a fixed constant);
+    --      bit 7 clear is a literal metatile index. $242B is the ROM
+    --      decompressor, writing 80 output bytes (willyRoom's 8x10
+    --      metatile grid, stride 10) into WRAM $C350.
     --   3. Combine: for grid position (metatileRow, metatileCol), look
     --      up the decompressed index, resolve its metatile-table
     --      record, and place the 4 GFX tiles (D070-remapped) into the
     --      final pixel grid at (metatileRow*2, metatileCol*2).
-    --   4. The 4 door/exit graphics (N/W/E/S) are DELIBERATELY NOT part
+    --   4. The 4 door/exit graphics (N/W/E/S) are deliberately not part
     --      of this base layout (the compressed stream encodes blank
-    --      placeholders there) -- they're drawn by the SEPARATE,
-    --      already-documented `$235B`/`$225D`/`$2281`/`$056C` exit-
-    --      reveal mechanism (see `roomSelectorTable`'s own doc comment
-    --      above), confirmed by an exact match: rendering willyRoom via
-    --      steps 1-3 alone reproduces 288/320 real tile positions
-    --      exactly, and every one of the remaining 32 falls precisely
-    --      inside the 4 already-known door zones (8 tiles each).
+    --      placeholders there) -- they're drawn by the separate,
+    --      already-documented $235B/$225D/$2281/$056C exit-reveal
+    --      mechanism, confirmed by an exact match: rendering willyRoom
+    --      via steps 1-3 alone reproduces 288/320 tile positions
+    --      exactly, and the remaining 32 fall precisely inside the 4
+    --      known door zones (8 tiles each).
     --
-    -- Cross-validated end to end against `graphics.willyRoom.grid`
-    -- (below) -- not a hypothesis, a working, live-verified decode.
+    -- Cross-validated end to end against graphics.willyRoom.grid --
+    -- not a hypothesis, a working, live-verified decode.
     --
-    -- GENERALIZED 2026-08-12 ("weiter der world scope"): the real
-    -- Milestone-3 generalization proof, closed. `unknownRoomB`
-    -- (roomSelectors 14-15, the real black-wipe transition backdrop --
-    -- see rom-map.md "unknownRoomB SOLVED") was reached via a REAL,
-    -- transition-triggered room load (not forced/synthetic), single-
-    -- stepped to its own live `$242B` call to find its real layout-
-    -- stream source (`HL` at entry, resolved through the live-mapped
-    -- bank). This project's own UNCHANGED `RoomFloorLayout.
-    -- decodeLayoutStream` function, pointed at that real address,
-    -- reproduces the real, live-observed WRAM result exactly (80/80
-    -- bytes = 12) -- the pipeline mechanism itself (metatile-table
-    -- location formula + RLE layout-stream decode) is now proven, with
-    -- real code against real ROM bytes, to generalize to a genuinely
-    -- different room, not just re-decode willyRoom successfully again.
-    -- The room's own real content happens to be trivial (a uniform/
-    -- solid backdrop tile, matching its real role), but the MECHANISM
-    -- proof is exactly what Milestone 3's own DoD needed.
+    -- GENERALIZED (same day, continuing the world-scope push): the
+    -- Milestone-3 generalization proof, closed. unknownRoomB
+    -- (roomSelectors 14-15, the black-wipe transition backdrop) was
+    -- reached via a real, transition-triggered room load (not forced),
+    -- single-stepped to its own live $242B call to find its layout-
+    -- stream source. This project's own unchanged RoomFloorLayout.
+    -- decodeLayoutStream function, pointed at that address, reproduces
+    -- the live WRAM result exactly (80/80 bytes = 12) -- the pipeline
+    -- mechanism itself is now proven, with real code against real ROM
+    -- bytes, to generalize to a genuinely different room. The room's
+    -- content happens to be trivial (a uniform backdrop tile, matching
+    -- its role), but the mechanism proof is exactly what Milestone 3's
+    -- own DoD needed.
     roomFloorLayoutPipeline = {
       status = "VERIFIED (willyRoom + unknownRoomB + unknownRoomA's 6 rooms -- 8 genuinely different rooms total)",
       metatileRecordLength = 6,
@@ -3275,88 +3263,72 @@ RomProfiles.PROFILES = {
       },
       secondExampleRoom = {
         room = "unknownRoomB",
-        -- Real, live-confirmed via a genuine transition (the post-boss
-        -- black wipe), not forced -- see this table's own doc comment
-        -- above and rom-map.md's "unknownRoomB SOLVED" + follow-up.
+        -- Live-confirmed via a genuine transition (the post-boss black
+        -- wipe), not forced -- see rom-map.md's "unknownRoomB SOLVED".
         metatileTableFileOffset = 0x203B0,   -- bank 8, CPU $43B0
         layoutStreamFileOffset = 0x19CFB,    -- live-found via single-stepping to $242B's own entry HL
         metatileGridRows = 8,
         metatileGridCols = 10,
         rleLength = 4,                       -- live WRAM $C3F9 at this room's own load
-        -- Real, live-confirmed content: all 80 decoded indices equal
-        -- 12, a genuine uniform/solid metatile (record 12's own 4 GFX
-        -- bytes are all 0x26) -- the black-wipe backdrop is really just
-        -- one solid tile repeated across the whole grid, not a
-        -- decode-time special case.
+        -- Live-confirmed content: all 80 decoded indices equal 12, a
+        -- genuine uniform/solid metatile (record 12's own 4 GFX bytes
+        -- are all 0x26) -- the black-wipe backdrop is really just one
+        -- solid tile repeated across the whole grid, not a decode-time
+        -- special case.
       },
-      -- UPGRADED TO VERIFIED (2026-08-12, same day, direct follow-up):
-      -- rendered all 6 candidate rooms to REAL PNGs using this
-      -- project's own already-established formulas end to end --
-      -- `tools/graphics/render_unknown_room_a.py` is the checked-in,
-      -- reproducible recipe (deliberately NOT committing the rendered
-      -- PNGs themselves -- they embed real, directly-extractable
-      -- copyrighted game graphics, same "recipe not output" rule
-      -- already applied to `tools/rom/checkpoints.py`'s own `.state`
-      -- files). All 6 rooms are UNMISTAKABLY real, coherent dungeon
-      -- interiors: brick wall borders, a mesh/net floor pattern,
-      -- torches, distinct furniture/feature objects (a bed-or-altar
-      -- shape in one room, a window/lattice in another) -- not
-      -- remotely what a wrong/misaligned decode produces. Backed by a
-      -- real, quantified metric too, not just eyeballing:
-      -- `gbtile.py`'s own already-established `tile_entropy()`
-      -- heuristic averages 1.22-1.51 bits across all 6 rooms' own
-      -- distinct tiles -- squarely in its own documented "real art"
-      -- band (~1.0-1.8), far from blank (0.0) or noise (~2.0).
-      -- **Both hypotheses confirmed at once**: (1) roomSelector N's
-      -- own real layout stream IS bank 5's own record N, and (2) the
-      -- final GFX-tile-byte -> real pixel data step reuses
-      -- `MapTable.lua`'s own already-VERIFIED `tilesetFileOffset=
-      -- 0x32000 + tileId*16` formula (previously only established for
-      -- bank 5's own OLDER, superseded "direct tile ID" reading --
-      -- turns out it's the right formula for the FINAL metatile-GFX-
-      -- byte stage instead). See rom-map.md's own "unknownRoomA
+      -- UPGRADED TO VERIFIED (same day, direct follow-up): rendered all
+      -- 6 candidate rooms to real PNGs using this project's established
+      -- formulas end to end -- tools/graphics/render_unknown_room_a.py
+      -- is the checked-in, reproducible recipe (deliberately not
+      -- committing the rendered PNGs -- they embed extractable
+      -- copyrighted game graphics, same "recipe not output" rule as
+      -- checkpoints.py's .state files). All 6 rooms are unmistakably
+      -- coherent dungeon interiors: brick wall borders, a mesh/net
+      -- floor pattern, torches, distinct furniture/feature objects --
+      -- not remotely what a wrong/misaligned decode produces. Backed by
+      -- a quantified metric too: gbtile.py's tile_entropy() heuristic
+      -- averages 1.22-1.51 bits across all 6 rooms -- squarely in its
+      -- documented "real art" band (~1.0-1.8), far from blank or noise.
+      -- Both hypotheses confirmed at once: (1) roomSelector N's own
+      -- layout stream IS bank 5's own record N, and (2) the final
+      -- GFX-tile-byte -> pixel-data step reuses MapTable.lua's verified
+      -- tilesetFileOffset=0x32000 + tileId*16 formula (previously only
+      -- established for bank 5's older, superseded "direct tile ID"
+      -- reading -- turns out it's the right formula for the final
+      -- metatile-GFX-byte stage instead). See rom-map.md's "unknownRoomA
       -- VISUALLY CONFIRMED" section for the full writeup.
       --
-      -- Still real, honestly-scoped open items: no live gameplay
-      -- trigger found (see rom-map.md's own bounded search) means this
-      -- is ROM-verified, not yet gameplay-gated the way e.g. willyRoom
-      -- is; the real BGP/palette values for these rooms are unverified
-      -- (rendered here with the same default DMG grey ramp used
-      -- elsewhere); not yet wired into the actual LÖVE app as
-      -- walkable content.
+      -- Still honestly-scoped open items: no live gameplay trigger
+      -- found means this is ROM-verified, not yet gameplay-gated the
+      -- way willyRoom is; BGP/palette values for these rooms are
+      -- unverified (rendered with the default DMG grey ramp used
+      -- elsewhere); not yet wired into the LÖVE app as walkable content.
       --
-      -- CORRECTED / SCOPE SHARPENED (2026-08-14, direct user report
-      -- after the room-catalog export: "die sind bei allen ausser den
-      -- bekannten total off" -- the tiles look totally wrong for every
-      -- catalog room except the known ones). `metatileTableFileOffset`
-      -- below (0x20938) is independently, ROM-confirmed correct ONLY
-      -- for these 6 records (roomSelector 8-13's own real `$D392`/
-      -- `$D393` DE field from the already-VERIFIED `$026DC` dispatch
-      -- table -- not a guess, a live-traced hardware fact). It was
-      -- ALSO reused, as a best-effort placeholder with no independent
-      -- confirmation, for every other bank-5/bank-6 record in the
-      -- 320-room catalog (`rom-inspector`'s `ROOM_CATALOG` /
-      -- `RoomExplorer.lua`) -- the "VISUALLY + QUANTITATIVELY
-      -- CONFIRMED" language on `mapTable`/`mapTableBank6` below only
-      -- ever meant "decodes to real, non-noise GB tile art," NOT
-      -- "uses the semantically correct tiles for that room" (round 3's
-      -- own already-recorded warning: "this signal alone does not
-      -- usefully separate a real, distinct, walkable room from any
-      -- other bank-5 record" -- this is that exact risk materializing).
-      -- A genuinely new lead was tried this pass and RULED OUT: the
-      -- small per-record header `MapTable.decode` already parses (a
+      -- CORRECTED / SCOPE SHARPENED (direct user report after the
+      -- room-catalog export that the tiles look totally wrong for every
+      -- catalog room except the known ones). metatileTableFileOffset
+      -- below (0x20938) is independently ROM-confirmed correct only for
+      -- these 6 records (roomSelector 8-13's own $D392/$D393 DE field
+      -- from the verified $026DC dispatch table -- a live-traced fact).
+      -- It was also reused, as a best-effort placeholder with no
+      -- independent confirmation, for every other bank-5/bank-6 record
+      -- in the 320-room catalog -- the "VISUALLY + QUANTITATIVELY
+      -- CONFIRMED" language on mapTable/mapTableBank6 below only ever
+      -- meant "decodes to real, non-noise GB tile art," not "uses the
+      -- semantically correct tiles for that room" (an already-recorded
+      -- warning materializing). A new lead was tried and ruled out: the
+      -- small per-record header MapTable.decode already parses (a
       -- 0xFF-terminated blob before each data blob, never previously
-      -- interpreted) was tested as a possible per-record metatile-
-      -- table pointer -- record 9 (part of this CONFIRMED family, real
-      -- table 0x20938) has a 6-byte header whose own trailing u16
-      -- decodes to 0x20381, NOT 0x20938 -- directly falsified against
-      -- known-good ground truth, and a full 256-record scan found ZERO
-      -- bank-5 records whose header resolves to 0x20938 at all. No
-      -- working alternative mechanism is currently known; this remains
-      -- the same open mystery round 3/4 already concluded ("the real
-      -- blocker is how the ROM selects ANY room beyond the 16
-      -- `roomSelectorTable` entries, not which metatile table"). The
-      -- room-catalog website now labels this explicitly (see
+      -- interpreted) was tested as a possible per-record metatile-table
+      -- pointer -- record 9 (part of this confirmed family, real table
+      -- 0x20938) has a 6-byte header whose trailing u16 decodes to
+      -- 0x20381, not 0x20938 -- falsified against known-good ground
+      -- truth, and a full 256-record scan found zero bank-5 records
+      -- whose header resolves to 0x20938 at all. No working alternative
+      -- mechanism is currently known; the real blocker remains how the
+      -- ROM selects any room beyond the 16 roomSelectorTable entries,
+      -- not which metatile table. The room-catalog website now labels
+      -- this explicitly (see
       -- `rom-inspector/js/viz/mapviewer.js`'s catalog note text) --
       -- only these 6 rooms' TILES, not just their room identity, are
       -- confirmed correct.
