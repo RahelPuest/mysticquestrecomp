@@ -2804,29 +2804,26 @@ RomProfiles.PROFILES = {
       -- N's own real, complete room (via the shared bank-8 metatile
       -- pool, `RoomFloorLayout.buildRoomFromMapTableRecord`) -- no
       -- further "how do multiple records combine" step needed; each
-      -- record already decodes to one full, real, coherent room by
-      -- itself (real tile_entropy 1.0-1.8 bits, confirmed for every
-      -- record this project has actually rendered).
+      -- record decodes to one full, coherent room by itself (tile_entropy
+      -- 1.0-1.8 bits, confirmed for every rendered record).
       --
-      -- SCOPE CORRECTED (2026-08-14): "room-composition" above means
-      -- the STRUCTURAL decode (RLE stream -> 80 metatile indices -> a
-      -- full grid) is real and verified. It does NOT mean the
-      -- resulting picture uses the correct metatile table for records
-      -- other than 8-13 (`unknownRoomACandidates.rooms`) -- see that
-      -- table's own 2026-08-14 "CORRECTED" doc comment for the full,
-      -- dated evidence (a real per-record header field was tested as a
-      -- possible fix and ruled out against known-good ground truth).
+      -- SCOPE CORRECTED: "room-composition" above means the structural
+      -- decode (RLE stream -> 80 metatile indices -> a full grid) is
+      -- verified. It does NOT mean the picture uses the correct
+      -- metatile table for records other than 8-13
+      -- (unknownRoomACandidates.rooms) -- see that table's own
+      -- "CORRECTED" doc comment.
       --
-      -- UPGRADED (2026-08-14, same day, "gehe dem map header hinweis
-      -- nach"): all 256 records now use `genericCatalogMetatileTable
-      -- FileOffset` (see `unknownRoomACandidates`'s own doc comment),
-      -- a real, structurally-justified derivation from this ROM's own
-      -- `roomSelectorTable` record 0 -- externally corroborated
-      -- against the FFA-Disassembly project's documented "one tileset
-      -- per map" architecture, not a guess. Not independently ground-
-      -- truth-verified (no live gameplay reaches these rooms).
+      -- UPGRADED (same day, following the map-header hint): all 256
+      -- records now use genericCatalogMetatileTableFileOffset (see
+      -- unknownRoomACandidates's own doc comment), a structurally-
+      -- justified derivation from roomSelectorTable record 0 --
+      -- corroborated against the FFA-Disassembly project's documented
+      -- "one tileset per map" architecture, not a guess. Not
+      -- independently ground-truth-verified (no live gameplay reaches
+      -- these rooms).
       status = "VERIFIED (encoding + room-composition); tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset " ..
-        "(real, structurally-derived default, see the UPGRADED note above, 2026-08-14) -- not independently ground-truth-verified",
+        "(structurally-derived default, see the UPGRADED note above) -- not independently ground-truth-verified",
       -- Bank 5 base -- pointer values are CPU addresses ($4000-$7FFF)
       -- relative to this bank being switched in; file offset = bankFileStart
       -- + (cpuAddress - 0x4000).
@@ -2840,158 +2837,125 @@ RomProfiles.PROFILES = {
       -- bytes (see environmentTilesetBank12.confirmedFrom above): tile
       -- index N in a blob -> file offset tilesetFileOffset + N*16.
       --
-      -- CORRECTED (2026-08-17, direct user pushback on this exact value
-      -- -- "ja aber das hat definitv andere tiles! es muss irgenwad in
-      -- der pipeline hinterlegt sein was fuer tile das hat", then "bleib
-      -- dran" after the first re-investigation pass came up short): the
-      -- real code that copies a raw GFX-tile's actual pixel bytes into
-      -- VRAM was found, fully disassembled, and closed this pass --
-      -- `docs/reverse-engineering/rom-map.md`'s own 2026-08-11 "$D070's
-      -- real populator" section had already found the ALLOCATOR
-      -- (`$1BA1`) but left its own tail ("$1BD5 onward... NOT fully
-      -- closed this pass") as an explicit open item. Finished it live
-      -- this pass (mGBA, real ROM, single-step trace synchronized to a
-      -- real, live-observed VRAM-allocation burst during the willy-
-      -- exchange dialogue): the real formula is
+      -- CORRECTED (direct user pushback that this must have different
+      -- tiles, something in the pipeline must define which): the code
+      -- that copies a GFX-tile's pixel bytes into VRAM was found, fully
+      -- disassembled, and closed this pass -- rom-map.md's "$D070's real
+      -- populator" section had already found the allocator ($1BA1) but
+      -- left its own tail as an open item. Finished live (single-step
+      -- trace synchronized to a live VRAM-allocation burst during the
+      -- willy-exchange dialogue): the real formula is
       --   fileOffset = bank*0x4000 + ((rawGfxByte*16 + $D390:$D391) - 0x4000)
-      -- with `bank` a LITERAL CODE CONSTANT (`0x0C`=12, or `0x0B`=11 if
-      -- the computed address overflows into bit7 of H -- a real,
-      -- disassembled address-range fixup, `$1BF5`-`$1C15`), switched in
-      -- via the real MBC bank-select register (`LD (0x2100),A`, found by
-      -- finishing the trace into the real QUEUE-DRAIN routine, `$2D57`-
-      -- `$2DF4`, itself run under a real per-frame LY-scanline time
-      -- budget -- `$1BA1`'s own tail only ENQUEUES via `$2DF5`, it
-      -- doesn't copy immediately). **Exact-matched against known-good
-      -- ground truth**: willyRoom's own real, live-confirmed
-      -- `$D390:$D391=0x6000`, raw byte `0x1b` (from this project's own
-      -- already-documented "1b 1c 1d 1e -> 97 98 99 9a" example) ->
-      -- `12*0x4000 + ((0x1b*16+0x6000)-0x4000) = 0x321b0` -- BYTE-FOR-
-      -- BYTE identical to willyRoom's own already-independently-
-      -- verified `tileOffsets[0x97]=0x32200`... 0x321b0 (this project's
-      -- own real value, not approximated).
+      -- with bank a literal code constant (0x0C=12, or 0x0B=11 if the
+      -- computed address overflows into bit7 of H -- a disassembled
+      -- address-range fixup, $1BF5-$1C15), switched in via the MBC
+      -- bank-select register (found by finishing the trace into the
+      -- queue-drain routine, $2D57-$2DF4, run under a per-frame
+      -- LY-scanline budget -- $1BA1's tail only enqueues via $2DF5, it
+      -- doesn't copy immediately). Exact-matched against known-good
+      -- ground truth: willyRoom's own live-confirmed $D390:$D391=0x6000,
+      -- raw byte 0x1b -> 12*0x4000 + ((0x1b*16+0x6000)-0x4000) = 0x321b0
+      -- -- byte-for-byte identical to willyRoom's own independently-
+      -- verified tileOffsets[0x97]=0x321b0.
       --
-      -- Applying this SAME real formula to `roomSelector 0`/`1`'s own
-      -- real `$D390:$D391` (`=0x4000`, live-read from `roomSelector
-      -- Table`'s own bytes 0-1 -- see that table's own doc comment)
-      -- gives `0x30000`, NOT `0x32000` -- the OLD value here was
-      -- reusing willyRoom's OWN real pixel-pool base (roomSelector
-      -- 2-6's family, `$D390:$D391=0x6000`) for the 384-room catalog's
-      -- own DEFAULT, a real, previously-undetected MISMATCH: the
-      -- catalog's `genericCatalogMetatileTableFileOffset` (the
-      -- METATILE-DEFINITION table) was always correctly roomSelector-
-      -- 0/1-based, but the RAW PIXEL POOL it was combined with was
-      -- roomSelector-2-6's -- two different real ROM "maps" mixed
-      -- together, matching neither's own true `MAP_HEADER` pairing
-      -- (the external FFA-Disassembly project's own documented format
-      -- has exactly TWO per-map pointers, `tilesetGfxOutdoor` +
-      -- `metatilesOutdoor` -- this project already had a correct value
-      -- for one and the WRONG one for the other).
+      -- Applying this same formula to roomSelector 0/1's own real
+      -- $D390:$D391 (=0x4000) gives 0x30000, not 0x32000 -- the old
+      -- value here was reusing willyRoom's own pixel-pool base
+      -- (roomSelector 2-6's family, $D390:$D391=0x6000) for the
+      -- 384-room catalog's default, a previously-undetected mismatch:
+      -- the catalog's genericCatalogMetatileTableFileOffset (the
+      -- metatile-definition table) was always correctly roomSelector-
+      -- 0/1-based, but the raw pixel pool it was combined with was
+      -- roomSelector-2-6's -- two different ROM "maps" mixed together
+      -- (the external FFA-Disassembly project's documented format has
+      -- exactly two per-map pointers, tilesetGfxOutdoor +
+      -- metatilesOutdoor -- this project had a correct value for one
+      -- and the wrong one for the other).
       --
-      -- Empirically re-rendered every already-spot-checked sanity
-      -- record (0/128/200/240/255) plus the disputed `seventhRoom`/
-      -- `eighthRoom`/`ninthRoom` records (220/236/237) with the
-      -- corrected `0x30000` base: EVERY one changed from a generic,
-      -- oddly-repetitive "bookshelf/chain-link dungeon" look (an
-      -- artifact of reusing willyRoom's own real but WRONG-family art)
-      -- to a coherent, clearly-distinct, clearly-INTENTIONAL scene --
-      -- record 0 is a real wooden gate + grass + bushes + mountains
-      -- (an outdoor town/wilderness entrance, not a dungeon corridor at
-      -- all), 220/236/237 show real trees/grass/water/roads. A
-      -- dramatically more convincing result than any of the alternate
-      -- pointers tried in the earlier (now-superseded) investigation
-      -- pass. See events.md's own dated entry for the full trace and
-      -- screenshots-equivalent renders.
+      -- Empirically re-rendered every spot-checked sanity record
+      -- (0/128/200/240/255) plus the disputed seventhRoom/eighthRoom/
+      -- ninthRoom records (220/236/237) with the corrected 0x30000
+      -- base: every one changed from a generic, oddly-repetitive
+      -- "bookshelf/chain-link dungeon" look (an artifact of reusing
+      -- willyRoom's wrong-family art) to a coherent, distinct scene --
+      -- record 0 is a wooden gate + grass + bushes + mountains (an
+      -- outdoor town/wilderness entrance, not a dungeon corridor),
+      -- 220/236/237 show trees/grass/water/roads. Dramatically more
+      -- convincing than any alternate pointer tried in the earlier
+      -- (now-superseded) pass. See events.md for the full trace.
       --
-      -- HONEST SCOPE: this closes the SPECIFIC "which tileset" question
-      -- for the roomSelector-0/1 family (bank 5/6/7's own shared
-      -- default). `unknownRoomACandidates`'s own `tilesetFileOffset`
-      -- (roomSelector 8-13 family, real `$D390:$D391=0x7000` per the
-      -- SAME formula would predict `0x33000`) was ALSO re-tested this
-      -- pass -- inconclusive (both `0x32000` and `0x33000` render
-      -- equally plausible, structurally-identical dungeon art, no
-      -- decisive signal either way) -- left UNCHANGED, flagged as a
-      -- newly-opened, separate question rather than force-changed on
-      -- weak evidence. Still no live gameplay reaches any of these 384
-      -- catalog rooms -- this is a real, code-derived, exact-match-
-      -- verified formula, not a live-gameplay confirmation the way
-      -- willyRoom's own tiles are.
+      -- HONEST SCOPE: this closes the "which tileset" question for the
+      -- roomSelector-0/1 family (bank 5/6/7's shared default).
+      -- unknownRoomACandidates's own tilesetFileOffset (roomSelector
+      -- 8-13 family, $D390:$D391=0x7000, the same formula would predict
+      -- 0x33000) was also re-tested this pass -- inconclusive (both
+      -- 0x32000 and 0x33000 render equally plausible, structurally-
+      -- identical dungeon art) -- left unchanged, flagged as a
+      -- separate open question rather than force-changed on weak
+      -- evidence. Still no live gameplay reaches any of these 384
+      -- catalog rooms -- a code-derived, exact-match-verified formula,
+      -- not a live-gameplay confirmation the way willyRoom's tiles are.
       tilesetFileOffset = 0x30000,
     },
 
-    -- A SECOND, real, independently-found map/room-block pointer table
-    -- -- found 2026-08-12 ("du sollst in der lage sein alle räume zu
-    -- dekodieren. nicht stoppen bevor das nicht möglich ist") while
-    -- looking for a general way to decode rooms beyond the exhausted
-    -- 16-entry `roomSelectorTable`. VERIFIED the exact same way bank
-    -- 5's own table was originally VERIFIED (see `mapTable` above):
-    -- the real 4-byte per-map header immediately before the pointer
-    -- table (`00 04 08 08` at file `0x18000`, i.e. encodingMode=0/RLE,
-    -- rleLength=4) matches this ROM's own already-documented format
-    -- exactly, just with a different real `rleLength`. Applying it:
-    -- 128 monotonic, strictly-increasing, valid-CPU-address ($4000-
-    -- $7FFF) pointer entries follow immediately at file `0x18004` =
-    -- 64 real (headerPtr, dataPtr) record pairs -- a clean, real,
-    -- ROUND number (matches this ROM's own established "16 banks, 16x16
-    -- map, 256-record bank-5 table" convention of exact, non-arbitrary
-    -- table lengths). All 64 records decode cleanly (via
-    -- `MapTable.rleDecode` with this table's own real `rleLength=4`)
-    -- to exactly 80 values -- the SAME metatile-grid size as bank 5's
-    -- own records, not the `8x8=64` the header's OWN 3rd/4th bytes
-    -- would naively suggest (those bytes evidently mean something
-    -- else for this table -- flagged honestly, not force-fit).
-    -- **VISUALLY + QUANTITATIVELY CONFIRMED, all 64 records**: rendered
-    -- every one through the ALREADY-known shared bank-8 metatile pool
-    -- (`unknownRoomACandidates.metatileTableFileOffset` below) and
-    -- `MapTable`'s own already-VERIFIED direct tileset formula -- real
-    -- `tile_entropy()` (this project's own established "looks like
-    -- real art, not noise/blank" metric) for EVERY one of the 64
-    -- rooms: 1.08-1.63 bits, squarely inside the same real "~1.0-1.8"
-    -- band already established for `unknownRoomA`'s own 6 rooms, with
-    -- zero outliers toward blank (0.0) or noise (~2.0). Two rendered
-    -- examples eyeballed directly (record 0, record 21): unmistakable,
-    -- structured dungeon/shrine art -- repeating floor patterns,
-    -- symmetric decorative elements, distinct architectural features
-    -- -- not remotely what a wrong/misaligned decode produces.
+    -- A SECOND, independently-found map/room-block pointer table --
+    -- found while looking for a general way to decode rooms beyond the
+    -- exhausted 16-entry roomSelectorTable (direct user instruction to
+    -- be able to decode all rooms). VERIFIED the same way bank 5's
+    -- table was originally verified (see mapTable above): the 4-byte
+    -- per-map header immediately before the pointer table (00 04 08 08
+    -- at file 0x18000, encodingMode=0/RLE, rleLength=4) matches this
+    -- ROM's documented format, just with a different rleLength.
+    -- Applying it: 128 monotonic, strictly-increasing, valid-CPU-
+    -- address pointer entries follow at file 0x18004 = 64 (headerPtr,
+    -- dataPtr) record pairs -- a clean round number. All 64 records
+    -- decode cleanly (rleLength=4) to exactly 80 values -- the same
+    -- metatile-grid size as bank 5's records, not the 8x8=64 the
+    -- header's 3rd/4th bytes would naively suggest (those bytes
+    -- evidently mean something else for this table -- flagged, not
+    -- force-fit).
+    -- Visually + quantitatively confirmed, all 64 records: rendered
+    -- every one through the known shared bank-8 metatile pool and
+    -- MapTable's verified direct tileset formula -- tile_entropy for
+    -- every room: 1.08-1.63 bits, inside the ~1.0-1.8 band already
+    -- established for unknownRoomA's 6 rooms, zero outliers toward
+    -- blank or noise. Two examples eyeballed directly (record 0, 21):
+    -- unmistakable, structured dungeon/shrine art.
     --
-    -- SCOPE CORRECTED (2026-08-14): "VISUALLY + QUANTITATIVELY
-    -- CONFIRMED" above means exactly what it says -- real, non-noise
-    -- GB tile art -- and nothing more. It does NOT mean these 64
-    -- records use the semantically CORRECT metatile table (only
-    -- `unknownRoomACandidates`'s own 6 bank-5 records have that
-    -- independently confirmed, via the real `roomSelectorTable`'s own
-    -- `$D392`/`$D393` DE field -- see that table's own doc comment for
-    -- the full, dated correction). Applying the same table to these 64
-    -- bank-6 records was always the same unverified placeholder, not a
-    -- separate confirmation -- direct visual review (user report,
-    -- 2026-08-14, "total off") found it does NOT look right once
-    -- compared side-by-side against the 6 actually-confirmed rooms.
+    -- SCOPE CORRECTED: "visually + quantitatively confirmed" above
+    -- means real, non-noise GB tile art, nothing more. It does NOT mean
+    -- these 64 records use the semantically correct metatile table
+    -- (only unknownRoomACandidates's own 6 bank-5 records have that
+    -- independently confirmed -- see that table's own doc comment).
+    -- Applying the same table to these 64 bank-6 records was always
+    -- the same unverified placeholder -- direct visual review (user
+    -- report: "total off") found it doesn't look right compared to the
+    -- 6 actually-confirmed rooms.
     --
-    -- UPGRADED (2026-08-14, same day, "gehe dem map header hinweis
-    -- nach"): all 64 records now use `genericCatalogMetatileTableFile
-    -- Offset` (see `unknownRoomACandidates`'s own doc comment) -- a
-    -- real, structurally-justified derivation from `roomSelectorTable`
-    -- record 1 (bank6's own "map"), cross-checked against the external
-    -- FFA-Disassembly project's documented "one tileset per map"
-    -- architecture. Not independently ground-truth-verified.
+    -- UPGRADED (same day, following the map-header hint): all 64
+    -- records now use genericCatalogMetatileTableFileOffset (see
+    -- unknownRoomACandidates's own doc comment) -- a structurally-
+    -- justified derivation from roomSelectorTable record 1 (bank6's own
+    -- "map"), cross-checked against the FFA-Disassembly project's
+    -- documented "one tileset per map" architecture. Not independently
+    -- ground-truth-verified.
     mapTableBank6 = {
       status = "VERIFIED (table location + encoding + all 64 records real-render as non-noise GB art); " ..
-        "tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset (real, structurally-derived default, see the " ..
-        "UPGRADED note above, 2026-08-14) -- not independently ground-truth-verified",
+        "tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset (structurally-derived default, see the " ..
+        "UPGRADED note above) -- not independently ground-truth-verified",
       bankFileStart = 0x18000,
       bank = 6,
       pointerTableFileOffset = 0x18004,
       recordCount = 64,
-      -- Shares the SAME real tileset as bank 5's own table -- both
-      -- render coherently against it, real cross-confirmation this is
-      -- the right base for the whole shared bank-8 metatile pool's
-      -- own GFX-tile bytes, not a coincidence specific to one table.
+      -- Shares the same tileset as bank 5's table -- both render
+      -- coherently against it, cross-confirming this as the right base
+      -- for the shared bank-8 metatile pool's GFX-tile bytes.
       --
-      -- CORRECTED (2026-08-17): same fix, same reasoning as `mapTable`'s
-      -- own dated correction above (the real, code-derived, exact-
-      -- match-verified `bank*0x4000 + ((rawByte*16+$D390:$D391)-0x4000)`
-      -- formula) -- roomSelector 1 (bank6's own "map") shares roomSelector
-      -- 0's real `$D390:$D391=0x4000`, so the same corrected `0x30000`
-      -- applies here too, not a separately-derived value.
+      -- CORRECTED: same fix/reasoning as mapTable's own dated
+      -- correction above (the code-derived, exact-match-verified
+      -- bank*0x4000 + ((rawByte*16+$D390:$D391)-0x4000) formula) --
+      -- roomSelector 1 (bank6's "map") shares roomSelector 0's
+      -- $D390:$D391=0x4000, so the same corrected 0x30000 applies here.
       tilesetFileOffset = 0x30000,
     },
 
