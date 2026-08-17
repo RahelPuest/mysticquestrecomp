@@ -2499,24 +2499,22 @@ end
 -- already-established "resolve index to (address, bitmask), OR to set
 -- / AND-complement to clear" convention (see .setFlagBit/
 -- .clearFlagBit), just a different base table. $3117 (the shared tail
--- both branches reach) is a further
--- real trampoline into the already-known `$1F06` cross-bank dispatcher
--- (selector `0x26`, bank 2) -- NOT traced further this pass (its own
--- real-world meaning is HYPOTHESIS, matching this project's own
--- "opaque leaf, callback fires, structure is what's verified" scope
--- for every other closed opaque-leaf opcode).
+-- both branches reach) is a further trampoline into the already-known
+-- $1F06 cross-bank dispatcher (selector 0x26, bank 2) -- not traced
+-- further this pass (its real-world meaning is HYPOTHESIS, matching
+-- this project's "opaque leaf, callback fires, structure is what's
+-- verified" scope for every other closed opaque-leaf opcode).
 --
--- DECISIVE REASON this is tractable despite the live 16-bit WRAM
--- comparison: byte consumption is IDENTICAL on both branches (2
--- operand bytes, then always 1 more via `$3727`) -- the branch choice
--- only affects WHICH flag-bit primitive fires and whether the counter
+-- Decisive reason this is tractable despite the live 16-bit WRAM
+-- comparison: byte consumption is identical on both branches (2
+-- operand bytes, then always 1 more via $3727) -- the branch choice
+-- only affects which flag-bit primitive fires and whether the counter
 -- gets overwritten, never how many script-stream bytes are consumed.
--- `hasSufficientBudget(amount)` is an optional predicate (defaults to
--- "always sufficient", matching this project's own established
--- `isActorReady`/`isGateClear` "happy path" convention -- no live
--- `$D7BE`/`$D7BF` counter is modeled). `onSufficient(amount)`/
--- `onExhausted(amount)` are optional observers for the 2 real,
--- mutually-exclusive branches.
+-- hasSufficientBudget(amount) is an optional predicate (defaults to
+-- "always sufficient", matching this project's established
+-- isActorReady/isGateClear "happy path" convention -- no live $D7BE/
+-- $D7BF counter is modeled). onSufficient(amount)/onExhausted(amount)
+-- are optional observers for the 2 mutually-exclusive branches.
 function StandardScriptHandlers.budgetFlagCommand(hasSufficientBudget, onSufficient, onExhausted)
   return function(stream, cursor)
     local lo, afterLo = ScriptInterpreter.fetch(stream, cursor)
@@ -2537,20 +2535,19 @@ function StandardScriptHandlers.budgetFlagCommand(hasSufficientBudget, onSuffici
   end
 end
 
---- Real "fixed WRAM bit SET, then skip 1 byte" handler family
--- (opcodes `0xA3`/`0xA5`/`0xA6`, real ROM `$01D0`/`$01DC`/`$01E8`,
--- found 2026-08-14 -- the whole-corpus scan's own next real untouched
--- blocker after `0x76`). Byte-for-byte:
+--- Real "fixed WRAM bit SET, then skip 1 byte" handler family (opcodes
+-- 0xA3/0xA5/0xA6, ROM $01D0/$01DC/$01E8, found -- the whole-corpus
+-- scan's own next untouched blocker after 0x76). Byte-for-byte:
 --   LD A,($C4D4) / SET <bit>,A / LD ($C4D4),A / CALL $3727 / RET
--- The SIMPLEST real handler shape found this whole pass: no leaf call,
--- no branch, no live WRAM predicate needed at all -- a plain bit-set
--- into a fixed real WRAM cell, then the standard trailing `$3727`
--- skip (consumes 1 real byte despite reading no explicit operand, the
--- SAME "zero explicit bytes + 1 via $3727" shape already seen in
--- `.chainedOpaqueEffectCommand`/`.twoBitFieldCommand`). `flags` is a
--- generic mutable state proxy (`.byte` field), same convention as
--- `.setFlagBit`/`.wramBitCommand` above -- kept separate from those
--- since neither has the trailing skip this family's real bytes show.
+-- The simplest handler shape found this whole pass: no leaf call, no
+-- branch, no live WRAM predicate needed at all -- a plain bit-set into
+-- a fixed WRAM cell, then the standard trailing $3727 skip (consumes 1
+-- byte despite reading no explicit operand, the same "zero explicit
+-- bytes + 1 via $3727" shape already seen in
+-- .chainedOpaqueEffectCommand/.twoBitFieldCommand). flags is a generic
+-- mutable state proxy (.byte field), same convention as .setFlagBit/
+-- .wramBitCommand above -- kept separate from those since neither has
+-- the trailing skip this family's bytes show.
 function StandardScriptHandlers.fixedWramBitSetSkipCommand(flags, bitIndex)
   return function(stream, cursor)
     flags.byte = bit.bor(flags.byte, bit.lshift(1, bitIndex))
@@ -2559,29 +2556,28 @@ function StandardScriptHandlers.fixedWramBitSetSkipCommand(flags, bitIndex)
   end
 end
 
---- Real "3-way classified flag-bit SET/CLEAR" handler (opcode `0xA9`,
--- real ROM `$0D5F`, found 2026-08-14 -- the whole-corpus scan's own
--- next real untouched blocker after `0x54`). Byte-for-byte:
+--- Real "3-way classified flag-bit SET/CLEAR" handler (opcode 0xA9,
+-- ROM $0D5F, found -- the whole-corpus scan's own next untouched
+-- blocker after 0x54). Byte-for-byte:
 --   PUSH HL / CALL $220A / CP 0x01 / JR Z,<clear>
 --   CP 0x0E / JR Z,<clear> / CP 0x0F / JR Z,<clear>
 --   <set>:   LD A,0x7F / CALL $3BEF / POP HL / CALL $3727 / RET
 --   <clear>: LD A,0x7F / CALL $3BF9 / POP HL / CALL $3727 / RET
--- Calls an opaque leaf (`$220A`, real effect HYPOTHESIS, matching
--- this project's established scope), classifies its real return value
--- against 3 fixed constants (`0x01`/`0x0E`/`0x0F`), and SETs or
--- CLEARs flag-array bit `0x7F` (the SAME real `$3BEF`/`$3BF9` bit
--- primitives `0xD1`/`0xDA`/`0xDB` already resolved) accordingly. Zero
--- real script-stream operand bytes read directly; the only real byte
--- consumed is the standard trailing `$3727` skip; always continues
--- either way (no real halt in either branch). `classify(rawValue)` is
--- an optional predicate -- given the real leaf's own return value (as
--- reported by `getValue`), returns `true` for the real "clear" branch
--- (value is `0x01`/`0x0E`/`0x0F`) or `false` for "set" -- defaults to
--- classifying via the SAME 3 real constants against `getValue()`'s
--- own result (0 if `getValue` isn't provided, which classifies as
--- "set", the common/majority real case per this project's own
--- established happy-path convention). `onSet()`/`onClear()` fire on
--- their own respective real branch.
+-- Calls an opaque leaf ($220A, effect HYPOTHESIS, matching this
+-- project's established scope), classifies its return value against 3
+-- fixed constants (0x01/0x0E/0x0F), and SETs or CLEARs flag-array bit
+-- 0x7F (the same $3BEF/$3BF9 bit primitives 0xD1/0xDA/0xDB already
+-- resolved) accordingly. Zero script-stream operand bytes read
+-- directly; the only byte consumed is the standard trailing $3727
+-- skip; always continues either way (no halt in either branch).
+-- classify(rawValue) is an optional predicate -- given the leaf's own
+-- return value (as reported by getValue), returns true for the
+-- "clear" branch (value is 0x01/0x0E/0x0F) or false for "set" --
+-- defaults to classifying via the same 3 constants against
+-- getValue()'s result (0 if getValue isn't provided, which classifies
+-- as "set", the common/majority case per this project's established
+-- happy-path convention). onSet()/onClear() fire on their respective
+-- branch.
 function StandardScriptHandlers.threeWayFlagBitCommand(getValue, onSet, onClear)
   return function(stream, cursor)
     -- Same defensive coercion as `.twoBitFieldCommand` -- a generic
@@ -2610,14 +2606,13 @@ end
 
 function StandardScriptHandlers.softReset(onReset)
   return function(_stream, cursor)
-    -- Asserted HERE, at real dispatch time, not at factory-construction
-    -- time -- a `ScriptRuntime` that never actually reaches opcode
-    -- `0xC8` (most real scripts) shouldn't be forced to supply this
-    -- callback just to exist. The moment `0xC8` genuinely dispatches
-    -- without a real `onReset`, this fails loudly rather than silently
-    -- pretending a game restart happened (or silently doing nothing) --
-    -- matching this project's own "no silent fallbacks for required
-    -- callbacks" rule.
+    -- Asserted here, at dispatch time, not at factory-construction time
+    -- -- a ScriptRuntime that never actually reaches opcode 0xC8 (most
+    -- scripts) shouldn't be forced to supply this callback just to
+    -- exist. The moment 0xC8 genuinely dispatches without an onReset,
+    -- this fails loudly rather than silently pretending a game restart
+    -- happened (or silently doing nothing) -- matching this project's
+    -- "no silent fallbacks for required callbacks" rule.
     assert(type(onReset) == "function",
       "StandardScriptHandlers.softReset: real opcode 0xC8 dispatched but ctx.onSoftReset " ..
       "was never provided -- there is no honest default for 'restart the entire game'")
