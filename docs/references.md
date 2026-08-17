@@ -44,6 +44,25 @@ addresses/offsets documented for other regions or revisions can and do shift.
   `tools/romAsText.py`, `tools/mapExport.py`, `plugins/script.py` were
   not copied into this project, only their *documented behavior* was
   used as a lead).
+  - **REAL DATA WIN, 2026-08-17** (direct user instruction to find a
+    comprehensive walkthrough/reference and use it to find more ROM
+    content): `src/data/boss.asm` documents a real 24-byte boss stat
+    record (speed/HP/XP/money/...) with exact numeric values for all
+    21 real bosses. Searched this project's own EU ROM for each
+    boss's 4-byte (speed,HP,XP,money) signature: **all 21 matched
+    byte-for-byte at a perfect 24-byte stride**, starting at EU file
+    `0x10739` -- this EU localization kept the exact same combat-
+    balance numbers as the US cartridge. Independently cross-checked
+    against this project's own EARLIER, unrelated live-CPU-trace
+    finding (`Enemy.lua`'s `HP_INIT_TRACE_NOTE`, file `0x108ba`) --
+    two unrelated investigations landing on the same byte. See
+    `src/import/EnemyStatTable.lua`'s own doc comment for the full
+    trail. `src/data/items.asm` similarly documents a real per-weapon
+    stat record (power+price); searched for each weapon's own
+    (power,priceLo,priceHi) 3-byte signature and found all 16 at a
+    perfect 16-byte stride, EU file `0x0A201` -- a real table this
+    project didn't have before, not yet wired into a decoder module
+    (a concrete, ready next step).
 - Data Crystal, [*Final Fantasy Adventure*](https://datacrystal.tcrf.net/wiki/Final_Fantasy_Adventure)
   — hub page for existing community RE notes on this game (all documented
   against the **US** release unless stated otherwise; license: TCRF wiki
@@ -175,15 +194,58 @@ addresses/offsets documented for other regions or revisions can and do shift.
   [gen1recomp-analysis.md](gen1recomp-analysis.md) for what was extracted
   from it and why.
 
+## Walkthroughs / game-content reference (2026-08-17)
+
+Found via direct user instruction ("suche eine möglichst umfangreiche
+Komplettlösung mir karten, items, gegnerlisten usw und benutzte die
+als grundlage um möglichst viele dinge im rom zu finden") -- used as
+STORY/CONTENT reference (what exists, roughly in what order), cross-
+checked against real ROM bytes before trusting anything numeric (see
+the FFA-Disassembly entry above for the actual byte-level wins this
+produced). Most GameFAQs/vgmaps/Fandom/Neoseeker/StrategyWiki/
+archive.org URLs returned HTTP 403/402 to this project's own fetch
+tool -- not dead links, just blocked to this tool; a human browser
+would likely see them fine.
+
+- [gamesurge.com: Final Fantasy Adventure Walkthrough](http://www.gamesurge.com/strategies/Gameboy/Walkthroughs-F/Final%20Fantasy%20Adventure%20B.shtml)
+  by Robert Paulson (v1.00, 1999) -- the one full-text guide this pass
+  could actually fetch. Complete weapon (16), armor (9), helmet (6),
+  shield (9) tables with power/DP/price; complete consumable-item and
+  magic-spell (8) lists; a 22-entry story-order boss list; a 12-entry
+  named-character list. **Independently confirms this project's own
+  2026-08-17 text-decoding correction**: the character this project
+  had read as "Julia" (from ROM byte `0x5B`) is named **Julius**
+  here too, the final boss at the Mana Tree -- see `TextDecoder.lua`'s
+  own `0x5B` note.
+- GameFAQs lists 30 separate FAQs for this game
+  ([faqs index](https://gamefaqs.gamespot.com/gameboy/563272-final-fantasy-adventure/faqs),
+  blocked to this tool) including a German-language walkthrough by
+  Corlagon and several with ASCII dungeon maps (LevinMage, 3vrB257A5gq3fg)
+  -- not fetched this pass, a real follow-up if gamesurge.com's own
+  coverage runs out for a specific area.
+- [Final Fantasy Wiki (Fandom): items/weapons/enemies pages](https://finalfantasy.fandom.com/wiki/Final_Fantasy_Adventure)
+  -- blocked to this tool (HTTP 402); a real lead for enemy names
+  specifically, since (per this project's own web search results)
+  "outside of boss encounters, enemies in Adventure have only ever
+  been named in Japanese in official guidebooks" -- meaning REGULAR
+  field-monster English names may not exist as a reference at all,
+  only the 21-boss list this pass already captured.
+- [vgmaps.de: Final Fantasy Adventure maps](https://vgmaps.de/maps/game-boy/final-fantasy-adventure)
+  -- real, drawn overworld/dungeon maps exist here (confirmed via web
+  search, e.g. "Temple Of Mana 1", "Cave Of Snowfields (N4)"); blocked
+  to this tool (HTTP 403) -- the single most promising still-untried
+  lead for cross-checking this project's own decoded room-connectivity
+  graph against a human-drawn map, not yet attempted.
+
 ## Open research leads (not yet followed up)
 
-- No dedicated GitHub disassembly project for Final Fantasy
-  Adventure/Seiken Densetsu/Mystic Quest was found in the searches run so
-  far (unlike Pokémon's `pret/pokered`). If one exists it would
-  significantly de-risk Phase 2; worth another search pass focused on
-  GitHub directly (`site:github.com seiken densetsu disassembly`,
-  `site:github.com "final fantasy adventure" ram`) before assuming none
-  exists.
+- ~~No dedicated GitHub disassembly project...~~ SUPERSEDED -- see the
+  FFA-Disassembly entry above (found 2026-08-08); this line was stale
+  the moment that entry was added and should have been removed then.
+  Real remaining lead: no dedicated disassembly targeting the **EU**
+  cartridge specifically was found (FFA-Disassembly is US-only) --
+  worth a search pass focused on that if the US->EU bank/address
+  translation ever becomes a bottleneck.
 - The Spriters Resource has ripped sprite sheets for this game
   ([spriters-resource.com/game_boy_gbc/ffadv/](https://www.spriters-resource.com/game_boy_gbc/ffadv/)).
   Useful only as a *visual cross-check* once we decode our own tiles from

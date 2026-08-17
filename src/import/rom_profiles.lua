@@ -4353,6 +4353,46 @@ RomProfiles.PROFILES = {
       verifiedExample = { rowIndex = 19, fileOffset = 0x10D18, atk = 8 },
     },
 
+    -- FOUND, 2026-08-17 (external-reference-driven search -- see
+    -- src/import/EnemyStatTable.lua's own doc comment for the full
+    -- evidence trail): 21 real records, 24-byte stride, bank 4. Every
+    -- record's own speed/hpBase/xp/gold bytes matched the US "Final
+    -- Fantasy Adventure" disassembly's own documented boss list
+    -- BYTE-FOR-BYTE (all 21 bosses' 4-byte signatures found at this
+    -- exact stride) -- this EU localization kept the same combat
+    -- balance numbers as the US cartridge. Independently cross-checked
+    -- against THIS project's own EARLIER, unrelated live-CPU-trace
+    -- finding (`Enemy.lua`'s `HP_INIT_TRACE_NOTE`): file `0x108ba`
+    -- (this table's row 16 `hpBase` byte) already had a real, live-
+    -- confirmed role in the enemy HP-randomization formula, landing on
+    -- the exact same byte this external-reference search found
+    -- independently.
+    enemyStatTable = {
+      status = "VERIFIED (table location + stride + speed/hpBase/xp/gold fields, via exact external-reference byte match); other fields real but unconfirmed against this EU ROM",
+      bank = 4,
+      fileOffset = 0x10739,
+      rowCount = 21,
+      -- Real English names from the external US disassembly, in real
+      -- ROM record order -- NOT yet independently confirmed these are
+      -- the correct in-story pairing for THIS EU ROM's own ROOM/
+      -- SPAWN placements (only the record VALUES were cross-checked,
+      -- not which room spawns which record) -- kept here as a
+      -- documented, sourced lead, not a claim of live verification.
+      externalReferenceNames = {
+        "Vampire", "Hydra", "Medusa", "Megapede", "Davias", "Golem",
+        "Cyclops", "Chimera", "Kary", "Kraken", "Iflyte", "Lich",
+        "Garuda", "Dragon", "Julius (Form 2)", "Dragon Zombie",
+        "Jackal", "Julius (Form 3)", "Metal Crab", "Mantis Ant",
+        "Dragon (Final)",
+      },
+      -- Real, live-traced cross-check (see EnemyStatTable.lua's own
+      -- doc comment): row 16 (0-based, "Jackal") is the ONE record
+      -- this project has independently confirmed via a completely
+      -- separate, earlier live-CPU-trace investigation, long before
+      -- this table was found by external reference.
+      verifiedExample = { rowIndex = 16, fileOffset = 0x108B9, hpBase = 2 },
+    },
+
     -- THE real event/script interpreter's opcode dispatch table -- see
     -- docs/reverse-engineering/rom-map.md "THE real event/script
     -- interpreter -- FOUND, FULLY DECODED" (2026-08-10) for the full
