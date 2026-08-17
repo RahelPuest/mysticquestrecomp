@@ -1030,20 +1030,18 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     end
   end
 
-  -- Dev/CI-only: MYSTICQUEST_VICTORY_START_ROOM=<roomKey> (2026-08-14,
-  -- added directly to investigate a batch of user-reported bugs in
+  -- Dev/CI-only: MYSTICQUEST_VICTORY_START_ROOM=<roomKey> (added
+  -- directly to investigate a batch of user-reported bugs in
   -- fourthRoom without replaying the whole willyRoom->secondRoom->
-  -- thirdRoom cutscene/movement chain first every single launch).
-  -- Jumps straight to `<roomKey>` in the real "interactive" phase,
-  -- reusing the SAME real commit path every ordinary transition uses
-  -- (`switchToTargetRoom`, so `landingX`/`landingY` and room-loading
-  -- stay byte-for-byte identical to a real playthrough reaching that
-  -- room) -- found by looking up the first real `exits` entry, from
-  -- ANY room in `profile.graphics`, whose own `targetRoom` matches.
-  -- Fails loudly (not a silent no-op) if no such exit exists, so a
-  -- typo'd room name doesn't just quietly leave the player in
-  -- willyRoom -- this project's own "no silent fallbacks" rule.
-  -- Never armed unless the env var is set.
+  -- thirdRoom cutscene/movement chain first every launch). Jumps
+  -- straight to <roomKey> in the "interactive" phase, reusing the same
+  -- commit path every ordinary transition uses (switchToTargetRoom, so
+  -- landingX/landingY and room-loading stay byte-for-byte identical to
+  -- a real playthrough reaching that room) -- found by looking up the
+  -- first exits entry, from any room in profile.graphics, whose
+  -- targetRoom matches. Fails loudly (not a silent no-op) if no such
+  -- exit exists, so a typo'd room name doesn't just quietly leave the
+  -- player in willyRoom. Never armed unless the env var is set.
   local debugStartRoom = os.getenv("MYSTICQUEST_VICTORY_START_ROOM")
   if debugStartRoom and self.data then
     local foundExit
@@ -1060,12 +1058,12 @@ function VictorySequence.new(romData, profile, input, overlay, stack, heroName, 
     end
     assert(foundExit, "MYSTICQUEST_VICTORY_START_ROOM: no real exit targets room '" ..
       debugStartRoom .. "' -- check the room key against rom_profiles.lua's own graphics table")
-    -- 2026-08-16: `switchToTargetRoom` now requires a real,
-    -- already-ticked `CutTransitionInterpreter` for any exit carrying
-    -- `scriptEntry` (see that method's own doc comment) -- build and
-    -- run one here too, same as `beginTransition` does for the real
-    -- gameplay path, so this dev teleport shortcut keeps working
-    -- (and genuinely exercises the real interpreter, not a bypass).
+    -- switchToTargetRoom now requires an already-ticked
+    -- CutTransitionInterpreter for any exit carrying scriptEntry (see
+    -- that method's own doc comment) -- build and run one here too,
+    -- same as beginTransition does for the gameplay path, so this dev
+    -- teleport shortcut keeps working (and genuinely exercises the
+    -- interpreter, not a bypass).
     if foundExit.scriptEntry then
       self.cutTransitionInterpreter = CutTransitionInterpreter.new(self.romData, foundExit.scriptEntry.transitionKey, {})
       self.cutTransitionInterpreter:tick()
@@ -1081,17 +1079,17 @@ function VictorySequence:currentPage()
   return self.pages and self.pages[self.pageIndex]
 end
 
---- Returns a shallow copy of `sceneData` where every character's
--- `dialogue` is replaced by its LIVE-DECODED real text (via
--- `DialogueTextResolver.resolvePages`, see rom_profiles.lua's own
--- `dialogueSegments` doc comment) wherever `dialogueSegments` is
--- present -- characters with no `dialogueSegments` (no dialogue at
--- all, e.g. Willy; or a real line this project hasn't traced a ROM
--- offset for yet) pass through completely unchanged, hand-transcribed
--- `dialogue` and all. `self.romData` absent (no real ROM loaded, e.g. a
--- dev/test construction) also passes everything through unchanged --
--- the SAME honest "no romData -> keep the static fallback" convention
--- already used throughout this file/Field.lua.
+--- Returns a shallow copy of sceneData where every character's
+-- dialogue is replaced by its live-decoded text (via
+-- DialogueTextResolver.resolvePages, see rom_profiles.lua's own
+-- dialogueSegments doc comment) wherever dialogueSegments is present
+-- -- characters with no dialogueSegments (no dialogue at all, e.g.
+-- Willy; or a line this project hasn't traced a ROM offset for yet)
+-- pass through unchanged, hand-transcribed dialogue and all.
+-- self.romData absent (no ROM loaded, e.g. a dev/test construction)
+-- also passes everything through unchanged -- the same honest "no
+-- romData -> keep the static fallback" convention used throughout
+-- this file/Field.lua.
 function VictorySequence:resolveSceneDialogue(sceneData)
   if not self.romData then return sceneData end
   local resolved = {}
@@ -1117,12 +1115,12 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   if self.roomBg[roomKey] then return end
   local room = self.profile.graphics[roomKey]
   if not room then return end
-  -- ADDED (2026-08-16, sixthRoom's own gate -- see rom_profiles.lua's
-  -- doc comment on `sixthRoom.gate`): once the second boss is defeated,
-  -- render the room with its gate's `openGrid` patch instead of the
-  -- static, always-closed `grid` -- a shallow-patched COPY, same "never
-  -- mutate the shared profile.graphics table" discipline as this
-  -- function's own scene-dialogue handling above.
+  -- ADDED (sixthRoom's own gate -- see rom_profiles.lua's doc comment
+  -- on sixthRoom.gate): once the second boss is defeated, render the
+  -- room with its gate's openGrid patch instead of the static, always-
+  -- closed grid -- a shallow-patched copy, same "never mutate the
+  -- shared profile.graphics table" discipline as this function's own
+  -- scene-dialogue handling above.
   if room.gate and self.secondBossDefeated then
     local patched = {}
     for k, v in pairs(room) do patched[k] = v end
@@ -1141,19 +1139,19 @@ function VictorySequence:ensureRoomLoaded(roomKey)
     room = patched
   end
   self.roomBg[roomKey] = TileGridBackground.new(self.romData, room)
-  -- UPGRADED (2026-08-14, task "Kollision generalisieren"): willyRoom
-  -- specifically now uses real, ROM-decoded, POSITION-AWARE collision
-  -- (`RoomFloorLayout.buildCollisionGrid` against its own real metatile
-  -- table, with its own ground-truth-derived `isWalkableCollisionWillyFamily`
-  -- rule -- see that function's own doc comment for the full exhaustive
-  -- derivation: matches the room's previous, live-tested `floorTileIds`
-  -- classification exactly, cell for cell, all 320 real grid cells, zero
-  -- disagreement -- see tests/import/room_floor_layout_test.lua) instead
-  -- of the flat, heuristic `floorTileIds` set every other room still
-  -- uses. Provably behavior-preserving (same test), so this is a real
+  -- UPGRADED (task to generalize collision): willyRoom specifically now
+  -- uses ROM-decoded, position-aware collision
+  -- (RoomFloorLayout.buildCollisionGrid against its own metatile table,
+  -- with its own ground-truth-derived isWalkableCollisionWillyFamily
+  -- rule -- see that function's own doc comment for the exhaustive
+  -- derivation: matches the room's previous, live-tested floorTileIds
+  -- classification exactly, cell for cell, all 320 grid cells, zero
+  -- disagreement -- see tests/import/room_floor_layout_test.lua)
+  -- instead of the flat, heuristic floorTileIds set every other room
+  -- still uses. Provably behavior-preserving (same test), so this is a
   -- "guess -> decoded ROM fact" upgrade, not a gameplay change -- every
-  -- other room keeps the flat approach until it gets its own real
-  -- metatile-table ground truth the same way.
+  -- other room keeps the flat approach until it gets its own metatile-
+  -- table ground truth the same way.
   if roomKey == "willyRoom" then
     local layout = self.profile.roomFloorLayoutPipeline.exampleRoom
     local collisionGrid = RoomFloorLayout.buildCollisionGrid(
@@ -1166,30 +1164,30 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   local sceneData = (self.roomSceneData and self.roomSceneData[roomKey]) or room.scene
   if sceneData then
     self.roomSceneData = self.roomSceneData or {}
-    -- WIRED (task "komplett autark interpretiert", direct follow-up):
-    -- a character with `dialogueSegments` (see rom_profiles.lua's own
-    -- doc comment, e.g. `secondRoom.scene.characterA/characterB`) gets
-    -- its `dialogue` resolved LIVE from real ROM bytes here, via
-    -- `DialogueTextResolver`, instead of using the hand-transcribed
-    -- string. Builds a shallow copy rather than mutating `room.scene`
-    -- in place -- that table is the SHARED `profile.graphics` data
-    -- (also read by `NpcCatalog.build`, which has no `romData` and
-    -- must keep using the plain hand-transcribed strings), and
-    -- `VictorySequence` instances/tests must not leak state into it.
+    -- WIRED (task to make everything fully interpreted, direct follow-
+    -- up): a character with dialogueSegments (see rom_profiles.lua's
+    -- own doc comment, e.g. secondRoom.scene.characterA/characterB)
+    -- gets its dialogue resolved live from ROM bytes here, via
+    -- DialogueTextResolver, instead of using the hand-transcribed
+    -- string. Builds a shallow copy rather than mutating room.scene in
+    -- place -- that table is the shared profile.graphics data (also
+    -- read by NpcCatalog.build, which has no romData and must keep
+    -- using the plain hand-transcribed strings), and VictorySequence
+    -- instances/tests must not leak state into it.
     sceneData = self:resolveSceneDialogue(sceneData)
     self.roomSceneData[roomKey] = sceneData
     self.roomSprites[roomKey] = {}
-    -- ADDED (2026-08-10, see rom_profiles.lua's `secondRoom.scene
-    -- .characterA/B.animation` doc comment): a scene character with a
-    -- real `animation` table (secondRoom's two NPCs) gets a real,
-    -- animated `NpcSprite` AND its own live wander state instead of the
-    -- old static `CreatureSprite.fromOffsets(..., 2, 2, ...)` build --
-    -- which used real bytes from the WRONG region (this project's own
-    -- font graphics) through the WRONG shape (2x2, not the real 8x16
-    -- single-column layout) for these two specifically. Characters with
-    -- no `animation` table (Willy) are untouched -- still a plain static
-    -- 2x2 `CreatureSprite`, matching this module's own doc comment on
-    -- why Willy stays that way (no real ROM animation data for him).
+    -- ADDED (see rom_profiles.lua's secondRoom.scene.characterA/B
+    -- .animation doc comment): a scene character with an animation
+    -- table (secondRoom's two NPCs) gets an animated NpcSprite and its
+    -- own live wander state instead of the old static CreatureSprite
+    -- .fromOffsets(..., 2, 2, ...) build -- which used bytes from the
+    -- wrong region (this project's own font graphics) through the
+    -- wrong shape (2x2, not the real 8x16 single-column layout) for
+    -- these two specifically. Characters with no animation table
+    -- (Willy) are untouched -- still a plain static 2x2 CreatureSprite,
+    -- matching this module's own doc comment on why Willy stays that
+    -- way (no ROM animation data for him).
     self.roomNpcState[roomKey] = self.roomNpcState[roomKey] or {}
     for name, char in pairs(sceneData) do
       if char.animation then
@@ -1207,17 +1205,16 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   end
 end
 
---- Advances one real frame of the room's own wandering NPCs (see
--- rom_profiles.lua's own doc comment for the real animation-tile
--- evidence vs. this project's own honestly-approximate random-walk
--- movement -- direct user report: "diese [npcs] haben animationen und
--- bewegungspattern"). A no-op for a room with no animated NPCs (most
--- rooms -- `self.roomNpcState[roomKey]` is only ever populated for
--- characters that have a real `animation` table). The actual per-frame
--- decision (`NpcWander.step`) is a pure, headlessly-tested module (see
+--- Advances one frame of the room's own wandering NPCs (see
+-- rom_profiles.lua's own doc comment for the animation-tile evidence
+-- vs. this project's honestly-approximate random-walk movement --
+-- direct user report that these NPCs have animations and movement
+-- patterns). A no-op for a room with no animated NPCs (most rooms --
+-- self.roomNpcState[roomKey] is only ever populated for characters
+-- that have an animation table). The actual per-frame decision
+-- (NpcWander.step) is a pure, headlessly-tested module (see
 -- src/entities/NpcWander.lua) -- this method is just the love-side
--- plumbing (iterating this room's live states, driving each one's
--- `NpcSprite`).
+-- plumbing (iterating this room's live states, driving each NpcSprite).
 function VictorySequence:updateNpcWander(dt, roomKey)
   local states = self.roomNpcState[roomKey]
   local sprites = self.roomSprites[roomKey]
@@ -1232,10 +1229,10 @@ function VictorySequence:updateNpcWander(dt, roomKey)
   end
 end
 
---- The real background image currently shown for `roomKey` -- almost
--- always just the room's own plain background, except willyRoom, which
--- has a real second (door-open) state once its door has been triggered
--- (see `willyRoomDoorOpenBg` above).
+--- The background image currently shown for roomKey -- almost always
+-- just the room's own plain background, except willyRoom, which has a
+-- second (door-open) state once its door has been triggered (see
+-- willyRoomDoorOpenBg above).
 function VictorySequence:backgroundFor(roomKey)
   if roomKey == "willyRoom" and self.doorOpened and self.willyRoomDoorOpenBg then
     return self.willyRoomDoorOpenBg
