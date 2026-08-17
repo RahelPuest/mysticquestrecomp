@@ -3725,25 +3725,21 @@ RomProfiles.PROFILES = {
     },
 
     -- Item/spell name+stat table -- see docs/reverse-engineering/rom-map.md
-    -- "Item/spell table" (PARTIALLY VERIFIED: names, the record's 16-byte
-    -- width, and the per-category ID byte are confirmed; the remaining
-    -- stat bytes are not decoded). `src/import/ItemTable.lua` is the
-    -- generic decoder.
-    -- EXTENDED, 2026-08-15 (monster/npc/item census): a fresh static
-    -- scan (name-decode success/failure per record, same method
-    -- already used to find the enemySpeciesTable's own real boundary)
-    -- found real, clean content well past the previously-documented
-    -- 20 records -- real German item names through at least record
-    -- 58 ("Bonbon"/"Schlüssel"/"Knochen"/"Bronze"/"Träne"/"Öl"/
-    -- "Kristall"/"Rubin"/"Smaragd"/"Saphir"/"Diamant"/"Gold"/"Zähne"),
-    -- interspersed with several records that don't cleanly decode at
-    -- either known name offset (real, unresolved gaps -- `ItemTable
-    -- .decode` now returns `name=""` for those rather than guessing,
-    -- see that module's own doc comment). `recordCount` extended to
-    -- 59 to include this real content; records beyond that returned
-    -- only short, non-word fragments in this pass's own scan and were
-    -- NOT included (a genuine further boundary, not chased down this
-    -- pass).
+    -- "Item/spell table" (PARTIALLY VERIFIED: names, the record's
+    -- 16-byte width, and the per-category ID byte are confirmed; the
+    -- remaining stat bytes are not decoded). src/import/ItemTable.lua
+    -- is the generic decoder.
+    -- EXTENDED (monster/npc/item census): a fresh static scan (name-
+    -- decode success/failure per record, same method already used to
+    -- find enemySpeciesTable's boundary) found clean content well past
+    -- the previously-documented 20 records -- German item names through
+    -- at least record 58 ("Bonbon"/"Schlüssel"/"Knochen"/"Bronze"/
+    -- "Träne"/"Öl"/"Kristall"/"Rubin"/"Smaragd"/"Saphir"/"Diamant"/
+    -- "Gold"/"Zähne"), interspersed with several records that don't
+    -- cleanly decode at either known name offset (real, unresolved
+    -- gaps -- ItemTable.decode returns name="" for those rather than
+    -- guessing). recordCount extended to 59; records beyond that
+    -- returned only short, non-word fragments and were not included.
     itemTable = {
       status = "PARTIALLY VERIFIED",
       fileOffset = 0x9DE5,
@@ -3763,15 +3759,13 @@ RomProfiles.PROFILES = {
     -- against the in-game menu's equipped-weapon readout ("Breit"); the
     -- stat bytes and the table's true start/end boundaries are not).
     --
-    -- EXTENDED, 2026-08-15 (monster/npc/item census): the same static
-    -- name-decode scan found real, clean weapon/armor names through
-    -- record 47 ("Bronze"/"Eisen"/"Silber"/"Gold"/"Flamme"/"Drache"/
-    -- "Ägis"/"Opal"/"Samurai"/"Excali"[bur]/"Zeus"/"Lanze", real
-    -- material-tier armor sets and named unique weapons) -- previous
-    -- `recordCount=20` was cutting off more than half the real table.
-    -- Record 48 onward returned only short fragments, not real words,
-    -- in this pass's own scan -- a genuine further boundary, not
-    -- chased down.
+    -- EXTENDED (monster/npc/item census): the same static name-decode
+    -- scan found clean weapon/armor names through record 47 ("Bronze"/
+    -- "Eisen"/"Silber"/"Gold"/"Flamme"/"Drache"/"Ägis"/"Opal"/"Samurai"/
+    -- "Excali"[bur]/"Zeus"/"Lanze", material-tier armor sets and named
+    -- unique weapons) -- previous recordCount=20 was cutting off more
+    -- than half the table. Record 48 onward returned only short
+    -- fragments, not real words.
     weaponTable = {
       status = "PARTIALLY VERIFIED",
       -- Scanned window, not a confirmed exact table start/end -- see
@@ -3787,16 +3781,14 @@ RomProfiles.PROFILES = {
       recordCount = 48, -- extended 2026-08-15, see doc comment above
     },
 
-    -- FOUND, 2026-08-17 (external-reference-driven search, same day
-    -- and method as `enemyStatTable` above -- see
-    -- src/import/WeaponStatTable.lua's own doc comment for the full
-    -- evidence trail). A real, SEPARATE table from `weaponTable`
-    -- above (own file offset doesn't land on a shared record
-    -- boundary with it -- see WeaponStatTable.lua for why these stay
-    -- two independent decoders): 16 real records, 16-byte stride,
-    -- bank 2. Every record's own 7-byte stat signature matched the US
-    -- "Final Fantasy Adventure" disassembly's own documented weapon
-    -- list BYTE-FOR-BYTE.
+    -- FOUND (external-reference-driven search, same method as
+    -- enemyStatTable above -- see src/import/WeaponStatTable.lua's own
+    -- doc comment for the full evidence trail). A separate table from
+    -- weaponTable above (its file offset doesn't land on a shared
+    -- record boundary -- see WeaponStatTable.lua for why these stay two
+    -- independent decoders): 16 records, 16-byte stride, bank 2. Every
+    -- record's 7-byte stat signature matched the US "Final Fantasy
+    -- Adventure" disassembly's documented weapon list byte-for-byte.
     weaponStatTable = {
       status = "VERIFIED (table location + stride + power/price fields, via exact external-reference byte match); other fields real but unconfirmed against this EU ROM",
       bank = 2,
@@ -3814,32 +3806,30 @@ RomProfiles.PROFILES = {
       },
     },
 
-    -- NEW (2026-08-15, direct user request "suchen alle monster und
-    -- npcs mit allen daten, texten und grafiken aus dem rom"): a real
-    -- ROM-wide TEXT census, found via `tools/rom/dump_strings.py`'s
-    -- already-proven decoder (the same tool/method that found
-    -- Amanda's own real secondRoom dialogue) -- NOT a live OAM/room
-    -- capture, since these are plain decodable ROM strings. Every
-    -- `fileOffset` here is a real, directly-verifiable location (open
-    -- the ROM at that byte and re-run `TextDecoder.decodeString` to
-    -- reproduce it).
+    -- NEW (direct user request to search out all monsters and NPCs with
+    -- all their data, text, and graphics from the ROM): a ROM-wide text
+    -- census, found via tools/rom/dump_strings.py's already-proven
+    -- decoder (the same tool/method that found Amanda's real secondRoom
+    -- dialogue) -- not a live OAM/room capture, since these are plain
+    -- decodable ROM strings. Every fileOffset here is a directly-
+    -- verifiable location (open the ROM at that byte and re-run
+    -- TextDecoder.decodeString to reproduce it).
     --
-    -- HONEST SCOPE: this is a census of NAMES AND TEXT this project
-    -- can decode, not a census of confirmed live positions/sprites.
-    -- Exactly 2 of the named characters below (Willy, Amanda) have a
-    -- known real room/sprite (see `graphics.willyScene`/`secondRoom`
-    -- above) -- every other name was found ONLY in dialogue text, with
-    -- NO live room, OAM sprite, or WRAM position ever captured for it.
-    -- Finding those would mean live-exploring the specific room each
-    -- character's own dialogue is triggered in (this project doesn't
-    -- know which of the ~384 catalogued rooms that is for any of
-    -- them) -- real, substantial future work, not attempted this pass.
-    -- Similarly, `bossDefeats` below are real monster NAMES with real
-    -- "<Name> bezwungen/besiegt" messages, but this pass found NO
-    -- structural link (shared index, pointer, adjacent table) between
-    -- any of these name strings and `enemySpeciesTable`'s own 11
-    -- numbered species rows -- they're real, but NOT mapped to a
-    -- specific stat row; presented standalone, not force-matched.
+    -- HONEST SCOPE: a census of names and text this project can decode,
+    -- not a census of confirmed live positions/sprites. Exactly 2 of
+    -- the named characters below (Willy, Amanda) have a known room/
+    -- sprite (see graphics.willyScene/secondRoom above) -- every other
+    -- name was found only in dialogue text, with no live room, OAM
+    -- sprite, or WRAM position ever captured for it. Finding those
+    -- would mean live-exploring the specific room each character's
+    -- dialogue triggers in (unknown which of the ~384 catalogued rooms
+    -- that is) -- substantial future work, not attempted this pass.
+    -- Similarly, bossDefeats below are monster names with real "<Name>
+    -- bezwungen/besiegt" messages, but this pass found no structural
+    -- link (shared index, pointer, adjacent table) between these name
+    -- strings and enemySpeciesTable's 11 numbered species rows --
+    -- real, but not mapped to a specific stat row; presented
+    -- standalone, not force-matched.
     storyText = {
       -- Real "<Monster> bezwungen/besiegt" victory messages -- each
       -- independently found and byte-verified via a targeted
