@@ -2520,43 +2520,38 @@ RomProfiles.PROFILES = {
         -- point in the same live trace).
         handoffScreenX = 71, handoffScreenY = 34,
       },
-      -- VERIFIED (2026-08-12, direct response to a user correction:
-      -- "es gibt diese explosion ohne jeden zweifel" -- an earlier pass
-      -- this same session wrongly trusted a stale negative result, see
-      -- combat.md's own "Explicit negative result" entry, which only
-      -- ruled out ONE despawn call chain and explicitly left the real
-      -- `$D3EC` event-queue consumer untraced). Live-traced the real
-      -- gate creature's OWN death sequence frame by frame from the
-      -- instant `$D3F5` hits its dead sentinel (`courtyard_boss_defeated
-      -- ()`) and found a real, undeniable visual effect this project's
-      -- own earlier OAM-content check had missed: the creature's own
-      -- SIX real body-part OAM pairs (tiles 0x38/0x3a/0x3c/0x3e --
-      -- decimal 56/58/60/62, the same tiles combat.md's own hit-
-      -- reaction-pose note already named) do NOT just vanish -- their
-      -- real screen POSITIONS scatter outward to six different corners
-      -- of the room over ~85 real frames (confirmed via a direct
+      -- VERIFIED (direct response to a user correction that the
+      -- explosion definitely exists -- an earlier pass this same
+      -- session wrongly trusted a stale negative result, see
+      -- combat.md's "Explicit negative result" entry, which only ruled
+      -- out one despawn call chain and left the $D3EC event-queue
+      -- consumer untraced). Live-traced the gate creature's own death
+      -- sequence frame by frame and found a visual effect the earlier
+      -- OAM-content check had missed: the creature's six body-part OAM
+      -- pairs (tiles 0x38/0x3a/0x3c/0x3e, the same tiles combat.md's
+      -- hit-reaction-pose note already named) do not just vanish --
+      -- their screen positions scatter outward to six different
+      -- corners of the room over ~85 frames (confirmed via a direct
       -- screenshot at frame 86: six round part-clusters visibly spread
-      -- apart, not the creature's normal coherent standing shape),
-      -- THEN all six vanish simultaneously (OAM entry count drops to 0
-      -- at frame 86, matching the already-documented `$0AE3` despawn
-      -- routine's own real "clear the six body-part slots" behavior --
-      -- that routine's own negative result, "no NEW tile ID is ever
-      -- loaded," is still correct: this is the creature's OWN existing
-      -- body-part art being REPOSITIONED, not a dedicated explosion
-      -- sprite). Net effect on screen: a real "body bursts apart into
-      -- pieces, then all pieces vanish" animation -- this project's own
-      -- "kind of an explosion" description is accurate for what a
-      -- player actually sees, even though the underlying mechanism is
-      -- real body parts scattering, not a dedicated particle effect.
+      -- apart), then all six vanish simultaneously (OAM entry count
+      -- drops to 0 at frame 86, matching the already-documented $0AE3
+      -- despawn routine's "clear the six body-part slots" behavior --
+      -- that routine's own negative result, "no new tile ID is ever
+      -- loaded," is still correct: this is the creature's own existing
+      -- body-part art being repositioned, not a dedicated explosion
+      -- sprite). Net effect on screen: a "body bursts apart into
+      -- pieces, then all pieces vanish" animation -- accurate for what
+      -- a player sees, even though the mechanism is body parts
+      -- scattering, not a dedicated particle effect.
       --
-      -- HONEST LIMIT: the 4 body-part tiles' own real ROM file offsets
-      -- are NOT uniquely confirmed -- the exact 16-byte search returned
-      -- 2-3 real matches each (not this project's usual "exactly one"
-      -- bar), in two internally-consistent clusters (bank 8 around
-      -- `0x23db0` and bank 9 around `0x27900`, both with the same
-      -- real relative tile spacing) -- the art is plausibly genuinely
-      -- duplicated across banks (common on MBC2 titles that need the
-      -- same graphics reachable from more than one bank-switch
+      -- HONEST LIMIT: the 4 body-part tiles' file offsets are not
+      -- uniquely confirmed -- the exact 16-byte search returned 2-3
+      -- matches each (not this project's usual "exactly one" bar), in
+      -- two internally-consistent clusters (bank 8 around 0x23db0 and
+      -- bank 9 around 0x27900, both with the same relative tile
+      -- spacing) -- the art is plausibly duplicated across banks
+      -- (common on MBC2 titles that need the same graphics reachable
+      -- from more than one bank-switch
       -- context), not a search bug. Bank 8's cluster is used below
       -- (closest to the other battle-related graphics already sourced
       -- from bank 8) -- a reasonable choice, not a uniquely-proven one;
