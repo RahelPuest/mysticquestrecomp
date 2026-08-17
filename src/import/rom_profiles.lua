@@ -2390,35 +2390,26 @@ RomProfiles.PROFILES = {
           },
         },
       },
-      -- VERIFIED (2026-08-09) real thrust attack -- direct fix for a
-      -- named gap (user report, this same investigation round): "wenn
-      -- sich der Spieler nach vorne bewegt und dabei angreift, wird das
-      -- Schwert nach vorne gestochen." Confirmed live: pressing A WHILE
-      -- still holding a direction (moving) produces a completely
-      -- different real animation from standing-still `attackSwing` --
-      -- shorter (12 real frames, not 16), a single fixed pose (no
-      -- flip-cycling within one direction) repositioned in 3 real
-      -- phases (retract close -> thrust far out -> return), rather than
-      -- a rotating arc. Confirmed at the tile-content level too: reuses
-      -- `attackSwing`'s own block "Z" verbatim (byte-for-byte identical
-      -- VRAM content found at the exact same ROM offsets) -- the real
-      -- ROM doesn't store a separate thrust sprite, it reuses the
-      -- swing's own final pose as the thrust's single held frame.
+      -- VERIFIED real thrust attack -- direct fix for a named gap (user
+      -- report that the sword should thrust forward when attacking
+      -- while moving). Confirmed live: pressing A while holding a
+      -- direction produces a different animation from standing-still
+      -- attackSwing -- shorter (12 frames, not 16), a single fixed pose
+      -- repositioned in 3 phases (retract close -> thrust far out ->
+      -- return), rather than a rotating arc. Confirmed at the
+      -- tile-content level too: reuses attackSwing's own block "Z"
+      -- verbatim -- the ROM doesn't store a separate thrust sprite, it
+      -- reuses the swing's final pose as the thrust's single held frame.
       attackThrust = {
         status = "VERIFIED",
-        -- Real PER-FRAME motion (not coarse phases -- the real motion
-        -- isn't uniform: a real 4-frame gradual retract, then a real
-        -- instant jump-and-hold extend, then a real instant jump-and-
-        -- hold return -- sampled every single real frame, not
-        -- interpolated or smoothed by this project). One axis moves
-        -- (the facing direction), the other stays constant -- both
-        -- L/R share the exact same per-frame sequence on the moving
-        -- axis, offset by a constant 8px (their fixed real spacing) on
-        -- it, since a thrust doesn't rotate the blade like the swing
-        -- does. Always block "Z" (see `attackSwing.tileOffsets`) --
-        -- confirmed byte-for-byte identical VRAM content to the swing's
-        -- own final phase, the real ROM's own art reuse, not this
-        -- project's simplification.
+        -- Real per-frame motion (not coarse phases -- a 4-frame gradual
+        -- retract, then instant jump-and-hold extend, then instant
+        -- jump-and-hold return -- sampled every frame, not smoothed).
+        -- One axis moves (facing direction), the other stays constant --
+        -- both L/R share the same per-frame sequence on the moving
+        -- axis, offset by a constant 8px on it, since a thrust doesn't
+        -- rotate the blade like the swing does. Always block "Z" (see
+        -- attackSwing.tileOffsets) -- the ROM's own art reuse.
         byFacing = {
           -- axis="y": dy sequence below applies to both L/R; dx is each
           -- side's own fixed offset from the player.
@@ -2459,30 +2450,22 @@ RomProfiles.PROFILES = {
         bank = 11,
         cols = 4,
         rows = 4,
-        -- ATTEMPTED CORRECTION, REVERTED (2026-08-13, same day): a live
-        -- OAM re-scan (`scan_oam_settled.py`, scratchpad) found only 8
-        -- of these 16 tiles in each individual real OAM snapshot
-        -- (alternating $40/$42/$48/$4A + $44/$46/$4C/$4E, 16px apart --
-        -- the same real shape as the entrance-phase `enemyDescent`
-        -- sprite) and never caught the other 8 ($41/$43/$49/$4B/$45/
-        -- $47/$4D/$4F) in any single sample. Tried switching this
-        -- sprite to that same 8-tile/16px-gap shape -- a live `love .`
-        -- screenshot showed the settled creature rendered as two
-        -- visibly SEPARATE chunks with floor showing through the gap,
-        -- clearly WORSE than the original solid-looking capture, not
-        -- better (unlike the entrance sprite, where the same real fix
-        -- DID look right). Reverted to the original 4x4/16-tile/flush
-        -- capture rather than ship a change contradicted by its own
-        -- live screenshot. Real, honest, OPEN question for whoever
-        -- continues this: the 16px-gap OAM snapshots are real,
-        -- individually-observed facts (not a tooling artifact this
-        -- project could find) -- possibly real hardware relies on a
+        -- ATTEMPTED CORRECTION, REVERTED (same day): a live OAM re-scan
+        -- found only 8 of these 16 tiles in each individual OAM
+        -- snapshot (alternating $40/$42/$48/$4A + $44/$46/$4C/$4E, 16px
+        -- apart -- same shape as the entrance-phase enemyDescent
+        -- sprite), never catching the other 8 in any single sample.
+        -- Tried switching to that 8-tile/16px-gap shape -- a live
+        -- screenshot showed the creature rendered as two visibly
+        -- separate chunks with floor showing through, worse than the
+        -- original (unlike the entrance sprite, where the same fix did
+        -- look right). Reverted to the original 4x4/16-tile/flush
+        -- capture. Open question: the 16px-gap OAM snapshots are real,
+        -- individually-observed facts -- possibly hardware relies on a
         -- persistence-of-vision effect (rapid alternation between two
-        -- vertically-offset 8-tile halves, faster than the per-
-        -- movement-step sampling this pass used) to LOOK solid despite
-        -- any single frozen frame only showing half -- not confirmed,
-        -- not implemented, left as a real, bounded gap rather than a
-        -- guess.
+        -- vertically-offset 8-tile halves) to look solid despite any
+        -- single frozen frame showing only half -- not confirmed, not
+        -- implemented, left as a bounded gap rather than a guess.
         tileOffsets = {
           0x2FE00, 0x2FE10, 0x2FE80, 0x2FE90, -- $40 $42 $48 $4A
           0x2FE20, 0x2FE30, 0x2FEA0, 0x2FEB0, -- $41 $43 $49 $4B
@@ -2491,94 +2474,69 @@ RomProfiles.PROFILES = {
         },
         screenX = 71,
         screenY = 34,
-        -- VERIFIED (2026-08-12, direct user reports: "die animationen
-        -- der sprites nicht richtig, der boss sollte zb animationen
-        -- haben" + "die boss intro sequenz stimmt noch nicht"): live
-        -- OAM-traced the real gate-creature's own patrol/hover cycle
-        -- (already captured as `Enemy.MOVEMENT_CYCLE`, see that file's
-        -- own doc comment) ALSO toggles real OAM attribute bit 5
-        -- (X-flip, Pan Docs "OBJ Flags" -- `0x20`) every single
-        -- movement step -- attr `0x30` (`0x10`palette `|` `0x20`
-        -- X-flip) at one waypoint, `0x10` (X-flip clear) at the next,
-        -- alternating, using the SAME already-known 16 tiles above
-        -- every time (confirmed by directly reading the real OAM tile
-        -- IDs at both a `0x30` and a `0x10` sample: both are exactly
-        -- this table's own `tileOffsets` set -- the real per-step
-        -- Y-position change is already fully accounted for by
-        -- `Enemy.MOVEMENT_CYCLE`'s own real deltas, a separate real
-        -- fact from this flip bit) -- i.e. the real "flapping"
-        -- animation is a hardware X-flip (horizontal mirror) of the
-        -- SAME art, not a second drawn frame and NOT a Y-flip
-        -- (CORRECTED same day: this field and `Enemy:isFlipped()`'s own
-        -- first implementation wired this into `flipY` by mistake --
-        -- bits 5/6 transposed -- fixed to `flipX`, see Enemy.lua/
-        -- Field.lua/BattleIntro.lua). `Enemy:isFlipped()` (see
-        -- Enemy.lua) exposes this as a simple movementIndex-parity
-        -- toggle.
+        -- VERIFIED (direct user reports the boss should have animations
+        -- and the boss-intro sequence isn't right): live OAM-traced the
+        -- gate-creature's patrol/hover cycle (Enemy.MOVEMENT_CYCLE)
+        -- also toggles OAM attribute bit 5 (X-flip) every movement
+        -- step -- attr 0x30 at one waypoint, 0x10 at the next,
+        -- alternating, using the same 16 known tiles every time (the
+        -- per-step Y-position change is already accounted for by
+        -- MOVEMENT_CYCLE's own deltas, a separate fact from this flip
+        -- bit) -- the "flapping" animation is a hardware X-flip mirror
+        -- of the same art, not a second drawn frame and NOT a Y-flip
+        -- (CORRECTED same day: the first implementation wired this into
+        -- flipY by mistake -- bits 5/6 transposed -- fixed to flipX,
+        -- see Enemy.lua/Field.lua/BattleIntro.lua). Enemy:isFlipped()
+        -- exposes this as a simple movementIndex-parity toggle.
         flipXTogglesPerStep = true,
       },
-      -- VERIFIED (2026-08-12, same investigation, direct follow-up to
-      -- the boss-intro report): the real gate creature does NOT simply
-      -- appear at its resting spot when the "Kaempfe!" box closes --
-      -- live OAM-traced the real battle-intro sequence frame by frame
-      -- (courtesy of `reach_room.reach_first_room`'s own real button
-      -- sequence, extended past name entry with no further input) and
-      -- found the creature spawns near the TOP of the screen (the
-      -- courtyard's own real barred gate, see `battleIntro.gate` above
-      -- -- same open/close frame window) and descends straight down
-      -- (screen X constant at 64 -- CORRECTED 2026-08-13, was
-      -- documented as 80, a real 16px error, see this entry's own
-      -- `screenX` doc comment below -- Y climbing 7->28 over ~20 real
-      -- frames, 4 real steps of ~5 frames each) using a SECOND, real,
-      -- previously-uncaptured 4x2 tile block (CORRECTED 2026-08-13,
-      -- was documented as 4x4 -- see `enemySprite`'s own doc comment
-      -- above for the same real mistake, found the same day) -- NOT
-      -- the same tiles as the resting/patrol pose above. Confirmed via
-      -- the same "exact 16-byte ROM search" method as
-      -- `enemySprite.tileOffsets`: every
-      -- one of the 8 real top-tile IDs matches EXACTLY ONE ROM location
-      -- each (high confidence), contiguous in bank 11 immediately after
-      -- the resting-pose block (`tileOffsets` above sits at
-      -- `0x2FE00-0x2FEFF`; this sits at `0x2FF00-0x2FFDF`).
-      -- Once the descent reaches the patrol's own real Y range (~frame
-      -- 20 into the descent), OAM switches over to the ALREADY-known
-      -- `enemySprite.tileOffsets`/`MOVEMENT_CYCLE` patrol -- this block
-      -- is ONLY the one-time gate-to-patrol transition, not an
-      -- alternate ongoing pose.
+      -- VERIFIED (same investigation, direct follow-up to the boss-
+      -- intro report): the gate creature does not simply appear at its
+      -- resting spot when the "Kaempfe!" box closes -- live OAM-traced
+      -- the battle-intro sequence frame by frame and found the creature
+      -- spawns near the top of the screen (the courtyard's barred gate,
+      -- see battleIntro.gate above) and descends straight down (screen
+      -- X constant at 64 -- CORRECTED, was documented as 80, a 16px
+      -- error, see screenX doc comment below -- Y climbing 7->28 over
+      -- ~20 frames, 4 steps of ~5 frames each) using a second,
+      -- previously-uncaptured 4x2 tile block (CORRECTED, was documented
+      -- as 4x4 -- see enemySprite's own doc comment above for the same
+      -- mistake, found the same day) -- not the same tiles as the
+      -- resting/patrol pose above. Confirmed via the same exact-16-byte
+      -- ROM search method as enemySprite.tileOffsets: every one of the
+      -- 8 top-tile IDs matches exactly one ROM location, contiguous in
+      -- bank 11 immediately after the resting-pose block.
+      -- Once the descent reaches the patrol's own Y range (~frame 20),
+      -- OAM switches over to the already-known enemySprite.tileOffsets/
+      -- MOVEMENT_CYCLE patrol -- this block is only the one-time
+      -- gate-to-patrol transition, not an alternate ongoing pose.
       enemyDescent = {
         status = "VERIFIED",
         bank = 11,
         cols = 4,
         rows = 4,
-        -- ROOT CAUSE FOUND (2026-08-13, direct user instruction "rate
-        -- nicht, schau dir im rom den draw code beim einlauf an"): read
-        -- the REAL ROM OAM-writer code (`$088A`/`$0611` and callers,
-        -- traced live via the shadow-OAM buffer at `$C000`) and checked
-        -- the real `$FF40` LCDC register at the descent -- bit 2 (OBJ
-        -- size) is SET, i.e. real hardware is in 8x16 sprite mode. In
-        -- that mode each OAM entry's own tile index has its LSB forced
-        -- to 0 and draws THAT tile as the top 8px PLUS `tile|1` as the
-        -- bottom 8px, flush, automatically, with no CPU-visible second
-        -- OAM write for the bottom half. The previous 8-tile/`cols=4,
-        -- rows=2` capture only ever recorded the TOP half of each of
-        -- the 4x2 grid's own two OAM rows (the `$C000` tile-ID bytes
-        -- this project watched) and never the bottom halves the
-        -- hardware appends on its own -- this is the real, exact cause
-        -- of "nur jede 2. Zeile" and "die untersten 2 Zeilen fehlen":
-        -- the bottom-half tiles were never in `tileOffsets` at all, not
-        -- a spacing/gap problem. Every attempted `rowSpacing` fix was
-        -- therefore addressing the wrong variable (position of a gap)
-        -- instead of the real one (missing tile data).
+        -- ROOT CAUSE FOUND (direct user instruction to check the ROM's
+        -- draw code, not guess): read the real ROM OAM-writer code
+        -- (traced live via the shadow-OAM buffer at $C000) and checked
+        -- LCDC at the descent -- bit 2 (OBJ size) is set, 8x16 sprite
+        -- mode. In that mode each OAM tile index has its LSB forced to
+        -- 0 and draws that tile as the top 8px plus tile|1 as the
+        -- bottom 8px automatically, with no CPU-visible second OAM
+        -- write. The previous 8-tile/cols=4,rows=2 capture only ever
+        -- recorded the top half of each OAM row and never the bottom
+        -- halves hardware appends on its own -- the exact cause of the
+        -- missing-rows symptom: the bottom-half tiles were never in
+        -- tileOffsets at all, not a spacing problem. Every attempted
+        -- rowSpacing fix was addressing the wrong variable.
         --
-        -- Full 4x4/16-tile grid below uses the SAME real interleaved
-        -- ROM layout already verified (unmodified) for `enemySprite`
-        -- above (pairs of columns, top-half block then bottom-half
-        -- block, contiguous in bank 11 immediately after that sprite's
-        -- own 0x2FE00-0x2FEFF block) -- confirmed directly: all 16
-        -- offsets below contain real, distinct, non-zero tile data
-        -- (`dump_descent_tiles.py`, scratchpad), and the 8 top-half
-        -- offsets exactly match this table's own previous (correct)
-        -- values, so only the bottom-half offsets were newly added:
+        -- Full 4x4/16-tile grid below uses the same interleaved ROM
+        -- layout already verified for enemySprite above (pairs of
+        -- columns, top-half block then bottom-half block, contiguous
+        -- in bank 11 right after that sprite's 0x2FE00-0x2FEFF block)
+        -- -- confirmed directly: all 16 offsets contain distinct,
+        -- non-zero tile data, and the 8 top-half offsets exactly match
+        -- this table's previous (correct) values, so only the
+        -- bottom-half offsets were newly added:
         --   row0 (top halves,    upper OAM row): $50 $52 $58 $5A
         --   row1 (bottom halves, upper OAM row): $51 $53 $59 $5B
         --   row2 (top halves,    lower OAM row): $54 $56 $5C $5E
@@ -2589,11 +2547,9 @@ RomProfiles.PROFILES = {
           0x2FF40, 0x2FF50, 0x2FFC0, 0x2FFD0, -- $54 $56 $5C $5E
           0x2FF60, 0x2FF70, 0x2FFE0, 0x2FFF0, -- $55 $57 $5D $5F
         },
-        -- `screenX` stays constant at 64 through all 4 real descent
-        -- frames (confirmed live, `scan_oam_full_descent.py` +
-        -- `trace_shadow_oam_positions.py`, both scratchpad) -- the
-        -- earlier `80` value was a real 16px error, unrelated to and
-        -- not affected by the 8x16-mode fix above.
+        -- screenX stays constant at 64 through all 4 descent frames
+        -- (confirmed live) -- the earlier 80 value was a 16px error,
+        -- unrelated to and not affected by the 8x16-mode fix above.
         screenX = 64,
         path = {
           { y = 7, frames = 5 }, { y = 14, frames = 5 },
