@@ -2332,6 +2332,43 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   (watch_graphic_refs) output, Playwright-verified the Speicherkarte
   page renders all 5 new entries with zero HTML-escaping artifacts and
   zero console errors.
+- **2026-08-17, the real NPC/monster/boss sprite-PIXEL-SOURCE formula,
+  found and live-validated 3 independent ways** (direct user
+  instruction: "versuche mal über einen ähnlichen hebel wie bei den
+  tiles alle npc, boss und monstersprites zu extrahieren", then "schau
+  in die vram zugriffe wenn sprites zu sehen sind, leite daraus was
+  ab"): picked back up task #160's own explicitly-left-open thread
+  ("which candidate region belongs to which real species/NPC" -- the
+  kind-byte -> bank8-11 dispatcher was found but never traced to a real
+  table). Static disassembly of both dispatch routines (bank3 `$c400`,
+  bank4 `$1039c`) found they fall through from a real "process one
+  entity-definition record" function reading a fixed 6-byte "outer
+  sprite record" (`dest0,count,C,kindByte,innerPtr`) embedded directly
+  in each entity's own bigger row -- `ActorDefinitionTable`'s own
+  bytes[2..7] for the already-known 218 NPC rows, and a genuinely NEW
+  24-byte-stride monster/boss table (bank4, 21 real rows, found because
+  its own bytes[2..5] write straight to this project's ALREADY-known
+  real HP-populate WRAM cells, `$D3F4`/`$D3F5`). Formula:
+  `sourceCpuAddr = rawByte*16 + kindByte*256 + C` (fixed up, same
+  bit-trick style as the room-tile pipeline), `bank = 8 +
+  floor(kindByte/64)`, same `$2DF5`/`$2D57` DMA entry the room-tile
+  pipeline already fully documented -- ONE real ROM->VRAM graphics
+  subsystem serving both. Live single-stepped 2 real spawn windows
+  (secondRoom's NPCs, the real first-boss encounter), watching every
+  `CALL $2df5`: EXACT match, 3 independent ways, against every one of
+  this project's own already-known real tileOffsets (characterA's 16,
+  characterB's 16, the boss's 32) -- the same standard of evidence the
+  room-tile pipeline fix used. Shipped `SpriteTileFormula.lua` (shared
+  formula), `ActorDefinitionTable.lua` extended, new
+  `MonsterDefinitionTable.lua`. **Honest scope**: closes the
+  PIXEL-SOURCE half for all 218 NPC + 21 monster/boss rows (real,
+  computable pixel data, zero further live capture needed) -- does NOT
+  close the on-screen ARRANGEMENT half beyond the 3 already-known ground
+  truths; a first attempt at a generic grid render for the other 18
+  monster rows produced correctly-decoded but visibly scrambled tile
+  blobs, retracted rather than shipped as a real layout. 570/570 Lua
+  tests pass (new `sprite_tile_formula_test.lua`, including a pure-math
+  regression lock independent of any ROM).
 - **2026-08-16, task #162, rom-inspector UX/accessibility audit**:
   full "elevate this product" brief, scoped to the website (confirmed
   via AskUserQuestion, not the ROM-fidelity-bound LÖVE2D game). Real,

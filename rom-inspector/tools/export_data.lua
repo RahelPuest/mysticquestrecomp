@@ -38,6 +38,7 @@ local MapTileCatalog = require("src.import.MapTileCatalog")
 local MusicDecoder = require("src.import.MusicDecoder")
 local CutTransitionTable = require("src.import.CutTransitionTable")
 local ActorDefinitionTable = require("src.import.ActorDefinitionTable")
+local MonsterDefinitionTable = require("src.import.MonsterDefinitionTable")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -988,6 +989,58 @@ do
     "one and looking at it (see GraphicsCandidates.lua's own doc comment). NOT tied to any " ..
     "confirmed species/room/NPC/spawn-trigger identity -- shown as real ROM art with an honest " ..
     "visual description, not a decoded fact.")
+end
+
+----------------------------------------------------------------------
+-- 11d. Sprite catalog (SpriteTileFormula.lua) -- the real ROM->VRAM
+-- sprite-tile PIXEL SOURCE for every NPC (ActorDefinitionTable, 218
+-- rows) and every monster/boss (MonsterDefinitionTable, 21 rows),
+-- 2026-08-17. See SpriteTileFormula.lua's own doc comment for the full
+-- disassembly/live-validation. HONEST SCOPE, carried into every entry
+-- below: this closes the PIXEL-SOURCE half only -- `tileOffsets` are
+-- real, individually-correct ROM pixel data, in the ROM's own raw DMA
+-- copy order (NOT necessarily on-screen reading order). The on-screen
+-- ARRANGEMENT is only independently confirmed for the 3 entries flagged
+-- `arrangementConfirmed=true` below (characterA/characterB/the real
+-- first boss) -- every other entry's `tileOffsets` is real pixel data
+-- with an HONESTLY UNKNOWN on-screen layout, not a guessed grid.
+----------------------------------------------------------------------
+do
+  local function buildSpriteEntries(records, resolveFn, tableBank, confirmedIndices)
+    local entries = {}
+    for _, record in ipairs(records) do
+      local offsets = resolveFn(romData, record)
+      entries[#entries + 1] = {
+        index = record.index,
+        bank = record.spriteSource.bank,
+        kindByte = record.spriteSource.kindByte,
+        cByte = record.spriteSource.cByte,
+        tileOffsets = offsets,
+        arrangementConfirmed = confirmedIndices[record.index] or false,
+      }
+    end
+    return entries
+  end
+
+  local npcEntries = buildSpriteEntries(
+    ActorDefinitionTable.scanTable(romData), ActorDefinitionTable.resolveSpriteTileOffsets, 3,
+    { [121] = true, [99] = true }
+  )
+  local monsterEntries = buildSpriteEntries(
+    MonsterDefinitionTable.scanTable(romData), MonsterDefinitionTable.resolveSpriteTileOffsets, 4,
+    { [16] = true }
+  )
+  writeJs("sprite-catalog.js", "SPRITE_CATALOG", { npcs = npcEntries, monsters = monsterEntries },
+    "Real ROM->VRAM sprite-tile PIXEL SOURCE for every NPC (ActorDefinitionTable, 218 rows, index " ..
+    "121=characterA/99=characterB confirmed) and every monster/boss (MonsterDefinitionTable, 21 " ..
+    "rows, index 16=the real first boss confirmed) -- found 2026-08-17 (direct user instruction " ..
+    "\"versuche mal über einen ähnlichen hebel wie bei den tiles alle npc, boss und " ..
+    "monstersprites zu extrahieren\"), see SpriteTileFormula.lua's own doc comment for the full " ..
+    "disassembly/live-validation. HONEST SCOPE: tileOffsets are real, individually-correct ROM " ..
+    "pixel data for every entry -- the on-screen ARRANGEMENT (which tile goes where) is only " ..
+    "independently confirmed for the 3 arrangementConfirmed=true entries; every other entry's " ..
+    "tileOffsets are shown in the ROM's own raw DMA copy order, an HONESTLY UNKNOWN on-screen " ..
+    "layout, not a guessed grid.")
 end
 
 ----------------------------------------------------------------------

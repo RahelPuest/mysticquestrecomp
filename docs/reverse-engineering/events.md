@@ -10879,3 +10879,100 @@ pass. Live-verified via Playwright: `startRoom` renders the violet
 border + all 3 badges, `seventhRoom` renders its own world-map badge
 with zero exit lines, `eighthRoom` shows no incoming edge, no console
 errors.
+
+## The real ROM->VRAM sprite-tile pipeline for NPCs, monsters, and bosses -- found, disassembled, and LIVE-VALIDATED three independent ways (2026-08-17, same day, direct user instruction)
+
+Direct user instruction: "versuche mal über einen ähnlichen hebel wie
+bei den tiles alle npc, boss und monstersprites zu extrahieren" (try a
+similar lever to the tiles to extract all NPC/boss/monster sprites),
+followed mid-investigation by "ein schaue in die vram zugriffe wenn
+sprites zu sehen sind leitedaraus was ab" (watch the VRAM accesses when
+sprites are visible, derive [the mechanism] from that) -- exactly the
+method used.
+
+**The lead**: `rom-map.md`'s own "Task #160" entry had already found
+the real generic ROM->VRAM tile-streaming DMA subsystem (`$2DF5`/
+`$2D57`, the SAME one the room-tile pipeline uses) and a real "kind
+byte -> bank 8/9/10/11" dispatch formula reached from bank3 (`$c439`)
+and bank4 (`$103bb`) -- but explicitly left open "which candidate
+region belongs to which real species/NPC," since the outer table each
+dispatcher reads from was never found. This picked that thread back up.
+
+**Static disassembly** (`disasm.py`, both call sites): both routines
+fall through from a bigger "process one entity-definition record"
+function (bank3 `$c3dc`, bank4 `$10340`/`$10373`) that reads a real,
+fixed 6-byte "outer sprite record" (`dest0, count, C, kindByte,
+innerPtrLo, innerPtrHi`) embedded directly in a bigger per-entity row --
+`ActorDefinitionTable`'s own bytes[2..7] for NPCs (that table already
+existed, 218 rows, bank3), and a genuinely NEW 24-byte-stride table for
+monsters/bosses (bank4, CPU base `$4739`, bytes[8..13]). For each of
+`count*2` raw GFX-tile bytes read from `innerPtr`:
+`sourceCpuAddr = (rawByte*16 + kindByte*256 + C) mod 0x10000`, high byte
+gets an unconditional `RES 7,H`/`SET 6,H` fixup, `bank = 8 +
+floor(kindByte/64)` (kindByte's own top 2 bits pick one of exactly 4
+graphics banks), `realFileOffset = bank*0x4000 + (fixed - 0x4000)`.
+
+**A genuine, live-confirmed new table found along the way**: the
+monster/boss definition table's own bytes[2..5] get written straight to
+real WRAM `$D3F4`/`$D3F5` -- this project's OWN already-documented real
+HP-populate location (`courtyard_enemy_engaged`'s own doc comment). That
+single fact pins the whole table down with certainty, not just
+plausibility.
+
+**Live validation, three independent ways, all EXACT** (two new
+scratchpad scripts, `trace_npc_sprite_dispatch2.py`/
+`trace_monster_sprite_dispatch2.py`: single-step the real CPU through
+the real secondRoom-NPC-spawn window and the real first-boss-spawn
+window, watching every `CALL $2df5`, reading A/HL/DE/BC live):
+1. characterA (ActorDefinitionTable index 121): kindByte=0x51, C=0x00 --
+   all 16 already-known real tileOffsets (0x25100-0x251f0) reproduced
+   exactly (as a set -- the real DMA copies in a live-confirmed
+   "0,2,1,3,4,6,5,7,..." swapped-pairs order, a different real ordering
+   from rom_profiles.lua's own logical-pose grouping).
+2. characterB (index 99): kindByte=0x55, C=0x00 -- all 16 already-known
+   real tileOffsets (0x25500-0x255f0) reproduced exactly, same way.
+   Bonus: this explains the ALREADY-known "characterB is a clean +0x20
+   OAM-tile-ID shift of characterA" finding -- it's simply kindByte
+   0x51->0x55 (a real, different fact about the SOURCE side, previously
+   only observed on the destination/OAM side).
+3. The real first-boss/gate-creature (new `MonsterDefinitionTable` row
+   16): kindByte=0xFE, C=0x00 -- all 32 already-known real tileOffsets
+   (`enemySprite`'s own 16 AND `enemyDescent`'s own 16, one continuous
+   32-tile DMA burst) reproduced exactly.
+
+Three ground truths, found via three completely different original
+methods (live OAM capture + exact-16-byte ROM search, twice; live OAM
+capture + the room-tile pipeline's own bank-11 sweep), all exactly
+reproduced by one formula -- the same standard of evidence the room-
+tile pipeline fix used.
+
+**The new monster/boss table's own real extent**: a plausibility scan
+(same method as `ActorDefinitionTable`'s own) finds 21 real rows (0-20)
+before the shape abruptly breaks into a tight repeating 4-byte pattern.
+19 of 21 resolve to bank 11 (creatures); rows 1 and 14 resolve to bank 9
+(the NPC/character bank) -- honestly flagged as unexplained, not
+silently reclassified.
+
+**Honest scope, stated plainly, same discipline as every other finding
+this session**: this closes the PIXEL-SOURCE half of sprite extraction
+-- every one of ActorDefinitionTable's 218 NPC rows and
+MonsterDefinitionTable's 21 monster/boss rows now has a computable,
+real, individually-correct set of ROM tile pixels, with ZERO further
+live capture needed. It does NOT close the ARRANGEMENT half (which
+on-screen position each tile occupies) for anything beyond the 3
+ground-truth entities above, whose arrangements were already
+independently known from earlier live OAM work. A first attempt at
+guessing a generic column-count grid for the other 18 monster rows
+rendered as visibly scrambled (but individually correctly-decoded) tile
+blobs -- retracted rather than shipped as a real layout. This table's
+own row-count-vs-species question (21 rows vs. EnemySpeciesTable's 11
+distinct species) is also left open, not assumed either way.
+
+**Shipped**: `SpriteTileFormula.lua` (the shared formula + doc comment
+with the full derivation), `ActorDefinitionTable.lua` extended
+(`spriteSource` field + `resolveSpriteTileOffsets`), new
+`MonsterDefinitionTable.lua` (the 21-row table, same shape). New
+`sprite_tile_formula_test.lua`: pure-math regression lock on the
+formula itself, plus all 3 ground-truth exact-match tests (as sets,
+with an honest comment explaining why order differs from
+rom_profiles.lua's own logical grouping). 570/570 Lua tests pass.

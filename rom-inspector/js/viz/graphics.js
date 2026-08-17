@@ -37,6 +37,12 @@ function render_graphics(main) {
   const mapCatalog = (typeof MAP_TILE_CATALOG !== "undefined") ? MAP_TILE_CATALOG : { entries: [], byBank: {}, roomCount: 0 };
   const mapBanks = Object.keys(mapCatalog.byBank).map(Number).sort((a, b) => a - b);
 
+  const spriteCatalog = (typeof SPRITE_CATALOG !== "undefined") ? SPRITE_CATALOG : { npcs: [], monsters: [] };
+  const spriteNpcs = spriteCatalog.npcs;
+  const spriteMonsters = spriteCatalog.monsters;
+  const spriteConfirmedCount = spriteNpcs.filter(e => e.arrangementConfirmed).length
+    + spriteMonsters.filter(e => e.arrangementConfirmed).length;
+
   main.innerHTML = `
     <h1 class="page-title">Grafiken</h1>
     <p class="page-lede">
@@ -92,6 +98,37 @@ function render_graphics(main) {
     </div>
 
     <div class="card-grid" id="graphicsCandidateCards" style="margin-top:16px;"></div>
+
+    <h2 class="section-title" style="margin-top:36px;">Sprite-Katalog: NPC/Monster/Boss-Pixelquelle (2026-08-17)</h2>
+    <p class="page-lede">
+      Die reale ROM-&gt;VRAM-Sprite-Kachel-PIXELQUELLE für jeden NPC
+      (<code>ActorDefinitionTable</code>, ${spriteNpcs.length} Einträge)
+      und jedes Monster/jeden Boss (<code>MonsterDefinitionTable</code>,
+      ${spriteMonsters.length} Einträge) &mdash; über denselben Hebel wie
+      die Kachel-Pipeline gefunden: eine reale, disassemblierte
+      ROM-&gt;VRAM-DMA-Formel, live an 3 unabhängigen, bereits bekannten
+      echten Sprites exakt bestätigt (siehe <code>SpriteTileFormula.lua</code>
+      für die volle Herleitung). <strong>Ehrlicher Umfang:</strong> die
+      gezeigten Kacheln sind echte, einzeln korrekte ROM-Pixel &mdash;
+      die Bildschirm-ANORDNUNG (welche Kachel wohin gehört) ist nur für
+      die ${spriteConfirmedCount} unten mit
+      <span class="badge verified">Anordnung bestätigt</span> markierten
+      Einträge unabhängig bekannt; alle anderen zeigen die Kacheln in
+      der rohen ROM-Kopierreihenfolge, eine ehrlich UNBEKANNTE
+      Bildschirm-Anordnung, kein geratenes Raster.
+    </p>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="value">${spriteNpcs.length}</div><div class="label">NPC-Einträge</div></div>
+      <div class="stat-card"><div class="value">${spriteMonsters.length}</div><div class="label">Monster/Boss-Einträge</div></div>
+      <div class="stat-card"><div class="value">${spriteConfirmedCount}</div><div class="label">Anordnung unabhängig bestätigt</div></div>
+    </div>
+    <div class="toolbar" style="margin-top:18px;">
+      <div class="pill-tabs" id="spriteCatalogTabs">
+        <div class="pill-tab active" data-kind="npcs">NPCs (${spriteNpcs.length})</div>
+        <div class="pill-tab" data-kind="monsters">Monster/Bosse (${spriteMonsters.length})</div>
+      </div>
+    </div>
+    <div class="card-grid" id="spriteCatalogCards" style="margin-top:16px;"></div>
   `;
 
   updateRomBanner(document.getElementById("graphicsRomBanner"));
@@ -99,6 +136,7 @@ function render_graphics(main) {
     updateRomBanner(document.getElementById("graphicsRomBanner"));
     redrawGraphicsCandidates();
     redrawMapTileBanks();
+    redrawSpriteCatalog();
   }));
 
   // --- known/confirmed map tiles, one mosaic canvas per real bank ---
@@ -184,6 +222,62 @@ function render_graphics(main) {
     });
   });
 
+  // --- sprite catalog (NPCs / monsters+bosses, 2026-08-17) ---
+  const spriteHost = document.getElementById("spriteCatalogCards");
+  let activeSpriteKind = "npcs";
+
+  function spriteCols(entry) {
+    // The 3 independently-confirmed entries use their own real,
+    // known shape (4 wide); every other entry has an honestly unknown
+    // arrangement, so a neutral 8-wide strip is used purely for
+    // compact display -- NOT a claimed layout (see this section's own
+    // page-lede text).
+    return entry.arrangementConfirmed ? 4 : 8;
+  }
+
+  function renderSpriteCards() {
+    spriteHost.innerHTML = "";
+    const list = activeSpriteKind === "npcs" ? spriteNpcs : spriteMonsters;
+    const label = activeSpriteKind === "npcs" ? "NPC" : "Monster/Boss";
+    for (const entry of list) {
+      const cols = spriteCols(entry);
+      const rows = Math.ceil(entry.tileOffsets.length / cols);
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <h3>${label} #${entry.index}</h3>
+        ${entry.arrangementConfirmed
+          ? `<span class="badge verified">Anordnung bestätigt</span>`
+          : `<span class="badge unknown-b">Anordnung unbekannt</span>`}
+        <div class="meta">
+          Bank ${entry.bank} &middot; ${entry.tileOffsets.length} Kacheln &middot;
+          kindByte=0x${entry.kindByte.toString(16).padStart(2, "0")}, C=0x${entry.cByte.toString(16).padStart(2, "0")}
+        </div>
+        <canvas id="sc_${activeSpriteKind}_${entry.index}" width="10" height="10" style="margin-top:8px; image-rendering: pixelated; max-width:100%;" role="img" aria-label="${label} #${entry.index}: ${entry.tileOffsets.length} echte Sprite-Kacheln, direkt aus der geladenen ROM gerendert (rohe Kopierreihenfolge, ${entry.arrangementConfirmed ? "Bildschirm-Anordnung bestätigt" : "Bildschirm-Anordnung unbekannt"})"></canvas>
+      `;
+      spriteHost.appendChild(card);
+    }
+    redrawSpriteCatalog();
+  }
+
+  function redrawSpriteCatalog() {
+    const list = activeSpriteKind === "npcs" ? spriteNpcs : spriteMonsters;
+    for (const entry of list) {
+      const canvas = document.getElementById(`sc_${activeSpriteKind}_${entry.index}`);
+      if (canvas) drawSpriteGrid(canvas, entry.tileOffsets, spriteCols(entry), Math.ceil(entry.tileOffsets.length / spriteCols(entry)), 3, false);
+    }
+  }
+
+  document.querySelectorAll("#spriteCatalogTabs .pill-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("#spriteCatalogTabs .pill-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      activeSpriteKind = tab.dataset.kind;
+      renderSpriteCards();
+    });
+  });
+
   redrawMapTileBanks();
   renderCards();
+  renderSpriteCards();
 }

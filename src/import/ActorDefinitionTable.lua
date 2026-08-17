@@ -90,6 +90,20 @@
 -- field semantics* (all 24 bytes of both record types beyond the 2
 -- currently-decoded fields) and the exact RNG -> index derivation.
 
+-- SPRITE PIXEL SOURCE FOUND (2026-08-17, direct user instruction
+-- "versuche mal über einen ähnlichen hebel wie bei den tiles alle npc,
+-- boss und monstersprites zu extrahieren"): every record's own bytes
+-- [2..7] are a real "outer sprite record" (`readRecord`'s own
+-- `spriteSource` field) feeding a general ROM->VRAM sprite-tile-copy
+-- formula -- see `SpriteTileFormula.lua`'s own doc comment for the full
+-- disassembly/live-validation. This is a DIFFERENT question from the
+-- `spritePointer`/`spriteSubRecord` mechanism above (which OAM slots an
+-- entity's sprite occupies on screen) -- this one answers WHICH REAL
+-- ROM BYTES fill them. Live-validated exact against characterA/
+-- characterB (both all 16 real tiles). `MonsterDefinitionTable.lua` is
+-- the sibling table for monsters/bosses (bank 4, a separate 24-byte-
+-- stride table, same outer-record shape at a different byte offset).
+
 local ActorDefinitionTable = {}
 
 local BANK = 3
@@ -133,12 +147,17 @@ local function inBankedWindow(cpuAddr)
 end
 
 --- Reads the raw 24-byte outer record at table index `index` (0-based).
--- Returns the raw bytes plus the two currently-understood fields:
+-- Returns the raw bytes plus the currently-understood fields:
 -- `allocParam` (byte[0], passed as `C` into the real `$0A74` entity
--- allocator) and `spritePointer` (bytes[8..9], little-endian CPU
--- address of the record's own sprite sub-record, same bank). All other
--- bytes are real ROM data but NOT decoded -- available only inside
--- `raw`, honestly left uninterpreted rather than guessed at.
+-- allocator), `spritePointer` (bytes[8..9], little-endian CPU address
+-- of the record's own OAM-arrangement sub-record, same bank -- WHICH
+-- on-screen tile slots this entity uses, see `readSpriteSubRecord`),
+-- and `spriteSource` (bytes[2..7], the real ROM->VRAM sprite-tile
+-- SOURCE formula's own "outer record" -- WHICH raw ROM pixel bytes fill
+-- them, see `SpriteTileFormula.lua`'s own doc comment for the full
+-- derivation and live-validation). All other bytes are real ROM data
+-- but NOT decoded -- available only inside `raw`, honestly left
+-- uninterpreted rather than guessed at.
 function ActorDefinitionTable.readRecord(romData, index)
   local off = fileOffset(BANK, TABLE_BASE_CPU) + index * RECORD_SIZE
   local raw = romData:sub(off + 1, off + RECORD_SIZE)
@@ -156,7 +175,31 @@ function ActorDefinitionTable.readRecord(romData, index)
     -- other record (see `TABLE_COUNT`'s doc comment; index 0 is the
     -- one currently-known case).
     anomalous = not inBankedWindow(spritePointer),
+    -- Real "outer sprite record" (2026-08-17, see SpriteTileFormula.lua)
+    -- -- bytes[2..7] of this SAME 24-byte row, not a separate pointer
+    -- chase. Live-validated exactly against BOTH characterA (index 121)
+    -- and characterB (index 99)'s own already-known real tileOffsets,
+    -- all 16 tiles each.
+    spriteSource = {
+      dest0 = raw:byte(3),
+      count = raw:byte(4),
+      cByte = raw:byte(5),
+      kindByte = raw:byte(6),
+      innerPtr = raw:byte(7) + raw:byte(8) * 256,
+      bank = 8 + math.floor(raw:byte(6) / 64),
+    },
   }
+end
+
+--- Resolves a record's own `spriteSource` (see `readRecord`) into the
+-- full, ordered list of real ROM file offsets for every raw GFX-tile
+-- this entity's sprite actually uses -- no live OAM capture needed,
+-- see `SpriteTileFormula.lua`'s own doc comment for the formula and its
+-- live validation. `tableBank` defaults to this module's own `BANK`
+-- (3) since the outer record's `innerPtr` is a same-bank pointer.
+function ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
+  local SpriteTileFormula = require("src.import.SpriteTileFormula")
+  return SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
 end
 
 --- Reads every real record across the table's own measured extent
