@@ -3354,26 +3354,25 @@ RomProfiles.PROFILES = {
       unknownRoomACandidates = {
         status = "VERIFIED (all 6 rooms render as real, coherent dungeon art -- see tools/graphics/render_unknown_room_a.py). " ..
           "Its own metatileTableFileOffset is confirmed correct for unknownRoomA specifically (roomSelector 8-13) -- the " ..
-          "320-room catalog now uses genericCatalogMetatileTableFileOffset instead, see the UPGRADED doc comment above (2026-08-14).",
+          "320-room catalog now uses genericCatalogMetatileTableFileOffset instead, see the UPGRADED doc comment above.",
         metatileTableFileOffset = 0x20938, -- bank 8, CPU $4938 (already-found real unknownRoomA metatile table)
         bank5PointerTableFileOffset = 0x14004, -- already-VERIFIED mapTable.pointerTableFileOffset
         bank5BankFileStart = 0x14000,          -- already-VERIFIED mapTable.bankFileStart
         rleLength = 3,                          -- bank 5's own established header rleLength (MapTable.lua)
-        -- NOT RE-DERIVED, NEWLY FLAGGED (2026-08-17): this value was
-        -- always a direct reuse of `mapTable`'s own project-wide
-        -- constant, never independently confirmed for THIS specific
-        -- room family (roomSelector 8-13) on its own terms -- the
-        -- "VERIFIED... coherent dungeon art" status above only ever
-        -- meant "not noise," the same weaker standard `mapTable`'s own
-        -- now-corrected value used to rely on. Now that the real,
-        -- code-derived formula is known (see `mapTable`'s own dated
-        -- correction above), roomSelector 8-13's real `$D390:$D391`
-        -- (`=0x7000`) predicts `0x33000`, not `0x32000` -- tried both
-        -- this pass, genuinely inconclusive (both render equally
-        -- plausible, structurally-identical dungeon art, no decisive
-        -- signal the way bank 5/6/7's own correction had). Left
-        -- UNCHANGED rather than force-picking one guess over another;
-        -- a real, honest, newly-opened question, not silently ignored.
+        -- NOT RE-DERIVED, NEWLY FLAGGED: this value was always a direct
+        -- reuse of mapTable's own project-wide constant, never
+        -- independently confirmed for this specific room family
+        -- (roomSelector 8-13) on its own terms -- the "VERIFIED...
+        -- coherent dungeon art" status above only ever meant "not
+        -- noise," the same weaker standard mapTable's own now-
+        -- corrected value used to rely on. Now that the code-derived
+        -- formula is known (see mapTable's own dated correction
+        -- above), roomSelector 8-13's real $D390:$D391 (=0x7000)
+        -- predicts 0x33000, not 0x32000 -- tried both this pass,
+        -- genuinely inconclusive (both render equally plausible,
+        -- structurally-identical dungeon art, no decisive signal the
+        -- way bank 5/6/7's own correction had). Left unchanged rather
+        -- than force-picking one guess over another.
         tilesetFileOffset = 0x32000,             -- MapTable.lua's own already-VERIFIED formula; tileId*16 bytes/tile
         metatileGridRows = 8,
         metatileGridCols = 10,
@@ -3382,59 +3381,53 @@ RomProfiles.PROFILES = {
         -- real selectors, each a distinct, real dungeon room.
         rooms = { 8, 9, 10, 11, 12, 13 },
       },
-      -- The 320-room catalog's own DEFAULT metatile table (2026-08-14,
-      -- "gehe dem map header hinweis nach") -- see the UPGRADED doc
-      -- comment above `unknownRoomACandidates` for the full chain of
-      -- evidence. Derivation, every link independently real:
-      --   1. roomSelectorTable's own record 0 (bank5's "map") and
-      --      record 1 (bank6's "map") both have real `tileSourcePointer`
-      --      = $40B0 (the SAME already-known real value `startRoom`'s
-      --      own doc comment cites).
-      --   2. Resolved via the ALREADY-VERIFIED bank8-relative formula
-      --      (bank8Base + (tileSourcePointer - 0x4000), the same
-      --      formula independently confirmed for willyRoom/unknownRoomA/
-      --      unknownRoomB): 0x20000 + (0x40B0-0x4000) = 0x200B0.
+      -- The 320-room catalog's own default metatile table (same day,
+      -- following the map-header hint) -- see the UPGRADED doc comment
+      -- above unknownRoomACandidates for the full chain of evidence.
+      -- Derivation, every link independently real:
+      --   1. roomSelectorTable's record 0 (bank5's "map") and record 1
+      --      (bank6's "map") both have real tileSourcePointer = $40B0
+      --      (the same value startRoom's own doc comment cites).
+      --   2. Resolved via the verified bank8-relative formula
+      --      (bank8Base + (tileSourcePointer - 0x4000), independently
+      --      confirmed for willyRoom/unknownRoomA/unknownRoomB):
+      --      0x20000 + (0x40B0-0x4000) = 0x200B0.
       --   3. Cross-checked against the external FFA-Disassembly
-      --      project's own documented US-ROM architecture: one
-      --      metatile table per MAP, shared by every room in it, no
-      --      per-room override documented -- roomSelector 0/1 are each
-      --      their own "map" (VERIFIED via `resolveMapRoomPointersFile
-      --      Offset`'s own exact byte match to mapTable's/mapTable
-      --      Bank6's real headers), so this is the correct default for
-      --      literally every one of their 320 real rooms.
-      --   4. Directly visually re-checked (2026-08-14): 12 widely-
-      --      spread bank-5 records (0, 15-17, 31-32, 63-64, 128, 200,
-      --      240, 255) all show the SAME recurring door-arch symbol and
-      --      dotted-floor pattern with this table -- a real, internally
-      --      consistent visual vocabulary across the WHOLE 16x16 grid,
-      --      not present with the old `unknownRoomACandidates`-borrowed
-      --      placeholder.
-      -- HONEST STATUS: a real, structurally-justified, externally-
-      -- corroborated derivation -- NOT independently ground-truth-
-      -- verified the way `unknownRoomACandidates`'s own table is (no
-      -- live gameplay reaches ANY of these 320 rooms, so there is no
-      -- way to confirm this the way willyRoom's collision/floor data
-      -- was confirmed). Upgraded from "unverified placeholder, likely
-      -- wrong" to "best current derivation," not to "proven."
+      --      project's documented US-ROM architecture: one metatile
+      --      table per map, shared by every room in it, no per-room
+      --      override documented -- roomSelector 0/1 are each their own
+      --      "map" (verified via resolveMapRoomPointersFileOffset's
+      --      exact byte match), so this is the correct default for all
+      --      320 of their rooms.
+      --   4. Directly visually re-checked: 12 widely-spread bank-5
+      --      records (0, 15-17, 31-32, 63-64, 128, 200, 240, 255) all
+      --      show the same recurring door-arch symbol and dotted-floor
+      --      pattern with this table -- a consistent visual vocabulary
+      --      across the whole 16x16 grid, not present with the old
+      --      unknownRoomACandidates-borrowed placeholder.
+      -- HONEST STATUS: a structurally-justified, externally-
+      -- corroborated derivation -- not independently ground-truth-
+      -- verified the way unknownRoomACandidates's own table is (no
+      -- live gameplay reaches any of these 320 rooms). Upgraded from
+      -- "unverified placeholder, likely wrong" to "best current
+      -- derivation," not to "proven."
       --
-      -- RE-CHECKED, NOT CHANGED (2026-08-17, direct user report "raum 7
-      -- 8 und 9 haben die falschen tilesets", confirmed based on real
-      -- first-hand ROM knowledge): fetched the external FFA-
-      -- Disassembly project's own devlog directly this pass (not just
-      -- cited from memory) -- re-confirms link 3 above verbatim ("one
-      -- metatile table per MAP... no per-room override documented"),
-      -- and confirms there are 16 real maps total, matching this ROM's
-      -- own 16-entry `roomSelectorTable` 1:1. Also checked bank 5's own
-      -- 256-record table for a hidden internal map boundary near
-      -- records 220/236/237 specifically -- none found (pointers
-      -- monotonic throughout, no tile-ID regime shift). Tried EVERY
-      -- other known real candidate pointer for those 3 records --  all
-      -- decode to plausible-looking art, none definitively better
-      -- except one suggestive (not proven) lead: `$46B0` (willyRoom
-      -- family) produces richer, more distinct results for all 3. This
-      -- default stays unchanged (no proof either replacement is
-      -- right) -- see `seventhRoom`'s own doc comment and events.md's
-      -- dated entry for the full trace.
+      -- RE-CHECKED, NOT CHANGED (direct user report that rooms 7, 8,
+      -- and 9 have the wrong tilesets, confirmed based on real first-
+      -- hand ROM knowledge): fetched the external FFA-Disassembly
+      -- project's own devlog directly this pass (not cited from
+      -- memory) -- re-confirms link 3 above verbatim, and confirms
+      -- there are 16 real maps total, matching this ROM's 16-entry
+      -- roomSelectorTable 1:1. Also checked bank 5's 256-record table
+      -- for a hidden internal map boundary near records 220/236/237 --
+      -- none found (pointers monotonic throughout, no tile-ID regime
+      -- shift). Tried every other known candidate pointer for those 3
+      -- records -- all decode to plausible-looking art, none
+      -- definitively better except one suggestive (not proven) lead:
+      -- $46B0 (willyRoom family) produces richer, more distinct results
+      -- for all 3. This default stays unchanged (no proof either
+      -- replacement is right) -- see seventhRoom's own doc comment and
+      -- events.md's dated entry for the full trace.
       genericCatalogMetatileTableFileOffset = 0x200B0, -- bank 8, CPU $40B0 (roomSelector 0/1's own real tileSourcePointer)
     },
 
@@ -3477,33 +3470,30 @@ RomProfiles.PROFILES = {
       verifiedExample = { rowIndex = 19, fileOffset = 0x10D18, atk = 8 },
     },
 
-    -- FOUND, 2026-08-17 (external-reference-driven search -- see
+    -- FOUND (external-reference-driven search -- see
     -- src/import/EnemyStatTable.lua's own doc comment for the full
     -- evidence trail): 21 real records, 24-byte stride, bank 4. Every
-    -- record's own speed/hpBase/xp/gold bytes matched the US "Final
-    -- Fantasy Adventure" disassembly's own documented boss list
-    -- BYTE-FOR-BYTE (all 21 bosses' 4-byte signatures found at this
-    -- exact stride) -- this EU localization kept the same combat
-    -- balance numbers as the US cartridge. Independently cross-checked
-    -- against THIS project's own EARLIER, unrelated live-CPU-trace
-    -- finding (`Enemy.lua`'s `HP_INIT_TRACE_NOTE`): file `0x108ba`
-    -- (this table's row 16 `hpBase` byte) already had a real, live-
-    -- confirmed role in the enemy HP-randomization formula, landing on
-    -- the exact same byte this external-reference search found
+    -- record's speed/hpBase/xp/gold bytes matched the US "Final Fantasy
+    -- Adventure" disassembly's documented boss list byte-for-byte (all
+    -- 21 bosses' 4-byte signatures found at this exact stride) -- this
+    -- EU localization kept the same combat balance numbers as the US
+    -- cartridge. Independently cross-checked against this project's own
+    -- earlier, unrelated live-CPU-trace finding (Enemy.lua's
+    -- HP_INIT_TRACE_NOTE): file 0x108ba (this table's row 16 hpBase
+    -- byte) already had a confirmed role in the enemy HP-randomization
+    -- formula, landing on the exact same byte this search found
     -- independently.
     --
-    -- SAME TABLE, found again 2026-08-17 (same day): this is the exact
-    -- same table as `messageTextPointer` below's own "ALREADY-known
-    -- message-settings record base/stride (CPU `$4739`/file `0x10739`,
-    -- 24 bytes/record)" -- itself reused from an even EARLIER
-    -- (2026-08-15) investigation (events.md's "Second boss
-    -- investigation") that independently found a real "species byte"
-    -- field at this table's own `+5` and 5 real sibling rows (3, 5,
-    -- 10, 16, 18) sharing it -- all 5 confirmed byte-for-byte against
-    -- THIS table too. See EnemyStatTable.lua's own doc comment for the
-    -- full reconciliation (field renamed `projectileType` ->
-    -- `speciesByte` to match that earlier, independently-verified
-    -- name).
+    -- SAME TABLE, found again (same day): this is the exact same table
+    -- as messageTextPointer below's own already-known message-settings
+    -- record base/stride (CPU $4739/file 0x10739, 24 bytes/record) --
+    -- itself reused from an even earlier investigation (events.md's
+    -- "Second boss investigation") that independently found a "species
+    -- byte" field at this table's own +5 and 5 sibling rows (3, 5, 10,
+    -- 16, 18) sharing it -- all 5 confirmed byte-for-byte against this
+    -- table too. See EnemyStatTable.lua's own doc comment for the full
+    -- reconciliation (field renamed projectileType -> speciesByte to
+    -- match that earlier, independently-verified name).
     enemyStatTable = {
       status = "VERIFIED (table location + stride + speed/hpBase/xp/gold/speciesByte fields, via exact external-reference byte match AND an independent, earlier internal investigation); other fields real but unconfirmed against this EU ROM",
       bank = 4,
