@@ -15,24 +15,15 @@
 
 local RomProfiles = {}
 
--- `unknownRoomA`'s real 6 rooms (roomSelectors 8-13, see
--- `roomFloorLayoutPipeline.unknownRoomACandidates` below for the full
--- VERIFIED reasoning chain) -- BUILT IN as real, walkable content
--- (2026-08-12, direct instruction "du kannst das gerne einbauen").
--- Generated once via a one-off script chaining this project's own
--- already-VERIFIED formulas (bank5 record N = roomSelector N's layout
--- stream; `RoomFloorLayout.decodeLayoutStream`/`readMetatile`;
--- `tilesetFileOffset=0x32000+tileId*16`) -- the exact same pipeline
--- `tools/graphics/render_unknown_room_a.py` already used to render and
--- visually confirm these rooms, just emitting Lua table literals
--- instead of PNGs. All 6 rooms share one tileset region, so both
--- lookup tables below are defined ONCE and referenced by all 6 flat
--- `graphics.unknownRoomA_<n>` entries (see `graphics` table further
--- down) -- avoids repeating an 82-entry table 6 times over.
+-- unknownRoomA's real 6 rooms (roomSelectors 8-13, see
+-- `roomFloorLayoutPipeline.unknownRoomACandidates` below) -- built from
+-- the already-verified pipeline (bank5 record N = roomSelector N's
+-- layout stream; `RoomFloorLayout.decodeLayoutStream`/`readMetatile`;
+-- `tilesetFileOffset=0x32000+tileId*16`). All 6 share one tileset, so
+-- both lookup tables below are defined once and shared.
 --
 -- `UNKNOWN_ROOM_A_TILE_OFFSETS`: real per-tile ROM byte offsets, same
--- convention/formula as every other room's own `tileOffsets`
--- (`0x32000 + tileId*16`, MapTable.lua's own already-VERIFIED formula).
+-- formula as every other room's `tileOffsets` (`0x32000 + tileId*16`).
 local UNKNOWN_ROOM_A_TILE_OFFSETS = {
   [0] = 0x32000, [1] = 0x32010, [2] = 0x32020, [3] = 0x32030, [4] = 0x32040,
   [5] = 0x32050, [6] = 0x32060, [7] = 0x32070, [18] = 0x32120, [19] = 0x32130,
@@ -52,52 +43,18 @@ local UNKNOWN_ROOM_A_TILE_OFFSETS = {
   [204] = 0x32CC0, [205] = 0x32CD0, [206] = 0x32CE0, [207] = 0x32CF0, [212] = 0x32D40,
   [213] = 0x32D50, [254] = 0x32FE0,
 }
--- `UNKNOWN_ROOM_A_FLOOR_TILE_IDS`: HYPOTHESIS, but real-data-grounded
--- (a materially stronger basis than the pure visual "repeated tile =
--- floor" guess used for e.g. `graphics.fourthRoom.floorTileIds`): each
--- metatile record's own real 5th byte (`collision`, per
--- `RoomFloorLayout.readMetatile`'s already-VERIFIED 6-byte-record
--- shape) was read for every one of this tile ID's real usages across
--- all 6 rooms. Real observed values: 0x00, 0x08, 0x30, 0x31 -- read as
--- a bitmask, these cluster cleanly: 0x30/0x31 (upper nibble non-zero)
--- fall exactly on the room's own border-wall tiles (23-26) and solid
--- feature/decoration blocks (torches, pillars) -- consistent with bits
--- 4-7 being a real N/E/S/W-style directional block mask (0x10/0x20/
--- 0x40/0x80 per edge, 0x30 = two edges blocked, matching a corner/
--- border piece exactly, the FFA-Disassembly documented format's own
--- "$10/$20/$30/$40/$80/$C0" values). 0x00 and 0x08 (upper nibble ZERO
--- in both) fall on the room's own large open floor-mesh areas -- treated
--- as the SAME "not blocked" class; bit 3 (0x08) is presumably a
--- separate, non-blocking flag (material/texture variant or an unrelated
--- trigger bit), not decoded further here. Rule: floor iff EVERY
--- observed collision byte for this tile ID has upper nibble 0x00.
--- Genuinely mixed tiles (27-30: both 0x08 and 0x30 observed across
--- different metatile usages) are treated conservatively as NOT floor --
--- never risk making a real wall walkable. Cross-checked directly
--- against `fourthRoom`'s own real, LIVE-MOVEMENT-VERIFIED case (held UP
--- in-game, watched the player walk freely through tiles this exact rule
--- calls "floor") -- that check passed.
---
--- CORRECTED (2026-08-12, same day, direct follow-up while generalizing
--- this same rule to OTHER rooms -- see `RoomFloorLayout.lua`'s own
--- `COLLISION_WALL_MASK` doc comment for the full story): this bitmask
--- rule does NOT hold universally across the whole ROM -- running it
--- against willyRoom's own real metatile stream (a THIRD, independent
--- room, with its own live-verified real floor) finds willyRoom's own
--- checkerboard floor (tiles 151-154, extensively gameplay-tested
--- throughout this whole project) has collision `0x30` everywhere it
--- appears -- the OPPOSITE of what this rule would predict. So this
--- entry's own bit-level interpretation is confirmed ONLY for
--- fourthRoom's own live-tested case, extrapolated here to a genuinely
--- DIFFERENT, independent metatile table (unknownRoomA's own, at
--- `0x20938`, not fourthRoom's) with no live-movement check possible (no
--- live gameplay trigger exists into this area) -- a real, concrete
--- reason this stays HYPOTHESIS rather than VERIFIED, not a formality.
--- Most likely explanation: the collision byte's bit meanings are set
--- per metatile TABLE, not fixed ROM-wide (ordinary for a hand-authored,
--- per-map collision scheme) -- unknownRoomA's own table could
--- plausibly follow either convention, and this project has no way to
--- tell which without a live trigger that doesn't exist.
+-- `UNKNOWN_ROOM_A_FLOOR_TILE_IDS`: HYPOTHESIS, but data-grounded --
+-- each metatile's real collision byte (`RoomFloorLayout.readMetatile`'s
+-- 5th byte) was checked across all 6 rooms. Observed values 0x00/0x08
+-- (upper nibble zero) cluster on open floor; 0x30/0x31 (upper nibble
+-- set, an N/E/S/W block mask) cluster on walls/decoration. Rule: floor
+-- iff every observed byte for that tile ID has upper nibble 0x00;
+-- mixed tiles treated conservatively as NOT floor. Confirmed live
+-- against fourthRoom's own tested floor, but does NOT hold for
+-- willyRoom's checkerboard floor (same bit pattern reads as 0x30
+-- there) -- the meaning is likely set per metatile table, not ROM-wide,
+-- so this stays a hypothesis for unknownRoomA specifically (no live
+-- trigger exists to verify it directly).
 local UNKNOWN_ROOM_A_FLOOR_TILE_IDS = {
   [18] = true, [33] = true, [35] = true, [36] = true, [37] = true, [38] = true,
   [39] = true, [40] = true, [41] = true, [42] = true, [43] = true, [48] = true,
@@ -280,94 +237,24 @@ RomProfiles.PROFILES = {
         notes = "Preceded by German umlaut glyphs (AeOeUe/aeoeuess) and " ..
           "UI icon tiles around 0x22900-0x22B00; byte-value-to-tile-index " ..
           "encoding used by actual dialogue text is still UNKNOWN.",
-        -- VERIFIED (2026-08-09) real period/hyphen glyph tiles -- direct
-        -- fix for a real gap (user report: "es fehlen die satzzeichen im
-        -- scroll text, zb die punkte"): Font.lua only ever built quads
-        -- for `TextDecoder.MAIN_GLYPHS`'s 64 characters, so `.`/`-`
-        -- (real, VERIFIED `TextDecoder` bytes `0xF0`/`0xF2` -- see
-        -- text.md) silently had no quad to draw and were skipped, even
-        -- though `TextDecoder.decodeString` itself decoded them
-        -- correctly the whole time -- a rendering gap, not a decode
-        -- gap. Offsets found via the same linear relationship this
-        -- pass established for the name-entry keyboard (`0x22900 +
-        -- (tileId-0x10)*16`, cross-checked against this exact font
-        -- block's own already-VERIFIED fileOffset) and confirmed
-        -- visually (decoded pixel grids: tile 0x70 is a small period
-        -- dot, tile 0x72 a horizontal hyphen bar).
+        -- Punctuation glyphs missing from Font.lua's original 64-char
+        -- quad set -- TextDecoder already decoded these bytes correctly,
+        -- Font just never drew them (a rendering gap, not a decode gap).
+        -- Offsets follow `fileOffset + tileId*16`, tileId = 64 + (byte -
+        -- 0xF0); confirmed by decoding each 8x8 pixel grid directly.
+        -- Tile 0x41 (byte 0xF1, unassigned) shows a plausible quote-pair
+        -- glyph but no ROM text byte is confirmed to map there yet, so
+        -- it's left out rather than guessed.
         extraGlyphs = {
           ["."] = 0x22F00, -- tile 0x70, TextDecoder.PERIOD_BYTE (0xF0)
           ["-"] = 0x22F20, -- tile 0x72, TextDecoder.HYPHEN_BYTE (0xF2)
-          -- Found decoding the real "Kaempfe!" battle-intro textbox (see
-          -- `battleIntro` below) -- same linear formula, same visual
-          -- confirmation method (decoded pixel grid is a clean "!").
           ["!"] = 0x22F30, -- tile 0x73, TextDecoder.EXCLAMATION_BYTE (0xF3)
-          -- VERIFIED (2026-08-12, quick win "fehlende Font-Glyphen ?
-          -- und : ergänzen"): `TextDecoder.lua`'s own `QUESTION_BYTE`
-          -- (0xF4) and `COLON_BYTE` (0xF5) were already VERIFIED as
-          -- real decoded characters since 2026-08-10 -- `decodeByte`
-          -- has returned literal "?"/":" for them the whole time -- but
-          -- neither ever got a `font.extraGlyphs` entry, so `Font:print`
-          -- silently SKIPPED both everywhere they appeared (advancing
-          -- the cursor with nothing drawn, same class of gap the
-          -- period/hyphen/exclamation entries above already fixed once
-          -- each). Caught live during quick win #3's own screenshot
-          -- verification (2026-08-12): the "Willy:" speaker prefix
-          -- rendered as "Willy" with a blank gap where the colon should
-          -- be.
-          --
-          -- Found via the exact SAME linear formula already established
-          -- for `.`/`-`/`!` above (`fileOffset = fontInfo.fileOffset +
-          -- tileId*16`) -- those three already fix `tileId = 64 + (byte
-          -- - 0xF0)`: PERIOD (0xF0) -> tile 64 (0x40), HYPHEN (0xF2) ->
-          -- tile 66 (0x42), EXCLAMATION (0xF3) -> tile 67 (0x43). Same
-          -- formula predicts QUESTION_BYTE (0xF4) -> tile 68 (0x44) and
-          -- COLON_BYTE (0xF5) -> tile 69 (0x45) -- confirmed by directly
-          -- decoding both raw 16-byte tiles (`tools/graphics/gbtile.py`)
-          -- and eyeballing the resulting 8x8 pixel grid, same method as
-          -- every other glyph in this table:
-          --   tile 0x44 (file 0x22F40):        tile 0x45 (file 0x22F50):
-          --     ..####..                         ........
-          --     .##..##.                         .##.....
-          --     .##..##.                         .##.....
-          --     ....##..                         ........
-          --     ...##...                         ........
-          --     ...##...                         .##.....
-          --     ........                         .##.....
-          --     ...##...                         ........
-          -- -- an unambiguous "?" (hook + dot) and ":" (two stacked
-          -- dots), locked in as an exact-pixel-grid test (see
-          -- `tests/import/rom_profiles_test.lua`).
-          --
-          -- Bonus, NOT resolved here: decoding the immediately-preceding
-          -- gap tile (0x41/file 0x22F10, sitting between PERIOD and
-          -- HYPHEN, corresponding to the never-assigned byte 0xF1) shows
-          -- TWO side-by-side dots (`..##..##` on two rows) -- plausibly
-          -- a double-quote/apostrophe-pair glyph, but no real ROM text
-          -- byte has been confirmed to map to 0xF1 yet, so it stays
-          -- unmapped rather than guessed into `extraGlyphs` on shape
-          -- alone (this project's own "don't fabricate" rule -- a
-          -- genuinely open lead for a future pass, not silently
-          -- dropped). Tile 0x46 (file 0x22F60, the already-flagged
-          -- `0xF6` "numeric value insertion" HYPOTHESIS above) was also
-          -- checked as a negative control: it decodes to a plain
-          -- diagonal line, NOT a punctuation glyph -- consistent with,
-          -- not contradicting, that byte's existing "control code, not
-          -- a printable character" status.
           ["?"] = 0x22F40, -- tile 0x74, TextDecoder.QUESTION_BYTE (0xF4)
           [":"] = 0x22F50, -- tile 0x75, TextDecoder.COLON_BYTE (0xF5)
-          -- Real umlaut/eszett glyphs (2026-08-10, direct user report:
-          -- "es gibt ein problem mit umlauten") -- same linear formula,
-          -- tiles 0x19-0x1F (25-31), immediately preceding the main
-          -- font block. Decoded pixel grids directly confirm the real
-          -- shapes (dots over the letter for each umlaut, the real
-          -- double-loop eszett for ß) -- see TextDecoder.lua's
-          -- UMLAUT_PARTIAL doc comment for the full live cross-check
-          -- (tile 0x1c/28 independently confirmed in "wächst"/"Kräfte",
-          -- tile 0x1e/30 in "berührt"/"überirdi-", both real, decoded
-          -- ROM text, two unrelated words each). Keyed by the same
-          -- UTF-8 byte-escape strings TextDecoder.lua now emits (kept
-          -- as `\ddd` escapes, not raw UTF-8 bytes, so this source
-          -- file's own bytes stay plain ASCII).
+          -- Umlaut/eszett glyphs, tiles 0x19-0x1F, immediately preceding
+          -- the main font block -- keyed by the same UTF-8 byte-escape
+          -- strings TextDecoder.lua emits (kept as \ddd escapes so this
+          -- source file's own bytes stay plain ASCII).
           ["\195\132"] = 0x22990, -- Ä, tile 0x19 (25)
           ["\195\150"] = 0x229A0, -- Ö, tile 0x1a (26)
           ["\195\156"] = 0x229B0, -- Ü, tile 0x1b (27)
@@ -377,35 +264,16 @@ RomProfiles.PROFILES = {
           ["\195\159"] = 0x229F0, -- ß, tile 0x1f (31)
         },
       },
-      -- VERIFIED (2026-08-09) real HUD decoration -- direct fix for a
-      -- named gap (user report: "Poweranzeige fehlt im HUD"). Found by
-      -- finally checking the WINDOW layer, not just the background map:
-      -- live `LCDC` at the real room is `$E5` -- bit 6 set means the
-      -- window uses its OWN separate tilemap (`$9C00`, not the
-      -- background's `$9800`), which this project had never dumped
-      -- before (every prior HUD/room capture only ever read the
-      -- background map). Real `WY`/`WX` = `128`/`7` -- the window starts
-      -- exactly at the HUD strip (screen Y=128, matching this project's
-      -- own `HUD_H`/`PLAY_H` split in Field.lua) and covers full screen
-      -- width. Window tilemap row 1 (screen row 17, the strip below the
-      -- `LP`/`MP`/`G` text row) is `0xF8` once, `0xFA` x16, `0xFE` once,
-      -- then blank -- a start-cap + repeating line-segment + end-cap
-      -- forming a static horizontal rule with an arrowhead, confirmed by
-      -- direct visual comparison against a live mGBA screenshot (a solid
-      -- black line spanning the HUD, arrow pointing right). **Always the
-      -- same 16 segments in every capture taken so far** -- no evidence
-      -- of this being a fillable "gauge" that grows/shrinks with a real
-      -- game value (this project explicitly tested holding the attack
-      -- button for 180 real frames looking for exactly that kind of
-      -- indicator and found nothing -- see attackSwing's doc comment /
-      -- combat.md's "Power gauge" note) -- treated as a static HUD
-      -- decoration, not a meter, unless a future capture shows otherwise.
-      -- HONEST LIMIT: window row 0 (the actual `LP`/`MP`/`G` text row)
-      -- uses a DIFFERENT, not-yet-decoded tile set from the regular
-      -- dialogue font this project's `Font.lua` currently reuses to draw
-      -- readable-but-not-literal HUD text -- real icon/label tiles
-      -- (rom-map.md's "HPMSGLE/" note) remain unimplemented; only this
-      -- bar (row 1) is added here.
+      -- Real HUD decoration bar, found on the WINDOW layer (`$9C00`
+      -- tilemap, LCDC bit 6, WY/WX=128/7 -- earlier captures only ever
+      -- read the background map and missed it). Row 1 (below the
+      -- LP/MP/G text) is a start-cap + 16 repeating segments + end-cap,
+      -- confirmed against a live screenshot. Always the same 16
+      -- segments in every capture -- no evidence of a fillable gauge
+      -- (tested holding attack for 180 frames, found nothing, see
+      -- combat.md's "Power gauge" note); treated as static decoration.
+      -- Row 0's own LP/MP/G icon/label tiles are a separate, still-
+      -- undecoded tile set -- not implemented here.
       hudBar = {
         status = "VERIFIED",
         tileOffsets = { startCap = 0x22780, segment = 0x227A0, endCap = 0x227E0 },
@@ -485,13 +353,9 @@ RomProfiles.PROFILES = {
           [223] = 0x2CBD0, [224] = 0x2CAE0, [225] = 0x2CAF0, [227] = 0x2CBF0,
           [255] = 0x227F0,
           -- [128] (0x80) deliberately absent -- confirmed blank (all-
-          -- zero pattern, the screen's own background fill), rendered as
-          -- empty space, not a real offset. [200] and [224] share one
-          -- real ROM offset (0x2CAE0) -- both live VRAM patterns matched
-          -- that single bank-11 location exactly, not a coincidence
-          -- (unlike the two bank-1 stragglers this same search initially
-          -- turned up for them, discarded for being outside every other
-          -- confirmed title-screen tile's bank-8/bank-11 pattern).
+          -- zero fill), rendered as empty space, not a real offset.
+          -- [200]/[224] share one real ROM offset (0x2CAE0) -- both live
+          -- VRAM patterns matched that single bank-11 location exactly.
         },
         -- 18 rows x 20 cols, the full LCD (no HUD split -- this isn't a
         -- gameplay room). Row-major, values are the VRAM tile IDs used
@@ -516,138 +380,66 @@ RomProfiles.PROFILES = {
           {69,66,60,62,71,76,62,61,127,77,72,127,71,66,71,77,62,71,61,72},
           {127,255,127,49,57,57,49,127,49,57,57,51,127,76,74,78,58,75,62,127},
         },
-        -- Real menu cursor: OAM sprite, NOT part of the static tilemap
-        -- above (confirmed via live OAM dump at the title screen, not
-        -- guessed). 8x16 mode (same LCDC as everywhere else in this
-        -- profile) so each of the cursor's 2 side-by-side OAM entries is
-        -- itself 2 stacked tiles (top real tile + its N+1 partner); the
-        -- partner tile offsets were found the same way as every other
-        -- 8x16 sprite pair in this project (exact byte search for the
-        -- live pattern, not arithmetic -- these are not evenly strided).
-        -- Same shape/ordering convention as `playerSprite`/`enemySprite`
-        -- below (plain array, row-major top-left/top-right/bottom-left/
-        -- bottom-right -- see CreatureSprite.fromOffsets), not a
-        -- tile-ID-keyed map like `tileOffsets` above. Reuses tile IDs
-        -- 0x12/0x13/0x14/0x15 -- the SAME IDs this project's very first
-        -- (mistaken) ground-truth pass had misidentified as "the player
-        -- sprite" before the real player (tiles 0x00/0x02) was found;
-        -- harmless coincidence, real here.
+        -- Real menu cursor: OAM sprite, not part of the static tilemap
+        -- (confirmed via live OAM dump). 8x16 mode, so each of its 2
+        -- side-by-side OAM entries is 2 stacked tiles. Reuses tile IDs
+        -- 0x12-0x15 (coincidentally the same IDs an early, since-
+        -- corrected pass had misidentified as "the player sprite").
         cursorSprite = {
           cols = 2,
           rows = 2,
           tileOffsets = { 0x21F60, 0x21F70, 0x21F80, 0x21F90 },
         },
-        -- Captured OAM: slot 2 (y=120,x=16,tile=0x12) + slot 3
-        -- (y=120,x=24,tile=0x14) -> screen position (8,104), aligned
-        -- with the "Weiterspielen" row in this captured frame. The menu
-        -- has two rows ("Neues Spiel" row 11, "Weiterspielen" row 13 in
-        -- `grid` above, 8px apart) -- `rowY` gives both real on-screen Y
-        -- positions the cursor sprite occupies (index 1 = "Neues Spiel",
-        -- index 2 = "Weiterspielen").
+        -- Captured OAM position, aligned with the "Weiterspielen" row.
+        -- `rowY` gives both real Y positions (index 1 = "Neues Spiel",
+        -- index 2 = "Weiterspielen", 8px apart, per `grid` above).
         cursor = {
           screenX = 8,
           rowY = { 88, 104 },
         },
       },
-      -- VERIFIED (2026-08-09) real intro-text scroll -- direct
-      -- implementation of a detailed user-supplied reference description
-      -- of the real boot flow ("Neues Spiel" -> intro scroll -> name
-      -- entry -> first battle -> ... -> Willy). Confirmed live: pressing
-      -- UP then A from the title screen (real default is "Weiterspielen"
-      -- -- see TitleScreen.lua's corrected doc comment) makes the
-      -- background scroll continuously upward (`SCY` increases ~1 unit
-      -- every ~5.2 real frames, `SCX` stays 0) while `BGP` shifts to a
-      -- lighter ramp (`$40`) for the duration, reverting to the normal
-      -- `$E4` identity ramp once the scroll ends -- a real, deliberate
-      -- palette effect, not this project's invention, though its exact
-      -- per-row flicker timing is simplified here to "light throughout,
-      -- normal after" rather than replicated frame-for-frame.
+      -- Real intro-text scroll after "Neues Spiel": background scrolls
+      -- continuously upward (SCY ~1 unit/5.2 frames) with a lighter BGP
+      -- ramp during the scroll, reverting after. Scrolled content is the
+      -- same background tilemap as the title screen, extended with the
+      -- intro story text.
       --
-      -- The scrolled content is the SAME background tilemap the title
-      -- screen uses, extended: the logo/menu (rows 0-17, unchanged)
-      -- followed by the intro story text, written row-by-row into a
-      -- circular tilemap buffer just ahead of the scroll (a real VRAM
-      -- technique, not replicated bit-for-bit here -- this project lays
-      -- the same real text out as one tall virtual image instead, same
-      -- visual result via a much simpler implementation).
-      --
-      -- `text`: the ACTUAL literal ROM bytes at file offset `0xBED8`,
-      -- decoded through `TextDecoder.decodeString` at runtime (real
-      -- `\n` = the newly-found `TextDecoder.NEWLINE_BYTE`, `0x1A`) --
-      -- NOT a hardcoded Lua string. Found by decoding the real live
-      -- tilemap scroll first (VRAM tile IDs -> the font's own known
-      -- glyph order, tileId+0x80 into the existing dialogue-byte space),
-      -- then searching the ROM file for that exact byte sequence as a
-      -- cross-check -- found verbatim on the first attempt, meaning
-      -- (unlike the still-unsolved "Willy" dialogue elsewhere) THIS
-      -- text is stored as plain literal bytes, not the general dual-
-      -- table compression scheme text.md flags as unsolved.
+      -- `text`: the actual literal ROM bytes at `0xBED8`, decoded via
+      -- `TextDecoder.decodeString` at runtime, not a hardcoded string --
+      -- found by decoding the live tilemap scroll then confirming the
+      -- exact byte sequence in the ROM file (stored as plain literal
+      -- bytes here, unlike the still-unsolved dual-table dialogue text).
       introText = {
         status = "VERIFIED",
         fileOffset = 0xBED8,
-        -- `totalUnits` re-measured more precisely (2026-08-09, second
-        -- pass): cumulative SCY delta from scroll-trigger to the frame
-        -- LCDC's window-enable bit actually reverts (494 units over
-        -- 2503 real frames), not the original short-sample
-        -- extrapolation (475). Intro.lua itself clamps the EFFECTIVE
-        -- scroll shorter than this real measured value -- see its own
-        -- doc comment: the real hardware keeps scrolling ~14 more
-        -- real seconds of blank padding after the last real sentence
-        -- clears the screen, which reads as a stuck/broken screen to a
-        -- player (direct user report) -- this field stays the real,
-        -- fully-measured value; the shortening is Intro.lua's own,
-        -- clearly-documented UX choice, not a correction to this data.
+        -- `totalUnits`: real cumulative SCY delta from scroll-trigger to
+        -- the frame the window-enable bit reverts (494 over 2503 real
+        -- frames). Intro.lua itself clamps the EFFECTIVE scroll shorter
+        -- than this (real hardware keeps scrolling ~14s of blank padding
+        -- after the last sentence, which reads as a stuck screen) -- a
+        -- documented Intro.lua UX choice, not a correction to this data.
         scy = { unitsPerFrame = 494 / 2503, totalUnits = 494 },
       },
-      -- VERIFIED (2026-08-09) real hero/heroine name-entry screens,
-      -- captured live right after the intro scroll: a top window box
-      -- reading "Held" (hero) or "Frau" (heroine, confirmed by the box
-      -- literally changing to that word after confirming the hero name)
-      -- above a bigger bordered box holding an on-screen character-
-      -- selection keyboard, exactly matching the user-supplied reference
-      -- description. Real mechanics confirmed live: the OAM cursor
-      -- (reuses the EXACT SAME sprite as the title screen's menu cursor
-      -- -- same tile IDs 0x12-0x15, same real ROM offsets, see
-      -- `titleScreen.cursorSprite` -- a real, deliberate asset reuse,
-      -- not a coincidence) selects one grid cell per A press, appending
-      -- its glyph after the label text (with a real 2-tile blank gap,
-      -- e.g. "Held  A" -> "Held  AB" -> ...); START confirms and
-      -- advances ONLY once at least one character has been entered
-      -- (confirmed: pressing START on a still-empty name does nothing).
-      -- The long-standing "AAAA" default name this project observed
-      -- elsewhere (rom-map.md, WILLY_DIALOGUE) is now understood, not
-      -- just reported: it is NOT an auto-fill-on-empty default -- it is
-      -- what results from selecting the grid's first cell ('A', where
-      -- the cursor already starts) four times in a row, byte-for-byte
-      -- confirmed by reading WRAM `$D79D-$D7A0` = `0xBA` x4 after doing
-      -- exactly that (0xBA = the same dialogue-byte encoding as regular
-      -- text, `0xB0 + glyphIndex('A')`).
+      -- Real hero/heroine name-entry screens, right after the intro
+      -- scroll: a "Held"/"Frau" label box above a bordered on-screen
+      -- keyboard. The OAM cursor reuses the title screen's own menu-
+      -- cursor sprite (tiles 0x12-0x15). START confirms only once at
+      -- least one character is entered. The long-observed "AAAA" default
+      -- name is explained: it's what selecting the grid's first cell
+      -- ('A', the cursor's start position) four times produces, not an
+      -- auto-fill (confirmed via WRAM `$D79D-$D7A0` = `0xBA` x4).
       --
-      -- `tileset`: ALL tiles this screen needs (letters, digits,
-      -- umlauts, punctuation, AND the window border/corner tiles) live
-      -- in one real, contiguous ROM block -- confirmed by finding the
-      -- border tiles (0x77-0x7E) via live-VRAM-pattern byte search and
-      -- discovering their offsets fall exactly on the same linear
-      -- `0x22900 + (tileId-0x10)*16` relationship the font's own
-      -- already-VERIFIED `fileOffset`/tile-order independently implies
-      -- (cross-checked: tile 0x3A/'A' via this formula lands exactly on
-      -- `font.fileOffset`'s own 'A' glyph offset) -- not a second,
-      -- independently-guessed offset table, the SAME real font block
-      -- this project already uses, just referenced by raw tile ID here
-      -- instead of by character (since several grid cells, like the
-      -- punctuation row, aren't part of `font.rowGlyphs`).
+      -- `tileset`: all tiles this screen needs (letters, digits, umlauts,
+      -- border) live in one contiguous ROM block, the SAME real font
+      -- block `font` above already uses -- confirmed by the border
+      -- tiles (0x77-0x7E) falling on the same `0x22900 + (tileId-0x10)*16`
+      -- relationship as the font's own offsets.
       --
       -- `grid`: the real, live-captured keyboard layout (VRAM tile IDs,
-      -- row-major, 9 columns -- the last 2 rows are 8 wide, real, not a
-      -- truncation bug: 26 letters and 10 digits don't fill a 9-wide
-      -- row evenly). Rows 0-2 = uppercase A-Z, rows 3-5 = lowercase a-z,
-      -- row 6 = punctuation (apostrophe/comma/period confirmed by
-      -- position matching `font.rowGlyphs`; the remaining 5 cells are
-      -- real UI tiles this project hasn't individually named -- rendered
-      -- from their real tile art regardless, not skipped), row 7 =
-      -- digits 0-4 then uppercase AE/OE/UE umlauts, row 8 = digits 5-9
-      -- then lowercase ae/ue/ss umlauts (8 wide) -- this exact grouping
-      -- is what let this project pin down the 3 new uppercase umlaut
+      -- row-major, 9 cols, last 2 rows 8 wide -- real, not truncated:
+      -- 26 letters/10 digits don't fill 9 evenly). Rows 0-2 uppercase
+      -- A-Z, 3-5 lowercase a-z, 6 punctuation, 7-8 digits + umlauts --
+      -- this exact grouping is what pinned down the 3 uppercase umlaut
       -- byte values (see TextDecoder.lua's `UMLAUT_PARTIAL`).
       nameEntry = {
         status = "VERIFIED",
@@ -718,13 +510,10 @@ RomProfiles.PROFILES = {
       -- bytes at file offset `0x346D4`. Box closes ~324 frames after
       -- heroine-confirm (visible ~116 frames total).
       --
-      -- **Real enemy appearance**: the enemy's OAM stays fully hidden
-      -- (parked off-screen, same convention as the attack-swing sprite
-      -- when idle) until ~468 real frames after heroine-confirm, then
-      -- appears already in motion, settling into the SAME real captured
-      -- movement cycle this project already implemented
-      -- (`Enemy.MOVEMENT_CYCLE`) by ~frame 513 -- no distinct "entrance"
-      -- animation found; it simply becomes visible mid-cycle.
+      -- Real enemy appearance: OAM stays fully hidden until ~468 frames
+      -- after heroine-confirm, then appears already in motion, settling
+      -- into the existing `Enemy.MOVEMENT_CYCLE` by ~frame 513 -- no
+      -- distinct entrance animation, it just becomes visible mid-cycle.
       battleIntro = {
         status = "VERIFIED",
         hiddenFrames = 68,
@@ -743,30 +532,13 @@ RomProfiles.PROFILES = {
           holdFrames = 71, -- fully-typed, before the box closes
         },
         postBoxFrames = 144, -- pause after the box closes, before the enemy appears
-        -- VERIFIED (2026-08-09, task P4 continued -- direct follow-up to
-        -- the "real THIRD use of the tile-patch pipeline" trace in
-        -- rom-map.md's "Answered" entry): the real barred-gate open/
-        -- close animation's exact position, tile IDs, and frame timing,
-        -- re-confirmed fresh this pass with a per-frame VRAM sweep
-        -- (not just the tilemap-ID diff the original trace used) --
-        -- `openTileId` below's own live VRAM *pattern* bytes (not just
-        -- its tilemap ID) were captured and cross-checked against the
-        -- ALREADY-known-correct `startRoom.tileOffsets[133]`/`[137]`
-        -- addressing formula (same live-vs-ROM byte match) before being
-        -- trusted -- both matched exactly, ruling out an addressing bug
-        -- as the explanation for `openTileId`'s own surprising content.
-        --
-        -- `openTileId`'s real live VRAM pattern is 16 bytes of `0xFF`
-        -- (2bpp palette index 3, i.e. a SOLID dark tile, not a blank/
-        -- transparent one -- 0x00 would be blank; 0xFF is a real solid
-        -- fill). No single ROM *offset* is recorded for it (unlike every
-        -- other tile in `startRoom.tileOffsets`): the small tile-patch
-        -- blob already found driving this exact animation (ROM file
-        -- offset `0x200B0`, bank 8 -- see rom-map.md) only needs to
-        -- REPOINT tilemap cells to an already-VRAM-resident tile slot to
-        -- produce this effect, not load new pixel data -- so there may
-        -- be no dedicated "source location" to find, only the already-
-        -- resolved live content, which is what's recorded here.
+        -- Real barred-gate open/close animation, position/tile IDs/
+        -- timing confirmed via a per-frame VRAM sweep. `openTileId`'s
+        -- real pattern is 16 bytes of 0xFF (a solid dark tile, not
+        -- blank). No dedicated ROM offset is recorded for it: the tile-
+        -- patch blob driving this (file `0x200B0`, bank 8) just repoints
+        -- tilemap cells to an already-VRAM-resident slot, no new pixel
+        -- data loaded.
         gate = {
           status = "VERIFIED",
           bgRow = 0, bgCol = 8, rows = 4, cols = 4, -- BG tilemap rows0-3, cols8-11
@@ -774,39 +546,16 @@ RomProfiles.PROFILES = {
           openTileId = 149,
           openTilePattern = string.rep("\255", 16), -- real live-captured 2bpp bytes, solid color-index-3
         },
-        -- ADDED (2026-08-12, direct user report after playing the real
-        -- app: "es gibt ein offenen tile in der rechten wand durch der
-        -- der player einläuft das sich danach verschließt" -- exactly
-        -- this): a SECOND, independent real tile-patch mechanic, at the
-        -- courtyard's own RIGHT wall -- the exact spot the player walks
-        -- in through during the walk-in sequence (`walkStartScreenX
-        -- =152`, `playerSprite.screenY=80` -> BG tilemap row 10,
-        -- straddling cols 18-19). This project's own `startRoom.grid`
-        -- had always modeled that spot as permanently solid wall (real
-        -- tiles 128/129/130), so the player visually walked straight
-        -- through it (sprites draw over BG regardless of collision, so
-        -- nothing crashed, it just looked wrong) -- the real ROM
-        -- actually patches in a genuine 2x2 floor-tile opening there
-        -- for the walk-in, then seals it back to the normal wall tiles
-        -- once the player has arrived. Live-captured (mgba, real full
-        -- boot -> title -> name entry -> battle intro, sampling the
-        -- exact BG tilemap cells every real frame): the open state is
-        -- {141,142,142,141} (TL,TR,BL,BR -- both already-real
-        -- `startRoom` floor tiles, same convention as their own real
-        -- interior checkerboard use elsewhere in this room), the closed
-        -- state is {128,129,130,130} (the room's own real border-wall
-        -- tiles). Frame numbers calibrated RELATIVE to this project's
-        -- own already-VERIFIED `hiddenFrames=68` landmark (captured in
-        -- the SAME live run, not assumed): the opening appears 2 real
-        -- frames before the player sprite itself becomes visible
-        -- (hiddenFrames-2), and seals again 117 real frames later
-        -- (hiddenFrames+117) -- comfortably inside the existing
-        -- `settleFrames` pause, well before the "Kaempfe!" textbox
-        -- appears. Slightly less precise than `gate`'s own frame
-        -- numbers (those came from a direct CallTracer/watchpoint trace
-        -- against ROM code; these came from a live BG-tilemap sample
-        -- every frame, cross-calibrated against the `hiddenFrames`
-        -- landmark) but real, live-measured data, not invented.
+        -- Second, independent real tile-patch mechanic (direct user
+        -- report: an open tile in the right wall that closes after the
+        -- player walks through): the courtyard's own right wall, at the
+        -- walk-in spot, patches in a real 2x2 floor opening for the
+        -- walk-in then seals back to the normal wall tiles once the
+        -- player arrives. `startRoom.grid` models that spot as
+        -- permanently solid, so the player used to visually walk
+        -- through un-opened wall. Frame numbers calibrated relative to
+        -- `hiddenFrames` (same live run): opens 2 frames before the
+        -- player sprite appears, seals 117 frames later.
         entranceSeal = {
           status = "VERIFIED",
           bgRow = 10, bgCol = 18, rows = 2, cols = 2, -- BG tilemap row10-11, col18-19
@@ -815,33 +564,25 @@ RomProfiles.PROFILES = {
           closedGrid = { { 128, 129 }, { 130, 130 } },
         },
       },
-      -- Real post-victory scene, traced via direct ROM code tracing per
-      -- explicit user instruction (2026-08-09: "mach mal die scene
-      -- transition... auf basis des codes und moeglichst allgemein"),
-      -- not inferred from visuals -- see docs/reverse-engineering/
+      -- Real post-victory scene, traced directly from ROM code (see
       -- combat.md's "Real post-victory scene transition" entry for the
-      -- full instruction-level trace (ROM addresses, WRAM fields).
+      -- full instruction-level trace).
       --
       -- The real ROM implements this via a general VRAM-write job queue
-      -- (WRAM `$C8E8` array / `$CEE8` count, drained once/frame during
-      -- active display) and a general cursor-relative tile-blit helper
-      -- (`$045D`) -- NOT a hardware palette fade (BGP/OBP/LCDC/WY/WX were
-      -- all watched live across the whole sequence and never changed).
-      -- The "black screen" is a real full tilemap overwrite with the
-      -- blank tile below, applied through that same general queue -- the
-      -- identical mechanism the ROM would use to load any room's tiles,
-      -- not a bespoke fade effect. This project's own renderer doesn't
-      -- need to copy the queue's frame-by-frame timing-safety (a real
-      -- GB PPU-race concern that doesn't apply to a modern Love2D
-      -- redraw) to reproduce the same real on-screen *result* -- see
-      -- `src/app/states/VictorySequence.lua`.
+      -- (WRAM `$C8E8`/`$CEE8`, drained once/frame) and a cursor-relative
+      -- tile-blit helper (`$045D`) -- NOT a hardware palette fade
+      -- (BGP/OBP/LCDC/WY/WX watched live, never changed). The "black
+      -- screen" is a full tilemap overwrite with the blank tile below,
+      -- through that same general queue -- the same mechanism the ROM
+      -- uses to load any room's tiles, not a bespoke fade. This
+      -- project's renderer skips the queue's own frame timing-safety (a
+      -- real GB PPU-race concern that doesn't apply to a Love2D redraw)
+      -- to reproduce the same on-screen result -- see VictorySequence.lua.
       victorySequence = {
         status = "PARTIALLY VERIFIED",
-        -- VERIFIED (2026-08-09): the real blank/background tile the ROM
-        -- fills the tilemap with for the black screen (ROM data table,
-        -- copied via the general VRAM queue to `$9800`, confirmed by a
-        -- live watchpoint: `DE=$8080` written repeatedly -- i.e. tile
-        -- `$80` twice per call).
+        -- Real blank/background tile the ROM fills the tilemap with for
+        -- the black screen (confirmed via a live watchpoint: DE=$8080
+        -- written repeatedly, i.e. tile $80 twice per call).
         wipeBlankTileId = 0x80,
         textbox = {
           border = { topLeft = 0x77, top = 0x78, topRight = 0x79,
@@ -849,69 +590,34 @@ RomProfiles.PROFILES = {
             bottomLeft = 0x7c, bottom = 0x7d, bottomRight = 0x7e },
           framesPerLetter = 5, -- same real cadence as battleIntro's box
         },
-        -- Real text content below is NOT decoded live from a located ROM
-        -- offset -- general dialogue is still real-but-COMPRESSED (see
-        -- docs/reverse-engineering/text.md; same open problem as
-        -- DialogueBox.lua's existing "Willy" lines). Transcribed instead
-        -- from this project's own live VRAM/screenshot capture
-        -- (2026-08-09, `tools/rom/` scratch scripts, see combat.md).
-        -- `%s` = the real player-entered name (see NameEntry.lua).
-        -- Line breaks here are this project's OWN safe re-wrap (kept
-        -- under this box's ~18-char line width for a name up to the
-        -- real VERIFIED `nameEntry.maxNameLength=4`), NOT a literal
-        -- reproduction of the real ROM's own wrap points -- the real
-        -- ROM box also does real mid-word hyphenation (using the
-        -- already-VERIFIED HYPHEN_BYTE, see TextDecoder.lua) which this
-        -- project doesn't reproduce automatically yet (no general word-
-        -- wrap/hyphenation is implemented -- see TextBox.lua's doc
-        -- comment); wrapping at word boundaries instead is an honest,
-        -- readable substitute, not a claim of pixel-exact real wrapping.
-        -- CORRECTED (2026-08-10, direct user report: "die gesammte start
-        -- boss sequence ist noch nicht komplett... der willy dialog ist
-        -- nicht vollstaendig"): a fresh, careful live re-trace (real ROM
-        -- under mgba, NOT this project's own replay -- starting from
-        -- `pre_kaempfe_box.state`, defeating the real boss for real, then
-        -- pacing single real `A` taps with generous typewriter-reveal
-        -- waits between each to avoid the over/under-mashing trap this
-        -- project's own rom-map.md already documented) found the REAL
-        -- first box after the black wipe is directly `storyPages[1]`
-        -- below ("...und viele andere wurden gezwungen...") -- this
-        -- `victoryLine` never appeared at that point. It's real ROM text
-        -- (rom-map.md's own "mashing A... re-triggers a real status
-        -- bubble once the player is actually free" finding independently
-        -- names this exact sentence as something that fires LATER, once
-        -- free-roaming, seemingly from a generic status/flex check, not
-        -- as this cutscene's fixed first page) -- kept here as a real,
-        -- confirmed STRING for whenever that separate trigger gets
-        -- found/wired, but VictorySequence.lua no longer inserts it into
-        -- the fixed intro page list (a real, confirmed-wrong assumption
-        -- corrected, not just "improved").
+        -- Text content below is transcribed from a live VRAM/screenshot
+        -- capture, not decoded from a located ROM offset -- general
+        -- dialogue is still real-but-compressed (see text.md). `%s` =
+        -- the real player-entered name. Line breaks are this project's
+        -- own safe word-boundary re-wrap, not a pixel-exact reproduction
+        -- of the real ROM's own mid-word hyphenated wrapping.
+        -- CORRECTED (direct user report the sequence was incomplete): a
+        -- careful live re-trace found the REAL first box after the
+        -- black wipe is `storyPages[1]` below -- `victoryLine` never
+        -- appears there. It's real ROM text (rom-map.md's own finding
+        -- independently places this sentence as firing LATER, from a
+        -- separate status/flex trigger once free-roaming) -- kept here
+        -- as a confirmed string for whenever that trigger is found, but
+        -- no longer inserted into the fixed intro page list.
         victoryLine = "%s ist ein\ntapferer Kaempfer.",
-        -- REAL ROM SOURCE FOUND (task "komplett autark interpretiert"):
-        -- `tools/rom/dump_strings.py --gaps` found the real byte header
-        -- `04 10 14` (bank 14, file `0x03a1bb`) immediately before this
-        -- exact sentence -- `0x14` is the already-VERIFIED hero-name
-        -- substitution token (see Milestone 6's own doc comment), and
-        -- the text tail decodes CLEANLY (zero digraph exceptions) from
-        -- `0x03a1be` to the real terminator at `0x03a1d1`, byte-exact
-        -- match to the string above
-        -- (with the real umlaut "Kämpfer", not the old ASCII
-        -- "Kaempfer" fallback). `%HERO_NAME%` below is a marker, not a
-        -- real ROM byte -- the caller substitutes the real player-
-        -- entered name for it (same real substitution `0x14` itself
-        -- performs in the ROM's own text engine). HONEST SCOPE: this is
-        -- FORMULA-PROVEN and regression-tested
-        -- (`tests/import/dialogue_text_resolver_test.lua`), not yet
-        -- wired into any live UI trigger -- see this table's own doc
-        -- comment above: no real trigger for showing `victoryLine`
-        -- itself has been found/wired yet, only the formula for
-        -- resolving its real text once one is.
+        -- Real ROM source found: `dump_strings.py --gaps` found the real
+        -- byte header `04 10 14` (bank 14, file `0x03a1bb`) immediately
+        -- before this sentence -- `0x14` is the hero-name substitution
+        -- token -- and the text tail decodes cleanly from `0x03a1be` to
+        -- the real terminator at `0x03a1d1`, byte-exact match (with the
+        -- real umlaut "Kämpfer"). `%HERO_NAME%` is a marker the caller
+        -- substitutes, not a real ROM byte. Formula-proven and
+        -- regression-tested, not yet wired into any live UI trigger.
         victoryLineSegments = {
           { literal = "%HERO_NAME%" },
           { fromOffset = 0x03a1be, toOffsetExclusive = 0x03a1d1 }, -- real terminator (0x00) sits at 0x03a1d1
         },
-        -- Re-traced live (see `victoryLine`'s own doc comment above for
-        -- the full method). Found TWO real issues with the previous
+        -- Re-traced live. Found two real issues with the previous
         -- single-page version below: (1) it silently stopped the
         -- sentence early, at "...jeden Tag zu kaempfen." -- the real
         -- ROM's own box continues onto A SECOND box with "zur
