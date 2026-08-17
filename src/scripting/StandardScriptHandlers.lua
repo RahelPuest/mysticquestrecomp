@@ -1963,91 +1963,86 @@ function StandardScriptHandlers.paletteFadeCompletionGate(state, isDualGateClear
   end
 end
 
---- Real opcodes `0xAC`/`0xAE`'s own true release condition -- `$1ED7`
--- selectors `0x11`/`0x12`'s real 8-phase `$D499` state machine (CLOSED
--- 2026-08-15, "laut website sind noch 2 offen. beende die auch" --
--- task #152's own final pair). Byte-for-byte, both selectors' real
--- jump tables (`$4170`/`$418C`, same `$2B70` multiply-and-jump shape
--- this project already trusts for selector `0x10`'s own table) share
--- 6 of their 8 real entries -- confirmed by reading BOTH tables' raw
--- bytes directly, not assumed:
---   phase 0 (`$419C`): unconditional advance. Real side effects go
---     well beyond the sibling family's own trivial phase 0 (a
---     self-caught correction of THIS SAME DAY's earlier "byte-
---     identical in shape" claim, which only checked the first 2
---     instructions): `$D49A=0`/`$D499++` (the shared housekeeping),
---     THEN a real palette/DMA-transfer call (`$02F3`, table `$40FC` or
---     `$4116` selected by `$C4D4` bit 1), a real `$C0A5` cache-then-
---     mask (`$D49C = $C0A5`, `$C0A5 &= 0xFC`), and a real numbered-
---     effect dispatch (`$297D` with `A=0x24`).
---   phase 1 (`$4477`): the ALREADY-known real `$C8E0`/`$CEE8` dual
---     gate -- the SAME leaf address the sibling family's own phase 1/3
---     use, reused here via `isDualGateClear` exactly like that family.
---   phase 2 (`$41D6`): a real, bounded "2 markers converging" wait --
---     4 real bytes at WRAM `$D3A0`-`$D3A3` (only the low byte `$D3A0`
---     and high byte `$D3A3` are touched; `$D3A1`/`$D3A2` sit unused in
---     between): each real tick, low `+=2`, high `-=2`; while they
---     haven't met/crossed, increments `$D49A` (a real ELAPSED-TICK
---     counter, confirmed reset to 0 by phase 0 above) and halts. Once
---     met: `CALL $0313` (untraced), `$C0A5 &= 0xFC` again, `CALL
---     $1D5E` with `HL=$FF40` (the real LCDC hardware register address,
---     passed as a literal, not directly poked here) -- plausibly a
---     real screen-wipe-closing effect. Advances to phase 3.
---   phase 3 (`$422B` for `0x11` / `$433E` for `0x12`): the ONE real
---     phase that genuinely, substantially DIFFERS between the two
---     selectors -- both do real OAM/sprite-buffer memcpy work (`$2B49`,
---     `HL=$C350`/`$C3A0`, `B=0x50`) and call the ALREADY-known real
---     cross-actor dispatch primitive `$26DC` (task #85's own finding)
---     plus `$04A4` (already flagged as unmodeled by the sibling
---     family's own phase-2-to-3 note above) -- genuinely NOT
---     reproduced here, matching this project's established scope for
---     opaque multi-leaf visual work. Unconditional single-tick advance.
---   phase 4 (`$4477`): the SAME dual-gate leaf as phase 1 (confirmed
---     by reading the raw table bytes, not assumed).
---   phase 5 (`$4422` for `0x11` / `$4456` for `0x12`): a SECOND real
---     palette/DMA call (`$02F3`, table `$4109` or `$4116`, same
---     `$C4D4` bit-1 selector as phase 0), a real numbered-effect
---     dispatch (`$297D` with `A=0x23`, a DIFFERENT effect ID from
---     phase 0's `0x24`), and a call to the ALREADY-known real pending-
---     sound-queue processor `$2EF7` (the SAME leaf opcode `0xAA`'s own
---     selector `0x1F` reaches). `0x11` additionally, conditionally
---     calls `$0DE6` first if `$D49F != 0` -- a real, selector-specific
---     extra branch, opaque. Unconditional single-tick advance.
---   phase 6 (`$4205`, shared): a real COUNTDOWN gate, NOT a marker
---     check -- decrements `$D49A` each real tick (the EXACT value
---     phase 2 counted UP to while converging: a real, decisively-
---     confirmed SYMMETRIC design -- the wipe closes over N ticks in
---     phase 2 and reopens over the SAME N ticks here, sharing one real
---     WRAM counter). While counting down, ALSO drives the SAME
---     `$D3A0`/`$D3A3` markers in the OPPOSITE direction (low `-=2`,
---     high `+=2` -- undoing phase 2's own convergence). Once `$D49A`
---     hits 0: `CALL $0313` again, restores `$C0A5` from phase 0's own
---     `$D49C` cache (undoing the earlier mask), advances to phase 7.
---   phase 7 (`$448C`, shared): the ALREADY-known real reset leaf --
---     the SAME address the sibling family's own phase 5 uses --
---     `$D499=0`, real release.
+--- Real opcodes 0xAC/0xAE's own true release condition -- $1ED7
+-- selectors 0x11/0x12's 8-phase $D499 state machine (CLOSED -- task
+-- #152's final pair). Byte-for-byte, both selectors' jump tables
+-- ($4170/$418C, same $2B70 multiply-and-jump shape already trusted for
+-- selector 0x10's own table) share 6 of their 8 entries -- confirmed
+-- by reading both tables' raw bytes directly:
+--   phase 0 ($419C): unconditional advance. Side effects go well
+--     beyond the sibling family's trivial phase 0 (a self-caught
+--     correction of an earlier "byte-identical in shape" claim, which
+--     only checked the first 2 instructions): $D49A=0/$D499++ (the
+--     shared housekeeping), then a palette/DMA-transfer call ($02F3,
+--     table $40FC or $4116 selected by $C4D4 bit 1), a $C0A5 cache-
+--     then-mask ($D49C = $C0A5, $C0A5 &= 0xFC), and a numbered-effect
+--     dispatch ($297D with A=0x24).
+--   phase 1 ($4477): the already-known $C8E0/$CEE8 dual gate -- the
+--     same leaf address the sibling family's phase 1/3 use, reused
+--     here via isDualGateClear exactly like that family.
+--   phase 2 ($41D6): a bounded "2 markers converging" wait -- 4 bytes
+--     at WRAM $D3A0-$D3A3 (only the low byte $D3A0 and high byte
+--     $D3A3 are touched; $D3A1/$D3A2 sit unused in between): each
+--     tick, low +=2, high -=2; while they haven't met/crossed,
+--     increments $D49A (an elapsed-tick counter, confirmed reset to 0
+--     by phase 0 above) and halts. Once met: CALL $0313 (untraced),
+--     $C0A5 &= 0xFC again, CALL $1D5E with HL=$FF40 (the LCDC hardware
+--     register address, passed as a literal, not directly poked here)
+--     -- plausibly a screen-wipe-closing effect. Advances to phase 3.
+--   phase 3 ($422B for 0x11 / $433E for 0x12): the one phase that
+--     genuinely differs between the two selectors -- both do OAM/
+--     sprite-buffer memcpy work ($2B49, HL=$C350/$C3A0, B=0x50) and
+--     call the already-known cross-actor dispatch primitive $26DC
+--     (task #85's finding) plus $04A4 (already flagged as unmodeled by
+--     the sibling family's own phase-2-to-3 note above) -- genuinely
+--     not reproduced here, matching this project's established scope
+--     for opaque multi-leaf visual work. Unconditional single-tick
+--     advance.
+--   phase 4 ($4477): the same dual-gate leaf as phase 1 (confirmed by
+--     reading the raw table bytes, not assumed).
+--   phase 5 ($4422 for 0x11 / $4456 for 0x12): a second palette/DMA
+--     call ($02F3, table $4109 or $4116, same $C4D4 bit-1 selector as
+--     phase 0), a numbered-effect dispatch ($297D with A=0x23, a
+--     different effect ID from phase 0's 0x24), and a call to the
+--     already-known pending-sound-queue processor $2EF7 (the same
+--     leaf opcode 0xAA's own selector 0x1F reaches). 0x11
+--     additionally, conditionally calls $0DE6 first if $D49F != 0 --
+--     a selector-specific extra branch, opaque. Unconditional single-
+--     tick advance.
+--   phase 6 ($4205, shared): a countdown gate, not a marker check --
+--     decrements $D49A each tick (the exact value phase 2 counted up
+--     to while converging: a decisively-confirmed symmetric design --
+--     the wipe closes over N ticks in phase 2 and reopens over the
+--     same N ticks here, sharing one WRAM counter). While counting
+--     down, also drives the same $D3A0/$D3A3 markers in the opposite
+--     direction (low -=2, high +=2 -- undoing phase 2's convergence).
+--     Once $D49A hits 0: CALL $0313 again, restores $C0A5 from phase
+--     0's own $D49C cache (undoing the earlier mask), advances to
+--     phase 7.
+--   phase 7 ($448C, shared): the already-known reset leaf -- the same
+--     address the sibling family's phase 5 uses -- $D499=0, release.
 --
--- `state`: a private `{phase=0, convergeTicks=0}` table, fresh per
--- real occurrence (same "one shared hardware cell, several private Lua
--- shadow counters" precedent as `.paletteFadeCompletionGate`'s own
--- `state`). `convergeTicks` is this Lua port's own internal bookkeeping
--- for the real phase-2/phase-6 SYMMETRIC-duration relationship
--- described above -- NOT a separate ctx hook, since the real ROM's own
--- `$D49A` reuse makes phase 6's duration a deterministic function of
--- phase 2's, not independently observable state.
--- `isDualGateClear`: passed straight through to phases 1/4, same
+-- state: a private {phase=0, convergeTicks=0} table, fresh per
+-- occurrence (same "one shared hardware cell, several private Lua
+-- shadow counters" precedent as .paletteFadeCompletionGate's own
+-- state). convergeTicks is this Lua port's own internal bookkeeping
+-- for the phase-2/phase-6 symmetric-duration relationship described
+-- above -- not a separate ctx hook, since the ROM's $D49A reuse makes
+-- phase 6's duration a deterministic function of phase 2's, not
+-- independently observable state.
+-- isDualGateClear: passed straight through to phases 1/4, same
 -- optional/defaults-to-"always clear" contract as
--- `.paletteFadeCompletionGate`'s own parameter of the same name --
--- pass `ctx.isTriggerEventGateClear` to reuse the SAME real gate.
--- `isMarkerConverged`: the real phase-2 "have the 2 `$D3A0`/`$D3A3`
--- markers met/crossed yet" predicate -- REQUIRED (matching this
--- project's now-established convention for brand-new gate predicates,
--- e.g. `waypointStepCommand`'s own `advanceStep`; the "unwired gate
--- defaults open" behavior belongs one layer up, in `ScriptRuntime.lua`'s
--- own `ctx` wiring).
--- `onPhase(phase)`: optional observer, fires on EVERY real call with
--- the CURRENT phase number (0-7) -- same role as the sibling family's
--- own `onPhase`.
+-- .paletteFadeCompletionGate's own parameter of the same name -- pass
+-- ctx.isTriggerEventGateClear to reuse the same gate.
+-- isMarkerConverged: the phase-2 "have the 2 $D3A0/$D3A3 markers met/
+-- crossed yet" predicate -- required (matching this project's
+-- established convention for brand-new gate predicates, e.g.
+-- waypointStepCommand's own advanceStep; the "unwired gate defaults
+-- open" behavior belongs one layer up, in ScriptRuntime.lua's own ctx
+-- wiring).
+-- onPhase(phase): optional observer, fires on every call with the
+-- current phase number (0-7) -- same role as the sibling family's own
+-- onPhase.
 function StandardScriptHandlers.wipeCompletionGate(state, isDualGateClear, isMarkerConverged, onPhase)
   assert(type(state) == "table", "wipeCompletionGate requires a state table")
   state.phase = state.phase or 0
