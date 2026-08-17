@@ -3522,45 +3522,38 @@ RomProfiles.PROFILES = {
 
     -- THE real event/script interpreter's opcode dispatch table -- see
     -- docs/reverse-engineering/rom-map.md "THE real event/script
-    -- interpreter -- FOUND, FULLY DECODED" (2026-08-10) for the full
-    -- trace. VERIFIED: bank 2, file offset 0x8576, 256 records x 2
-    -- bytes (real CPU handler addresses, LE), indexed by the real
-    -- WRAM "current opcode" byte ($D85A). Confirmed exactly 256 real
-    -- entries (file 0x8776 onward is ordinary code, not more table
-    -- data) and live-verified against 2 independently-traced opcodes
-    -- (0x04 and 0xFE, the real "display message" trigger).
-    -- `src/import/ScriptOpcodeTable.lua` is the generic decoder.
+    -- interpreter -- FOUND, FULLY DECODED" for the full trace. VERIFIED:
+    -- bank 2, file offset 0x8576, 256 records x 2 bytes (CPU handler
+    -- addresses, LE), indexed by WRAM "current opcode" byte ($D85A).
+    -- Confirmed exactly 256 entries (file 0x8776 onward is ordinary
+    -- code, not more table data) and live-verified against 2
+    -- independently-traced opcodes (0x04 and 0xFE, "display message").
+    -- src/import/ScriptOpcodeTable.lua is the generic decoder.
     --
-    -- UPDATE 2026-08-11 ("zurück zu den primären optcodes"): a real,
-    -- ~70-opcode-wide FAMILY found across opcodes 0x10-0x7B (see
-    -- events.md's own "Back to the primary table" section) -- 7 clean
-    -- groups, each gated by a real actor-struct accessor (`$28C2` ->
-    -- `$0C6D`, a genuine 16-byte-record WRAM array at `$C200`, indexed
-    -- by a real "slot" number -- slots 4 and 7 confirmed used by name
-    -- elsewhere in the ROM) and an 8-way "action code" that funnels
-    -- into a shared dispatcher (`$2879`) which tail-calls bank 3 --
-    -- NOT followed across that bank switch this pass, same honest
-    -- limit as the 0xFF sub-table's own bank-2 delegations. The gaps
-    -- in this 0x10-0x7B grid are exactly the already-known HEAL_LP
-    -- opcodes (0x12/0x13, 0x22/0x23, ...) -- the two families tile the
-    -- same opcode space without overlap, a real cross-confirmation.
-    -- Real structural understanding for ~70-80 opcodes now exists even
-    -- though the bank-3 "what does action 0x0A actually do" layer
-    -- remains open.
+    -- UPDATE (continuing back to the primary opcodes): a ~70-opcode-wide
+    -- family found across opcodes 0x10-0x7B (see events.md's "Back to
+    -- the primary table") -- 7 clean groups, each gated by an actor-
+    -- struct accessor ($28C2 -> $0C6D, a 16-byte-record WRAM array at
+    -- $C200, indexed by a "slot" number -- slots 4 and 7 confirmed used
+    -- elsewhere) and an 8-way "action code" funneling into a shared
+    -- dispatcher ($2879) which tail-calls bank 3 -- not followed across
+    -- that bank switch this pass. The gaps in this grid are exactly the
+    -- already-known HEAL_LP opcodes (0x12/0x13, 0x22/0x23, ...) -- the
+    -- two families tile the same opcode space without overlap.
+    -- Structural understanding for ~70-80 opcodes now exists even
+    -- though the bank-3 "what does action 0x0A do" layer remains open.
     --
-    -- UPDATE 2026-08-11 ("ok dann bank 3"): that layer is now closed
-    -- too -- see events.md's "Bank 3, followed" section. The bank-3
-    -- trampoline (`$1F35`) genuinely preserves the caller's real
-    -- 8-way action code through the bank switch, so all 8 variants
-    -- funnel into ONE bank-3 function (0x0A, file 0xCB70), not 8
-    -- separate ones. Found: a real 8-slot "known/active ID" list at
-    -- WRAM `$C5A0` (a shared utility, general linear-search primitive
-    -- `$4B62`), and a THIRD distinct WRAM actor/object array at
-    -- `$C4E0` (24-byte stride, different from `$C200`'s 16-byte
-    -- structs). Real, well-supported conclusion: this whole 70+11-
-    -- opcode span is a genuine "mark actor/flag N as having reached
-    -- state V, tracked in a global known-list" mechanism -- very
-    -- plausibly this ROM's own real quest/story-progress-flag system.
+    -- UPDATE (continuing to bank 3): that layer is now closed too --
+    -- see events.md's "Bank 3, followed". The bank-3 trampoline ($1F35)
+    -- preserves the caller's 8-way action code through the bank switch,
+    -- so all 8 variants funnel into one bank-3 function (0x0A, file
+    -- 0xCB70), not 8 separate ones. Found: an 8-slot "known/active ID"
+    -- list at WRAM $C5A0 (shared linear-search primitive $4B62), and a
+    -- third distinct WRAM actor/object array at $C4E0 (24-byte stride,
+    -- different from $C200's 16-byte structs). Well-supported
+    -- conclusion: this whole 70+11-opcode span is a "mark actor/flag N
+    -- as having reached state V, tracked in a global known-list"
+    -- mechanism -- plausibly this ROM's quest/story-progress-flag system.
     scriptOpcodeTable = {
       status = "VERIFIED",
       bank = 2,
@@ -3568,76 +3561,68 @@ RomProfiles.PROFILES = {
       recordCount = 256,
     },
 
-    -- THE real script/event POINTER table -- answers the question this
-    -- project's own `scriptOpcodeTable`/`ScriptInterpreter.lua` had left
-    -- open since first finding the opcode DISPATCH table: where do real
-    -- script BYTES live, and how does the interpreter's own persistent
-    -- cursor (`$D8B6`/`$D8B7`) ever get pointed at one. See
-    -- docs/reverse-engineering/events.md's "A real script-pointer table
-    -- FOUND" / "The index question, CONCLUSIVELY RESOLVED" (2026-08-12)
-    -- for the full chain, live-traced end to end for a real trigger (the
-    -- boss-defeat story sequence) and confirmed twice over (live
-    -- execution AND independent static ROM-byte computation agreeing
-    -- exactly).
+    -- THE real script/event pointer table -- answers the question left
+    -- open since first finding the opcode dispatch table: where do
+    -- script bytes live, and how does the interpreter's persistent
+    -- cursor ($D8B6/$D8B7) get pointed at one. See docs/reverse-
+    -- engineering/events.md's "A real script-pointer table FOUND" / "The
+    -- index question, CONCLUSIVELY RESOLVED" for the full chain,
+    -- live-traced end to end for a real trigger (the boss-defeat story
+    -- sequence) and confirmed twice over (live execution AND
+    -- independent static ROM-byte computation agreeing exactly).
     --
-    -- VERIFIED real mechanism: `HL = table[index]` (byte-indexed,
-    -- 2-bytes-per-entry, same shape as every other indexed table in this
-    -- ROM), then the CALLER adds `0x4000` to the result to get the real
-    -- CPU address -- this table stores small bank-8-relative OFFSETS,
-    -- not full addresses. `index` itself comes from a real WRAM actor/
-    -- context record (a bank-select byte + a 16-bit ROM pointer,
-    -- dereferenced twice, +2 to skip a small header) via a shared
-    -- dispatcher at `$31AD` (15 real, independent call sites found
-    -- across the ROM) -- 3 special-cased small index values (`0x0B`/
-    -- `4`/`8`) redirect to fixed WRAM addresses instead of this table
+    -- VERIFIED mechanism: HL = table[index] (byte-indexed, 2-bytes-per-
+    -- entry, same shape as every other indexed table in this ROM), then
+    -- the caller adds 0x4000 to get the CPU address -- this table
+    -- stores small bank-8-relative offsets, not full addresses. index
+    -- comes from a WRAM actor/context record (a bank-select byte + a
+    -- 16-bit ROM pointer, dereferenced twice, +2 to skip a small
+    -- header) via a shared dispatcher at $31AD (15 independent call
+    -- sites found across the ROM) -- 3 special-cased small index values
+    -- (0x0B/4/8) redirect to fixed WRAM addresses instead of this table
     -- (some scripts are WRAM-resident, not ROM data).
     --
-    -- Live-verified for real index 232 (`0xE8`, the boss-defeat
-    -- trigger): `table[232]` (this file's own `fileOffset + 232*2`) =
-    -- `0x070F` -> `+0x4000` = `0x470F` -- matches the live-observed
-    -- interpreter cursor jump target exactly. Real table content dumped
-    -- through at least index 89 (a real, structured, mostly-monotonic
-    -- sequence of small values, including one genuine 12-entry run of
-    -- `0x0000` -- an unused/reserved block, not noise) -- the table's
-    -- own real full extent (recordCount) is NOT yet determined (no
-    -- terminator/boundary found this pass).
+    -- Live-verified for index 232 (0xE8, the boss-defeat trigger):
+    -- table[232] = 0x070F -> +0x4000 = 0x470F -- matches the live-
+    -- observed interpreter cursor jump target exactly. Table content
+    -- dumped through at least index 89 (a structured, mostly-monotonic
+    -- sequence, including one 12-entry run of 0x0000 -- an unused/
+    -- reserved block, not noise).
     --
-    -- Honestly still open: what the `$C3F0`/`$C3FE`/`$C3FF` WRAM record
-    -- represents in general (per-room? per-actor? only the MECHANISM
-    -- that reads it is confirmed, not its own broader schema); the
-    -- real-world meaning of the 3 special-cased index values; this
-    -- table's own real `recordCount`. NOT wired into `ScriptInterpreter
-    -- .lua` yet -- this is real, verified DATA LOCATION, not yet a
+    -- Honestly still open: what the $C3F0/$C3FE/$C3FF WRAM record
+    -- represents in general (per-room? per-actor? only the mechanism
+    -- that reads it is confirmed, not its broader schema); the real-
+    -- world meaning of the 3 special-cased index values. Not wired into
+    -- ScriptInterpreter.lua yet -- verified data location, not yet a
     -- consumed runtime data source (most of the 256 primary opcodes'
-    -- own semantics remain undecoded, the actual blocker for driving
-    -- real gameplay from this).
+    -- semantics remain undecoded, the actual blocker for driving real
+    -- gameplay from this).
     scriptPointerTable = {
       status = "VERIFIED (table location + lookup formula + one real, live-traced index + real recordCount all confirmed)",
       bank = 8,
       fileOffset = 0x20F11, -- CPU $4F11
       cpuBankOffsetBase = 0x4000, -- add to each raw table entry to get the real CPU address
-      -- Real, confirmed 2026-08-12 ("Skript-Tabelle nach mehr echtem
-      -- Content durchsuchen"): index 1356 is real/sensible, index 1357
-      -- onward is uniform 0xFFFF unprogrammed-ROM filler (2714 raw bytes
-      -- checked at the boundary) -- see events.md "The script-pointer
-      -- table's real size: exactly 1357 entries".
+      -- Confirmed (searching the script table for more real content):
+      -- index 1356 is real/sensible, index 1357 onward is uniform
+      -- 0xFFFF unprogrammed-ROM filler (2714 raw bytes checked at the
+      -- boundary) -- see events.md "The script-pointer table's real
+      -- size: exactly 1357 entries".
       recordCount = 1357,
-      -- Real, live-traced example (see events.md for the full chain):
-      -- index 232 -> table[232]=0x070F -> +0x4000 = 0x470F (real script
+      -- Live-traced example (see events.md for the full chain): index
+      -- 232 -> table[232]=0x070F -> +0x4000 = 0x470F (real script
       -- start, bank 8 file 0x2070F) -- the boss-defeat story trigger.
       verifiedExample = { index = 232, tableValue = 0x070F, scriptCpuAddress = 0x470F },
     },
 
-    -- THE real message-text pointer, found via the `$1F64` dispatcher
-    -- investigation (2026-08-12, direct instruction "ja mach die
-    -- dispatcher untersuchung bitte") -- see docs/reverse-engineering/
-    -- text.md's "SOLVED: the real message-settings-table text pointer"
-    -- section for the full disassembly chain (`$04E2` 5-way sub-
-    -- dispatcher -> `$1F64` -> bank-4 table index 1 -> `$102F7`).
-    -- Reuses the ALREADY-known message-settings record base/stride
-    -- (CPU `$4739`/file `0x10739`, 24 bytes/record) -- this is a NEW
-    -- FIELD found in that same already-partially-characterized table,
-    -- not a new table of its own.
+    -- THE real message-text pointer, found via the $1F64 dispatcher
+    -- investigation (direct instruction to investigate the dispatcher)
+    -- -- see docs/reverse-engineering/text.md's "SOLVED: the real
+    -- message-settings-table text pointer" section for the full
+    -- disassembly chain ($04E2 5-way sub-dispatcher -> $1F64 -> bank-4
+    -- table index 1 -> $102F7). Reuses the already-known message-
+    -- settings record base/stride (CPU $4739/file 0x10739, 24 bytes/
+    -- record) -- a new field in that same already-partially-
+    -- characterized table, not a new table of its own.
     messageTextPointer = {
       status = "VERIFIED (formula + disassembly chain confirmed; strong multi-word real-text confirmation via messageID 13, most other messageIDs still blocked by TextDecoder's own incomplete digraph coverage, not a formula problem)",
       recordBaseFileOffset = 0x10739, -- same base as scriptPointerTable's index field, CPU $4739
@@ -3656,87 +3641,71 @@ RomProfiles.PROFILES = {
       verifiedExample = { messageId = 13, fieldValue = 0x5165, textFileOffset = 0x39965, decodedText = "gefunden" },
     },
 
-    -- THE real SECOND-LEVEL sub-dispatch table, reached only via the
-    -- primary table's own opcode `0xFF` (handler `$38E6`) -- see
-    -- docs/reverse-engineering/rom-map.md "The 0xFF sub-dispatch table
-    -- -- bounded and disassembled" (2026-08-11) for the full trace.
-    -- VERIFIED: fixed bank 0 (always mapped, no bank-switch needed --
-    -- matches `$38E6` itself living at a fixed-bank address), file
-    -- offset 0x3BAC, indexed by WRAM `$D86B` (a SEPARATE "current
-    -- sub-opcode" byte from the primary table's own `$D85A`).
-    -- Mechanism (full disassembly, closes rom-map.md's earlier "not
-    -- itself single-stepped" gap for THIS dispatch): `LD A,($D86B) /
-    -- LD HL,0x3BAC / LD B,0 / LD C,A / ADD HL,BC / ADD HL,BC / LD
-    -- A,(HL+) / LD H,(HL) / LD L,A / JP HL` -- the exact same byte-
-    -- indexed, 2-bytes-per-entry, tail-jump shape as the primary
-    -- table, just a different base/index. Confirmed NOT 256 entries
-    -- (only ever hedged as "256-entry-style" before, never checked):
-    -- entries decode as plausible fixed-bank code-pointer values for
-    -- exactly 11 records, then the 12th "entry" (file 0x3BC2) decodes
-    -- as `0x21` -- the real `LD HL,nn` opcode, i.e. genuine CPU code
-    -- immediately following the table, not more table data. Also
-    -- confirmed from the OTHER side: the routine immediately before
-    -- the table (file 0x3BA9-0x3BAB) is a clean, self-contained `JP
-    -- 0x0150`, the normal "code ends, table begins" shape this
-    -- project's other tables all share.
-    -- **No bounds check** on the `$D86B` index before the ADD HL,BC --
-    -- a real, honest observation (not a bug this project patches): if
-    -- `$D86B` is ever >= 11 in real play, the ROM would index into its
-    -- own ordinary code bytes as a bogus pointer. Not contradicted by
-    -- anything found so far, just flagged, matching this project's
-    -- "no silent fallbacks" -- assume nothing about values never
-    -- observed live.
+    -- THE real second-level sub-dispatch table, reached only via the
+    -- primary table's opcode 0xFF (handler $38E6) -- see docs/reverse-
+    -- engineering/rom-map.md "The 0xFF sub-dispatch table -- bounded
+    -- and disassembled" for the full trace. VERIFIED: fixed bank 0
+    -- (always mapped, matching $38E6 itself living at a fixed-bank
+    -- address), file offset 0x3BAC, indexed by WRAM $D86B (a separate
+    -- "current sub-opcode" byte from the primary table's $D85A).
+    -- Mechanism (full disassembly): LD A,($D86B) / LD HL,0x3BAC / LD
+    -- B,0 / LD C,A / ADD HL,BC / ADD HL,BC / LD A,(HL+) / LD H,(HL) /
+    -- LD L,A / JP HL -- the same byte-indexed, 2-bytes-per-entry,
+    -- tail-jump shape as the primary table, different base/index.
+    -- Confirmed not 256 entries: entries decode as plausible fixed-bank
+    -- code-pointer values for exactly 11 records, then the 12th
+    -- "entry" (file 0x3BC2) decodes as 0x21 -- the real LD HL,nn
+    -- opcode, genuine CPU code immediately following the table. Also
+    -- confirmed from the other side: the routine immediately before
+    -- the table is a clean, self-contained JP 0x0150, the normal
+    -- "code ends, table begins" shape this project's other tables share.
+    -- No bounds check on the $D86B index before the ADD HL,BC -- an
+    -- honest observation (not a bug this project patches): if $D86B is
+    -- ever >= 11 in real play, the ROM would index into its own
+    -- ordinary code bytes as a bogus pointer.
     --
-    -- UPDATE 2026-08-11 ("nein bitte weiter bei den optcodes"): 7 of
-    -- the 11 real entries now have a disassembled, stated conclusion
-    -- -- see events.md's own "The 0xFF sub-table, continued" section
-    -- for the full trace of each. The headline find: `$3C74`, a real
-    -- shared "reschedule the sub-dispatch to a different entry on the
-    -- NEXT tick" primitive (writes both `$D86B` and `$D85A`=0xFF, then
-    -- returns WITHOUT fetching the next real opcode) -- this is HOW 4
-    -- of the 11 entries (indices 3/`$3C1B`, 4/`$350F`, 7/`$3B18`,
-    -- 8/`$3B2C`) form a genuine, structurally-VERIFIED multi-tick
-    -- "wait/halt" family, each conditionally skipping the `CALL $3727`
+    -- UPDATE (continuing on the opcodes): 7 of the 11 entries now have
+    -- a disassembled conclusion -- see events.md's "The 0xFF sub-table,
+    -- continued". Headline find: $3C74, a shared "reschedule the sub-
+    -- dispatch to a different entry on the next tick" primitive (writes
+    -- both $D86B and $D85A=0xFF, then returns without fetching the next
+    -- opcode) -- how 4 of the 11 entries (indices 3/$3C1B, 4/$350F,
+    -- 7/$3B18, 8/$3B2C) form a structurally-verified multi-tick
+    -- "wait/halt" family, each conditionally skipping the CALL $3727
     -- that would otherwise resume the interpreter. Index 8 is the
-    -- real release point (halts on `$D853` bit 7, resumes once clear).
-    -- Live-traced TWICE for real-world trigger conditions (Watcher on
-    -- `$D86B` across the full post-boss dialogue AND the real door->
-    -- secondRoom scroll) -- zero hits both times, an honest negative:
-    -- this chain is used by neither dialogue nor the room-scroll
-    -- engine (which has its own dedicated `$46C4` mechanism, see
-    -- maps.md).
+    -- release point (halts on $D853 bit 7, resumes once clear).
+    -- Live-traced twice for real-world trigger conditions (Watcher on
+    -- $D86B across the full post-boss dialogue AND the real door->
+    -- secondRoom scroll) -- zero hits both times, an honest negative
+    -- (later found to be a tooling bug, see below).
     --
-    -- UPDATE 2026-08-11, same day ("na dann die letzten 4"): all 11
-    -- entries now disassembled to a stated conclusion (events.md's own
-    -- "The 0xFF sub-table, finished" section has the full per-entry
-    -- table) -- and the "plausibly NPC movement" guess above was
-    -- WRONG, corrected with real evidence: entry 0 and several of
-    -- entry 1's own internal branches end by calling `$36D0`, which
-    -- caches HL into `$D8B6`/`$D8B7` (this project's own already-
-    -- documented real script cursor) and sets `$D85A=0x04` -- the
-    -- exact address already flagged elsewhere as the real-time
-    -- TYPEWRITER dispatch, not the general interpreter. Entry 1 also
-    -- has a real 5-tick pacing gate (`$36C2`/WRAM `$D864`) matching
-    -- this project's own independently-confirmed real "5 frames per
-    -- letter" cadence, a 4-direction cursor-delta dispatcher, and
-    -- entry 2 blanks tile runs with the real space glyph (`0x7F`).
-    -- **This is the real driver for a more elaborate MULTI-LINE
-    -- textbox variant** (cursor bookkeeping, line-wrap, blanking) on
-    -- top of the already-known single-line typewriter, not an NPC-
-    -- movement system -- explaining the 2 live-trace negatives above:
-    -- both tested checkpoints plausibly use the simpler, direct
-    -- `$D3E9`-based reveal instead. Entry 5 independently reads WRAM
-    -- `$D3E8` -- one byte before the already-VERIFIED `$D3E9` reveal
-    -- timer (text.md) -- a second, concrete cross-link. Real, still-
-    -- open scope: several entries (5, 10, and more) delegate into
-    -- BANK 2 functions not followed across the bank switch this pass.
+    -- UPDATE (same day, continuing to the last 4): all 11 entries now
+    -- disassembled to a stated conclusion (events.md's "The 0xFF
+    -- sub-table, finished" has the full per-entry table) -- and the
+    -- "plausibly NPC movement" guess above was wrong, corrected: entry
+    -- 0 and several of entry 1's internal branches end by calling
+    -- $36D0, which caches HL into $D8B6/$D8B7 (the script cursor) and
+    -- sets $D85A=0x04 -- the address already flagged elsewhere as the
+    -- real-time typewriter dispatch, not the general interpreter. Entry
+    -- 1 also has a 5-tick pacing gate ($36C2/WRAM $D864) matching the
+    -- independently-confirmed "5 frames per letter" cadence, a
+    -- 4-direction cursor-delta dispatcher, and entry 2 blanks tile runs
+    -- with the space glyph (0x7F). This is the driver for a more
+    -- elaborate multi-line textbox variant on top of the already-known
+    -- single-line typewriter, not an NPC-movement system -- explaining
+    -- the 2 live-trace negatives above: both tested checkpoints
+    -- plausibly use the simpler, direct $D3E9-based reveal instead.
+    -- Entry 5 independently reads WRAM $D3E8 -- one byte before the
+    -- verified $D3E9 reveal timer (text.md) -- a second cross-link.
+    -- Still open: several entries (5, 10, and more) delegate into bank
+    -- 2 functions not followed across the bank switch this pass.
     --
-    -- CORRECTED 2026-08-12 ("kann der [tooling bug] auch andre stellen
-    -- betroffen haben?"): the "zero hits both times" dialogue claim
-    -- 2 paragraphs up was WRONG -- a real tooling bug (see tooling.md's
-    -- own "session.run(N)+Watcher can silently drop hits" section;
-    -- `$D86B` was watched together with the fast-changing `$D85A`,
-    -- driven by `session.run(1)`, which can silently lose a hit).
+    -- CORRECTED (follow-up on whether the tooling bug affected other
+    -- spots): the "zero hits both times" dialogue claim above was
+    -- wrong -- a tooling bug (see tooling.md's "session.run(N)+Watcher
+    -- can silently drop hits"; $D86B was watched together with the
+    -- fast-changing $D85A, driven by session.run(1), which can
+    -- silently lose a hit).
     -- Re-verified the CORRECT way (`w.step()`, single SM83 instruction
     -- at a time, no shortcuts): `$D86B` genuinely IS written 7 times
     -- during the real dialogue sequence, each immediately followed by
