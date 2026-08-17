@@ -1802,16 +1802,16 @@ function StandardScriptHandlers.periodicWramEffect(state, period, onTick)
   end
 end
 
---- Real opcode `0xFB` handler (`$0E8C`, found 2026-08-14, whole-corpus
--- scan) -- a real WRAM "wave offset" oscillator: `$C0A6` is nudged +-2
--- every call following a real triangle wave (period 8, computed from
--- the shared counter's own low 3 bits: phases 2-5 subtract 2, phases
--- 0/1/6/7 add 2), tracing a real -4..+4 sawtooth over a full 8-call
--- cycle -- a cosmetic sprite-bob/float-style wobble this project has
--- no renderer hook for. `onUpdate(value)`, if given, is called with
--- the real running byte value so a caller CAN observe/use it without
--- this project guessing its real consumer. See `.periodicWramEffect`'s
--- own doc comment for the shared every-64-calls stream-byte-skip.
+--- Real opcode 0xFB handler ($0E8C, found, whole-corpus scan) -- a
+-- WRAM "wave offset" oscillator: $C0A6 is nudged +-2 every call
+-- following a triangle wave (period 8, computed from the shared
+-- counter's low 3 bits: phases 2-5 subtract 2, phases 0/1/6/7 add 2),
+-- tracing a -4..+4 sawtooth over a full 8-call cycle -- a cosmetic
+-- sprite-bob/float-style wobble this project has no renderer hook for.
+-- onUpdate(value), if given, is called with the running byte value so
+-- a caller can observe/use it without guessing its real consumer. See
+-- .periodicWramEffect's own doc comment for the shared every-64-calls
+-- stream-byte-skip.
 function StandardScriptHandlers.waveOffsetEffect(onUpdate)
   local state = { counter = 0, value = 0 }
   return StandardScriptHandlers.periodicWramEffect(state, 64, function(counter)
@@ -1850,41 +1850,38 @@ function StandardScriptHandlers.colorPulseEffect(onDim, onBright)
   end)
 end
 
---- Real opcode `0xBC`/`0xBD`/`0xBE` handler family (`$10DC`/`$1046`/
--- `$10A7`, the "palette-fade" family -- SEE `ScriptOpcodeTable.lua`'s
--- own `PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE` doc comment for the full
--- disassembly trail, including the 2026-08-14 "deliberately unwired"
--- decision and its 2026-08-15 REVERSAL). Unlike `.periodicWramEffect`
--- (used by `0xFB`/`0xBF`, which never halt -- they call the real
--- `$3727` fetch unconditionally every single time and only vary a
--- COSMETIC counter), this family shares a real, genuine CONDITIONAL
--- HALT: the shared real leaf `$1142` only calls `$3727` once every 66
--- real calls (a 6-count inner cycle nested inside an 11-count outer
--- cycle -- see the disassembly in `ScriptOpcodeTable.lua`), returning
--- WITHOUT `$3727` (a real halt, re-dispatching the SAME opcode next
--- real tick) every other time -- so this needs the `nil`-halt / return-
--- cursor-release contract (matching `.tick`/`.textboxWait`), not
--- `.periodicWramEffect`'s always-continue shape.
+--- Real opcode 0xBC/0xBD/0xBE handler family ($10DC/$1046/$10A7, the
+-- "palette-fade" family -- see ScriptOpcodeTable.lua's own
+-- PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE doc comment for the full
+-- disassembly trail, including the "deliberately unwired" decision and
+-- its later reversal). Unlike .periodicWramEffect (used by 0xFB/0xBF,
+-- which never halt -- they call the $3727 fetch unconditionally every
+-- time and only vary a cosmetic counter), this family shares a genuine
+-- conditional halt: the shared leaf $1142 only calls $3727 once every
+-- 66 calls (a 6-count inner cycle nested inside an 11-count outer
+-- cycle -- see the disassembly in ScriptOpcodeTable.lua), returning
+-- without $3727 (a halt, re-dispatching the same opcode next tick)
+-- every other time -- so this needs the nil-halt / return-cursor-
+-- release contract (matching .tick/.textboxWait), not
+-- .periodicWramEffect's always-continue shape.
 --
--- `sharedState`: a private `{inner=0, outer=0}` table -- REQUIRED to be
--- the SAME table across all 3 real opcode registrations (`0xBC`/`0xBD`/
--- `0xBE` all read/write the SAME real WRAM cells `$D499`/`$D49A`, so a
--- private-but-shared Lua table is the honest equivalent, same "zero-
--- init is an honest default" convention as every other private shadow
--- WRAM cell in this project -- see `ScriptRuntime.new`'s own doc
--- comment). Consumes ZERO real operand bytes on release (confirmed via
--- disassembly: HL is only pushed/popped around each opcode's own WRAM
--- computation, never dereferenced) -- release returns `cursor`
--- unchanged, exactly matching the real ROM's own `CALL $3727 / RET`
--- with no operand read first.
--- `onStep(outer, inner)`: optional observer, fired on EVERY real call
--- (including the release call) with the CURRENT pre-increment counter
+-- sharedState: a private {inner=0, outer=0} table -- required to be
+-- the same table across all 3 opcode registrations (0xBC/0xBD/0xBE
+-- all read/write the same WRAM cells $D499/$D49A, so a private-but-
+-- shared Lua table is the honest equivalent, same "zero-init is an
+-- honest default" convention as every other private shadow WRAM cell
+-- in this project -- see ScriptRuntime.new's own doc comment).
+-- Consumes zero operand bytes on release (confirmed via disassembly:
+-- HL is only pushed/popped around each opcode's own WRAM computation,
+-- never dereferenced) -- release returns cursor unchanged, exactly
+-- matching the ROM's own CALL $3727 / RET with no operand read first.
+-- onStep(outer, inner): optional observer, fired on every call
+-- (including the release call) with the current pre-increment counter
 -- pair -- lets a future caller drive an actual on-screen palette fade
--- without this project guessing the real fade curve (the 4 real lookup
--- tables `$101A`/`$1030`/`$107B`/`$1091` themselves stay undecoded, see
--- `ScriptOpcodeTable.lua`'s own doc comment) -- same "paced correctly,
--- cosmetic write left as an optional callback" precedent as
--- `.waveOffsetEffect`/`.colorPulseEffect` above.
+-- without guessing the real fade curve (the 4 lookup tables $101A/
+-- $1030/$107B/$1091 themselves stay undecoded) -- same "paced
+-- correctly, cosmetic write left as an optional callback" precedent as
+-- .waveOffsetEffect/.colorPulseEffect above.
 function StandardScriptHandlers.paletteFadeCycle(sharedState, onStep)
   assert(type(sharedState) == "table", "paletteFadeCycle requires a shared state table")
   sharedState.inner = sharedState.inner or 0
@@ -1909,36 +1906,33 @@ function StandardScriptHandlers.paletteFadeCycle(sharedState, onStep)
   end
 end
 
---- Real opcode `0xF3`'s own true release condition -- `$1ED7` selector
--- `0x10`'s real 6-phase `$D499` state machine (see
--- `ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3`'s own doc
--- comment for the full disassembly of all 6 phases and why none of
--- them can affect the real script cursor). Returns a real `isGateClear`
--- -shaped predicate (no arguments, boolean result) suitable for
--- `.peekTwoByteGate`'s own `isGateClear` parameter -- advances the
--- real phase counter by exactly one step per call (matching the real
--- ROM's own per-tick `$1ED7` dispatch), returning `true` only once the
--- whole real sequence completes (matching the real `$D499` wrap back
--- to 0 on phase 5's own unconditional reset).
+--- Real opcode 0xF3's own true release condition -- $1ED7 selector
+-- 0x10's 6-phase $D499 state machine (see ScriptOpcodeTable
+-- .PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3's own doc comment for the
+-- full disassembly of all 6 phases and why none of them can affect the
+-- script cursor). Returns an isGateClear-shaped predicate (no
+-- arguments, boolean result) suitable for .peekTwoByteGate's own
+-- isGateClear parameter -- advances the phase counter by exactly one
+-- step per call (matching the ROM's own per-tick $1ED7 dispatch),
+-- returning true only once the whole sequence completes (matching the
+-- $D499 wrap back to 0 on phase 5's own unconditional reset).
 --
--- `state`: a private `{phase=0}` table, fresh per real `0xF3`
--- occurrence (deliberately NOT the same table as `.paletteFadeCycle`'s
--- own `sharedState` -- both real mechanisms happen to reuse the SAME
--- WRAM byte `$D499`, but for DIFFERENT, sequenced, non-overlapping
--- real purposes, same "one shared hardware cell, several private Lua
--- shadow counters" precedent as `0xFB`/`0xBF`).
--- `isDualGateClear`: the real `$C8E0`/`$CEE8` dual gate phases 1 and 3
--- both check -- pass `ctx.isTriggerEventGateClear` directly (the SAME
--- real WRAM cells `0xFC`/`0xFD`/`0xE8`-`0xEB` already model, see
--- `.oneShotTriggerGate`'s own doc comment for `$C8E0`'s now-CRACKED
--- real meaning -- task #160's ROM->VRAM tile-streaming DMA queue);
--- optional, defaults to "always clear" like every other real consumer
--- of this gate in this project.
--- `onPhase(phase)`: optional observer, fires on EVERY real call
--- (including repeated halts) with the CURRENT phase number (0-5) --
--- lets a future caller drive phase 2/4's own real (currently
--- unmodeled) transition/OAM side effects without this project
--- guessing them.
+-- state: a private {phase=0} table, fresh per 0xF3 occurrence
+-- (deliberately not the same table as .paletteFadeCycle's own
+-- sharedState -- both mechanisms happen to reuse the same WRAM byte
+-- $D499, but for different, sequenced, non-overlapping purposes, same
+-- "one shared hardware cell, several private Lua shadow counters"
+-- precedent as 0xFB/0xBF).
+-- isDualGateClear: the $C8E0/$CEE8 dual gate phases 1 and 3 both check
+-- -- pass ctx.isTriggerEventGateClear directly (the same WRAM cells
+-- 0xFC/0xFD/0xE8-0xEB already model, see .oneShotTriggerGate's own doc
+-- comment for $C8E0's now-cracked meaning -- task #160's ROM->VRAM
+-- tile-streaming DMA queue); optional, defaults to "always clear" like
+-- every other consumer of this gate in this project.
+-- onPhase(phase): optional observer, fires on every call (including
+-- repeated halts) with the current phase number (0-5) -- lets a future
+-- caller drive phase 2/4's own currently unmodeled transition/OAM side
+-- effects without guessing them.
 function StandardScriptHandlers.paletteFadeCompletionGate(state, isDualGateClear, onPhase)
   assert(type(state) == "table", "paletteFadeCompletionGate requires a state table")
   state.phase = state.phase or 0
