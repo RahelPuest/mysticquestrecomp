@@ -10524,3 +10524,72 @@ Honest scope: `secondBoss`'s own placement/spawn fields are untouched
 negative test, see the "second boss investigation" and "Real-ROM test
 of the sixthRoom gate mechanic" entries elsewhere in this file) --
 only the ROOM RENDER DATA was ever wrong.
+
+## seventhRoom/eighthRoom/ninthRoom's tileset -- direct user claim it's wrong, thorough re-investigation, honest open result (2026-08-17, same day)
+
+Direct user claim: "ok raum 7 8 und 9 haben die falschen tilesets"
+("rooms 7, 8, and 9 have the wrong tilesets"), confirmed on follow-up
+to be based on real, first-hand ROM knowledge ("ich kenne die echte
+ROM-Stelle/das echte Bild und es stimmt nicht"), not a guess. Investigated
+thoroughly; the underlying uncertainty is real and already partly
+documented, but no definitive fix was found this pass -- an honest
+open result, not a resolved bug.
+
+**Background**: `seventhRoom`/`eighthRoom`/`ninthRoom` (bank-5 map-table
+records 220/236/237) are, and always have been, explicitly labeled
+"IMPLEMENTATION CHOICE... not independently ROM-confirmed" in
+`rom_profiles.lua` -- picked from the 384-room catalog by collision-byte
+walkability/edge-matching heuristics, with NO live gameplay trigger
+ever reaching them. Their tile GRAPHICS come from `genericCatalogMeta
+tileTableFileOffset` (`0x200B0`, the same real bank-8 metatile pool as
+`startRoom`/`fourthRoom`), applied as a DEFAULT to all 320 real
+bank-5/bank-6 catalog rooms -- itself already labeled "best current
+derivation, not proven" (2026-08-14).
+
+**Re-investigated 3 independent ways this pass**:
+
+1. **External ground truth**: fetched the FFA-Disassembly project's own
+   devlog (`daid.github.io/FFA-Disassembly/part2`, "The quest for
+   maps") directly. Confirms: tileset selection is real, but per-MAP
+   only (`tilesetGfxOutdoor` lives in each of 16 real `MAP_HEADER`
+   structures) -- "Room records contain only per-room door
+   configuration and placement data -- no graphics selection field
+   exists." This directly corroborates this project's own ALREADY-
+   documented negative result (a per-record header field was tested
+   against known-good ground truth on 2026-08-14 and falsified) --
+   no new mechanism found, none exists per the authoritative source.
+2. **Bank-5 internal structure**: checked for a hidden second map
+   boundary within bank 5's own 256-record table (pointer
+   monotonicity across all 512 header/data pointers -- zero
+   discontinuities/jumps found; per-record raw tile-ID ranges sampled
+   across the whole 0-255 range and in detail for 215-240 -- no
+   regime change/shift found anywhere near 220/236/237). No structural
+   evidence bank 5 secretly contains more than the one already-
+   documented map.
+3. **Empirical alternate-tileset test**: rendered records 220/236/237
+   against EVERY other real, already-known `roomSelectorTable`
+   pointer (`$46B0`/willyRoom family, `$4938`/unknownRoomA,
+   `$43B0`/unknownRoomB, `$4C1A`/pre-transition placeholder), not just
+   the current default. Real, honest result: ALL FIVE candidates
+   (including the current default) produce visually coherent,
+   plausible-looking dungeon art -- confirming this project's own
+   already-recorded warning that "this signal alone does not usefully
+   separate a real, distinct room from any other bank-5 record," since
+   the shared bank-8 metatile pool is generically dungeon-themed
+   throughout. One real, suggestive (NOT proven) observation: the
+   `$46B0` (willyRoom family) candidate produces noticeably richer,
+   more varied, more architecturally distinct compositions (real
+   doors, torch decorations, a bookshelf wall, hedge/bush borders) for
+   all 3 records than the current default -- worth a focused follow-up
+   if a live-gameplay lead into this area is ever found, but NOT
+   switched to this pass, since "looks more elaborate" is not
+   equivalent to "is correct."
+
+**Conclusion**: a genuinely open, honestly-scoped uncertainty, not a
+simple bug this pass could close. `rom_profiles.lua`'s own doc
+comments for `seventhRoom`/`eighthRoom`/`ninthRoom` and
+`genericCatalogMetatileTableFileOffset` are strengthened to record
+this direct, credible user report and the `$46B0` lead explicitly, and
+the rom-inspector website's own Room-System graph now flags these 3
+nodes accordingly. No data changed -- this is a documentation-only
+update reflecting a real, thorough, still-open investigation.

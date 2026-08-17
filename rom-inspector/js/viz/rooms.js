@@ -75,6 +75,17 @@ function render_rooms(main) {
       vermutlich ein anderer, per Cut erreichter Scroll-Ausschnitt derselben großen Leinwand, aber
       real ROM-seitig derselbe Raum, kein unabhängiger. Details im Tooltip am Knoten.
     </p>
+    <p class="page-lede">
+      <span style="color:#e05a5a;">&#9888; <code>seventhRoom</code>/<code>eighthRoom</code>/
+      <code>ninthRoom</code></span> (rot gestrichelter Rahmen unten): direkter, glaubwürdiger
+      Nutzer-Hinweis (2026-08-17, echtes ROM-Wissen: "raum 7 8 und 9 haben die falschen tilesets") --
+      gründlich nachgeprüft (externe FFA-Disassembly-Doku direkt abgerufen, Bank-5-Struktur auf eine
+      versteckte zweite Karte geprüft, jeder bekannte alternative Tileset-Pointer ausprobiert), aber
+      <strong>nicht gelöst</strong>. Diese 3 Räume waren schon vorher als "IMPLEMENTATION CHOICE,
+      nicht ROM-bestätigt" markiert (kein Live-Gameplay erreicht sie je) -- dieser Hinweis geht
+      darüber hinaus: konkret als wahrscheinlich falsch gemeldet, nicht nur unbestätigt. Details im
+      Tooltip am jeweiligen Knoten.
+    </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
       <button class="btn small" id="roomZoomOut" type="button" title="Verkleinern">&minus;</button>
@@ -222,8 +233,19 @@ function render_rooms(main) {
     // dashed "isoliert" styling above (a different real finding: this
     // one IS connected, it's just not an independent room).
     const sameAs = roomEntry && roomEntry.sameRomIdentityAs;
-    const borderStyle = isIsolated ? "2px dashed #e0a030" : (sameAs ? "2px solid #9d6fe0" : "1px solid var(--border)");
-    const tooltip = isIsolated ? roomEntry.note : (sameAs ? roomEntry.sameRomIdentityNote : "");
+    // A room flagged with a direct, credible user report that its own
+    // catalog-derived tileset is wrong (currently: seventhRoom/
+    // eighthRoom/ninthRoom -- see rom_profiles.lua's own
+    // `tilesetDisputed`/`tilesetDisputedNote` doc comment, 2026-08-17
+    // "raum 7 8 und 9 haben die falschen tilesets") -- thoroughly
+    // re-investigated (external FFA-Disassembly doc, bank-5 structure,
+    // every known alternate tileset pointer tried) but NOT resolved.
+    // Distinct red dashed border + its own badge, takes priority over
+    // the other real-but-different findings above (a credible dispute
+    // is a stronger flag than "not independently confirmed" alone).
+    const disputed = !!(roomEntry && roomEntry.tilesetDisputed);
+    const borderStyle = disputed ? "2px dashed #e05a5a" : (isIsolated ? "2px dashed #e0a030" : (sameAs ? "2px solid #9d6fe0" : "1px solid var(--border)"));
+    const tooltip = disputed ? roomEntry.tilesetDisputedNote : (isIsolated ? roomEntry.note : (sameAs ? roomEntry.sameRomIdentityNote : ""));
     nodesHtml += `
       <div class="room-node-card${isLeaf ? " leaf" : ""}" data-room="${escapeHtml(n)}"
            ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}
@@ -235,6 +257,7 @@ function render_rooms(main) {
                 role="img" aria-label="Echte Raum-Kachelkarte für ${escapeHtml(n)}"></canvas>
         <div style="font-size:11px; margin-top:4px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(n)}</div>
         <div style="font-size:9px; color:var(--text-faint);">${m ? m.cols + "&times;" + m.rows + " Tiles" : (roomByName[n] ? "kein Kartenraster" : "kein eigener Exit-Eintrag")}</div>
+        ${disputed ? `<div style="font-size:9px; color:#e05a5a; margin-top:2px;" title="${escapeHtml(roomEntry.tilesetDisputedNote)}">&#9888; Tileset umstritten</div>` : ""}
         ${isIsolated ? `<div style="font-size:9px; color:#e0a030; margin-top:2px;" title="${escapeHtml(roomEntry.note)}">&#9888; isoliert &mdash; 1. Bosskampf</div>` : ""}
         ${sameAs ? `<div style="font-size:9px; color:#9d6fe0; margin-top:2px;" title="${escapeHtml(roomEntry.sameRomIdentityNote)}">&equiv; ${escapeHtml(sameAs.join("/"))}</div>` : ""}
       </div>`;

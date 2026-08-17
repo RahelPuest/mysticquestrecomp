@@ -562,6 +562,17 @@ for name, room in pairs(profile.graphics) do
       -- not a generic "similar tileset" guess.
       sameRomIdentityAs = room.sameRomIdentityAs,
       sameRomIdentityNote = room.sameRomIdentityNote,
+      -- Real, structured dispute flag (currently seventhRoom/eighthRoom/
+      -- ninthRoom) -- see rom_profiles.lua's own `tilesetDisputed`/
+      -- `tilesetDisputedNote` doc comment: a direct, credible user
+      -- report (real first-hand ROM knowledge) that this room's own
+      -- catalog-derived tileset is wrong, thoroughly re-investigated
+      -- but not resolved -- not the same thing as the general
+      -- "IMPLEMENTATION CHOICE, not independently confirmed" status
+      -- every catalog room already carries; this is a specific,
+      -- credible dispute on TOP of that.
+      tilesetDisputed = room.tilesetDisputed,
+      tilesetDisputedNote = room.tilesetDisputedNote,
     }
   end
 end
@@ -604,16 +615,18 @@ for _, name in ipairs(ISOLATED_BUT_REAL_ROOMS) do
     }
   end
 end
--- Attach real `sameRomIdentityAs`/`sameRomIdentityNote` cross-
--- references (see rom_profiles.lua's own doc comment on this field,
--- currently only `fifthRoom`) to their room's own ROOMS[] entry --
--- generic over any room that carries this field, not a hardcoded
--- name list. Handles LEAF rooms too (like `fifthRoom`, which has no
--- `exits` of its own and so never went through the main loop above):
--- a real cross-reference must not silently disappear just because the
--- room it's attached to happens to have no outgoing exit yet.
+-- Attach real per-room cross-reference/dispute flags (currently
+-- `sameRomIdentityAs`/`sameRomIdentityNote`, see rom_profiles.lua's
+-- own doc comment -- `fifthRoom`; and `tilesetDisputed`/
+-- `tilesetDisputedNote` -- `seventhRoom`/`eighthRoom`/`ninthRoom`) to
+-- their room's own ROOMS[] entry -- generic over any room that
+-- carries either field, not a hardcoded name list. Handles LEAF rooms
+-- too (like `fifthRoom`/`ninthRoom`, which have no `exits` of their
+-- own and so never went through the main loop above): a real flag
+-- must not silently disappear just because the room it's attached to
+-- happens to have no outgoing exit yet.
 for name, room in pairs(profile.graphics) do
-  if type(room) == "table" and room.sameRomIdentityAs then
+  if type(room) == "table" and (room.sameRomIdentityAs or room.tilesetDisputed) then
     local found = nil
     for _, r in ipairs(rooms) do
       if r.name == name then found = r end
@@ -621,6 +634,8 @@ for name, room in pairs(profile.graphics) do
     if found then
       found.sameRomIdentityAs = room.sameRomIdentityAs
       found.sameRomIdentityNote = room.sameRomIdentityNote
+      found.tilesetDisputed = room.tilesetDisputed
+      found.tilesetDisputedNote = room.tilesetDisputedNote
     else
       local widthTiles, heightTiles
       if room.grid then
@@ -631,6 +646,8 @@ for name, room in pairs(profile.graphics) do
         name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = {},
         sameRomIdentityAs = room.sameRomIdentityAs,
         sameRomIdentityNote = room.sameRomIdentityNote,
+        tilesetDisputed = room.tilesetDisputed,
+        tilesetDisputedNote = room.tilesetDisputedNote,
       }
     end
   end
