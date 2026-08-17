@@ -1709,11 +1709,11 @@ function VictorySequence:update(dt)
   end
 end
 
---- Real gameplay continuation once every intro page is done -- hands
--- off from the scripted cutscene machine to the general room-chain
--- walker (see this module's doc comment). Does NOT pop this state --
--- the real ROM keeps the player in this same room, not an immediate
--- cut back to the starting room.
+--- Gameplay continuation once every intro page is done -- hands off
+-- from the scripted cutscene machine to the general room-chain walker
+-- (see this module's doc comment). Does not pop this state -- the ROM
+-- keeps the player in this same room, not an immediate cut back to
+-- the starting room.
 function VictorySequence:enterGameplay()
   if self.phase == "interactive" then return end
   self:ensureRoomLoaded(self.currentRoomKey)
@@ -1726,8 +1726,8 @@ function VictorySequence:finish()
   self.stack:pop()
 end
 
---- Draws every named character in `roomKey`'s own real `scene` (see
--- `ensureRoomLoaded`), each offset by `(dx, dy)` -- used both at rest
+--- Draws every named character in roomKey's own scene (see
+-- ensureRoomLoaded), each offset by (dx, dy) -- used both at rest
 -- (dx=dy=0) and mid-transition (offset to slide with their own room).
 function VictorySequence:drawRoomScene(roomKey, dx, dy)
   local sprites = self.roomSprites[roomKey]
@@ -1737,12 +1737,12 @@ function VictorySequence:drawRoomScene(roomKey, dx, dy)
   for name, sprite in pairs(sprites) do
     local char = sceneData[name]
     if char then
-      -- ADDED (2026-08-10): an animated NPC (see `updateNpcWander`) draws
-      -- at its own LIVE wandered position, not the static scene spawn
-      -- point -- and `NpcSprite:draw` takes no `flipX` (its own pose
-      -- table already bakes in the real per-direction flip, see
-      -- rom_profiles.lua's `animation` doc comment), unlike the plain
-      -- `CreatureSprite` every other scene character (Willy) still uses.
+      -- ADDED: an animated NPC (see updateNpcWander) draws at its own
+      -- live wandered position, not the static scene spawn point --
+      -- and NpcSprite:draw takes no flipX (its pose table already bakes
+      -- in the per-direction flip, see rom_profiles.lua's animation
+      -- doc comment), unlike the plain CreatureSprite every other
+      -- scene character (Willy) still uses.
       local live = wanderState and wanderState[name]
       if live then
         sprite:draw(live.x + dx, live.y + dy)
@@ -1753,14 +1753,14 @@ function VictorySequence:drawRoomScene(roomKey, dx, dy)
   end
 end
 
---- A plain, `love.*`-free snapshot of key fields -- for automated
--- scripted verification (`MYSTICQUEST_WAIT_FOR`, see main.lua's own doc
--- comment), added 2026-08-11 after this exact class of guesswork
--- ("how many frames until the player reaches the door?") repeatedly
--- wasted real verification time this same session. Deliberately a
--- separate method from the overlay's own `:draw()`-time
--- `self.overlay:addLine(...)` calls -- this one has no love dependency
--- at all and is meant to be called from `love.update`, before draw.
+--- A plain, love.*-free snapshot of key fields -- for automated
+-- scripted verification (MYSTICQUEST_WAIT_FOR, see main.lua's own doc
+-- comment), added after this exact class of guesswork ("how many
+-- frames until the player reaches the door?") repeatedly wasted
+-- verification time. Deliberately a separate method from the
+-- overlay's own :draw()-time self.overlay:addLine(...) calls -- this
+-- one has no love dependency at all and is meant to be called from
+-- love.update, before draw.
 function VictorySequence:debugState()
   return {
     room = self.currentRoomKey,
@@ -1768,37 +1768,37 @@ function VictorySequence:debugState()
     x = self.player and self.player.x,
     y = self.player and self.player.y,
     page = self.pageIndex,
-    -- ADDED (2026-08-15, second-boss feature) -- nil in every room
-    -- other than sixthRoom (no `self.secondBoss` built at all when
-    -- `rom_profiles.lua`'s own `sixthRoom.secondBoss` is absent).
+    -- ADDED (second-boss feature) -- nil in every room other than
+    -- sixthRoom (no self.secondBoss built at all when rom_profiles
+    -- .lua's own sixthRoom.secondBoss is absent).
     secondBossAlive = self.secondBoss and self.secondBoss:isAlive(),
     secondBossHp = self.secondBoss and self.secondBoss.stats.curLP,
     secondBossDefeated = self.secondBossDefeated,
-    -- ADDED (2026-08-16, real interpreter-driven cut transitions --
-    -- see `CutTransitionInterpreter.lua`'s own doc comment) -- nil
-    -- whenever no interpreter-backed transition is in flight.
+    -- ADDED (interpreter-driven cut transitions -- see
+    -- CutTransitionInterpreter.lua's own doc comment) -- nil whenever
+    -- no interpreter-backed transition is in flight.
     cutTransitionCapturedRoomSelector = self.cutTransitionInterpreter and
       self.cutTransitionInterpreter:capturedRoomSelector(),
     cutTransitionInterpreterDone = self.cutTransitionInterpreter and self.cutTransitionInterpreter.done,
   }
 end
 
---- Draws `sixthRoom`'s own second boss (see rom_profiles.lua's
--- `sixthRoom.secondBoss` doc comment) -- a no-op in every other room,
--- or once it's been defeated for good. Direct port of Field.lua's own
+--- Draws sixthRoom's own second boss (see rom_profiles.lua's
+-- sixthRoom.secondBoss doc comment) -- a no-op in every other room, or
+-- once it's been defeated for good. Direct port of Field.lua's own
 -- first-boss draw branch (death explosion / hit-flash / normal pose),
--- see that state's own `:draw()` for the more heavily-commented
+-- see that state's own :draw() for the more heavily-commented
 -- original this mirrors.
 function VictorySequence:drawSecondBoss()
   if self.currentRoomKey ~= "sixthRoom" or not self.secondBoss then return end
   local boss = self.secondBoss
   if boss.death and self.secondBossDeathSpriteA and not boss:deathComplete() then
-    -- Real death-explosion shape (see rom_profiles.lua's `enemyDeath`
-    -- doc comment) -- part offsets are relative to the creature's own
-    -- REST position; unlike Field.lua's own first boss (which reads
-    -- that from `enemySprite.screenX/screenY`, its one fixed spot),
-    -- this boss's rest position is its own `spawnX`/`spawnY` (it never
-    -- moves, see the doc comment above), used directly here instead.
+    -- Death-explosion shape (see rom_profiles.lua's enemyDeath doc
+    -- comment) -- part offsets are relative to the creature's rest
+    -- position; unlike Field.lua's own first boss (which reads that
+    -- from enemySprite.screenX/screenY, its one fixed spot), this
+    -- boss's rest position is its own spawnX/spawnY (it never moves,
+    -- see the doc comment above), used directly here instead.
     local d = self.profile.graphics.enemyDeath
     local sb = self.profile.graphics.sixthRoom.secondBoss
     local elapsed = boss.death.elapsedFrames
@@ -1833,10 +1833,10 @@ function VictorySequence:drawSecondBoss()
 end
 
 --- A plain, minimal LP readout while the second-boss fight is live --
--- deliberately NOT Field.lua's own decorated `HudBar` (real ROM HUD-bar
--- tile art, see that file's own `hudBar` doc comment) -- an honest
--- scope simplification for this evidence-based, non-ROM-confirmed
--- encounter, not a claim this is how the real HUD would look during it.
+-- deliberately not Field.lua's own decorated HudBar (ROM HUD-bar tile
+-- art, see that file's own hudBar doc comment) -- an honest scope
+-- simplification for this evidence-based, non-ROM-confirmed encounter,
+-- not a claim this is how the real HUD would look during it.
 function VictorySequence:drawSecondBossHud()
   if self.currentRoomKey ~= "sixthRoom" or not self.secondBoss or self.secondBossDefeated then return end
   if not self.font then return end
@@ -1852,37 +1852,37 @@ function VictorySequence:draw()
     self:drawRoomScene(self.currentRoomKey, 0, 0)
     self:drawSecondBoss()
     if self.playerSprite and self.player then
-      -- REVERTED (2026-08-15, same day, direct user report of shifted
-      -- collision in the FIRST boss room -- see Field.lua's own
-      -- matching revert note for the full reasoning): every room this
-      -- project already renders here was historically calibrated the
-      -- OLD, unshifted way -- applying the real OAM-vs-WRAM offset
-      -- broadly regressed at least one of them. Back to the raw
-      -- position everywhere in this file too, not just Field.lua.
+      -- REVERTED (same day, direct user report of shifted collision in
+      -- the first boss room -- see Field.lua's own matching revert
+      -- note for the full reasoning): every room this project already
+      -- renders here was historically calibrated the old, unshifted
+      -- way -- applying the OAM-vs-WRAM offset broadly regressed at
+      -- least one of them. Back to the raw position everywhere in this
+      -- file too, not just Field.lua.
       self.playerSprite:draw(self.player.x, self.player.y, self.player.facing == "right")
     end
     self:drawSecondBossHud()
   elseif self.phase == "transitioning" then
-    -- Real hardware-scroll pan (see rom_profiles.lua's `exits.
-    -- transition` doc comment): the current room slides toward one
-    -- side of the real axis, the target room slides in from the other
-    -- side (`totalPixels` away) -- the classic GB "camera pans, player
-    -- stays screen-fixed" technique, generalized to either axis instead
-    -- of hardcoding "vertical, north."
+    -- Hardware-scroll pan (see rom_profiles.lua's exits.transition doc
+    -- comment): the current room slides toward one side of the axis,
+    -- the target room slides in from the other side (totalPixels away)
+    -- -- the classic GB "camera pans, player stays screen-fixed"
+    -- technique, generalized to either axis instead of hardcoding
+    -- "vertical, north."
     --
-    -- CORRECTED (2026-08-12, direct user report: "der wipe vom willy
-    -- raum ist von unten nach oben anstatt anders herrum"): which side
-    -- is "toward" vs "away" depends on the exit's own real direction,
-    -- not just its axis. `secondRoom`'s real EAST exit wants the target
-    -- entering from the POSITIVE X side -- correct under the plain
-    -- formula below. `willyRoom`'s real NORTH exit is also on an axis
-    -- (`y`), but wants the OPPOSITE sign: the target should enter from
-    -- the NEGATIVE Y side (new area revealed ABOVE, sliding down), not
-    -- the positive side the old unconditional formula always used. A
-    -- single global sign convention can only ever be right for one real
-    -- direction per axis; `transition.reverse` (see that field's own
-    -- doc comment) flips it for exits where the default guess was
-    -- wrong, rather than special-casing "north" by name.
+    -- CORRECTED (direct user report the willyRoom wipe goes bottom-to-
+    -- top instead of the other way): which side is "toward" vs "away"
+    -- depends on the exit's own direction, not just its axis.
+    -- secondRoom's east exit wants the target entering from the
+    -- positive X side -- correct under the plain formula below.
+    -- willyRoom's north exit is also on an axis (y), but wants the
+    -- opposite sign: the target should enter from the negative Y side
+    -- (new area revealed above, sliding down), not the positive side
+    -- the old unconditional formula always used. A single global sign
+    -- convention can only ever be right for one direction per axis;
+    -- transition.reverse (see that field's own doc comment) flips it
+    -- for exits where the default guess was wrong, rather than
+    -- special-casing "north" by name.
     local exit = self.pendingExit
     local t = exit.transition
     local scroll = math.min(self.transitionFrame * t.pixelsPerFrame, t.totalPixels)
