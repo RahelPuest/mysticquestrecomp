@@ -1605,27 +1605,26 @@ function StandardScriptHandlers.waypointStepCommand(advanceStep)
   end
 end
 
---- Real "bitmask dispatch" handler (opcode `0xC2`, real ROM `$3981`,
--- found 2026-08-14 -- the whole-corpus scan's own next real untouched
--- blocker after `0xDA`/`0xDB`). Byte-for-byte:
---   LD A,(HL+) / CPL / LD C,A         ; real operand byte, COMPLEMENTED into C
---   BIT 0,C / CALL Z,$316B             ; if REAL bit 0 of the operand was SET...
---   BIT 1,C / CALL Z,$3171             ; ...(complemented bit reads as 0, hence "CALL Z")
+--- Real "bitmask dispatch" handler (opcode 0xC2, ROM $3981, found --
+-- the whole-corpus scan's own next untouched blocker after 0xDA/0xDB).
+-- Byte-for-byte:
+--   LD A,(HL+) / CPL / LD C,A         ; operand byte, complemented into C
+--   BIT 0,C / CALL Z,$316B             ; if bit 0 of the operand was set...
+--   BIT 1,C / CALL Z,$3171             ; ...(complemented bit reads as 0, hence CALL Z)
 --   BIT 2,C / CALL Z,$3177
 --   BIT 3,C / CALL Z,$317D
 --   BIT 4,C / CALL Z,$3183
 --   CALL $3727 / RET
--- A real, decodable "checkbox" opcode: the low 5 bits of ONE real
--- operand byte each independently gate a call to their own fixed real
--- leaf (`$316B`/`$3171`/`$3177`/`$317D`/`$3183`, all opaque -- real
--- effects HYPOTHESIS, matching this project's established scope).
--- Always continues (no halt anywhere); consumes the 1 real operand
--- byte plus 1 more via the standard trailing `$3727` skip.
--- `onBit(bitIndex)` fires once per REAL SET bit (0-4), in ascending
--- order, using the real, un-complemented bit meaning (SET = fires) --
--- the complement in the actual Z80 code is purely an implementation
--- detail of using `CALL Z` instead of `CALL NZ`, not a real inversion
--- of the opcode's own semantics.
+-- A decodable "checkbox" opcode: the low 5 bits of one operand byte
+-- each independently gate a call to their own fixed leaf ($316B/
+-- $3171/$3177/$317D/$3183, all opaque -- effects HYPOTHESIS, matching
+-- this project's established scope). Always continues (no halt
+-- anywhere); consumes the 1 operand byte plus 1 more via the standard
+-- trailing $3727 skip. onBit(bitIndex) fires once per set bit (0-4),
+-- in ascending order, using the un-complemented bit meaning (set =
+-- fires) -- the complement in the actual Z80 code is purely an
+-- implementation detail of using CALL Z instead of CALL NZ, not an
+-- inversion of the opcode's semantics.
 function StandardScriptHandlers.bitmaskDispatchCommand(onBit)
   return function(stream, cursor)
     local byte, afterByte = ScriptInterpreter.fetch(stream, cursor)
@@ -1642,30 +1641,27 @@ function StandardScriptHandlers.bitmaskDispatchCommand(onBit)
 end
 
 --- Real "dynamic-index flag-bit SET/CLEAR" handler family (opcodes
--- `0xDA`/`0xDB`, real ROM `$3BDB`/`$3BE5`, found 2026-08-14 -- the
--- whole-corpus scan's own next real untouched blocker after `0xC7`).
--- Byte-for-byte, `0xDA`:
+-- 0xDA/0xDB, ROM $3BDB/$3BE5, found -- the whole-corpus scan's own
+-- next untouched blocker after 0xC7). Byte-for-byte, 0xDA:
 --   CALL $3727 / CALL $3BEF / CALL $3727 / RET
--- and `0xDB`, the same shape calling `$3BF9` instead. Fully tractable
--- now that `0xD1`'s own investigation (see
--- `.budgetFlagCommand`'s own doc comment) already fully decoded
--- `$3BEF`/`$3BF9`/`$3602`: a real SET/CLEAR-numbered-flag-bit pair
--- over the same 128-bit WRAM array at `$D7C6`-`$D7D5`. The genuinely
--- NEW piece here: `$3727`'s own real calling convention leaves the
--- just-fetched byte in `A` across the call boundary (confirmed from
--- its own disassembly: the fetched byte is `PUSH`ed, `H`/`L` get
--- cached into `$D8B6`/`$D8B7`, then `POP`ped back into `A` right
--- before `RET`) -- so the FIRST `CALL $3727` here doubles as BOTH
--- "consume 1 real operand byte" AND "load that byte into `A` as the
--- real bit-INDEX parameter" for the immediately-following `$3BEF`/
--- `$3BF9` call. The SECOND `CALL $3727` consumes one more real byte
--- that's never otherwise used -- a genuine 2nd operand byte, matching
--- this project's own established "verified, unexplained 2nd/3rd byte"
--- convention (e.g. `.tileCursorSet`'s own 3rd byte,
--- `.playerEntityTypeWrite`'s own padding byte).
--- `setBit`: `true` for `0xDA` (SET), `false` for `0xDB` (CLEAR).
--- `onBit(bitIndex)` fires once per dispatch with the real, raw operand
--- byte (the bit index the real ROM passes to `$3BEF`/`$3BF9`).
+-- and 0xDB, the same shape calling $3BF9 instead. Fully tractable now
+-- that 0xD1's own investigation (see .budgetFlagCommand's own doc
+-- comment) already fully decoded $3BEF/$3BF9/$3602: a SET/CLEAR-
+-- numbered-flag-bit pair over the same 128-bit WRAM array at $D7C6-
+-- $D7D5. The genuinely new piece here: $3727's own calling convention
+-- leaves the just-fetched byte in A across the call boundary
+-- (confirmed from its disassembly: the fetched byte is pushed, H/L get
+-- cached into $D8B6/$D8B7, then popped back into A right before RET)
+-- -- so the first CALL $3727 here doubles as both "consume 1 operand
+-- byte" and "load that byte into A as the bit-index parameter" for the
+-- immediately-following $3BEF/$3BF9 call. The second CALL $3727
+-- consumes one more byte that's never otherwise used -- a genuine 2nd
+-- operand byte, matching this project's established "verified,
+-- unexplained 2nd/3rd byte" convention (e.g. .tileCursorSet's own 3rd
+-- byte, .playerEntityTypeWrite's own padding byte).
+-- setBit: true for 0xDA (SET), false for 0xDB (CLEAR). onBit(bitIndex)
+-- fires once per dispatch with the raw operand byte (the bit index the
+-- ROM passes to $3BEF/$3BF9).
 function StandardScriptHandlers.dynamicFlagBitCommand(setBit, onBit)
   return function(stream, cursor)
     local bitIndex, afterIndex = ScriptInterpreter.fetch(stream, cursor)
@@ -1677,39 +1673,36 @@ function StandardScriptHandlers.dynamicFlagBitCommand(setBit, onBit)
   end
 end
 
---- Real "2-bit WRAM field write" handler (opcode `0xC7`, real ROM
--- `$39BA`, found 2026-08-14 -- the whole-corpus scan's own next real
--- untouched blocker after `0xC6`). Byte-for-byte:
+--- Real "2-bit WRAM field write" handler (opcode 0xC7, ROM $39BA,
+-- found -- the whole-corpus scan's own next untouched blocker after
+-- 0xC6). Byte-for-byte:
 --   PUSH HL / CALL $2B1E / AND 0x03 / LD B,A
 --   LD A,($D7D5) / AND 0xFC / OR B / LD ($D7D5),A
 --   POP HL / CALL $3727 / RET
--- ZERO real script-stream operand bytes are read directly by this
--- opcode (`$2B1E` is called with no operand fetch beforehand, and HL
--- is preserved unchanged across the call via the `PUSH HL`/`POP HL`)
--- -- the ONLY real stream byte this opcode consumes is the standard
--- trailing `$3727` skip. Always continues (no branch at all).
--- `$2B1E` itself was traced -- a real, self-contained WRAPPING-COUNTER
--- + 2-level table lookup (`$C0B0`/`$C0B1` cycle a counter, indexes a
--- real table at `$2A1E` twice) -- genuinely deep enough that its
--- EXACT return value is left HYPOTHESIS (opaque leaf, same
--- "interpreter doesn't render, it calls back" scope as every other
--- closed opaque-leaf opcode) -- but this does NOT block modeling
--- `0xC7` itself correctly, since the opcode's own real stream
--- behavior (0 explicit bytes + 1 via `$3727`, unconditional) doesn't
--- depend on what `$2B1E` returns. `getValue()` is an optional
--- real-value provider (defaults to 0 -- no live `$C0B0`/`$C0B1`
--- cycling counter modeled); its result is masked to the real 2-bit
--- field (`AND 0x03`) before `onWrite` fires, matching the real ROM's
--- own masking.
+-- Zero script-stream operand bytes are read directly by this opcode
+-- ($2B1E is called with no operand fetch beforehand, and HL is
+-- preserved unchanged across the call via PUSH HL/POP HL) -- the only
+-- stream byte this opcode consumes is the standard trailing $3727
+-- skip. Always continues (no branch at all). $2B1E itself was traced
+-- -- a self-contained wrapping-counter + 2-level table lookup ($C0B0/
+-- $C0B1 cycle a counter, indexes a table at $2A1E twice) -- genuinely
+-- deep enough that its exact return value is left HYPOTHESIS (opaque
+-- leaf, same "interpreter doesn't render, it calls back" scope as
+-- every other closed opaque-leaf opcode) -- but this doesn't block
+-- modeling 0xC7 itself correctly, since the opcode's own stream
+-- behavior (0 explicit bytes + 1 via $3727, unconditional) doesn't
+-- depend on what $2B1E returns. getValue() is an optional value
+-- provider (defaults to 0 -- no live $C0B0/$C0B1 cycling counter
+-- modeled); its result is masked to the 2-bit field (AND 0x03) before
+-- onWrite fires, matching the ROM's own masking.
 function StandardScriptHandlers.twoBitFieldCommand(getValue, onWrite)
   return function(stream, cursor)
-    -- SELF-CAUGHT BUG, fixed 2026-08-14: a generic caller (e.g. this
-    -- project's own whole-corpus scan tool) may supply a stub
-    -- `getValue` that returns a non-number placeholder (its own
-    -- generic `__index` stub returns `true` for every unset callback,
-    -- regardless of that callback's own real return type) -- coerce
-    -- anything that isn't a real number to the documented default (0)
-    -- rather than crashing on `boolean % 4`.
+    -- SELF-CAUGHT BUG, fixed: a generic caller (e.g. the whole-corpus
+    -- scan tool) may supply a stub getValue that returns a non-number
+    -- placeholder (its generic __index stub returns true for every
+    -- unset callback, regardless of that callback's real return type)
+    -- -- coerce anything that isn't a number to the documented default
+    -- (0) rather than crashing on `boolean % 4`.
     local rawValue = getValue and getValue()
     if type(rawValue) ~= "number" then
       rawValue = 0
@@ -1723,30 +1716,28 @@ function StandardScriptHandlers.twoBitFieldCommand(getValue, onWrite)
   end
 end
 
---- Real "scene/textbox init" handler (opcode `0xC6`, real ROM `$39CF`,
--- found 2026-08-14 -- the whole-corpus scan's own next real untouched
--- blocker after `0x9C`/`0x9D`). Byte-for-byte: reads ONE real operand
--- byte (stored into `$D86C`), then unconditionally runs a long,
--- BRANCHLESS sequence of real WRAM writes -- `$D86E`=0, `$D862`=
--- (current `$C0A0`), `$D86C`=the operand byte, `CALL $30FF` (untraced
--- leaf), `$D853`=1, `$D84A`=0x1D, `$C0A0`=0x0F, `$D874` bit 5 cleared,
--- `$D885`=0, 4 bytes at `$D7A7`-`$D7AA` zeroed, then `CALL $3D10`
--- (B=5, another untraced leaf) -- and returns (no trailing `$3727`
--- skip needed: the routine's own single real operand fetch, `LD
--- A,(HL+)`, already advances the cursor by exactly the 1 real byte
--- this opcode consumes).
+--- Real "scene/textbox init" handler (opcode 0xC6, ROM $39CF, found --
+-- the whole-corpus scan's own next untouched blocker after 0x9C/0x9D).
+-- Byte-for-byte: reads one operand byte (stored into $D86C), then
+-- unconditionally runs a long, branchless sequence of WRAM writes --
+-- $D86E=0, $D862=(current $C0A0), $D86C=the operand byte, CALL $30FF
+-- (untraced leaf), $D853=1, $D84A=0x1D, $C0A0=0x0F, $D874 bit 5
+-- cleared, $D885=0, 4 bytes at $D7A7-$D7AA zeroed, then CALL $3D10
+-- (B=5, another untraced leaf) -- and returns (no trailing $3727 skip
+-- needed: the routine's own single operand fetch, LD A,(HL+), already
+-- advances the cursor by exactly the 1 byte this opcode consumes).
 --
--- DECISIVE cross-confirmation this is the SAME real "start a new
--- textbox/scene" state machine opcode `0xF6`'s own doc comment
--- (`TWO_BYTE_COMMAND_HANDLER_ADDRESS`) already hypothesized: `$D862`/
--- `$D86C`/`$D853`/`$D84A`/`$C0A0` are the EXACT SAME 5 real WRAM cells
--- both opcodes write -- not a coincidence, strong evidence `0xC6` is
--- a sibling/variant initializer in that same family (HYPOTHESIS on
--- the precise real-world distinction between the two -- the mechanism
--- itself, byte consumption and always-continues behavior, is
--- decisively verified). `$30FF`/`$3D10` remain untraced (HYPOTHESIS
--- on their own real effect, matching this project's established scope
--- for opaque leaves). `onByte(operandByte)` fires once per dispatch.
+-- Decisive cross-confirmation this is the same "start a new textbox/
+-- scene" state machine opcode 0xF6's own doc comment
+-- (TWO_BYTE_COMMAND_HANDLER_ADDRESS) already hypothesized: $D862/
+-- $D86C/$D853/$D84A/$C0A0 are the exact same 5 WRAM cells both opcodes
+-- write -- not a coincidence, strong evidence 0xC6 is a sibling/
+-- variant initializer in that same family (HYPOTHESIS on the precise
+-- distinction between the two -- the mechanism itself, byte
+-- consumption and always-continues behavior, is decisively verified).
+-- $30FF/$3D10 remain untraced (HYPOTHESIS on their effect, matching
+-- this project's established scope for opaque leaves).
+-- onByte(operandByte) fires once per dispatch.
 function StandardScriptHandlers.sceneInitCommand(onByte)
   return function(stream, cursor)
     local byte, afterByte = ScriptInterpreter.fetch(stream, cursor)
@@ -1757,42 +1748,41 @@ function StandardScriptHandlers.sceneInitCommand(onByte)
   end
 end
 
---- Real "periodic WRAM-effect" primitive (added 2026-08-14, whole-
--- corpus scan blockers `$0E8C`/`$0FE0`, opcodes `0xFB`/`0xBF`) -- the
--- SHARED shape behind both: every call fires `onTick(counter)` with a
--- real, private phase counter's CURRENT (pre-increment) value, doing
--- whatever real WRAM write that opcode's own cosmetic effect needs,
--- then advances the counter modulo `period`. On real WRAP (real ROM:
--- `INC A` [+ `AND` mask for a power-of-two period] / compare-or-test /
--- branch), BOTH real handlers call `$3727` -- the SAME already-ported
--- general opcode-fetch primitive this project's OWN main dispatch loop
--- already uses every tick (see `ScriptInterpreter.lua`'s own doc
--- comment: `LD A,(HL+) / LD ($D85A),A` + cache HL into `$D8B6`/`$D8B7`,
--- `RET` -- no dispatch of its own). Neither handler does anything else
--- afterward, and no code path was found anywhere that checks whether
--- `$D85A`/`$D8B6`/`$D8B7` were already primed before this project's
--- own outer per-tick loop does ITS OWN unconditional `$3727` fetch on
--- its very next cycle -- so the wrapped call's ONLY observable effect
--- is a real one-byte SKIP in the script stream; the byte value fetched
--- inline is never itself dispatched. HYPOTHESIS on that last point (no
--- live trace of the real outer dispatch loop's fetch-vs-skip behavior
--- on this exact path was captured this pass) but structurally solid:
--- `$3727` is a plain fetch+cache primitive with no jump/call of its
--- own, and both handlers just `RET` right after.
+--- Real "periodic WRAM-effect" primitive (whole-corpus scan blockers
+-- $0E8C/$0FE0, opcodes 0xFB/0xBF) -- the shared shape behind both:
+-- every call fires onTick(counter) with a private phase counter's
+-- current (pre-increment) value, doing whatever WRAM write that
+-- opcode's cosmetic effect needs, then advances the counter modulo
+-- period. On wrap (ROM: INC A [+ AND mask for a power-of-two period] /
+-- compare-or-test / branch), both handlers call $3727 -- the same
+-- already-ported general opcode-fetch primitive this project's own
+-- main dispatch loop already uses every tick (see ScriptInterpreter
+-- .lua's own doc comment: LD A,(HL+) / LD ($D85A),A + cache HL into
+-- $D8B6/$D8B7, RET -- no dispatch of its own). Neither handler does
+-- anything else afterward, and no code path was found anywhere that
+-- checks whether $D85A/$D8B6/$D8B7 were already primed before this
+-- project's own outer per-tick loop does its own unconditional $3727
+-- fetch on its next cycle -- so the wrapped call's only observable
+-- effect is a one-byte skip in the script stream; the byte value
+-- fetched inline is never itself dispatched. HYPOTHESIS on that last
+-- point (no live trace of the outer dispatch loop's fetch-vs-skip
+-- behavior on this exact path was captured this pass) but
+-- structurally solid: $3727 is a plain fetch+cache primitive with no
+-- jump/call of its own, and both handlers just RET right after.
 --
--- `state`: a private per-call-site counter table (`.counter`, defaults
--- 0). Real WRAM `$D499` is genuinely GLOBAL/shared across SEVERAL
--- unrelated ROM mechanisms (see `ScriptOpcodeTable.lua`'s own `$413C`-
--- table note, and `.peekTwoByteGate`'s doc comment above, for two
--- other real, different consumers of this SAME cell) -- since this
--- project runs one script per `ScriptRuntime`, a private zero-
--- initialized counter is the closest honest equivalent (the real ROM
--- resets it to 0 on every wrap anyway, so a real stale cross-mechanism
--- value only ever matters for the first partial cycle).
--- `period`: the real wrap modulus (64 for `0xFB`'s `AND 0x3F`, 10 for
--- `0xBF`'s explicit `CP 0x0A`).
--- `onTick(counter)`: fires every call with the real current/pre-
--- increment counter value.
+-- state: a private per-call-site counter table (.counter, defaults 0).
+-- WRAM $D499 is genuinely global/shared across several unrelated ROM
+-- mechanisms (see ScriptOpcodeTable.lua's own $413C-table note, and
+-- .peekTwoByteGate's doc comment above, for two other different
+-- consumers of this same cell) -- since this project runs one script
+-- per ScriptRuntime, a private zero-initialized counter is the closest
+-- honest equivalent (the ROM resets it to 0 on every wrap anyway, so a
+-- stale cross-mechanism value only ever matters for the first partial
+-- cycle).
+-- period: the wrap modulus (64 for 0xFB's AND 0x3F, 10 for 0xBF's
+-- explicit CP 0x0A).
+-- onTick(counter): fires every call with the current/pre-increment
+-- counter value.
 function StandardScriptHandlers.periodicWramEffect(state, period, onTick)
   assert(type(state) == "table", "periodicWramEffect requires a state table")
   assert(type(period) == "number" and period > 0, "periodicWramEffect requires a positive period")
