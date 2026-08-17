@@ -2303,96 +2303,86 @@ function StandardScriptHandlers.tileCursorSet(onSet)
 end
 
 --- Real "actor action, READINESS-AS-PARAMETER" handler (opcodes
--- `0x7A`/`0x7B`/`0x5A`/`0x5B`/`0x6A`, real ROM `$1570`/`$157C`/
--- `$1488`/`$1494`/`$14FC`, found 2026-08-14 -- the whole-corpus scan's
--- own next real untouched blocker after the `$0E73` neighborhood).
--- Byte-for-byte:
+-- 0x7A/0x7B/0x5A/0x5B/0x6A, ROM $1570/$157C/$1488/$1494/$14FC, found
+-- -- the whole-corpus scan's own next untouched blocker after the
+-- $0E73 neighborhood). Byte-for-byte:
 --   CALL $28C2 / ADD A,<offset> / LD C,A / LD A,<group> / CALL $2879 / RET
 --
--- SELF-CAUGHT CORRECTION (same day, later pass): this doc comment
--- originally claimed this family's real shape was "genuinely
--- different" from the already-established `.actorAction`/"Family A"
--- shape (`0x10`/`0x30`/`0x70`/... -- see `ScriptOpcodeTable.lua`'s own
--- Family-A doc comment), specifically that Family A uses a `JR
--- NZ,<not-ready>` gate right after `CALL $28C2` while this family
--- doesn't. Re-verifying Family A's OWN real bytes directly (`$1344`/
--- `$1514`/`$125C`, i.e. `0x30`/`0x70`/`0x10`) found that claim WRONG:
--- Family A has NO `JR NZ` there either -- it is BYTE-FOR-BYTE THE
--- EXACT SAME real instruction sequence as this family (`CALL $28C2 /
--- ADD A,<base> / LD C,A / LD A,<group> / CALL $2879 / RET`), just
--- different literal constants. Family A's own doc comment had ALREADY
--- correctly identified where the real halt actually lives -- entirely
--- INSIDE `$2879`'s own callee chain (`$2883` -> `$1F35` selector
--- `0x0A` -> `$4B70` -> a real `$C5A0` 8-slot pending-command search,
--- task #85's own finding) -- but this doc comment's own FIRST version
--- mis-stated that as an outer `JR NZ` gate that doesn't exist. Both
--- families are therefore the SAME real mechanism, approximated two
--- DIFFERENT ways by this project: `.actorAction` uses `isReady()` as
--- an outer GATE (an honest approximation of the real, unmodeled
--- `$2879`-internal `$C5A0` check, per that function's own "HONEST
--- LIMIT" note) but throws away the real `$28C2`-derived value (always
--- passes a FIXED group, `C=0x00`); THIS family instead threads the
--- real `$28C2`-derived value through as `param` (a genuine
--- improvement -- `$28C2`'s result determines WHICH of 2 real
--- action-code variants gets enqueued, real information Family A's own
--- model was silently discarding) but originally applied NO gate at
--- all. UNIFIED HERE: `isReady()` is now used for BOTH -- the same
--- approximate gate Family A already uses (so a real, live caller
--- supplying an actual predicate gets CONSISTENT halting behavior
--- across every Family-A-shaped opcode, old and new) AND the source
--- for `param`'s own real `0`/`1` term. The DEFAULT scan/test behavior
--- is unaffected (`ctx.isActorReady` defaults to "always ready," so
--- the gate never fires either way) -- this is a real-behavior
--- consistency fix, not a change to any already-measured scan result.
+-- SELF-CAUGHT CORRECTION (later pass): this doc comment originally
+-- claimed this family's shape was "genuinely different" from the
+-- already-established .actorAction/"Family A" shape (0x10/0x30/0x70/
+-- ... -- see ScriptOpcodeTable.lua's own Family-A doc comment),
+-- specifically that Family A uses a JR NZ,<not-ready> gate right after
+-- CALL $28C2 while this family doesn't. Re-verifying Family A's own
+-- bytes directly ($1344/$1514/$125C, i.e. 0x30/0x70/0x10) found that
+-- claim wrong: Family A has no JR NZ there either -- it's byte-for-
+-- byte the exact same instruction sequence as this family (CALL $28C2
+-- / ADD A,<base> / LD C,A / LD A,<group> / CALL $2879 / RET), just
+-- different literal constants. Family A's own doc comment had already
+-- correctly identified where the real halt lives -- entirely inside
+-- $2879's own callee chain ($2883 -> $1F35 selector 0x0A -> $4B70 ->
+-- a $C5A0 8-slot pending-command search, task #85's finding) -- but
+-- this doc comment's first version mis-stated that as an outer JR NZ
+-- gate that doesn't exist. Both families are therefore the same
+-- mechanism, approximated two different ways: .actorAction uses
+-- isReady() as an outer gate (an honest approximation of the
+-- unmodeled $2879-internal $C5A0 check) but throws away the $28C2-
+-- derived value (always passes a fixed group, C=0x00); this family
+-- instead threads the $28C2-derived value through as param (a genuine
+-- improvement -- $28C2's result determines which of 2 action-code
+-- variants gets enqueued, information Family A's model was silently
+-- discarding) but originally applied no gate at all. Unified here:
+-- isReady() is now used for both -- the same approximate gate Family
+-- A already uses (so a live caller supplying an actual predicate gets
+-- consistent halting behavior across every Family-A-shaped opcode)
+-- and the source for param's own 0/1 term. Default scan/test behavior
+-- is unaffected (ctx.isActorReady defaults to "always ready," so the
+-- gate never fires either way) -- a real-behavior consistency fix,
+-- not a change to any already-measured scan result.
 --
--- REFINEMENT (2026-08-14, task-11 quality pass, "kommentiere alles"):
--- a systematic byte-level re-check of ALL 46 real plain-Family-A
--- (`ACTOR_ACTION_HANDLER_ADDRESS_*`) constants found the "byte-for-
--- byte identical, no JR NZ anywhere" claim above holds for 44 of
--- them, but NOT universally -- `0x9A`/`0x9B` (`$1674`/`$1681`) DO have
--- a real `JR NZ` right after `CALL $28C2`, a genuine, real, direct
--- halt (re-verified directly, not assumed). For those 2 opcodes the
--- generic `.actorAction` gate isn't an approximation at all -- it's
--- the exact real condition. This doesn't change any behavior (the
--- SAME `isActorReady`-based gate already covers both cases correctly,
--- exactly for the 2 real exceptions and approximately for the other
--- 44), but the earlier blanket claim ("Family A has NO JR NZ") was
--- itself an overgeneralization from checking only 3 real examples --
--- corrected here for precision, not because anything was functionally
--- broken. Also found via this same systematic check: `0x7B`'s own
--- OLD `ACTOR_ACTION_HANDLER_ADDRESS_7B` constant (same address,
--- `$157C`) was still being picked up by `ScriptRuntime.lua`'s own
--- generic sweep, silently overwriting THIS family's more precise
--- registration for that one opcode -- a real, separate, self-caught
--- dead-code bug, fixed with an explicit exclusion (see that file's
--- own matching comment for the full story and a live verification).
+-- REFINEMENT (task-11 quality pass): a systematic byte-level re-check
+-- of all 46 plain-Family-A (ACTOR_ACTION_HANDLER_ADDRESS_*) constants
+-- found the "byte-for-byte identical, no JR NZ anywhere" claim above
+-- holds for 44 of them, but not universally -- 0x9A/0x9B ($1674/
+-- $1681) do have a JR NZ right after CALL $28C2, a genuine, direct
+-- halt (re-verified directly). For those 2 opcodes the generic
+-- .actorAction gate isn't an approximation at all -- it's the exact
+-- condition. This doesn't change any behavior (the same
+-- isActorReady-based gate already covers both cases correctly), but
+-- the earlier blanket claim was itself an overgeneralization from
+-- checking only 3 examples -- corrected here for precision. Also
+-- found via this check: 0x7B's own old ACTOR_ACTION_HANDLER_ADDRESS_7B
+-- constant (same address, $157C) was still being picked up by
+-- ScriptRuntime.lua's own generic sweep, silently overwriting this
+-- family's more precise registration for that one opcode -- a
+-- separate, self-caught dead-code bug, fixed with an explicit
+-- exclusion (see that file's own matching comment for the full story
+-- and a live verification).
 --
--- `$28C2` itself returns a plain `A=0`(not ready)/`A=1`(ready) (see
--- its own disassembly: `CP 0xD0 / JR Z,+3 / LD A,0x00 / RET` / `LD
--- A,0x01 / RET`), added to a real, fixed per-opcode `offset` and
--- passed as `$2879`'s own `C` parameter. No script-stream operand
--- bytes either way (matching `.actorAction`'s own "zero operand
--- bytes" contract). `group`/`offset` are the real fixed per-opcode
--- constants. `onAction(group, param)` fires only on the real ready
--- path (matching `.actorAction`'s own contract, and this factory's
--- own gate above) -- since `isReady()` gates BEFORE `param` is
--- computed, only the real `A=1` case is ever reachable here, so
--- `param` is always `offset+1` in practice. The real `A=0`/`offset`
--- case exists in the ROM's own bytes but is folded into the gate's
--- own halt path by this approximation, same as `.actorAction`
--- silently discarding its own analogous "not ready" real payload --
--- an honest, documented limit, not a fabricated value.
---- Real "queued action, readiness-as-parameter" handler (opcode
--- `0x68`, real ROM `$14E8`, found 2026-08-14 -- the whole-corpus
--- scan's own next real untouched blocker after `0xA1`). Byte-for-byte:
+-- $28C2 itself returns a plain A=0(not ready)/A=1(ready) (see its own
+-- disassembly: CP 0xD0 / JR Z,+3 / LD A,0x00 / RET / LD A,0x01 / RET),
+-- added to a fixed per-opcode offset and passed as $2879's own C
+-- parameter. No script-stream operand bytes either way (matching
+-- .actorAction's own "zero operand bytes" contract). group/offset are
+-- the fixed per-opcode constants. onAction(group, param) fires only on
+-- the ready path (matching .actorAction's own contract, and this
+-- factory's own gate above) -- since isReady() gates before param is
+-- computed, only the A=1 case is ever reachable here, so param is
+-- always offset+1 in practice. The A=0/offset case exists in the
+-- ROM's bytes but is folded into the gate's own halt path by this
+-- approximation, same as .actorAction silently discarding its own
+-- analogous "not ready" payload -- an honest, documented limit.
+--- Real "queued action, readiness-as-parameter" handler (opcode 0x68,
+-- ROM $14E8, found -- the whole-corpus scan's own next untouched
+-- blocker after 0xA1). Byte-for-byte:
 --   CALL $28C2 / ADD A,0x05 / LD C,A / CALL $2859 / RET
--- The `$2859`-leaf (queued-action) sibling of
--- `.actorActionWithReadinessParam` -- SAME real shape and SAME
--- same-day gate correction (see that function's own doc comment for
--- the full story: this is the exact Family-A-shaped mechanism,
--- `isReady()` approximates the real, unmodeled `$2859`-internal halt,
--- and `param` is only reachable as `offset+1` on the ready path).
--- `onAction(param)` fires only on the real ready path.
+-- The $2859-leaf (queued-action) sibling of
+-- .actorActionWithReadinessParam -- same shape and same gate
+-- correction (see that function's own doc comment for the full story:
+-- this is the exact Family-A-shaped mechanism, isReady() approximates
+-- the unmodeled $2859-internal halt, and param is only reachable as
+-- offset+1 on the ready path). onAction(param) fires only on the
+-- ready path.
 function StandardScriptHandlers.queuedActionWithReadinessParam(offset, isReady, onAction)
   return function(_stream, cursor)
     if not isReady() then
