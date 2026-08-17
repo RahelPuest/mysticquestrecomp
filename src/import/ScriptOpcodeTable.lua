@@ -175,75 +175,69 @@ ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS = 0x0FB4
 -- skipped, unconditional continue) is fully verified.
 ScriptOpcodeTable.TYPEWRITER_COMMAND_HANDLER_ADDRESS = 0x332F
 
--- The real "actor flag/state" opcode family -- 7 real opcodes
--- (`0x10`/`0x20`/`0x25`/`0x30`/`0x7B` and `0x38`/`0x78`), found via
--- this session's own opcode-frequency scan as the largest remaining
--- block of undecoded scripts (~145 combined) and traced end to end
--- via static disassembly. All 7 share one of two real, near-identical
--- shapes; both ultimately reduce to "halt until a real WRAM condition
--- holds, then perform a real action and continue" -- see
--- `StandardScriptHandlers.actorAction`/`.queuedAction` for the
+-- The "actor flag/state" opcode family -- 7 opcodes (0x10/0x20/0x25/
+-- 0x30/0x7B and 0x38/0x78), found via this session's opcode-frequency
+-- scan as the largest remaining block of undecoded scripts (~145
+-- combined) and traced end to end via static disassembly. All 7 share
+-- one of two near-identical shapes; both ultimately reduce to "halt
+-- until a WRAM condition holds, then perform an action and continue"
+-- -- see StandardScriptHandlers.actorAction/.queuedAction for the
 -- implementation, and events.md's "The actor flag/state family,
 -- resolved" section for the full byte-for-byte chain.
 --
--- **Family A** (`0x10`/`0x20`/`0x25`/`0x30`/`0x7B`): each opcode's own
--- handler does `CALL $28C2` (computes a real 0-or-1 "action code
--- adjustment" by checking WRAM actor-record #7's own state field --
--- `$C200 + 7*16 + 2 = $C272` -- against high-nibble `0xD0`) `/ ADD A,
--- <opcode-specific base> / LD C,A / LD A,<opcode-specific fixed
--- "group" value> / CALL $2879`. `$2879` itself (`PUSH HL / CALL $2883
--- / POP HL / RET NZ / CALL $3727 / RET`) tail-dispatches through
--- `$2883` -> the general cross-bank dispatcher `$1F35` (real, staged
--- selector `0x0A`) -> real bank-3 handler `$4B70` (NOT `$4C38` -- see
--- the CORRECTION below), which itself reads a real, shared 24-byte-
--- stride "actor slot" table (`$C4E0`, the SAME one `$4AF9` below
--- indexes) and conditionally calls a SECOND selector (`0x12`, `$4B62`,
--- which searches an 8-byte table at `$C5A0` for a matching value) --
--- i.e. `$2879` genuinely halts (no `$3727` anywhere in the whole
--- chain) while that real, multi-table lookup doesn't succeed, and
--- only performs its real payload once it does. Real per-opcode "group"
--- constants (the fixed A value each passes to `$2879`): `0x10`/`0x20`/
--- `0x30` -> group `0x04`; `0x25` -> group `0x1F`; `0x7B` -> group
--- `0x0F`.
+-- Family A (0x10/0x20/0x25/0x30/0x7B): each opcode's handler does
+-- CALL $28C2 (computes a 0-or-1 "action code adjustment" by checking
+-- WRAM actor-record #7's own state field -- $C200 + 7*16 + 2 = $C272
+-- -- against high-nibble 0xD0) / ADD A,<opcode-specific base> / LD
+-- C,A / LD A,<opcode-specific fixed "group" value> / CALL $2879.
+-- $2879 itself (PUSH HL / CALL $2883 / POP HL / RET NZ / CALL $3727 /
+-- RET) tail-dispatches through $2883 -> the general cross-bank
+-- dispatcher $1F35 (staged selector 0x0A) -> bank-3 handler $4B70
+-- (not $4C38 -- see the correction below), which itself reads a
+-- shared 24-byte-stride "actor slot" table ($C4E0, the same one
+-- $4AF9 below indexes) and conditionally calls a second selector
+-- (0x12, $4B62, which searches an 8-byte table at $C5A0 for a
+-- matching value) -- $2879 genuinely halts (no $3727 anywhere in the
+-- whole chain) while that multi-table lookup doesn't succeed, and
+-- only performs its payload once it does. Per-opcode "group" constants
+-- (the fixed A value each passes to $2879): 0x10/0x20/0x30 -> group
+-- 0x04; 0x25 -> group 0x1F; 0x7B -> group 0x0F.
 --
--- `$4B70` DECODED (2026-08-13, task #85, direct follow-up to "was
--- fehlt noch damit alle räume komplett interpretiert werden können" ->
--- "ja mach das", chasing whether room-connectivity/spawn data hides
--- behind this dispatch chain): `PUSH AF` (save the incoming "group"
--- value) `/ LD A,C` (the `$28C2`-derived action-code-adjustment
--- becomes the active value) `/ CP 0xFF` -> a special "clear" path if
--- the action code is the real `0xFF` sentinel `/` else `HL = $C4E0 +
--- actionCode*24` (this table is indexed by the ACTION CODE, not by
--- "group" -- a real correction to this doc's own earlier phrasing,
--- which conflated the two) `/ POP AF / LD B,A` (group now lives in
--- `B`) `/ LD C,(HL)` (reads that action-code slot's own stored byte)
--- `/ HL = DE+4` (a second field, 4 bytes into the same 24-byte record)
--- `/` if that field is zero: writes `B` (the real group value) into
--- it, then does a real "search-or-insert" dance against selector
--- `0x12`'s own `$C5A0` 8-byte table (via 2 more real `CALL $4B62`
--- calls, one with `A=0`, one with the group's own real ID) -- if
--- nonzero already: does the SAME search-or-insert without the write.
--- **Real, decisive conclusion**: this is a general-purpose "enqueue a
--- real (group, actionCode) pair into a shared actor-action table,
--- deduplicated against an 8-slot pending-set" mechanism -- structurally
--- a real actor COMMAND QUEUE, not room-selection or spawn-coordinate
--- data. No room ID, no X/Y pair, no tile/pixel-shaped value appears
--- anywhere in this real routine. This decisively rules OUT the
--- Family-A `actorAction` chain as the source of room-connectivity/
--- spawn-position data (a real, useful NEGATIVE result narrowing task
--- #85's own search, not a final answer to where that data actually
--- lives -- see events.md's own dated entry for the door-transition
--- script this was chased from).
+-- $4B70 DECODED (task #85, direct follow-up to a question about what's
+-- still missing for full room interpretation, chasing whether room-
+-- connectivity/spawn data hides behind this dispatch chain): PUSH AF
+-- (save the incoming "group" value) / LD A,C (the $28C2-derived
+-- action-code-adjustment becomes the active value) / CP 0xFF -> a
+-- special "clear" path if the action code is the 0xFF sentinel / else
+-- HL = $C4E0 + actionCode*24 (this table is indexed by the action
+-- code, not by "group" -- a correction to this doc's earlier
+-- phrasing, which conflated the two) / POP AF / LD B,A (group now
+-- lives in B) / LD C,(HL) (reads that action-code slot's own stored
+-- byte) / HL = DE+4 (a second field, 4 bytes into the same 24-byte
+-- record) / if that field is zero: writes B (the group value) into
+-- it, then does a "search-or-insert" dance against selector 0x12's
+-- own $C5A0 8-byte table (via 2 more CALL $4B62 calls, one with A=0,
+-- one with the group's own ID) -- if nonzero already: does the same
+-- search-or-insert without the write. Decisive conclusion: this is a
+-- general-purpose "enqueue a (group, actionCode) pair into a shared
+-- actor-action table, deduplicated against an 8-slot pending-set"
+-- mechanism -- structurally an actor command queue, not room-
+-- selection or spawn-coordinate data. No room ID, no X/Y pair, no
+-- tile/pixel-shaped value appears anywhere in this routine. This
+-- decisively rules out the Family-A actorAction chain as the source
+-- of room-connectivity/spawn-position data (a useful negative result
+-- narrowing task #85's search, not a final answer to where that data
+-- actually lives -- see events.md's own dated entry for the door-
+-- transition script this was chased from).
 --
--- CORRECTED (2026-08-13, "1 dann 2 dann 3" -- disassembling the REST
--- of $1F35's own real dispatch table): an earlier pass here had a real
--- indexing bug -- it treated CPU `$4014` as the table's own INDEX-0
--- base, when `$1F35`'s own code (`LD H,0x40 / LD L,<selector*2>`)
--- actually bases the table at `$4000` (so selector `0x0A` really lands
--- at `$4000+0x0A*2=$4014`, NOT at the table's own start). This
--- silently mis-resolved EVERY selector past a few coincidental low
--- ones, including wrongly claiming selector `0x0A` (this family's own
--- real trampoline target) resolves to `$4C38` -- it actually resolves
+-- CORRECTED (disassembling the rest of $1F35's own dispatch table):
+-- an earlier pass here had an indexing bug -- it treated CPU $4014 as
+-- the table's own index-0 base, when $1F35's code (LD H,0x40 / LD
+-- L,<selector*2>) actually bases the table at $4000 (so selector 0x0A
+-- really lands at $4000+0x0A*2=$4014, not at the table's own start).
+-- This silently mis-resolved every selector past a few coincidental
+-- low ones, including wrongly claiming selector 0x0A (this family's
+-- own trampoline target) resolves to $4C38 -- it actually resolves
 -- to `$4B70` (confirmed above). `$4C38` is real and IS the handler for
 -- a DIFFERENT real selector (`0x14`) that also starts with `CALL
 -- $4BE0` and does contain the real `$C272` check -- but `0x14` is NOT
