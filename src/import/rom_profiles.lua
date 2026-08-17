@@ -1536,29 +1536,21 @@ RomProfiles.PROFILES = {
       fifthRoom = {
         status = "VERIFIED",
         romRoomSelectors = { 2, 3, 4, 5, 6 },
-        -- RESOLVED (2026-08-16, same live methodology as fourthRoom's
-        -- own `romRoomSelectorConfirmed` above, applied to the
-        -- fourthRoom->fifthRoom transition itself this time): a live
-        -- PC watch on the shared `$026DC` roomSelector-argument
-        -- subroutine, during the real RIGHT/UP/DOWN trigger sequence
-        -- (`fifth_room_free()`'s own documented recipe), caught it once
-        -- with `A=4` -- resolving the `{2,3,4,5,6}` candidate set above
-        -- down to the real, confirmed `4`. Independently cross-checked
-        -- by the SAME trace's own `$11B7` peek (opcode `0xF4`, the real
-        -- entry point now wired in `CutTransitionInterpreter.lua`'s own
-        -- `ENTRY_POINTS.fourthRoomToFifthRoom`): its captured
-        -- `(B,C)=(4,80)` reads B=4 too, byte-exact agreement between
-        -- two completely independent live-execution angles.
+        -- RESOLVED: a live PC watch on the shared roomSelector-argument
+        -- subroutine during the real trigger sequence caught A=4 --
+        -- resolving the candidate set above to the confirmed 4.
+        -- Independently cross-checked via the same trace's opcode 0xF4
+        -- peek (CutTransitionInterpreter's fourthRoomToFifthRoom entry
+        -- point): captured (B,C)=(4,80), B=4 again -- two independent
+        -- angles agree.
         romRoomSelectorConfirmed = 4,
-        -- STRUCTURED, EXPORTABLE cross-reference for the same finding
-        -- documented in prose further below (2026-08-17, direct user
-        -- claim "ich bin mir sehr sicher das er übergang von fourth in
-        -- den fith room einfach nur ein übergang zurück in den third
-        -- room ist") -- real, live-confirmed identity registers
-        -- ($D392/$D393/$C3F0/$C3F5) byte-identical to willyRoom/
-        -- secondRoom/thirdRoom; kept as real fields (not just a
-        -- comment) so rom-inspector's own export_data.lua can surface
-        -- this on the website without hand-duplicating the claim.
+        -- STRUCTURED, EXPORTABLE cross-reference for the finding
+        -- documented in prose further below (direct user claim this
+        -- transition just goes back to thirdRoom) -- real, live-
+        -- confirmed identity registers ($D392/$D393/$C3F0/$C3F5)
+        -- byte-identical to willyRoom/secondRoom/thirdRoom; kept as
+        -- real fields (not just a comment) so export_data.lua can
+        -- surface this on the website without duplicating the claim.
         sameRomIdentityAs = { "willyRoom", "secondRoom", "thirdRoom" },
         sameRomIdentityNote = "Reale ROM-Identitaetsregister ($D392/$D393 Tile-Source-Pointer, " ..
           "$C3F0 dynamicBank, $C3F5 roomSelector) sind byte-identisch mit willyRoom/secondRoom/" ..
@@ -1581,24 +1573,19 @@ RomProfiles.PROFILES = {
           [160] = 0x324c0, [161] = 0x324d0, [162] = 0x32350, [163] = 0x32270,
           [164] = 0x32230, [165] = 0x32320, [166] = 0x32400, [167] = 0x32420,
           [168] = 0x32410, [169] = 0x32430, [170] = 0x32360, [171] = 0x32370,
-          [172] = 0x32410, -- NEW, found this pass (real VRAM pattern search,
-          [173] = 0x32430, --   exactly 1 match each, see doc comment above)
+          [172] = 0x32410, -- NEW, found this pass (VRAM pattern search, 1 match each)
+          [173] = 0x32430,
           [174] = 0x32360,
           [175] = 0x32370,
         },
-        -- Real, LIVE-CONFIRMED floor tiles (2026-08-12): the real
-        -- landing spot walked freely left (57px) and down (57px) --
-        -- both directions stayed entirely within the checkered `147`-
-        -- `150` tile pattern that dominates this room's own interior
-        -- -- while `RIGHT`/`UP` were blocked almost immediately (the
-        -- real bordering wall/decoration tiles, `128`-`146`/`155`-
-        -- `175`, are NOT marked floor here -- HYPOTHESIS, not
-        -- individually live-tested, matching this project's own
-        -- honest-default-to-wall convention for untested border tiles).
+        -- Real, live-confirmed floor tiles: the landing spot walked
+        -- freely left/down, both staying within the checkered 147-150
+        -- pattern, while RIGHT/UP hit walls almost immediately. Border
+        -- tiles (128-146/155-175) default to non-floor per this
+        -- project's honest untested-border-defaults-to-wall convention.
         floorTileIds = { [147] = true, [148] = true, [149] = true, [150] = true },
         -- Real VRAM tilemap capture at the settled landing position
-        -- (mgba, background map 0, rows 0-15/cols 0-19 -- the same
-        -- real 20x16 playfield convention every other room here uses).
+        -- (background map 0, rows 0-15/cols 0-19, standard 20x16 grid).
         grid = {
           {128,129,132,129,132,129,132,129,132,129,129,135,129,135,129,135,129,135,129,137},
           {130,131,133,134,133,134,133,134,133,134,136,133,136,133,136,133,136,133,138,139},
@@ -1617,121 +1604,75 @@ RomProfiles.PROFILES = {
           {130,166,169,170,169,170,169,170,169,170,172,169,172,169,172,169,172,169,174,139},
           {167,168,171,168,171,168,171,168,171,168,168,173,168,173,168,173,168,173,168,175},
         },
-        -- RETRACTED (2026-08-15, direct user report: "das ist doch
-        -- immernoch der falsche raum!!! es ist im raum der so ausseiht
-        -- wie der start raum wo auch der erste bossfight statt
-        -- findet!!!", then, after live back-and-forth confirmed this
-        -- was reached by walking WEST out of `fourthRoom`'s own
-        -- corridor (normal live play, this LÖVE app, not the debug
-        -- room browser): a `secondBoss` entry USED to live here. Moved
-        -- to `sixthRoom` -- see that room's own doc comment for the
-        -- full history (both the original species-byte evidence trail
-        -- and this correction) -- since the room the user kept
-        -- describing is reached going west, not north. `fifthRoom`
-        -- itself is real (the north exit is a genuine, live-traced ROM
-        -- transition) but apparently is NOT where this encounter lives.
+        -- RETRACTED (direct user report this was still the wrong room --
+        -- "looks like the start room where the first boss fight
+        -- happens"; live back-and-forth confirmed it's reached by
+        -- walking WEST out of fourthRoom's corridor): a `secondBoss`
+        -- entry used to live here. Moved to sixthRoom (see that room's
+        -- own doc comment) since the described room is reached going
+        -- west, not north. fifthRoom itself is real (the north exit is
+        -- a genuine live-traced cut) but isn't where this encounter lives.
       },
-      -- Real room found LIVE (2026-08-13, direct user bug report: "im
-      -- raum nach der treppe müsste ich nach westen weiter gehen
-      -- können... der raum sollte weiter scrollen"). This project's
-      -- own earlier "flood-fill" of fourthRoom (see fifthRoom's own
-      -- doc comment) DID try LEFT from the staircase landing spot and
-      -- found an immediate wall there -- but its own `walk()` helper
-      -- gave up after only 10 real stall frames, well short of the
-      -- ~64-frame real hold delay already known for the NORTH exit
-      -- (fourthRoom -> fifthRoom) -- a real, caught false negative.
-      -- Re-tested with a real, long (200+ frame) hold from the
-      -- corridor's own real waypoint (reached by UP then LEFT from the
-      -- staircase landing spot, the SAME corridor the fifthRoom exit
-      -- uses) -- the real SCX shadow (`$C0A6`) genuinely moves (0 ->
-      -- 184 -> settles at 96), confirming an actual hardware scroll,
-      -- not a stationary wall -- revealing this real, previously-
-      -- uncaptured screen. Real tile-source pointer `$46B0`,
-      -- dynamicBank 6 -- confirmed LIVE (`$D392`/`$D393`/`$C3F0` at the
-      -- settled position) to be the SAME `willyRoom`/`secondRoom`/
-      -- `thirdRoom`/`fifthRoom` family (`roomSelectorTable`'s own
-      -- selectors 2-6), matching `fourthRoom`'s own selector-1
-      -- `dynamicBank` exactly -- this is real, further content of that
-      -- SAME already-explored screen, not a new tile region or a
-      -- different `roomSelector` state.
-      -- CORRECTED (2026-08-14, "gamemap absolute prio"): the paragraph
-      -- above already had the real answer, three separate real
-      -- confirmations later just made it decisive -- see `fourthRoom
-      -- .exits`'s own "RETRACTED" doc comment above for the full
-      -- evidence trail (the documented cut-trigger never fires even
-      -- after 3000+ frames; the `$C3F0`=6 "confirmation" was non-
-      -- discriminating; the real `$1E9F`/`$1EB6` scroll-reveal
-      -- mechanism -- the exact one that proved `secondRoom` is part of
-      -- `willyRoom` -- fires here too, with real captured tile data
-      -- matching `fourthRoom`'s own vocabulary). This table's own real,
-      -- independently-verified `tileOffsets` are KEPT (genuine,
-      -- cross-validated ROM data, still useful) -- the ROM's own
-      -- structure genuinely never cuts here.
+      -- Real room found live (direct user bug report that the room
+      -- after the staircase should keep scrolling west). An earlier
+      -- flood-fill DID try LEFT from the staircase landing and found a
+      -- wall -- but gave up after only 10 stall frames, short of the
+      -- ~64-frame hold already known for the north exit (a false
+      -- negative). Re-tested with a longer (200+ frame) hold from the
+      -- same corridor -- the real SCX shadow ($C0A6) genuinely moves
+      -- (0 -> 184 -> settles at 96), confirming an actual hardware
+      -- scroll, revealing this previously-uncaptured screen. Real tile-
+      -- source pointer $46B0, dynamicBank 6 -- confirmed live to be the
+      -- same willyRoom/secondRoom/thirdRoom/fifthRoom family, matching
+      -- fourthRoom's own selector-1 dynamicBank -- further content of
+      -- that same already-explored screen, not a new tile region.
       --
-      -- RE-WIRED (2026-08-15, direct user bug report -- see
-      -- `fourthRoom.exits`'s own "RE-ADDED" doc comment for the full
-      -- reasoning): `fourthRoom.exits` points here again, as an
-      -- honestly-labeled ENGINEERING CHOICE rather than a reversal of
-      -- the finding above -- the ROM fact (one continuous scrolling
-      -- canvas, not a cut) stays correct; what changed is that this
-      -- project's own no-camera-scroll engine has no other way to make
-      -- this real, already-decoded tile content reachable at all, and
-      -- the user directly, repeatedly confirmed (live, walking this
-      -- exact app) that something should be here when going west.
+      -- CORRECTED: the paragraph above already had the answer; three
+      -- further confirmations made it decisive -- see fourthRoom.exits'
+      -- own "RETRACTED" doc comment for the full evidence trail (the
+      -- documented cut-trigger never fires even after 3000+ frames; the
+      -- $C3F0=6 "confirmation" was non-discriminating; the same scroll-
+      -- reveal mechanism that proved secondRoom is part of willyRoom
+      -- fires here too). tileOffsets are kept (genuine, cross-validated
+      -- ROM data) -- the ROM structure genuinely never cuts here.
       --
-      -- Also now hosts the second-boss encounter (see `secondBoss`
-      -- below) -- moved here from `fifthRoom` per the user's THIRD
-      -- correction on this same feature: "das ist doch immernoch der
-      -- falsche raum!!! es ist im raum der so ausseiht wie der start
-      -- raum", then confirmed via live back-and-forth to be reached by
-      -- walking west out of `fourthRoom`, not north.
+      -- RE-WIRED (direct user bug report -- see fourthRoom.exits' own
+      -- "RE-ADDED" doc comment): fourthRoom.exits points here again as
+      -- an honestly-labeled engineering choice, not a reversal of the
+      -- finding above -- this project's no-camera-scroll engine has no
+      -- other way to make this content reachable, and the user directly
+      -- confirmed something should be here going west.
       --
-      -- RETRACTED (2026-08-17, direct user claim "und der sixth raum
-      -- muss ganz klar der startraum sein. das habe ich 1000 mal im
-      -- rom beobachtet" -- correct): the "HONEST CAVEAT" that used to
-      -- sit right here ("this room's own real tileset is the
-      -- willyRoom/secondRoom/thirdRoom family, NOT startRoom's") was
-      -- WRONG -- it compared this room's real tile GRAPHICS against
-      -- the wrong reference family and never actually live-checked the
-      -- real WRAM room-identity registers against `startRoom`'s own
-      -- live value, the same category of gap the `fifthRoom` doc
-      -- comment above just got caught on. Live re-checked this pass
-      -- (`checkpoints.sixth_room_free()` vs. `reach_room.
-      -- reach_first_room()` for `startRoom`, vs. `checkpoints.
-      -- fourth_room_free()` for `fourthRoom`, all three reading
-      -- `$D392`/`$D393`/`$C3F0`/`$C3F5`):
+      -- Also now hosts the second-boss encounter (moved here from
+      -- fifthRoom per the user's third correction on this feature,
+      -- confirmed to be reached walking west out of fourthRoom).
+      --
+      -- RETRACTED (direct user claim sixthRoom must clearly be
+      -- startRoom, correct): the "HONEST CAVEAT" that used to sit here
+      -- (claiming this room's tileset is the willyRoom/secondRoom/
+      -- thirdRoom family, not startRoom's) was WRONG -- it compared
+      -- tile graphics against the wrong reference family and never
+      -- checked the real WRAM room-identity registers against
+      -- startRoom's own live value. Live re-checked:
       --   startRoom:  D392/D393=(0xb0,0x40) C3F0=6 C3F5=1 SCX/SCY=0/0
       --   fourthRoom: D392/D393=(0xb0,0x40) C3F0=6 C3F5=1 SCX/SCY=0/0
       --   sixthRoom:  D392/D393=(0xb0,0x40) C3F0=6 C3F5=1 SCX=96 SCY=0
-      -- ALL THREE real identity registers are byte-identical across
-      -- `startRoom`/`fourthRoom`/`sixthRoom` -- the user's own
-      -- original "sieht aus wie der Start-Raum" description was
-      -- LITERALLY CORRECT, and this project's own prior dismissal of
-      -- it was the actual mistake, not an imprecise recollection.
-      -- Real, independent corroboration beyond the registers: a fresh
-      -- screenshot of `sixthRoom` shows the REAL ROM's own "Kämpfe!"
-      -- battle-intro textbox on screen -- the exact same real UI
-      -- element `startRoom`'s own courtyard/boss-encounter script
-      -- drives -- consistent only if this genuinely is that same real
-      -- room's own live logic, not a coincidence. `romRoomSelectors`
-      -- below corrected from the wrong `{2,3,4,5,6}` (willyRoom
-      -- family, apparently copied from a neighboring room's own entry
-      -- during an earlier pass, never itself live-confirmed -- no
-      -- `romRoomSelectorConfirmed` field existed for this room before
-      -- now) to the real, live-confirmed `{0,1}`/`1`, matching
-      -- `startRoom`/`fourthRoom`'s own real family. This extends the
-      -- already-established "one continuous scrolled canvas, several
-      -- named screens" pattern (previously: willyRoom/secondRoom/
-      -- thirdRoom, and fifthRoom as a same-identity cut target) to a
-      -- SECOND real chain: `startRoom`/`fourthRoom`/`sixthRoom`.
-      -- Doesn't retract the WEST-DIRECTION connectivity fact (still
-      -- real, still governs the exit wiring) or the `secondBoss`
-      -- placement's own honest status (see that field's own doc
-      -- comment for the separate, still-open real-ROM gate test) --
-      -- only the room-identity claim was wrong. See events.md's own
-      -- dated entry for the full trace.
+      -- All three identity registers are byte-identical -- the user's
+      -- "looks like the start room" was literally correct, and this
+      -- project's prior dismissal was the actual mistake. Further
+      -- corroboration: a fresh sixthRoom screenshot shows the same
+      -- "Kämpfe!" battle-intro textbox startRoom's own boss-encounter
+      -- script drives. romRoomSelectors corrected from the wrong
+      -- {2,3,4,5,6} (willyRoom family, apparently copied from a
+      -- neighboring room, never confirmed) to the real, live-confirmed
+      -- {0,1}/1, matching startRoom/fourthRoom's own family. Extends
+      -- the "one continuous scrolled canvas, several named screens"
+      -- pattern to a second chain: startRoom/fourthRoom/sixthRoom.
+      -- Doesn't retract the west-direction connectivity or the
+      -- secondBoss placement's own honest status -- only the room-
+      -- identity claim was wrong. See events.md for the full trace.
       sixthRoom = {
-        status = "VERIFIED (real tile/collision data; wired in 2026-08-15 as a real static room reachable " ..
+        status = "VERIFIED (real tile/collision data; wired as a static room reachable " ..
           "west of fourthRoom -- see doc comment above for the honest 'engineering choice, not a ROM cut' caveat)",
         romRoomSelectors = { 0, 1 },
         romRoomSelectorConfirmed = 1,
@@ -1746,17 +1687,14 @@ RomProfiles.PROFILES = {
         rows = 16,
         -- 7 of 16 distinct real tile IDs (`128`-`134`) already had a
         -- real, verified ROM offset from `fourthRoom`'s own
-        -- `tileOffsets` (reused directly, unchanged, since this is
-        -- confirmed the SAME underlying tileset); the remaining 9
-        -- (`136`/`137`/`142`-`147`/`150`) were found this pass via the
-        -- SAME live exact-16-byte-VRAM-pattern ROM search this
-        -- project's other rooms all used. 2 of them (`145`/`146`/`150`)
-        -- had 2 real byte-identical ROM matches each -- disambiguated
-        -- the same way `thirdRoom`'s own `188`-`191` were: picked the
-        -- match immediately adjacent to this room's own other,
-        -- unambiguous real offsets (`0x30b2x`-`0x30b4x`, a real,
-        -- internally-consistent 3-entry run exactly 16 bytes apart)
-        -- over a more distant alternative (`0x311xx`/`0x319xx`).
+        -- tileOffsets (reused directly, since this is the same
+        -- underlying tileset); the remaining 9 (136/137/142-147/150)
+        -- were found via the same live VRAM-pattern ROM search. 2 of
+        -- them (145/146/150) had 2 byte-identical matches each --
+        -- disambiguated the same way thirdRoom's own 188-191 were:
+        -- picked the match adjacent to this room's other unambiguous
+        -- offsets (0x30b2x-0x30b4x, a consistent 16-byte-apart run)
+        -- over a more distant alternative.
         tileOffsets = {
           [128] = string.rep("\255", 16), [129] = 0x30300, [130] = 0x30310,
           [131] = 0x30D10, [132] = 0x30D20, [133] = 0x302E0, [134] = 0x302F0,
@@ -1764,87 +1702,58 @@ RomProfiles.PROFILES = {
           [144] = 0x30DA0, [145] = 0x30B20, [146] = 0x30B30, [147] = 0x30D30,
           [150] = 0x30B40,
         },
-        -- HYPOTHESIS (same status/method as `fourthRoom`'s own
-        -- `floorTileIds`, which this directly reuses): `129`-`134` are
-        -- the SAME real checkered/decorative floor tiles already
-        -- promoted from "not floor" to VERIFIED there (a real, live
-        -- walkability re-check crossing them with zero hesitation) --
-        -- not independently re-tested a second time in THIS room, on
-        -- the strength of being the exact same real ROM tile IDs from
-        -- the exact same shared tileset. `128` (the real solid `0xFF`
-        -- pattern) stays non-floor.
+        -- HYPOTHESIS (same status/method as fourthRoom's own
+        -- floorTileIds, reused directly): 129-134 are the same
+        -- checkered floor tiles already promoted to VERIFIED there --
+        -- not re-tested here, on the strength of being the same shared
+        -- tileset. 128 (solid 0xFF) stays non-floor.
         --
-        -- CORRECTED (2026-08-15, direct follow-up while verifying the
-        -- second-boss fight end to end): `145`/`146` were originally
-        -- ALSO left non-floor, grouped in with the other 7 "gate/
-        -- pillar" tiles on a pure visual guess ("dark vertical bars,
-        -- brick pillars"). That guess turns out wrong on this room's
-        -- own real captured `grid` data (see below): `145`/`146` form
-        -- a wide, clean CHECKERBOARD alternation (rows 5-14, cols
-        -- 14-17) -- structurally IDENTICAL to the alternation pattern
-        -- of the two ALREADY-confirmed real floor pairs in this exact
-        -- room (`129`/`130` and `133`/`134`), just a third floor
-        -- texture variant, not a decoration. The real, remaining 7
-        -- "gate/pillar" tiles (`136`/`137`/`142`-`144`/`150`) do NOT
-        -- share this signature (`136`/`137` are a solid, non-
-        -- alternating 2-column vertical strip; `142`-`144`/`150` each
-        -- appear only once or twice, too sparse to reason about either
-        -- way) -- those stay non-floor, unchanged. Concretely surfaced
-        -- by a real, reproducible symptom this fixes: with `145`/`146`
-        -- classified as wall, the second boss (placed at the room's
-        -- own real open courtyard, `spawnX=64`) was UNREACHABLE by
-        -- walking left from the room's own real landing spot
-        -- (`landingX=144`) -- blocked by this exact strip, live-caught
-        -- via `MYSTICQUEST_SCRIPT=left@10-90` stalling at x=128 instead
-        -- of reaching the boss.
+        -- CORRECTED (follow-up while verifying the second-boss fight
+        -- end to end): 145/146 were originally left non-floor as
+        -- "gate/pillar" tiles on a visual guess. Wrong -- the captured
+        -- grid shows 145/146 form a clean checkerboard alternation
+        -- (rows 5-14, cols 14-17) structurally identical to the two
+        -- already-confirmed floor pairs (129/130 and 133/134) -- a
+        -- third floor texture variant, not a decoration. The remaining
+        -- 7 gate/pillar tiles (136/137/142-144/150) don't share this
+        -- signature and stay non-floor. Concretely surfaced by a
+        -- reproducible symptom: with 145/146 classified as wall, the
+        -- second boss (spawnX=64) was unreachable walking left from the
+        -- landing spot (landingX=144) -- live-caught stalling at x=128.
         floorTileIds = { [129] = true, [130] = true, [131] = true, [132] = true,
           [133] = true, [134] = true, [145] = true, [146] = true },
-        -- ADDED (2026-08-16, direct user description of the real second-
-        -- boss encounter: "der Ausgang entsteht wenn der 2. Boss besiegt
-        -- wurde. dann öffnet sich das Tor zur Hälfte"): an honest
-        -- ENGINEERING CHOICE tile-swap, same shape/precedent as
-        -- `willyRoom`'s own real, decoded `door` (`closedGrid`/
-        -- `openGrid`) -- but NOT independently ROM-confirmed the way
-        -- that one is, since this whole encounter is this project's own
-        -- addition with no live ROM trigger. "Opens HALFWAY" per the
-        -- user's own description: only the bottom 2 of 4 rows swap to
-        -- real, already-decoded floor tile `131` -- the top half stays
-        -- visually closed.
+        -- ADDED (direct user description: the exit opens halfway once
+        -- the 2nd boss is defeated): an honest engineering-choice tile
+        -- swap, same shape/precedent as willyRoom's own decoded door
+        -- (closedGrid/openGrid), but not independently ROM-confirmed
+        -- since this whole encounter is this project's own addition
+        -- with no live ROM trigger. "Opens halfway": only the bottom 2
+        -- of 4 rows swap to already-decoded floor tile 131.
         --
-        -- RETRACTED CLAIM (2026-08-17, see this file's own capture-bug
-        -- retraction on `sixthRoom.grid` above): this doc comment used
-        -- to claim `bgRow=0,bgCol=16` was chosen because it's "exactly
-        -- the real 136/137 gate/pillar strip already in this room's own
-        -- captured grid" -- true of the OLD, now-retracted (capture-bug)
-        -- grid, but FALSE of the real, corrected content (`startRoom`'s
-        -- own grid at that position is plain wall tiles, no gate-like
-        -- feature at all). `bgRow`/`bgCol`/`closedGrid`/`openGrid` below
-        -- are UNCHANGED (the mechanism still functions -- real tile IDs
-        -- 131/136/137 still resolve to real, valid ROM tile graphics via
-        -- the corrected `tileOffsets`, they just won't visually blend
-        -- into the corrected background the way this comment used to
-        -- claim) -- an even more purely cosmetic engineering stand-in
-        -- than previously described, not a claim about matching real
-        -- surrounding art. Real redesign against the corrected
-        -- background (picking a position/tiles that actually look right
-        -- against `startRoom`'s own real content) is open, separate
-        -- follow-up work, not done this pass.
+        -- RETRACTED CLAIM (see this file's capture-bug retraction on
+        -- sixthRoom.grid above): this doc comment used to claim
+        -- bgRow=0,bgCol=16 matches the real 136/137 gate/pillar strip
+        -- in this room's captured grid -- true of the old, now-
+        -- retracted (capture-bug) grid, but false of the corrected
+        -- content (startRoom's grid there is plain wall). The mechanism
+        -- still functions unchanged -- just a purely cosmetic stand-in
+        -- now, not a claim about matching surrounding art. Real
+        -- redesign against the corrected background is open follow-up
+        -- work, not done this pass.
         gate = {
           bgRow = 0, bgCol = 16, rows = 4, cols = 2,
           closedGrid = { {136,137}, {136,137}, {136,137}, {136,137} },
           openGrid = { {136,137}, {136,137}, {131,131}, {131,131} },
         },
-        -- RETRACTED (2026-08-17, see this file's own post-construction
-        -- fixup loop, right before `RomProfiles.match`, for the full
-        -- explanation): this `grid`/the `tileOffsets`/`floorTileIds`
-        -- below turned out to be a real capture bug (a raw VRAM
-        -- tilemap read that never corrected for the real, nonzero
-        -- hardware SCX at this room's own settled position) -- NOT a
-        -- real screen any player would ever see. Kept here, unedited,
-        -- purely as the documented historical record the retraction
-        -- comment cites; `sixthRoom`'s ACTUAL render data is
-        -- overridden further down in this file to real, correct
-        -- `startRoom` data instead.
+        -- RETRACTED (see this file's post-construction fixup loop,
+        -- right before RomProfiles.match, for the full explanation):
+        -- this grid/tileOffsets/floorTileIds turned out to be a capture
+        -- bug (a raw VRAM tilemap read that never corrected for the
+        -- nonzero hardware SCX at this room's settled position) -- not
+        -- a real screen any player would see. Kept unedited as the
+        -- historical record the retraction comment cites; sixthRoom's
+        -- actual render data is overridden further down to correct
+        -- startRoom data instead.
         --
         -- Real VRAM tilemap capture at the settled position (mgba,
         -- background map 0, rows 0-15/cols 0-19).
@@ -1866,39 +1775,29 @@ RomProfiles.PROFILES = {
           {131,131,131,131,131,131,131,131,131,131,131,131,129,130,133,134,129,130,133,134},
           {131,131,131,131,131,131,131,131,131,131,131,131,131,131,150,130,131,131,150,130},
         },
-        -- Second boss encounter -- see this table's own top-of-entry doc
-        -- comment ("Also now hosts the second-boss encounter...") for
-        -- the full placement history and the honest room-identity
-        -- caveat. Underlying species-byte/structural evidence trail is
-        -- otherwise UNCHANGED from the original investigation (still
-        -- documented in full in `docs/reverse-engineering/events.md`'s
-        -- "second boss investigation" section) -- only the room this
-        -- project chooses to place it in moved.
+        -- Second boss encounter -- see this table's top-of-entry doc
+        -- comment for the full placement history and room-identity
+        -- caveat. Species-byte/structural evidence trail is unchanged
+        -- from the original investigation (docs/reverse-engineering/
+        -- events.md's "second boss investigation" section) -- only the
+        -- room it's placed in moved.
         --
-        -- `spawnX`/`spawnY` sit inside this room's own real, live-tested
-        -- `floorTileIds` checkerboard (129-134, the open courtyard area
-        -- away from the gate/pillar structure along the room's own left
-        -- edge) -- NOT a decoded ROM position (no live trigger was ever
-        -- found to read a real position from, same honest limit as the
-        -- original `fifthRoom` placement had).
-        -- REAL-ROM TEST, 2026-08-17 (direct user instruction "ja schau
-        -- dir das an", after finding this project's own room chain is
-        -- really the Glaive Castle prison ARENA intro, not Marsh
-        -- Cave -- see docs/references.md): fought and defeated the
-        -- REAL boss here under real ROM emulation (not this project's
-        -- own reimplementation -- see events.md's own dated entry for
-        -- the full method) and found a real, honest NEGATIVE result:
-        -- the gate below shows no visible/collision change before vs.
-        -- after, at the same real position, even after a very
-        -- generous real settle (2700+ frames, several times the first
-        -- boss's own real black-wipe sequence length). Combined with
-        -- the newly-found story context (the real walkthrough places
-        -- the real second-Jackal/gate event immediately after the
-        -- FIRST fight, within the same short arena sequence, not past
-        -- a multi-room corridor), this is real evidence AGAINST
-        -- `sixthRoom` being the right real location for this
-        -- mechanic -- not proof it's wrong, but a real, honest data
-        -- point this project didn't have before. See events.md's own
+        -- spawnX/spawnY sit inside this room's live-tested floorTileIds
+        -- checkerboard (129-134, the open courtyard away from the
+        -- gate/pillar structure) -- not a decoded ROM position (no live
+        -- trigger was ever found, same honest limit as the original
+        -- fifthRoom placement had).
+        -- REAL-ROM TEST (after finding this room chain is really the
+        -- Glaive Castle prison arena intro, not Marsh Cave -- see
+        -- docs/references.md): fought and defeated the real boss under
+        -- real ROM emulation and found an honest negative result: the
+        -- gate shows no visible/collision change before vs. after, even
+        -- after a generous settle (2700+ frames). Combined with the
+        -- story context (the real second-Jackal/gate event happens
+        -- immediately after the first fight, in the same short arena
+        -- sequence, not past a multi-room corridor), this is evidence
+        -- against sixthRoom being the right location for this mechanic
+        -- -- not proof, but an honest data point. See events.md's
         -- "Real-ROM test of the sixthRoom gate mechanic" entry.
         secondBoss = {
           status = "IMPLEMENTATION CHOICE, evidence-based (species-byte + structural-family match to the " ..
@@ -1908,24 +1807,17 @@ RomProfiles.PROFILES = {
             "evidence AGAINST this specific placement, see events.md",
           spawnX = 64, spawnY = 80,
         },
-        -- ADDED (2026-08-16, direct user report: "im zweiten Bossraum
-        -- nachdem der Boss besiegt wurde öffnet sich das im Norden --
-        -- das ist der Weg in den nächsten Raum"): a real, general
-        -- `requiresFlag` gate on an exit (built 2026-08-15 alongside the
-        -- second-boss feature itself, see `VictorySequence.lua`'s own
-        -- `HoldTrigger`-resolution doc comment) finally has something to
-        -- gate. STATUS, same honest category as `secondBoss` above: an
-        -- IMPLEMENTATION CHOICE, not an independently ROM-confirmed real
-        -- exit for this specific project-placed encounter -- but the
-        -- exit's own POSITION is grounded in real, already-decoded room
-        -- data, not picked arbitrarily: this room's own real captured
-        -- `grid` (above) shows a genuine visual gate/pillar structure
-        -- (tile IDs `136`/`137`, a real, non-floor 2-column vertical
-        -- strip) sitting at cols 16-17, rows 0-3 -- i.e. right at this
-        -- room's own NORTH edge -- exactly matching the user's own
-        -- report of "opens in the north" before any exit was ever wired
-        -- here. `zone` below sits directly under that real visual
-        -- feature.
+        -- ADDED (direct user report: after the 2nd boss, the exit opens
+        -- in the north): a general requiresFlag gate on an exit (built
+        -- alongside the second-boss feature, see VictorySequence.lua's
+        -- own HoldTrigger-resolution doc comment) finally has something
+        -- to gate. Same honest category as secondBoss above: an
+        -- implementation choice, not an independently ROM-confirmed
+        -- exit -- but grounded in real room data: the captured grid
+        -- shows a gate/pillar structure (tiles 136/137, a non-floor
+        -- 2-column strip) at cols 16-17, rows 0-3 -- the room's north
+        -- edge, matching the user's "opens in the north" report before
+        -- any exit was wired here. zone below sits under that feature.
         exits = {
           {
             zone = { xMin = 128, xMax = 144, yMin = 0, yMax = 32 },
@@ -1967,15 +1859,12 @@ RomProfiles.PROFILES = {
       -- basis now instead of a blind heuristic pick.
       -- RETRACTED same pass: the old seventhRoom->eighthRoom south exit
       -- was picked via a byte-exact shared-edge match against the OLD
-      -- south row -- that row no longer exists in this room's own real
-      -- data, so the match no longer holds. Removed rather than left
-      -- pointing at stale geometry; see eighthRoom's own doc comment
-      -- for the follow-on note. sixthRoom's own exit into this room
-      -- (above) keeps its `landingX`/`landingY` (80,112), tuned for the
-      -- OLD room and UNVERIFIED against this one -- it happens to land
-      -- on real walkable floor here too (tile 46/47), by coincidence,
-      -- not by any real capture; kept as a placeholder rather than
-      -- re-guessed.
+      -- south row -- no longer exists here, so removed rather than left
+      -- pointing at stale geometry (see eighthRoom's own doc comment).
+      -- sixthRoom's exit into this room keeps its landingX/landingY
+      -- (80,112), tuned for the OLD room and unverified against this
+      -- one -- happens to land on walkable floor here too (tile 46/47)
+      -- by coincidence, kept as a placeholder rather than re-guessed.
       seventhRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank6 (world-map catalog) " ..
           "record 51, grid row=6/col=3 -- placed per a direct, credible user report of the real landing " ..
@@ -1994,17 +1883,14 @@ RomProfiles.PROFILES = {
           [214] = 0x30D60, [215] = 0x30D70, [216] = 0x30D80, [217] = 0x30D90, [218] = 0x30DA0,
           [219] = 0x30DB0, [220] = 0x30DC0,
         },
-        -- HYPOTHESIS, not a decoded ROM collision-flag table (bank6 is
-        -- RLE-mode -- per the external FFA-Disassembly doc, the real
-        -- per-tile "Door Bytes"/collision data only exists for
-        -- Templated-mode/bank7 maps, none exists here to decode). Visual
-        -- classification only: `46`/`47` (the dotted open-ground texture
-        -- covering most of the room, file offsets EXACTLY matching
-        -- fourthRoom's/startRoom's own already-classified walkable floor
-        -- at the same real pixel pool, 0x302E0/0x302F0) as floor; the
-        -- castle-wall pillars (66-84), trees (150-153), and border trim
-        -- (209-220, matching fourthRoom's own wall-family offsets
-        -- exactly) as non-walkable.
+        -- HYPOTHESIS, not decoded ROM collision data (bank6 is RLE-mode
+        -- -- per the external FFA-Disassembly doc, real per-tile "Door
+        -- Bytes" collision only exists for templated-mode/bank7 maps).
+        -- Visual classification only: 46/47 (dotted open-ground texture,
+        -- file offsets exactly matching fourthRoom's/startRoom's own
+        -- classified walkable floor) as floor; castle-wall pillars
+        -- (66-84), trees (150-153), border trim (209-220, matching
+        -- fourthRoom's wall-family offsets) as non-walkable.
         floorTileIds = { [46] = true, [47] = true },
         grid = {
           { 66, 67, 66, 67, 70, 71,219,212,209,209,215,220,209,209,209,209,209,209,219,212},
@@ -2024,38 +1910,34 @@ RomProfiles.PROFILES = {
           {150,151,150,151,150,151, 46, 47, 46, 47, 46, 47, 46, 47, 37, 89, 70, 71, 70, 71},
           {152,153,152,153,152,153, 46, 47, 46, 47, 46, 47, 46, 47, 90, 91, 72, 73, 72, 73},
         },
-        -- RETRACTED (2026-08-17, see doc comment above): the old south
-        -- exit to eighthRoom was byte-matched against a row that no
-        -- longer exists here. No real destination is known for this
-        -- room's own south row (cols 6-19, the open dotted-ground
-        -- floor) or east edge yet -- left honestly unexplored rather
-        -- than re-guessed.
+        -- RETRACTED (see doc comment above): the old south exit to
+        -- eighthRoom was byte-matched against a row that no longer
+        -- exists here. No real destination known for this room's south
+        -- row or east edge yet -- left honestly unexplored.
         exits = {},
       },
-      -- ADDED (2026-08-16, same continuation, same self-correction):
-      -- real bank-5 catalog record 236 -- seventhRoom's own SOUTH
-      -- neighbor (not the west one from the retracted first attempt).
-      -- Its own north row (`WWWW####WWWWWWWWWWWW`) is a byte-exact match
-      -- against seventhRoom's own south row at the real reachable
-      -- columns (8-15, 0-based) -- verified via the same collision-grid
-      -- re-derivation this room's own test file runs live.
-      -- TILESET CORRECTED (2026-08-17): same fix, same evidence as
-      -- `seventhRoom`'s own doc comment above -- see that one and
-      -- `mapTable.tilesetFileOffset`'s own dated correction for the
-      -- full formula/trace. `grid` unchanged, only `tileOffsets`.
-      -- CONNECTION TO seventhRoom RETRACTED (2026-08-17, same day,
-      -- direct follow-up): the "byte-exact shared-edge match" above was
-      -- against seventhRoom's OLD data (bank5 record 220) -- seventhRoom
-      -- was superseded this same pass with real bank6 record 51 (per a
-      -- direct user report of the actual post-second-boss landing spot),
-      -- whose own south row shares NOTHING with this room's north row.
-      -- This room's own data is untouched and still real, decoded ROM
-      -- catalog content -- only the "this sits south of seventhRoom"
-      -- claim is now false and no longer asserted anywhere (seventhRoom
-      -- 's own `exits` is empty). This room keeps its own real exit to
-      -- ninthRoom below (an independent edge-match, unaffected by this
-      -- retraction) -- it's simply no longer reachable from the known
-      -- sixthRoom/seventhRoom chain, a real, honest regression in known
+      -- ADDED (same continuation, same self-correction): real bank-5
+      -- catalog record 236 -- seventhRoom's own SOUTH neighbor (not the
+      -- west one from the retracted first attempt). Its north row is a
+      -- byte-exact match against seventhRoom's own south row at the
+      -- reachable columns (8-15) -- verified via the same collision-
+      -- grid re-derivation this room's test file runs live.
+      -- TILESET CORRECTED: same fix, same evidence as seventhRoom's own
+      -- doc comment above -- see mapTable.tilesetFileOffset's own
+      -- dated correction for the full formula. grid unchanged, only
+      -- tileOffsets.
+      -- CONNECTION TO seventhRoom RETRACTED (same day, direct follow-
+      -- up): the "byte-exact shared-edge match" above was against
+      -- seventhRoom's OLD data (bank5 record 220) -- seventhRoom was
+      -- superseded this same pass with real bank6 record 51 (per a
+      -- direct user report of the actual post-second-boss landing
+      -- spot), whose south row shares nothing with this room's north
+      -- row. This room's own data is untouched and still real -- only
+      -- the "sits south of seventhRoom" claim is now false and no
+      -- longer asserted (seventhRoom's exits is empty). This room keeps
+      -- its own exit to ninthRoom below (an independent edge-match,
+      -- unaffected) -- simply no longer reachable from the known
+      -- sixthRoom/seventhRoom chain, an honest regression in known
       -- connectivity, not silently left contradictory.
       eighthRoom = {
         status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 236; " ..
@@ -2075,17 +1957,13 @@ RomProfiles.PROFILES = {
           [77] = 0x304D0, [150] = 0x30960, [151] = 0x30970, [152] = 0x30980,
           [153] = 0x30990,
         },
-        -- Real, per-metatile-instance collision bytes. Tile 68 is a
-        -- genuinely POSITION-DEPENDENT case (real, live-confirmed: 8 of
-        -- its own real instances are floor, 4 are wall -- same category
-        -- of imprecision this project has already accepted elsewhere,
-        -- e.g. sixthRoom's own 145/146). Checked which cells this
-        -- affects: every WALL instance sits OUTSIDE the real, BFS-
-        -- reachable region from this room's own landing spot (the
-        -- disconnected west/south pockets, same shape as seventhRoom's
-        -- own sealed-off west half) -- so marking 68 as floor here is
-        -- safe for every cell the player can actually reach, even though
-        -- it's technically imprecise for cells nobody can walk to anyway.
+        -- Real per-metatile-instance collision bytes. Tile 68 is
+        -- genuinely position-dependent (8 instances floor, 4 wall --
+        -- same category of imprecision already accepted elsewhere, e.g.
+        -- sixthRoom's 145/146). Checked: every wall instance sits
+        -- outside the BFS-reachable region from the landing spot -- so
+        -- marking 68 as floor is safe for every reachable cell, even
+        -- though imprecise for cells nobody can walk to anyway.
         floorTileIds = { [56] = true, [57] = true, [66] = true, [67] = true,
           [68] = true, [69] = true, [150] = true, [151] = true, [152] = true, [153] = true },
         grid = {
