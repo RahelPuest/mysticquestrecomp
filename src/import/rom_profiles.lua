@@ -2599,87 +2599,67 @@ RomProfiles.PROFILES = {
       -- duplicated across banks (common on MBC2 titles that need the
       -- same graphics reachable from more than one bank-switch
       -- context), not a search bug. Bank 8's cluster is used below
-      -- (closest to the other battle-related graphics this project
-      -- already sources from bank 8) -- a reasonable choice, not a
-      -- uniquely-proven one; if the rendered art looks wrong, the bank
-      -- 9 cluster (`0x27900`/`0x27910`/`0x27940`/`0x27950`) is the
-      -- other real candidate to try.
+      -- (closest to the other battle-related graphics already sourced
+      -- from bank 8) -- a reasonable choice, not a uniquely-proven one;
+      -- if the art looks wrong, the bank 9 cluster (0x27900/0x27910/
+      -- 0x27940/0x27950) is the other candidate to try.
       --
-      -- Real screen positions for each of the 6 part-pairs, sampled at
-      -- the SAME real frame boundaries the live OAM trace held steady
-      -- on (5-frame steps, matching the already-known
-      -- `Enemy.MOVEMENT_STEP_SECONDS`-style cadence elsewhere in this
-      -- ROM) -- `dx`/`dy` are real captured deltas from each part's own
-      -- starting position (the creature's real resting pose, see
-      -- `enemySprite.screenX/screenY`), not an invented starburst.
+      -- Screen positions for each of the 6 part-pairs, sampled at the
+      -- frame boundaries the live OAM trace held steady on (5-frame
+      -- steps) -- dx/dy are captured deltas from each part's starting
+      -- position (the creature's resting pose), not an invented
+      -- starburst.
       enemyDeath = {
         status = "VERIFIED (positions + real 2-frame debris shape)",
         bank = 8,
-        -- CORRECTED (2026-08-14, direct user report: "bei den einzelnen
-        -- sprites scheint jeweils die untere Hälfte bei der Explosion
-        -- zu fehlen"): the old doc comment's own "6 real body-part
-        -- PAIRS" framing was never actually cross-checked against a
+        -- CORRECTED (direct user report the lower half seems to be
+        -- missing from each sprite during the explosion): the old "6
+        -- body-part pairs" framing was never cross-checked against a
         -- fresh live capture -- these 4 tile offsets were being drawn
-        -- as ONE static, always-fully-shown 2x2 (16x16) sprite at each
-        -- of the 6 scatter positions. A real live OAM trace (mgba,
-        -- `courtyard_boss_defeated`, sampled every 8 real frames
-        -- through the whole death sequence) found the real hardware
-        -- NEVER shows all 4 tiles together: each of the 6 real flying
-        -- OAM pairs is only TWO tiles wide, ONE tile tall (real tile
-        -- IDs $38/$3a or $3c/$3e, never all four at once), alternating
-        -- between them over time -- a real 2-FRAME debris animation,
-        -- not a static double-height block. `frameA`/`frameB` below
-        -- are those 2 real captured frames (each a real 2-tile-wide,
-        -- 1-tile-tall sprite); `Field.lua` alternates between them
-        -- (see its own doc comment for the exact real cross-reference
-        -- of these 4 offsets to the real tile IDs $38/$3a/$3c/$3e).
+        -- as one static 2x2 (16x16) sprite at each scatter position. A
+        -- live OAM trace (sampled every 8 frames through the whole
+        -- death sequence) found hardware never shows all 4 tiles
+        -- together: each of the 6 flying OAM pairs is only two tiles
+        -- wide, one tile tall ($38/$3a or $3c/$3e, never all four at
+        -- once), alternating over time -- a 2-frame debris animation,
+        -- not a static double-height block. frameA/frameB below are
+        -- those 2 captured frames; Field.lua alternates between them.
         frameA = { 0x23db0, 0x23dc0 }, -- real tiles $38 $3a
         frameB = { 0x23df0, 0x23e00 }, -- real tiles $3c $3e
-        -- Real, live-CONFIRMED (NOT a bug): the same live OAM trace
-        -- also checked `OBP1` (the enemy's own real sprite palette
-        -- register) through the whole death sequence -- it reads
-        -- `$D0` throughout the explosion, i.e. this game's own
-        -- already-implemented DEFAULT sprite palette (see
-        -- `spritePalette.registerValue` above, same value) -- already
-        -- what `CreatureSprite.fromOffsets` falls back to when no
-        -- explicit palette is passed (as this death sprite does). A
-        -- direct user suspicion ("da müsste auch ein Palettn-Effekt
-        -- drüber") checked and found NOT needed: no separate death-
-        -- flash palette exists in the real ROM, the ordinary default
-        -- already matches. (The enemy's own PRE-death resting pose DID
-        -- read a different real value, `$3F` -- a real, separate,
-        -- not-yet-investigated fact about its own idle rendering, out
-        -- of scope for this specific bug report.)
+        -- Live-confirmed (not a bug): the same OAM trace checked OBP1
+        -- through the whole death sequence -- reads $D0 throughout,
+        -- this game's already-implemented default sprite palette (see
+        -- spritePalette.registerValue above, same value) -- already
+        -- what CreatureSprite.fromOffsets falls back to when no
+        -- explicit palette is passed. A direct user suspicion (there
+        -- should be a palette effect over it) was checked and found not
+        -- needed: no separate death-flash palette exists, the ordinary
+        -- default already matches. (The enemy's pre-death resting pose
+        -- DID read a different value, $3F -- a separate, not-yet-
+        -- investigated fact about its idle rendering, out of scope here.)
         totalFrames = 86, -- real: OAM entry count hits 0 exactly here
-        -- 6 real body-part pairs, each `{dx, dy}` -- the real captured
-        -- delta from the creature's own resting top-left screen
-        -- position (frame 0 of the death sequence, still the coherent
-        -- standing pose) to its own final scattered position (frame 81,
-        -- the last real OAM sample before the frame-86 vanish) -- a
-        -- straight-line interpolation between these two real endpoints
-        -- over `totalFrames`, not a reproduction of every real
-        -- intermediate jump (the actual live capture shows each part
-        -- taking a real, slightly irregular multi-step path, not a
-        -- straight line -- this is an honest simplification of that
-        -- real data, not a claim of frame-exact fidelity).
+        -- 6 body-part pairs, each {dx, dy} -- the captured delta from
+        -- the creature's resting top-left position (frame 0) to its
+        -- final scattered position (frame 81, last sample before the
+        -- frame-86 vanish) -- a straight-line interpolation over
+        -- totalFrames, not a reproduction of every intermediate jump
+        -- (the live capture shows each part taking a slightly irregular
+        -- multi-step path -- an honest simplification, not a claim of
+        -- frame-exact fidelity).
         parts = {
           { dx = 0, dy = 0 }, { dx = 27, dy = -3 }, { dx = -23, dy = 21 },
           { dx = -1, dy = 16 }, { dx = -14, dy = -10 }, { dx = -1, dy = -43 },
         },
       },
-      -- VERIFIED (2026-08-09) real hit-flash -- direct fix for a named
-      -- gap: "der Gegnersprite flasht kurz, wenn er von einem Angriff
-      -- getroffen wird." Traced live: `OBP1` (the enemy's own real
-      -- sprite palette register -- OAM attribute bit 4 confirms the
-      -- enemy uses OBP1, not OBP0, see `spritePalette` above) briefly
-      -- changes from its normal `$D0` to `$BF` for roughly 1 real frame
-      -- right as a hit lands, then reverts -- a real palette-swap flash,
-      -- not an invented tint. Decoded the same way as `spritePalette`
-      -- (Pan Docs "LCD Monochrome Palettes" bit layout): raw pixel
-      -- indices 1 and 2 (normally white/light-gray) both flash to
-      -- shade 3 (black), index 3 (normally black) flashes to shade 2
-      -- (dark gray) -- the enemy briefly reads as an almost-solid black
-      -- silhouette, not a simple color inversion.
+      -- VERIFIED real hit-flash -- direct fix for a named gap (the enemy
+      -- sprite should flash briefly on being hit). Traced live: OBP1
+      -- (the enemy's palette register, OAM attribute bit 4 confirms
+      -- OBP1 not OBP0) briefly changes from $D0 to $BF for ~1 frame
+      -- right as a hit lands, then reverts -- a palette-swap flash, not
+      -- an invented tint. Decoded the same way as spritePalette: pixel
+      -- indices 1 and 2 (normally white/light-gray) both flash to shade
+      -- 3 (black), index 3 (normally black) flashes to shade 2 (dark
+      -- gray) -- an almost-solid black silhouette, not a color inversion.
       enemyHitFlash = {
         status = "VERIFIED",
         registerValue = 0xBF,
@@ -2687,16 +2667,14 @@ RomProfiles.PROFILES = {
         frames = 2, -- real observed flash was ~1 real frame; held 2 here for visibility
       },
       creatureSpritesBank9 = {
-        -- CORRECTED: this project's earlier "VERIFIED -- region confirmed
-        -- graphics" status overclaimed uniformity. A direct screenshot
-        -- comparison (TileViewer's "sprites (bank 9)" region, see
-        -- docs/progress.md) showed the bank does NOT decode as coherent
-        -- tile art starting at tile 0 -- there's a run of noise-looking
-        -- (non-tile) data first, with real sprite-like art appearing only
-        -- well into the bank. Real bytes, but "this whole bank is clean
-        -- graphics" was not actually established -- kept PARTIALLY
-        -- VERIFIED and don't use tile 0 here as a default sprite source
-        -- (see src/app/states/Field.lua, which uses bank 10 instead).
+        -- CORRECTED: the earlier "VERIFIED" status overclaimed
+        -- uniformity. A screenshot comparison showed the bank does not
+        -- decode as coherent tile art starting at tile 0 -- there's a
+        -- run of noise-looking data first, with sprite-like art
+        -- appearing only well into the bank. Real bytes, but "this
+        -- whole bank is clean graphics" wasn't established -- kept
+        -- PARTIALLY VERIFIED and not used as a default sprite source
+        -- (Field.lua uses bank 10 instead).
         status = "PARTIALLY VERIFIED",
         fileOffsetStart = 0x24000,
         fileOffsetEnd = 0x28000,
