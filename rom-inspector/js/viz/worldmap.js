@@ -162,6 +162,9 @@ function render_worldmap(main) {
       <label style="font-size:12px; color:var(--text-dim);">
         <input type="checkbox" id="worldmapGrid" checked> Raum-Grenzen einzeichnen
       </label>
+      <label style="font-size:12px; color:var(--text-dim);">
+        <input type="checkbox" id="worldmapCoords" checked> Koordinaten anzeigen
+      </label>
       <label style="font-size:12px; color:var(--text-dim);">Actor-Action-Overlay
         <select id="worldmapOverlayMode">
           <option value="off">aus</option>
@@ -187,6 +190,7 @@ function render_worldmap(main) {
   sourceSelect.addEventListener("change", () => { drawWorld(); fitToViewport(); });
   document.getElementById("worldmapFit").addEventListener("click", fitToViewport);
   document.getElementById("worldmapGrid").addEventListener("change", drawWorld);
+  document.getElementById("worldmapCoords").addEventListener("change", drawWorld);
   document.getElementById("worldmapOverlayMode").addEventListener("change", drawWorld);
   wirePanZoom();
   onSectionUnload(RomBytes.onChange(() => { updateRomBanner(document.getElementById("worldmapRomBanner")); drawWorld(); }));
@@ -230,9 +234,19 @@ function render_worldmap(main) {
     // this only needs to be high enough to stay reasonably crisp at
     // the max CSS scale (`WorldmapView.maxScale`).
     const tilePx = 16;
+    // Coordinate rulers (2026-08-17, direct user request: "bau mal
+    // mitte noch die koordinaten an weltkarten dran damit ich dir
+    // besser koordinaten komunizieren kann") -- a real, always-visible
+    // row/column axis (like a spreadsheet), so the user can just READ
+    // OFF a "Zeile X, Spalte Y" coordinate by looking, instead of
+    // having to click every room individually. `MARGIN` reserves real
+    // canvas space (not an HTML overlay -- stays correctly positioned
+    // through the same CSS pan/zoom transform as everything else).
+    const showCoords = document.getElementById("worldmapCoords").checked;
+    const MARGIN = showCoords ? 2 * tilePx : 0;
     const canvas = document.getElementById("worldmapCanvas");
-    canvas.width = stride * roomW * tilePx;
-    canvas.height = gridRows * roomH * tilePx;
+    canvas.width = MARGIN + stride * roomW * tilePx;
+    canvas.height = MARGIN + gridRows * roomH * tilePx;
     const ctx2d = canvas.getContext("2d");
     ctx2d.fillStyle = "#1a1e14";
     ctx2d.fillRect(0, 0, canvas.width, canvas.height);
@@ -248,8 +262,8 @@ function render_worldmap(main) {
       const room = rooms[i];
       const roomRow = Math.floor(i / stride);
       const roomCol = i % stride;
-      const baseX = roomCol * roomW * tilePx;
-      const baseY = roomRow * roomH * tilePx;
+      const baseX = MARGIN + roomCol * roomW * tilePx;
+      const baseY = MARGIN + roomRow * roomH * tilePx;
       const cache = tileCache[i] = tileCache[i] || {};
       for (let row = 0; row < room.rows; row++) {
         for (let col = 0; col < room.cols; col++) {
@@ -282,13 +296,54 @@ function render_worldmap(main) {
         ctx2d.lineWidth = 1;
         ctx2d.strokeRect(baseX + 0.5, baseY + 0.5, roomW * tilePx - 1, roomH * tilePx - 1);
       }
+      if (showCoords) {
+        // Real per-room "row,col" coordinate, small text over a
+        // semi-transparent backing box (readable against any real
+        // tile art underneath) in each room's own top-left corner --
+        // the SAME (roomRow,roomCol) pair the click-to-inspect info
+        // box below already reports, just always visible now.
+        const label = `${roomRow},${roomCol}`;
+        ctx2d.font = "bold 11px monospace";
+        const textW = ctx2d.measureText(label).width;
+        ctx2d.fillStyle = "rgba(10,12,7,.72)";
+        ctx2d.fillRect(baseX + 1, baseY + 1, textW + 4, 13);
+        ctx2d.fillStyle = "#e8d33a";
+        ctx2d.textBaseline = "top";
+        ctx2d.fillText(label, baseX + 3, baseY + 1);
+      }
+    }
+
+    if (showCoords) {
+      // Axis rulers in the reserved margin -- column indices along the
+      // top, row indices down the left, one label per real room
+      // column/row (not per pixel), each centered over/beside its own
+      // real room band.
+      ctx2d.fillStyle = "#171b10";
+      ctx2d.fillRect(0, 0, canvas.width, MARGIN);
+      ctx2d.fillRect(0, 0, MARGIN, canvas.height);
+      ctx2d.strokeStyle = "rgba(232,211,58,.4)";
+      ctx2d.strokeRect(0.5, 0.5, canvas.width - 1, MARGIN - 1);
+      ctx2d.strokeRect(0.5, 0.5, MARGIN - 1, canvas.height - 1);
+      ctx2d.font = "bold 12px monospace";
+      ctx2d.fillStyle = "#e8d33a";
+      ctx2d.textAlign = "center";
+      ctx2d.textBaseline = "middle";
+      for (let c = 0; c < stride; c++) {
+        ctx2d.fillText(String(c), MARGIN + c * roomW * tilePx + (roomW * tilePx) / 2, MARGIN / 2);
+      }
+      ctx2d.textAlign = "right";
+      for (let r = 0; r < gridRows; r++) {
+        ctx2d.fillText(String(r), MARGIN - 4, MARGIN + r * roomH * tilePx + (roomH * tilePx) / 2);
+      }
+      ctx2d.textAlign = "left";
+      ctx2d.textBaseline = "alphabetic";
     }
 
     const info = document.getElementById("worldmapHoverInfo");
     if (!RomBytes.isLoaded()) {
       info.textContent = "Keine ROM geladen -- oben rechts „ROM laden…“, um echte Pixel zu sehen (Grid-Struktur ist trotzdem sichtbar).";
     } else {
-      info.textContent = "Auf einen Raum klicken/tippen für seinen Record-Index + Gitter-Position.";
+      info.textContent = "Auf einen Raum klicken/tippen für seinen Record-Index + Gitter-Position -- oder direkt die Koordinaten am Rand/auf der Kachel ablesen.";
     }
     // CLICK (not hover -- see this file's own "Google-Maps-style pan/
     // zoom" doc comment: hover doesn't exist on touch, and a click is
@@ -297,8 +352,8 @@ function render_worldmap(main) {
     // next click, instead of vanishing the moment the mouse leaves.
     canvas.onWorldmapClick = (clientX, clientY) => {
       const rect = canvas.getBoundingClientRect();
-      const px = (clientX - rect.left) * (canvas.width / rect.width);
-      const py = (clientY - rect.top) * (canvas.height / rect.height);
+      const px = (clientX - rect.left) * (canvas.width / rect.width) - MARGIN;
+      const py = (clientY - rect.top) * (canvas.height / rect.height) - MARGIN;
       const roomCol = Math.floor(px / (roomW * tilePx));
       const roomRow = Math.floor(py / (roomH * tilePx));
       if (roomRow < 0 || roomCol < 0 || roomCol >= stride || roomRow >= gridRows) return;
