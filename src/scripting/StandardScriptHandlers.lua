@@ -1038,79 +1038,72 @@ function StandardScriptHandlers.runListSearch(searchWhenGateSet, matchByte, isGa
   end
 end
 
---- Real "script continuation queue gate" handler (opcode `0x00`, ROM
--- `$3297`, see `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s own
--- doc comment for the complete, byte-for-byte disassembly -- this
--- session's own "löse 1" investigation, resolving what was, by a wide
--- margin, the single largest remaining blocker found by this
--- project's own opcode-frequency scan: 275 of 1357 real scripts).
--- No operand bytes.
+--- Real "script continuation queue gate" handler (opcode 0x00, ROM
+-- $3297, see ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS's own doc
+-- comment for the complete disassembly -- this session's own "solve 1"
+-- investigation, resolving what was, by a wide margin, the single
+-- largest remaining blocker found by the opcode-frequency scan: 275 of
+-- 1357 scripts). No operand bytes.
 --
--- Real, VERIFIED structure (unlike the actor-flag/state family, where
--- only the halt CONDITION was pinned down, here the entire real flow
--- -- both halt conditions AND the release/redirect mechanism -- is
--- fully understood, traced down to a real, shared WRAM FIFO with two
--- confirmed producers, see `ScriptContinuationQueue.lua`):
---   1. `isBlocked()`: real WRAM flag byte (`$D874`), bit 0 -- halts
---      while true. RETRACTED 2026-08-14, same day (task #86, re-
---      verified with a DIRECT `$D874` watchpoint instead of the
---      earlier indirect inference): the "actor-command queue"
---      explanation above does NOT hold -- bit 0 never changes at all
---      across a real, reproduced ~200,000-step boss-defeat block, and
---      the `$C5A0` table it was said to depend on stays all-zero the
---      entire time. **CLOSED FOR REAL, same day**: the boss-defeat
---      block isn't `isBlocked()`/halt-#1 at all -- it's a completely
---      SEPARATE mechanism overwriting the persistent script cursor
---      out from under this handler. A periodic `$1F35` selector `0x13`
---      tick (`$4BE0`) reports "ready" only on the specific tick a real
---      classified-actor count (cached at `$C5AF`) edge-transitions
---      from nonzero to exactly 0 (i.e. the boss's own entity slot has
---      genuinely finished despawning) -- live-confirmed directly
---      (`$C5AF` sits at `0x01` for the whole block, flips to `0x00`
---      right before release). That gates a facing-driven dispatch
---      (`$24A7`, reading the player's own current facing nibble) into
---      `$31AD` (this project's own already-understood cross-actor
---      dispatch, task #85), which redirects the persistent cursor
---      directly. **Practical implication for THIS handler**:
---      `isBlocked` still models a real ROM mechanism (bit 0 of `$D874`
---      is real and genuinely gates SOMETHING, just not this specific
+-- Verified structure (unlike the actor-flag/state family, where only
+-- the halt condition was pinned down, here the entire flow -- both
+-- halt conditions and the release/redirect mechanism -- is fully
+-- understood, traced down to a shared WRAM FIFO with two confirmed
+-- producers, see ScriptContinuationQueue.lua):
+--   1. isBlocked(): WRAM flag byte ($D874), bit 0 -- halts while true.
+--      RETRACTED same day (task #86, re-verified with a direct $D874
+--      watchpoint instead of the earlier indirect inference): the
+--      "actor-command queue" explanation above doesn't hold -- bit 0
+--      never changes at all across a reproduced ~200,000-step boss-
+--      defeat block, and the $C5A0 table it was said to depend on
+--      stays all-zero the entire time. CLOSED FOR REAL, same day: the
+--      boss-defeat block isn't isBlocked()/halt-#1 at all -- it's a
+--      completely separate mechanism overwriting the persistent script
+--      cursor out from under this handler. A periodic $1F35 selector
+--      0x13 tick ($4BE0) reports "ready" only on the specific tick a
+--      classified-actor count (cached at $C5AF) edge-transitions from
+--      nonzero to exactly 0 (the boss's entity slot has genuinely
+--      finished despawning) -- live-confirmed directly ($C5AF sits at
+--      0x01 for the whole block, flips to 0x00 right before release).
+--      That gates a facing-driven dispatch ($24A7, reading the
+--      player's current facing nibble) into $31AD (this project's own
+--      already-understood cross-actor dispatch, task #85), which
+--      redirects the persistent cursor directly. Practical implication
+--      for this handler: isBlocked still models a real mechanism (bit
+--      0 of $D874 genuinely gates something, just not this specific
 --      delay) -- but the boss-defeat-style "wait for an entity to
---      finish despawning" pattern is a DIFFERENT real mechanism this
---      handler does not model at all (it would need to live outside
---      the queue entirely, as a cursor-redirect trigger). See
---      `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s own doc
---      comment and events.md's dated entries for the complete,
---      live-verified trace.
---   2. else if `queue:isEmpty()`: halts, optionally calling `onIdle`
---      (the real ROM ALSO does a `$D86E`->`$C0A0` WRAM copy and clears
---      a few bits of `$C0A1`/`$C0A2` here -- exposed only as this
---      optional callback, still not modeled by any real caller of this
---      module. CONFIRMED live, not just HYPOTHESIS, 2026-08-15 (task
---      #147): the real code right before `$31AD` does exactly `LD
---      HL,$C0A1 / SET 3,(HL) / LD HL,$C0A2 / SET 3,(HL) / RET` on this
---      path, live-observed clobbering `$D8B6`/`$D8B7` (this project's
---      own "persistent cursor" cells) with `0xC0A2` in the process --
---      i.e. those cells do NOT hold a meaningful resume cursor while a
---      script is genuinely idle. Task #147 ALSO found, live, that real
---      further progress past this genuine halt does NOT come from
---      `self.queue` gaining new content at all -- it comes from the
---      SAME already-understood `$31AD` cross-actor dispatcher (tasks
---      #85/#111) firing again for a DIFFERENT real trigger and
---      overwriting `$D8B6`/`$D8B7` with a fresh script entry point,
---      completely independent of this handler/queue. See events.md's
---      2026-08-15 "task #147" entry for the full live trace and the
---      new, correctly-scoped follow-up (task #149).
---   3. else: pops one real entry. If it was a real `B==2` entry (only
---      opcode `0x02` CHAIN ever pushes one), redirects the persistent
---      cursor there and continues. Any other real entry (only opcode
---      `0x03` is a confirmed producer, always `B==3`) just halts,
---      consumed.
--- `isBlocked` and `onIdle` are the caller's own responsibility (no
--- live WRAM flag-byte state modeled yet, same honest-scope pattern as
--- `actorAction`'s own `isReady`). `queue` is REQUIRED (unlike
--- `.chain()`/`.typewriterCommand()`'s own optional queue -- this
--- handler's entire real purpose is consuming it, so a caller without
--- one hasn't actually wired opcode `0x00` meaningfully).
+--      finish despawning" pattern is a different mechanism this
+--      handler doesn't model at all (it would need to live outside the
+--      queue entirely, as a cursor-redirect trigger). See
+--      ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS's own doc comment
+--      and events.md's dated entries for the complete trace.
+--   2. else if queue:isEmpty(): halts, optionally calling onIdle (the
+--      ROM also does a $D86E->$C0A0 WRAM copy and clears a few bits of
+--      $C0A1/$C0A2 here -- exposed only as this optional callback, not
+--      modeled by any current caller. CONFIRMED live, not just
+--      HYPOTHESIS (task #147): the code right before $31AD does
+--      exactly LD HL,$C0A1 / SET 3,(HL) / LD HL,$C0A2 / SET 3,(HL) /
+--      RET on this path, live-observed clobbering $D8B6/$D8B7 (this
+--      project's "persistent cursor" cells) with 0xC0A2 in the process
+--      -- those cells don't hold a meaningful resume cursor while a
+--      script is genuinely idle. Task #147 also found, live, that
+--      further progress past this halt does not come from self.queue
+--      gaining new content -- it comes from the same $31AD cross-actor
+--      dispatcher (tasks #85/#111) firing again for a different
+--      trigger and overwriting $D8B6/$D8B7 with a fresh script entry
+--      point, independent of this handler/queue. See events.md's
+--      "task #147" entry for the full trace and the correctly-scoped
+--      follow-up (task #149).
+--   3. else: pops one entry. If it was a B==2 entry (only opcode 0x02
+--      CHAIN ever pushes one), redirects the persistent cursor there
+--      and continues. Any other entry (only opcode 0x03 is a confirmed
+--      producer, always B==3) just halts, consumed.
+-- isBlocked and onIdle are the caller's own responsibility (no live
+-- WRAM flag-byte state modeled yet, same honest-scope pattern as
+-- actorAction's own isReady). queue is required (unlike .chain()/
+-- .typewriterCommand()'s own optional queue -- this handler's entire
+-- purpose is consuming it, so a caller without one hasn't actually
+-- wired opcode 0x00 meaningfully).
 function StandardScriptHandlers.queueGate(queue, isBlocked, onIdle)
   assert(queue, "StandardScriptHandlers.queueGate requires a real ScriptContinuationQueue -- " ..
     "this handler's entire real purpose is consuming it")
@@ -1132,15 +1125,15 @@ function StandardScriptHandlers.queueGate(queue, isBlocked, onIdle)
   end
 end
 
---- Real "byte + word command" handler (opcode `0xB0`, ROM `$0F1E`, see
--- `ScriptOpcodeTable.BYTE_WORD_COMMAND_HANDLER_ADDRESS`'s own doc
--- comment for the disassembly). Consumes THREE real operand bytes: one
--- plain byte, then a real 16-bit LITTLE-endian word (unlike `.chain()`,
--- which reads its own word big-endian via a real byte-swap trick this
--- opcode's handler doesn't use). Always continues -- no real
--- conditional branch anywhere in this opcode's own routine.
--- `onCommand(byteValue, wordValue)` fires once; what the real `$2400`
--- helper actually does with them is HYPOTHESIS.
+--- Real "byte + word command" handler (opcode 0xB0, ROM $0F1E, see
+-- ScriptOpcodeTable.BYTE_WORD_COMMAND_HANDLER_ADDRESS's own doc
+-- comment for the disassembly). Consumes three operand bytes: one
+-- plain byte, then a 16-bit little-endian word (unlike .chain(), which
+-- reads its word big-endian via a byte-swap trick this opcode's
+-- handler doesn't use). Always continues -- no conditional branch
+-- anywhere in this opcode's routine. onCommand(byteValue, wordValue)
+-- fires once; what the $2400 helper actually does with them is
+-- HYPOTHESIS.
 function StandardScriptHandlers.byteWordCommand(onCommand)
   return function(stream, cursor)
     local byteValue, afterByte = ScriptInterpreter.fetch(stream, cursor)
@@ -1153,14 +1146,13 @@ function StandardScriptHandlers.byteWordCommand(onCommand)
   end
 end
 
---- Real "word command" handler (opcode `0xD0`, ROM `$3A4F`, see
--- `ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS`'s own doc comment
--- for the disassembly). Consumes TWO real operand bytes -- a real
--- 16-bit LITTLE-endian word. Always continues -- no real conditional
--- branch anywhere in this opcode's own routine (the real WRAM-counter
--- clamp-at-`0xFFFF` logic is internal bookkeeping this project doesn't
--- reproduce). `onCommand(wordValue)` fires once; what the real WRAM
--- counter (`$D7BE`/`$D7BF`) represents is HYPOTHESIS.
+--- Real "word command" handler (opcode 0xD0, ROM $3A4F, see
+-- ScriptOpcodeTable.WORD_COMMAND_HANDLER_ADDRESS's own doc comment for
+-- the disassembly). Consumes two operand bytes -- a 16-bit little-
+-- endian word. Always continues -- no conditional branch anywhere in
+-- this opcode's routine (the WRAM-counter clamp-at-0xFFFF logic is
+-- internal bookkeeping not reproduced). onCommand(wordValue) fires
+-- once; what the WRAM counter ($D7BE/$D7BF) represents is HYPOTHESIS.
 function StandardScriptHandlers.wordCommand(onCommand)
   return function(stream, cursor)
     local lo, afterLo = ScriptInterpreter.fetch(stream, cursor)
@@ -1172,14 +1164,14 @@ function StandardScriptHandlers.wordCommand(onCommand)
   end
 end
 
---- Real "two-byte command" handler (opcode `0xF6`, ROM `$3CA2`, see
--- `ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS`'s own doc
--- comment for the disassembly). Consumes TWO real operand bytes, kept
--- SEPARATE (unlike `.wordCommand()`, the real ROM copies each one to
--- its own, different WRAM cell -- NOT combined into a 16-bit value).
--- Always continues. `onCommand(byte1, byte2)` fires once; the real
--- routine's own many WRAM writes (a plausible "start a new textbox/
--- scene" initializer) are HYPOTHESIS, not reproduced here.
+--- Real "two-byte command" handler (opcode 0xF6, ROM $3CA2, see
+-- ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS's own doc comment
+-- for the disassembly). Consumes two operand bytes, kept separate
+-- (unlike .wordCommand(), the ROM copies each one to its own,
+-- different WRAM cell -- not combined into a 16-bit value). Always
+-- continues. onCommand(byte1, byte2) fires once; the routine's many
+-- WRAM writes (a plausible "start a new textbox/scene" initializer)
+-- are HYPOTHESIS, not reproduced here.
 function StandardScriptHandlers.twoByteCommand(onCommand)
   return function(stream, cursor)
     local byte1, afterByte1 = ScriptInterpreter.fetch(stream, cursor)
@@ -1192,30 +1184,28 @@ function StandardScriptHandlers.twoByteCommand(onCommand)
 end
 
 --- Real "gated single-byte leaf command" handler family (opcodes
--- `0xD4`/`0xD6`/`0xD8`, ROM `$3AA8`/`$3ABA`/`$3ACC`, found live
--- 2026-08-13 task #86 against `BossSequenceInterpreter` itself) --
--- reads ONE real operand byte, INCREMENTS it (`INC A`), and passes the
--- result to an opaque per-opcode leaf routine (`$30C3`/`$30C9`/`$30CF`,
--- spaced 6 bytes apart, byte-for-byte identical calling shape --
--- untraced leaves, this project's own "interpreter doesn't render, it
--- calls back" convention). Afterward, ALWAYS checks a real, SHARED
--- WRAM flag (`$D86F` bit 1) -- when CLEAR (the common case, matching
--- every real occurrence this project has actually observed live so
--- far), continues normally.
+-- 0xD4/0xD6/0xD8, ROM $3AA8/$3ABA/$3ACC, found live in task #86
+-- against BossSequenceInterpreter itself) -- reads one operand byte,
+-- increments it (INC A), and passes the result to an opaque per-opcode
+-- leaf routine ($30C3/$30C9/$30CF, spaced 6 bytes apart, byte-for-byte
+-- identical calling shape -- untraced leaves, this project's
+-- "interpreter doesn't render, it calls back" convention). Afterward,
+-- always checks a shared WRAM flag ($D86F bit 1) -- when clear (the
+-- common case, matching every occurrence observed live so far),
+-- continues normally.
 --
--- HONEST SCOPE: when that flag is SET, real hardware runs a further,
--- genuinely deep sequence (`$3ADE`: sets WRAM `$D84A`=6, calls two
--- MORE untraced leaves `$3BEF`/`$3627`, then conditionally halts based
--- on `$3627`'s own real return flags) that this project does NOT
--- reproduce -- not live-observed to actually fire for this scene, and
--- guessing at it risks a genuine cursor-desync bug (the same reasoning
--- already applied to `.oneShotTriggerGate`'s own dual-gate check).
--- Conservatively HALTS (returns `nil`) instead, matching this
--- project's "no silent fallbacks" rule -- a caller that later finds
--- this path DOES fire for a real scene should trace `$3ADE` properly
--- rather than rely on this halt. `isFadeActive` defaults to "never
--- active" (the happy path), same convention as `isActorReady`/
--- `isGateClear` elsewhere in this project.
+-- HONEST SCOPE: when that flag is set, real hardware runs a further,
+-- genuinely deep sequence ($3ADE: sets WRAM $D84A=6, calls two more
+-- untraced leaves $3BEF/$3627, then conditionally halts based on
+-- $3627's own return flags) not reproduced here -- not live-observed
+-- to actually fire for this scene, and guessing risks a cursor-desync
+-- bug (same reasoning already applied to .oneShotTriggerGate's own
+-- dual-gate check). Conservatively halts (returns nil) instead,
+-- matching this project's "no silent fallbacks" rule -- a caller that
+-- later finds this path fires for a real scene should trace $3ADE
+-- properly rather than rely on this halt. isFadeActive defaults to
+-- "never active" (the happy path), same convention as isActorReady/
+-- isGateClear elsewhere in this project.
 function StandardScriptHandlers.gatedByteLeafCommand(onByte, isFadeActive)
   return function(stream, cursor)
     local byte, afterByte = ScriptInterpreter.fetch(stream, cursor)
