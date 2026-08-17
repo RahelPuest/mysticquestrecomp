@@ -1350,16 +1350,15 @@ function StandardScriptHandlers.peekTwoByteGate(onPeek, isGateClear, extraBytesO
 end
 
 --- Real "ungated single-byte leaf command" handler family (opcodes
--- `0xD5`/`0xD7`/`0xD9`, ROM `$3B3A`/`$3B45`/`$3B50`, found live
--- 2026-08-13 task #86, immediately adjacent to `0xD4`/`0xD6`/`0xD8`
--- above) -- the EXACT same real shape (`LD A,(HL+)/INC A/PUSH HL/CALL
--- <leaf>/POP HL`), calling its own per-opcode opaque leaf (`$30D5`/
--- `$30E1`/`$30DB`), but WITHOUT the `$D86F` bit-1 gate check --
--- `CALL $3727 / RET` directly, ALWAYS continuing. Kept as its own,
--- separate, honestly-named factory rather than reusing
--- `.gatedByteLeafCommand` with a no-op gate, since these opcodes'
--- real handlers genuinely never gate at all -- reusing the "gated"
--- name for them would misrepresent their real disassembly.
+-- 0xD5/0xD7/0xD9, ROM $3B3A/$3B45/$3B50, found live in task #86,
+-- immediately adjacent to 0xD4/0xD6/0xD8 above) -- the exact same
+-- shape (LD A,(HL+)/INC A/PUSH HL/CALL <leaf>/POP HL), calling its own
+-- per-opcode opaque leaf ($30D5/$30E1/$30DB), but without the $D86F
+-- bit-1 gate check -- CALL $3727 / RET directly, always continuing.
+-- Kept as its own, separate, honestly-named factory rather than
+-- reusing .gatedByteLeafCommand with a no-op gate, since these
+-- opcodes' handlers genuinely never gate at all -- reusing the "gated"
+-- name would misrepresent their disassembly.
 function StandardScriptHandlers.byteLeafCommand(onByte)
   return function(stream, cursor)
     local byte, afterByte = ScriptInterpreter.fetch(stream, cursor)
@@ -1370,27 +1369,23 @@ function StandardScriptHandlers.byteLeafCommand(onByte)
   end
 end
 
---- Real "raw single-byte leaf command" handler family (opcodes
--- `0x9C`/`0x9D`, ROM `$0F0A`/`$0F14`, found 2026-08-14 -- the
--- whole-corpus scan's own next real untouched blocker after `0xD1`).
--- Byte-for-byte:
+--- Real "raw single-byte leaf command" handler family (opcodes 0x9C/
+-- 0x9D, ROM $0F0A/$0F14, found -- the whole-corpus scan's own next
+-- untouched blocker after 0xD1). Byte-for-byte:
 --   LD A,(HL+) / PUSH HL / CALL $2895 / POP HL / CALL $3727 / RET
--- ALMOST the exact same real shape as `.byteLeafCommand` above (opcodes
--- `0xD5`/`0xD7`/`0xD9`) -- one real operand byte, an opaque per-opcode
--- leaf call, always continues, one more real byte consumed via the
--- standard `$3727` skip -- but a genuine, real difference: `.byteLeafCommand`'s
--- own family does `INC A` before calling its leaf; THIS family does
--- NOT (confirmed absent from the real bytes, not an oversight) -- the
--- RAW fetched byte reaches the leaf unmodified. Kept as its own,
--- separate, honestly-named factory rather than reusing
--- `.byteLeafCommand` with a fake "no-op increment", since baking in
--- the `+1` there would misrepresent this family's real disassembly
--- (same reasoning `.byteLeafCommand`'s own doc comment already applies
--- to keeping it separate from `.gatedByteLeafCommand`). Both `0x9C`
--- and `0x9D` share the SAME real leaf (`$2895`) -- HYPOTHESIS on its
--- real-world meaning, matching this project's established scope for
--- opaque-leaf opcodes; the mechanism itself is fully, decisively
--- traced.
+-- Almost the exact same shape as .byteLeafCommand above (opcodes 0xD5/
+-- 0xD7/0xD9) -- one operand byte, an opaque per-opcode leaf call,
+-- always continues, one more byte consumed via the standard $3727 skip
+-- -- but a real difference: .byteLeafCommand's family does INC A
+-- before calling its leaf; this family does not (confirmed absent from
+-- the bytes, not an oversight) -- the raw fetched byte reaches the
+-- leaf unmodified. Kept as its own, separate, honestly-named factory
+-- rather than reusing .byteLeafCommand with a fake "no-op increment",
+-- since baking in the +1 there would misrepresent this family's
+-- disassembly. Both 0x9C and 0x9D share the same leaf ($2895) --
+-- HYPOTHESIS on its real-world meaning, matching this project's
+-- established scope for opaque-leaf opcodes; the mechanism itself is
+-- fully, decisively traced.
 function StandardScriptHandlers.rawByteLeafCommand(onByte)
   return function(stream, cursor)
     local byte, afterByte = ScriptInterpreter.fetch(stream, cursor)
@@ -1403,31 +1398,29 @@ function StandardScriptHandlers.rawByteLeafCommand(onByte)
 end
 
 --- Real "actor-slot-position, readiness-as-parameter" handler (opcode
--- `0x79`, real ROM `$1566`, found 2026-08-14 -- the whole-corpus
--- scan's own next real untouched blocker after `0xC5`). Byte-for-byte:
+-- 0x79, ROM $1566, found -- the whole-corpus scan's own next untouched
+-- blocker after 0xC5). Byte-for-byte:
 --   CALL $28C2 / ADD A,0x06 / LD C,A / CALL $123E / RET
--- The `$123E`-leaf sibling of `.actorActionWithReadinessParam` (`0x7A`/
--- `0x7B`/...) -- SAME real shape (`$28C2`'s own real 0/1 result plus a
--- fixed offset becomes the callee's own `C` parameter), just tail-
--- calling `$123E` instead of `$2879`. Since neither this opcode NOR
--- `.actorSlotPosition` above preserves `HL` across the call, `$123E`
--- reads its own 2 real operand bytes directly from the live script
--- cursor -- confirmed by `.actorSlotPosition`'s own contract.
+-- The $123E-leaf sibling of .actorActionWithReadinessParam (0x7A/0x7B/
+-- ...) -- same shape ($28C2's own 0/1 result plus a fixed offset
+-- becomes the callee's C parameter), just tail-calling $123E instead
+-- of $2879. Since neither this opcode nor .actorSlotPosition above
+-- preserves HL across the call, $123E reads its own 2 operand bytes
+-- directly from the live script cursor -- confirmed by
+-- .actorSlotPosition's own contract.
 --
--- CORRECTED alongside `.actorActionWithReadinessParam`'s own same-day
--- self-caught fix: `isReady()` now GATES (matching that function's
--- own corrected reasoning -- this is the exact same real underlying
--- Family-A-shaped mechanism, its real halt lives inside the callee's
--- own dispatch chain, and `isReady()` is this project's established
--- approximate stand-in for it) rather than being pure unconditional
--- data. On the real not-ready path, this halts WITHOUT consuming the
--- 2 real position bytes (matching `.actorSlotPosition`'s own halt
--- contract exactly -- a real retry-same-opcode-next-tick, not a
--- partial read). `onSetPosition(param, byte1, byte2)` fires only on
--- the real ready path, with `param` always `offset+1` (see
--- `.actorActionWithReadinessParam`'s own doc comment for why the
--- `offset+0` case is folded into the gate's own halt, an honest
--- limit).
+-- CORRECTED alongside .actorActionWithReadinessParam's own same-day
+-- self-caught fix: isReady() now gates (matching that function's
+-- corrected reasoning -- this is the same underlying Family-A-shaped
+-- mechanism, its halt lives inside the callee's dispatch chain, and
+-- isReady() is this project's established approximate stand-in for
+-- it) rather than being pure unconditional data. On the not-ready
+-- path, this halts without consuming the 2 position bytes (matching
+-- .actorSlotPosition's own halt contract exactly -- a retry-same-
+-- opcode-next-tick, not a partial read). onSetPosition(param, byte1,
+-- byte2) fires only on the ready path, with param always offset+1
+-- (see .actorActionWithReadinessParam's own doc comment for why the
+-- offset+0 case is folded into the gate's own halt, an honest limit).
 function StandardScriptHandlers.actorSlotPositionWithReadinessParam(offset, isReady, onSetPosition)
   return function(stream, cursor)
     if not isReady() then
@@ -1443,20 +1436,19 @@ function StandardScriptHandlers.actorSlotPositionWithReadinessParam(offset, isRe
   end
 end
 
---- Real "6-bit WRAM field write" handler (opcode `0xC5`, real ROM
--- `$3B71`, found 2026-08-14 -- the whole-corpus scan's own next real
--- untouched blocker after `0xAF`). Byte-for-byte:
---   LD A,(HL+) / AND 0x3F / LD C,A          ; real operand byte, masked to 6 bits
+--- Real "6-bit WRAM field write" handler (opcode 0xC5, ROM $3B71,
+-- found -- the whole-corpus scan's own next untouched blocker after
+-- 0xAF). Byte-for-byte:
+--   LD A,(HL+) / AND 0x3F / LD C,A          ; operand byte, masked to 6 bits
 --   LD DE,0xD7D4 / LD A,(DE) / AND 0xC0 / OR C / LD (DE),A
 --                                              ; merge into $D7D4's low 6 bits,
 --                                              ; preserving its own top 2 bits
 --   CALL $3727 / RET
--- Simpler than `.twoBitFieldCommand` above -- no opaque leaf call at
--- all, purely a direct real operand-byte mask-and-merge into WRAM
--- `$D7D4`. Consumes the 1 real operand byte plus 1 more via the
--- standard trailing `$3727` skip; always continues. `onWrite(value)`
--- fires once per dispatch with the real, already-masked (`AND 0x3F`)
--- 6-bit value.
+-- Simpler than .twoBitFieldCommand above -- no opaque leaf call at
+-- all, purely a direct operand-byte mask-and-merge into WRAM $D7D4.
+-- Consumes the 1 operand byte plus 1 more via the standard trailing
+-- $3727 skip; always continues. onWrite(value) fires once per
+-- dispatch with the already-masked (AND 0x3F) 6-bit value.
 function StandardScriptHandlers.sixBitFieldCommand(onWrite)
   return function(stream, cursor)
     local byte, afterByte = ScriptInterpreter.fetch(stream, cursor)
@@ -1468,23 +1460,22 @@ function StandardScriptHandlers.sixBitFieldCommand(onWrite)
   end
 end
 
---- Real "chained opaque effect" handler (opcode `0xAF`, real ROM
--- `$2CE7`, found 2026-08-14 -- the whole-corpus scan's own next real
--- untouched blocker after `0xC2`). Byte-for-byte:
+--- Real "chained opaque effect" handler (opcode 0xAF, ROM $2CE7, found
+-- -- the whole-corpus scan's own next untouched blocker after 0xC2).
+-- Byte-for-byte:
 --   PUSH HL / LD A,($C5B0) / LD C,A / PUSH BC / CALL $05EF / POP BC
 --   PUSH DE / CALL $2D13 / POP DE / CALL $2CE1 / LD A,0x0F / CALL $297D
 --   POP HL / CALL $3727 / RET
--- ZERO real script-stream operand bytes are read directly -- 4
--- sequential opaque leaf calls, each getting their own real parameter
--- from live WRAM/fixed constants (NOT the script stream), no branch
--- anywhere. The only real byte consumed is the standard trailing
--- `$3727` skip. All 4 leaves (`$05EF`/`$2D13`/`$2CE1`/`$297D`) remain
--- untraced -- HYPOTHESIS on their combined real effect, matching this
--- project's established scope for opaque-leaf opcodes; the STRUCTURE
--- (0 explicit operand bytes, 1 via `$3727`, unconditional) is fully,
--- decisively verified. `onEffect()` fires once per real dispatch,
--- with no parameters (this project has no honest way to summarize 4
--- chained opaque calls into one meaningful value).
+-- Zero script-stream operand bytes are read directly -- 4 sequential
+-- opaque leaf calls, each getting their own parameter from live WRAM/
+-- fixed constants (not the script stream), no branch anywhere. The
+-- only byte consumed is the standard trailing $3727 skip. All 4 leaves
+-- ($05EF/$2D13/$2CE1/$297D) remain untraced -- HYPOTHESIS on their
+-- combined effect, matching this project's established scope for
+-- opaque-leaf opcodes; the structure (0 explicit operand bytes, 1 via
+-- $3727, unconditional) is fully verified. onEffect() fires once per
+-- dispatch, with no parameters (no honest way to summarize 4 chained
+-- opaque calls into one meaningful value).
 function StandardScriptHandlers.chainedOpaqueEffectCommand(onEffect)
   return function(stream, cursor)
     if onEffect then
