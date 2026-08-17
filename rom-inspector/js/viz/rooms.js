@@ -248,6 +248,16 @@ function render_rooms(main) {
     const disputed = !!(roomEntry && roomEntry.tilesetDisputed);
     const borderStyle = disputed ? "2px dashed #e05a5a" : (isIsolated ? "2px dashed #e0a030" : (sameAs ? "2px solid #9d6fe0" : "1px solid var(--border)"));
     const tooltip = disputed ? roomEntry.tilesetDisputedNote : (isIsolated ? roomEntry.note : (sameAs ? roomEntry.sameRomIdentityNote : ""));
+    // Real, live-confirmed presence in the bank6 8x8 world-map catalog
+    // (currently: startRoom at (7,4), fourthRoom at (7,5) -- see
+    // rom_profiles.lua's own `worldMapCatalogRecord` doc comment,
+    // 2026-08-17 direct user report "Der Bossraum sowie der Raum vorm
+    // Boss sind jeweils auf der Weltmap"). Additive, not a border-style
+    // priority slot: this can and does co-occur with the amber
+    // "isoliert" badge above (startRoom has no live play-flow
+    // connection AND is a real catalog entry -- both true at once, not
+    // contradictory).
+    const worldMapRec = roomEntry && roomEntry.worldMapCatalogRecord;
     nodesHtml += `
       <div class="room-node-card${isLeaf ? " leaf" : ""}" data-room="${escapeHtml(n)}"
            ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}
@@ -262,6 +272,7 @@ function render_rooms(main) {
         ${disputed ? `<div style="font-size:9px; color:#e05a5a; margin-top:2px;" title="${escapeHtml(roomEntry.tilesetDisputedNote)}">&#9888; Tileset umstritten</div>` : ""}
         ${isIsolated ? `<div style="font-size:9px; color:#e0a030; margin-top:2px;" title="${escapeHtml(roomEntry.note)}">&#9888; isoliert &mdash; 1. Bosskampf</div>` : ""}
         ${sameAs ? `<div style="font-size:9px; color:#9d6fe0; margin-top:2px;" title="${escapeHtml(roomEntry.sameRomIdentityNote)}">&equiv; ${escapeHtml(sameAs.join("/"))}</div>` : ""}
+        ${worldMapRec ? `<div style="font-size:9px; color:#5ac0a0; margin-top:2px;" title="Echter Eintrag im 8x8-Weltkarten-Katalog (${escapeHtml(worldMapRec.table)}, Record ${worldMapRec.recordIndex}) -- live per Zell-fuer-Zell-Vergleich bestaetigt.">&#128506; Weltkarte (${worldMapRec.row},${worldMapRec.col})</div>` : ""}
       </div>`;
   }
   nodesHost.innerHTML = nodesHtml;

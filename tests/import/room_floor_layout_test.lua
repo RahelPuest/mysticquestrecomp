@@ -823,6 +823,59 @@ Harness.testIfAvailable(
   end
 )
 
+-- startRoom/fourthRoom on the 8x8 world-map catalog (2026-08-17, direct
+-- user report: "7-4... das ist der Bossraum, und 7-5, das ist der Raum
+-- davor"). Regression-locks the cell-by-cell real-file-offset match
+-- percentages found during the live investigation (see events.md's own
+-- dated entry for the full trace, including the comparison-script bug
+-- hit and fixed along the way -- this test resolves BOTH sides through
+-- their own `tileOffsets` before comparing, not raw local tile IDs).
+Harness.testIfAvailable(
+  "startRoom/fourthRoom's own worldMapCatalogRecord matches a real, high cell-by-cell overlap against mapTableBank6 records 60/61",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local mapTable = profile.mapTableBank6
+    local opts = {
+      metatileTableFileOffset = profile.roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset,
+      tilesetFileOffset = mapTable.tilesetFileOffset,
+      metatileGridRows = 8,
+      metatileGridCols = 10,
+    }
+
+    local function matchCount(recordIndex, roomName)
+      local fileOffsetGrid = RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIndex, opts)
+      local fresh = RoomFloorLayout.toTileGridBackgroundData(fileOffsetGrid, opts.tilesetFileOffset)
+      local stored = profile.graphics[roomName]
+      local matches, total = 0, 0
+      for r = 1, #stored.grid do
+        for c = 1, #stored.grid[r] do
+          local freshId = fresh.grid[r] and fresh.grid[r][c]
+          local freshOff = freshId ~= nil and fresh.tileOffsets[freshId]
+          local storedOff = stored.tileOffsets[stored.grid[r][c]]
+          total = total + 1
+          if freshOff ~= nil and storedOff ~= nil and freshOff == storedOff then
+            matches = matches + 1
+          end
+        end
+      end
+      return matches, total
+    end
+
+    Harness.assertEqual(profile.graphics.startRoom.worldMapCatalogRecord.recordIndex, 60)
+    Harness.assertEqual(profile.graphics.fourthRoom.worldMapCatalogRecord.recordIndex, 61)
+
+    local startMatches, startTotal = matchCount(60, "startRoom")
+    Harness.assertTrue(startMatches / startTotal > 0.9,
+      string.format("expected startRoom vs bank6 record 60 to be a real identity (>90%%), got %d/%d", startMatches, startTotal))
+
+    local fourthMatches, fourthTotal = matchCount(61, "fourthRoom")
+    Harness.assertTrue(fourthMatches / fourthTotal > 0.6,
+      string.format("expected fourthRoom vs bank6 record 61 to be a real identity (>60%%), got %d/%d", fourthMatches, fourthTotal))
+  end
+)
+
 if romData then
   print("(RoomFloorLayout ROM-dependent tests ran against a real dev ROM)")
 end

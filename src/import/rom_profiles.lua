@@ -1939,6 +1939,39 @@ RomProfiles.PROFILES = {
         -- NOT itself separately live-confirmed, so left as `{0,1}`
         -- there rather than asserted).
         romRoomSelectorConfirmed = 1,
+        -- CONFIRMED (2026-08-17, direct user report: "der bossraum sowie
+        -- der raum vorm boss sind jeweils auf der weltmap... 7-4 ist der
+        -- bossraum, 7-5 der raum davor"): this room is NOT an isolated,
+        -- disconnected capture -- it is directly present in the bank6
+        -- (8x8) world-map catalog at grid (row=7,col=5), i.e.
+        -- `mapTableBank6` record index `row*8+col=61` (see `startRoom`'s
+        -- own doc comment below for the sibling record 60/(7,4)).
+        -- Verified via
+        -- `RoomFloorLayout.buildRoomFromMapTableRecord(romData,
+        -- profile.mapTableBank6, 61, opts)` ->
+        -- `RoomFloorLayout.toTileGridBackgroundData(...)`, then resolving
+        -- EACH cell's fresh tile ID through `fresh.tileOffsets[id]` (NOT
+        -- comparing raw local tile IDs directly -- those differ between
+        -- a fresh per-record decode and this room's own already-captured
+        -- table, a real bug hit and fixed during this exact
+        -- investigation) and comparing the resulting real ROM file
+        -- offset against this room's own `tileOffsets` below, cell by
+        -- cell: 216/320 cells (67.5%) match exactly -- far above the
+        -- ~15-17% baseline this project established for two genuinely
+        -- different rooms sharing one tileset family by coincidence.
+        -- Also directly WEST of `startRoom`'s own (row=7,col=4) record --
+        -- matching this room's already-independently-confirmed real
+        -- `fourthRoom->sixthRoom`(=startRoom) west exit direction, a
+        -- second, structurally independent piece of corroboration. See
+        -- events.md's "startRoom and fourthRoom are on the 8x8 world map"
+        -- entry for the full trace including the neighbor-record sweep.
+        -- `table` here uses the rom-inspector website's own source label
+        -- ("bank6", matching `ROOM_CATALOG[*].source` /
+        -- `WORLDMAP_SOURCES` in worldmap.js), NOT this Lua module's own
+        -- field name `mapTableBank6` -- the two names refer to the same
+        -- underlying table, kept distinct here so the export can do a
+        -- direct string match against the already-exported catalog.
+        worldMapCatalogRecord = { table = "bank6", recordIndex = 61, row = 7, col = 5 },
         cols = 20,
         rows = 16,
         tileOffsets = {
@@ -3217,6 +3250,32 @@ RomProfiles.PROFILES = {
         -- `fourthRoom`'s own doc comment above for the full "same
         -- pointer, partially-different capture" note.
         romRoomSelectors = { 0, 1 },
+        -- CONFIRMED (2026-08-17, direct user report -- same discovery as
+        -- `fourthRoom`'s own doc comment above, see there for the full
+        -- verification methodology): this room is directly present in
+        -- the bank6 (8x8) world-map catalog at grid (row=7,col=4), i.e.
+        -- `mapTableBank6` record index `row*8+col=60`. Cell-by-cell
+        -- real-file-offset comparison: 316/320 cells (98.8%) match this
+        -- room's own `tileOffsets` below exactly -- an even stronger
+        -- match than `fourthRoom`'s own 67.5%, consistent with this
+        -- being the room's own "clean", unobstructed base capture.
+        -- Directly EAST of `fourthRoom`'s own (row=7,col=5) record. A
+        -- 10-room neighbor sweep around this catalog position ((6,3)-
+        -- (6,6), (7,2),(7,3),(7,6),(7,7)) was also rendered and checked
+        -- against every other known live-captured room -- CONFIRMED
+        -- (2026-08-17, direct user correction: "die anderen räume sind
+        -- nicht auf der weltmap") that none of these are further known
+        -- rooms: the (7,6) record LOOKS like a checkerboard courtyard,
+        -- structurally similar to the willyRoom/secondRoom/thirdRoom
+        -- family, but is 0/320 real-file-offset matches -- a
+        -- coincidental shared tile motif, not the same room; (7,7)'s
+        -- weak 26.9%/34.1% overlap with eighthRoom/ninthRoom is likewise
+        -- NOT a real identity, just a tileset-family overlap, per the
+        -- same confirmation. `startRoom`/`fourthRoom` are the only two
+        -- rooms this project has live-confirmed on the 8x8 world map so
+        -- far. See events.md's "startRoom and fourthRoom are on the 8x8
+        -- world map" entry for the complete trace.
+        worldMapCatalogRecord = { table = "bank6", recordIndex = 60, row = 7, col = 4 },
         -- Real room size (see TileGridBackground.lua / rom-map.md's
         -- "real rooms are exactly one non-scrolling 20x16-tile screen"
         -- dynamic finding) -- explicit here (2026-08-09) so this entry

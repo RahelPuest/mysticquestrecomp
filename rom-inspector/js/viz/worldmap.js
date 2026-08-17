@@ -296,6 +296,19 @@ function render_worldmap(main) {
         ctx2d.lineWidth = 1;
         ctx2d.strokeRect(baseX + 0.5, baseY + 0.5, roomW * tilePx - 1, roomH * tilePx - 1);
       }
+      // Real, live-confirmed cross-reference outline -- currently
+      // startRoom (bank6 record 60) and fourthRoom (bank6 record 61),
+      // see the click-handler's own `knownRoom` doc comment below for
+      // the full derivation. Drawn regardless of `showGrid` so it stays
+      // visible on its own.
+      if (typeof ROOMS !== "undefined") {
+        const knownHere = ROOMS.find(r => r.worldMapCatalogRecord && r.worldMapCatalogRecord.table === key && r.worldMapCatalogRecord.recordIndex === i);
+        if (knownHere) {
+          ctx2d.strokeStyle = "#5ac0a0";
+          ctx2d.lineWidth = 2;
+          ctx2d.strokeRect(baseX + 1, baseY + 1, roomW * tilePx - 2, roomH * tilePx - 2);
+        }
+      }
       if (showCoords) {
         // Real per-room "row,col" coordinate, small text over a
         // semi-transparent backing box (readable against any real
@@ -361,7 +374,17 @@ function render_worldmap(main) {
       if (i < 0 || i >= rooms.length) return;
       const aa = rooms[i].actorAction;
       const aaLabel = aa ? ` &middot; Actor-Action group=${aa.group} action=0x${aa.action.toString(16).padStart(2, "0")}` : "";
-      info.innerHTML = `<strong>${key}-record-${String(i).padStart(3, "0")}</strong> &middot; Gitter-Position (Zeile ${roomRow}, Spalte ${roomCol})${aaLabel}`;
+      // Real, live-confirmed cross-reference into ROOMS (js/data/rooms.js)
+      // -- currently startRoom at bank6 record 60/(7,4) and fourthRoom at
+      // bank6 record 61/(7,5), see rom_profiles.lua's own
+      // `worldMapCatalogRecord` doc comment (2026-08-17 direct user
+      // report). Generic over any ROOMS entry that carries the matching
+      // table+recordIndex, not a hardcoded pair.
+      const knownRoom = typeof ROOMS !== "undefined"
+        ? ROOMS.find(r => r.worldMapCatalogRecord && r.worldMapCatalogRecord.table === key && r.worldMapCatalogRecord.recordIndex === i)
+        : null;
+      const knownLabel = knownRoom ? ` &middot; <span style="color:#5ac0a0;">&#128506; = ${knownRoom.name}</span> (live bestätigt, 98.8%/67.5% Zell-für-Zell-Übereinstimmung -- siehe Raum-System-Graph)` : "";
+      info.innerHTML = `<strong>${key}-record-${String(i).padStart(3, "0")}</strong> &middot; Gitter-Position (Zeile ${roomRow}, Spalte ${roomCol})${aaLabel}${knownLabel}`;
     };
   }
 

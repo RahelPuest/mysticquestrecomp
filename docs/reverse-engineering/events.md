@@ -10718,3 +10718,84 @@ via Playwright: seventhRoom/eighthRoom/ninthRoom's own dispute badges
 are gone (the underlying data is genuinely fixed now, not just
 flagged), their thumbnails render the new, corrected art, no console
 errors. 562/562 Lua tests green (2 new regression tests added).
+
+## startRoom and fourthRoom are on the 8x8 world map -- direct user claim confirmed, real catalog connectivity found (2026-08-17, same day, direct follow-up)
+
+Direct follow-up to the corrected tileset pipeline above (this finding
+depended on that fix being in place -- the world-map catalog decode
+uses the same corrected `0x30000` base). User: "Der Bossraum sowie der
+Raum vorm Boss sind jeweils auf der Weltmap. Das sind auf der kleinen
+Weltmap, die Acht mal Achter, die Koordinate 7-4, das ist der
+Bossraum, und 7-5, das ist der Raum davor... den du immer als...
+Force-Raum abgespeichert hast."
+
+**Read as record indices**: the bank6 (8x8) world-map catalog is
+row-major, so `recordIndex = row*8 + col`. (row=7,col=4) -> record 60,
+(row=7,col=5) -> record 61.
+
+**Verification methodology**: decoded both records via
+`RoomFloorLayout.buildRoomFromMapTableRecord(romData,
+profile.mapTableBank6, <index>, opts)` ->
+`RoomFloorLayout.toTileGridBackgroundData(...)` (the same real decode
+pipeline used for every other catalog room), rendered to PNG for a
+visual sanity check first (record 60: barred gate + checkerboard
+courtyard, an exact visual match for `startRoom`; record 61: solid
+brick corridor, an exact visual match for `fourthRoom`), then a
+rigorous cell-by-cell exact-match comparison against each room's own
+already-live-captured `tileOffsets`.
+
+**A real bug in the first comparison pass, found and fixed**: the
+first script compared `fresh.grid[r][c]` (a tile ID freshly assigned
+by THIS decode, local to this call) directly against
+`stored.tileOffsets[storedId]` (an actual ROM file offset) -- an
+apples-to-oranges comparison that produced a false "0/320 matches"
+result. Diagnosed by printing both raw grids side by side: the
+METATILE ARRANGEMENT (the repeated pattern shape) was already visibly
+identical, just using different local tile-ID numbering -- confirming
+the decode itself was right and the comparison was wrong. Built a raw
+correspondence table (fresh ID -> startRoom's own ID) and found only
+8 conflicts out of 320 cells (97.5% one consistent mapping), which
+pinned down the fix: resolve `fresh.tileOffsets[fresh.grid[r][c]]`
+before comparing, on both sides.
+
+**Corrected result**: `startRoom` (bank6 record 60): 316/320 cells
+(98.8%) match exactly on real ROM file offset. `fourthRoom` (bank6
+record 61): 216/320 cells (67.5%). Both dramatically exceed the
+~15-17% "different room, coincidental tileset-family overlap"
+baseline this project established earlier (e.g. the sixthRoom-vs-
+startRoom capture-bug investigation) -- this is a real identity, not
+two rooms that merely share the same tileset. **Confirmed.**
+
+**Independent structural corroboration**: grid (7,4) is directly WEST
+of (7,5) on the world map -- exactly the direction of the
+already-live-confirmed real `fourthRoom -> sixthRoom` (= `startRoom`)
+exit. Two independent signals (pixel-exact tile match + map-relative
+exit direction) agree.
+
+**Neighbor sweep**: rendered the 10 immediate neighbor records around
+this position ((row=6,col=3..6), (row=7,col=2),(row=7,col=3),
+(row=7,col=6),(row=7,col=7)) and ran the same exact-match comparison
+against every other known live-captured room (willyRoom, secondRoom,
+thirdRoom, fifthRoom, seventhRoom, eighthRoom, ninthRoom). Result: no
+further real identity match. (row=7,col=6) LOOKS, on a first visual
+pass, like the willyRoom/secondRoom/thirdRoom family's checkerboard
+courtyard, but scored 0/320 real-file-offset matches against all four
+-- a coincidental shared tile motif (checkerboards appear more than
+once in this ROM's tile art), not the same room. (row=7,col=7) scored
+a weak 26.9%/34.1% against eighthRoom/ninthRoom -- above the
+coincidence baseline but far short of the 60-70%+ seen for a real
+match, and the user directly confirmed on seeing this reported ("ne
+die anderen räume sind nicht auf der weltmap") that these are not
+further known rooms. `startRoom` and `fourthRoom` remain the only two
+rooms this project has live-confirmed present in the world-map
+catalog.
+
+**Fixed/added**: `startRoom.worldMapCatalogRecord` and
+`fourthRoom.worldMapCatalogRecord` (`{table="mapTableBank6",
+recordIndex=<60|61>, row=7, col=<4|5>}`) added to `rom_profiles.lua`,
+with the full derivation in each room's own doc comment. No rendering
+data changed (both rooms' own `tileOffsets`/`grid` were already
+correct) -- this is a pure connectivity/provenance finding: these two
+"isolated" rooms (see `startRoom`'s own isolated-node badge on the
+Room-System graph) are, in the real ROM's own world-map catalog, not
+disconnected at all.

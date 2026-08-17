@@ -475,6 +475,32 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
       flagged as a separate open question. 2 new regression tests lock
       the formula down; full suite 562/562 green. See `events.md`'s
       own dated entry for the complete disassembly/trace.
+      **startRoom AND fourthRoom CONFIRMED ON THE 8x8 WORLD-MAP
+      CATALOG, 2026-08-17, same day, direct follow-up** (direct user
+      report: "Der Bossraum sowie der Raum vorm Boss sind jeweils auf
+      der Weltmap... 7-4... 7-5"): decoded `mapTableBank6` records 60
+      ((row=7,col=4)) and 61 ((row=7,col=5)) via the now-corrected
+      `0x30000` pipeline and compared them cell-by-cell (by real ROM
+      file offset, not local tile ID) against `startRoom`/`fourthRoom`'s
+      own live-captured data — 316/320 (98.8%) and 216/320 (67.5%)
+      exact matches respectively, both far above this project's own
+      ~15-17% "coincidental tileset overlap" baseline: a real identity,
+      confirmed. (7,4) sits directly west of (7,5) on the map, matching
+      the already-confirmed real `fourthRoom->sixthRoom`(=`startRoom`)
+      exit direction — independent corroboration. A 10-record neighbor
+      sweep found no further identity matches (user-confirmed: "die
+      anderen räume sind nicht auf der weltmap") — `startRoom.
+      worldMapCatalogRecord`/`fourthRoom.worldMapCatalogRecord` added to
+      `rom_profiles.lua`. **What this changes**: these two rooms were
+      previously flagged as isolated/disconnected (see the Room-System
+      graph's "⚠ isoliert" badge on `startRoom`) — they are now known to
+      be genuine entries in the real ROM's own world-map catalog, not
+      hand-authored fabrications. Still an open question whether any of
+      the surrounding 382 catalog records connect to anything else this
+      project has live-confirmed; this is the second (after willyRoom)
+      concrete data point. See `events.md`'s own dated entry for the
+      complete trace, including the comparison-script bug hit and fixed
+      along the way.
       **What this changes**: Milestone 3's real DoD (a general,
       ROM-driven way to load ANY room) now has a concrete, verified,
       SHIPPED mechanism behind it for willyRoom — but still not fully

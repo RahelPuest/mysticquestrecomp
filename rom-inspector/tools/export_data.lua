@@ -562,6 +562,13 @@ for name, room in pairs(profile.graphics) do
       -- not a generic "similar tileset" guess.
       sameRomIdentityAs = room.sameRomIdentityAs,
       sameRomIdentityNote = room.sameRomIdentityNote,
+      -- Real, structured world-map catalog cross-reference (currently
+      -- startRoom/fourthRoom, 2026-08-17, direct user report) -- see
+      -- rom_profiles.lua's own `worldMapCatalogRecord` doc comment: this
+      -- room is directly present in the bank6 (8x8) world-map catalog at
+      -- the given grid position, live-verified via a real cell-by-cell
+      -- ROM file-offset comparison, not a guess.
+      worldMapCatalogRecord = room.worldMapCatalogRecord,
       -- Real, structured dispute flag (currently seventhRoom/eighthRoom/
       -- ninthRoom) -- see rom_profiles.lua's own `tilesetDisputed`/
       -- `tilesetDisputedNote` doc comment: a direct, credible user
@@ -607,26 +614,31 @@ for _, name in ipairs(ISOLATED_BUT_REAL_ROOMS) do
     end
     rooms[#rooms + 1] = {
       name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = {},
+      worldMapCatalogRecord = room.worldMapCatalogRecord,
       note = "Echter, VERIFIED Raum (rom_profiles.lua) -- hostet den echten ersten Bosskampf " ..
         "(BattleIntro.lua's reale \"Kaempfe!\"-Sequenz). Keine live entdeckte Verbindung zur " ..
         "willyRoom-Kette (die ihrerseits nur ueber den separaten VictorySequence/RoomExplorer-" ..
         "Debug-Walker erreichbar ist, nicht ueber den normalen Field.lua-Spielfluss) -- ehrlich " ..
-        "als eigenstaendiger Knoten ohne Pfeile gezeigt, nicht weggelassen.",
+        "als eigenstaendiger Knoten ohne Pfeile gezeigt, nicht weggelassen. Direkt bestaetigt " ..
+        "(2026-08-17, direkter Nutzerhinweis) als echter Eintrag im 8x8-Weltkarten-Katalog " ..
+        "(mapTableBank6, Position 7,4) -- isoliert im Raum-Graphen (keine bekannte " ..
+        "Spielfluss-Verbindung), aber KEIN erfundener/losgeloester Raum.",
     }
   end
 end
 -- Attach real per-room cross-reference/dispute flags (currently
 -- `sameRomIdentityAs`/`sameRomIdentityNote`, see rom_profiles.lua's
--- own doc comment -- `fifthRoom`; and `tilesetDisputed`/
--- `tilesetDisputedNote` -- `seventhRoom`/`eighthRoom`/`ninthRoom`) to
--- their room's own ROOMS[] entry -- generic over any room that
--- carries either field, not a hardcoded name list. Handles LEAF rooms
--- too (like `fifthRoom`/`ninthRoom`, which have no `exits` of their
--- own and so never went through the main loop above): a real flag
--- must not silently disappear just because the room it's attached to
--- happens to have no outgoing exit yet.
+-- own doc comment -- `fifthRoom`; `tilesetDisputed`/
+-- `tilesetDisputedNote` -- `seventhRoom`/`eighthRoom`/`ninthRoom`; and
+-- `worldMapCatalogRecord` -- `startRoom`/`fourthRoom`) to their room's
+-- own ROOMS[] entry -- generic over any room that carries any of these
+-- fields, not a hardcoded name list. Handles LEAF rooms too (like
+-- `fifthRoom`/`ninthRoom`, which have no `exits` of their own and so
+-- never went through the main loop above): a real flag must not
+-- silently disappear just because the room it's attached to happens to
+-- have no outgoing exit yet.
 for name, room in pairs(profile.graphics) do
-  if type(room) == "table" and (room.sameRomIdentityAs or room.tilesetDisputed) then
+  if type(room) == "table" and (room.sameRomIdentityAs or room.tilesetDisputed or room.worldMapCatalogRecord) then
     local found = nil
     for _, r in ipairs(rooms) do
       if r.name == name then found = r end
@@ -636,6 +648,7 @@ for name, room in pairs(profile.graphics) do
       found.sameRomIdentityNote = room.sameRomIdentityNote
       found.tilesetDisputed = room.tilesetDisputed
       found.tilesetDisputedNote = room.tilesetDisputedNote
+      found.worldMapCatalogRecord = found.worldMapCatalogRecord or room.worldMapCatalogRecord
     else
       local widthTiles, heightTiles
       if room.grid then
@@ -648,13 +661,14 @@ for name, room in pairs(profile.graphics) do
         sameRomIdentityNote = room.sameRomIdentityNote,
         tilesetDisputed = room.tilesetDisputed,
         tilesetDisputedNote = room.tilesetDisputedNote,
+        worldMapCatalogRecord = room.worldMapCatalogRecord,
       }
     end
   end
 end
 table.sort(rooms, function(a, b) return a.name < b.name end)
 writeJs("rooms.js", "ROOMS", rooms,
-  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A small number of real, VERIFIED rooms with no live-traced exits (currently: startRoom, the real first-boss-fight room) are still included as their own honestly-disconnected node, via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a real, live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom) carry that field regardless of whether they have their own exits.")
+  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A small number of real, VERIFIED rooms with no live-traced exits (currently: startRoom, the real first-boss-fight room) are still included as their own honestly-disconnected node, via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a real, live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom) carry that field regardless of whether they have their own exits. Rooms with a real, live-confirmed worldMapCatalogRecord (currently: startRoom at (7,4), fourthRoom at (7,5) -- see rom_profiles.lua's own doc comment, 2026-08-17 direct user report) carry the bank6 8x8 world-map grid position they were found at, independent of whether they're isolated in this play-flow graph.")
 
 ----------------------------------------------------------------------
 -- 6b. Room MAPS (grid + tileOffsets) -- for the Tile/Map viewers. Only
