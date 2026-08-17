@@ -559,10 +559,18 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 .hbar-row .count { font-family: var(--mono); color: var(--text-dim); text-align: right; }
 
 /* ---------- room graph ---------- */
-#roomGraphSvg { width: 100%; height: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.room-node rect { fill: var(--bg-elevated); stroke: var(--border); stroke-width: 1.5; }
-.room-node text { fill: var(--text); font-family: var(--mono); font-size: 12px; }
-.room-node.leaf rect { stroke-dasharray: 4 3; }
+/* #roomGraphSvg is now a transparent overlay (arrows only) painted
+   ON TOP of the real HTML .room-node-card thumbnails inside the same
+   #roomGraphHost -- it must NOT have its own opaque background/border,
+   or it silently hides every node card underneath it (2026-08-17: this
+   exact leftover rule, from the old single-<svg>-graph design where the
+   svg itself WAS the whole box, was the entire "cards don't render"
+   bug -- DOM/layout/hit-testing were all correct the whole time, this
+   one opaque `background` was painting over everything). Sizing/border
+   for the visible box now lives on #roomGraphHost itself (inline
+   styles, js/viz/rooms.js), and the svg's own width/height are set
+   inline in real pixels (js/viz/rooms.js) to match the full node-graph
+   content size, not 100%/auto.  */
 .edge-scroll { stroke: var(--accent2); stroke-width: 2; fill: none; }
 .edge-cut { stroke: var(--accent3); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
 .edge-label { fill: var(--text-faint); font-family: var(--mono); font-size: 10px; }
