@@ -1908,23 +1908,23 @@ function VictorySequence:draw()
       self.playerSprite:draw(self.player.x, self.player.y, self.player.facing == "right")
     end
   elseif self.phase == "cutClosing" or self.phase == "cutOpening" then
-    -- Real "cut" wipe -- see `RoomWipeTransition.lua`'s own doc
-    -- comment for the live-traced evidence this reproduces (the real
-    -- visual RESULT, via `setScissor`, not the real ROM's own
-    -- VRAM-tile-pattern-rewrite mechanism -- same "same effect,
-    -- different means" precedent as the black-backdrop cut style
-    -- below). `self.currentRoomKey` is already the OLD room while
-    -- closing and the NEW room while opening (the switch happens in
-    -- `update`, at the fully-covered boundary between the two).
+    -- "Cut" wipe -- see RoomWipeTransition.lua's own doc comment for
+    -- the live-traced evidence this reproduces (the visual result, via
+    -- setScissor, not the ROM's own VRAM-tile-pattern-rewrite
+    -- mechanism -- same "same effect, different means" precedent as
+    -- the black-backdrop cut style below). self.currentRoomKey is
+    -- already the old room while closing and the new room while
+    -- opening (the switch happens in update, at the fully-covered
+    -- boundary between the two).
     local closing = self.phase == "cutClosing"
     local total = closing and RoomWipeTransition.CLOSE_FRAMES or RoomWipeTransition.OPEN_FRAMES
-    -- Real, live-confirmed convergence point: the player's own on-
-    -- screen Y (where the door/exit actually is), NOT the room's
-    -- geometric middle -- see RoomWipeTransition.lua's own doc comment
-    -- for the live `love .` screenshot comparison that found a fixed
-    -- room-center convergence rendering visibly wrong. REVERTED the
-    -- brief render-offset use here too (2026-08-15, same revert as the
-    -- player draw calls above) -- back to the raw `self.player.y`.
+    -- Live-confirmed convergence point: the player's own on-screen Y
+    -- (where the door/exit actually is), not the room's geometric
+    -- middle -- see RoomWipeTransition.lua's own doc comment for the
+    -- live love . screenshot comparison that found a fixed room-center
+    -- convergence rendering visibly wrong. REVERTED the brief render-
+    -- offset use here too (same revert as the player draw calls above)
+    -- -- back to the raw self.player.y.
     local centerY = self.player and self.player.y or (ROOM_H - HUD_H) / 2
     local bandTop, bandHeight = RoomWipeTransition.visibleBand(
       closing and "closing" or "opening", self.cutFrame, total, ROOM_H - HUD_H, centerY)
@@ -1988,30 +1988,29 @@ function VictorySequence:draw()
         or self.phase == "cutClosing" or self.phase == "cutOpening") then
       self.overlay:addLine("player x,y", string.format("%d,%d", self.player.x, self.player.y))
     end
-    -- Real ROM roomSelector data for the current room (see
+    -- ROM roomSelector data for the current room (see
     -- self.roomSelectorInfo's own doc comment) -- makes the bank-8
-    -- table's real connectivity data visible during actual play, not
-    -- just in static docs/tests.
+    -- table's connectivity data visible during actual play, not just
+    -- in static docs/tests.
     local info = self.roomSelectorInfo[self.currentRoomKey]
     if info then
       self.overlay:addLine("rom roomSelector",
         string.format("{%s} -> tileSrc %#06x, bank %d",
           table.concat(info.selectors, ","), info.tileSourcePointer, info.dynamicBank))
     end
-    -- Real ScriptInterpreter shadow run (2026-08-13, REWRITTEN
-    -- 2026-08-15 -- see this module's own top-of-file doc comment) --
-    -- observational only, never drives anything drawn/played above; only
-    -- present at all when `MYSTICQUEST_SCRIPT_INTERPRETER=1`. Reports
-    -- the REAL, LIVE, per-frame state of `BossSequenceInterpreter`
-    -- (bank, cursor, ticks, and whether it's genuinely stopped/done),
-    -- not a one-shot burst summary the way the old shadow run's overlay
-    -- line did.
+    -- ScriptInterpreter shadow run (REWRITTEN -- see this module's own
+    -- top-of-file doc comment) -- observational only, never drives
+    -- anything drawn/played above; only present at all when
+    -- MYSTICQUEST_SCRIPT_INTERPRETER=1. Reports the live, per-frame
+    -- state of BossSequenceInterpreter (bank, cursor, ticks, and
+    -- whether it's genuinely stopped/done), not a one-shot burst
+    -- summary the way the old shadow run's overlay line did.
     if self.bossSequenceInterpreter then
       local bsi = self.bossSequenceInterpreter
       local rt = bsi.runtime
       local status
       if rt.stopped then
-        -- `rt.stopError` is a full Lua error string (file:line prefix
+        -- rt.stopError is a full Lua error string (file:line prefix
         -- included) -- just the first line is plenty for the overlay.
         local firstLine = tostring(rt.stopError):match("^[^\n]*") or tostring(rt.stopError)
         status = string.format("stopped after %d real frames, bank %d, cursor %#06x: %s",
@@ -2020,21 +2019,21 @@ function VictorySequence:draw()
         status = string.format("finished cleanly after %d real frames",
           self.bossSequenceFrameCounter.n)
       else
-        -- The real, honest, current boundary (see the top-of-file doc
-        -- comment's "HONEST SCOPE" section): this run reaches real,
-        -- decoded content, then stalls indefinitely at opcode 0x00's own
-        -- still-unmodeled real release condition -- reported here as a
-        -- live, running frame count, not a fake "done" or "error".
+        -- The honest current boundary (see the top-of-file doc
+        -- comment's "HONEST SCOPE" section): this run reaches decoded
+        -- content, then stalls indefinitely at opcode 0x00's own still-
+        -- unmodeled release condition -- reported here as a live,
+        -- running frame count, not a fake "done" or "error".
         status = string.format("running: %d real frames, bank %d%s, cursor %#06x, %d real events logged",
           self.bossSequenceFrameCounter.n, bsi.bank, bsi.bankSwitched and " (post-CHAIN)" or "",
           bsi.cursor, #self.bossSequenceTranscript)
       end
       self.overlay:addLine("script interpreter (live shadow run)", status)
-      -- Real opcode dispatch histogram (top 6 by count) -- lets a
-      -- developer confirm live, without re-running the standalone probe
-      -- script, that this is genuinely dispatching the real 18-opcode
-      -- family events.md documents for this script, not stuck on
-      -- garbage bytes the way the OLD wrong-bank version silently was.
+      -- Opcode dispatch histogram (top 6 by count) -- lets a developer
+      -- confirm live, without re-running the standalone probe script,
+      -- that this is genuinely dispatching the 18-opcode family
+      -- events.md documents for this script, not stuck on garbage
+      -- bytes the way the old wrong-bank version silently was.
       local histogram = {}
       for opcode, count in pairs(rt.opcodeCounts) do
         histogram[#histogram + 1] = { opcode = opcode, count = count }
@@ -2048,11 +2047,11 @@ function VictorySequence:draw()
         self.overlay:addLine("  opcode histogram (top 6)", table.concat(parts, ", "))
       end
     end
-    -- Real pipeline-proof demo (2026-08-13, see `runMessagePipelineDemo`'s
-    -- own doc comment) -- overlay line always present when the switch is
-    -- on; the actual VISIBLE on-screen textbox is drawn unconditionally
-    -- below (outside this `debug` gate) so a plain `love .` launch with
-    -- the switch on shows real, rendered proof, not just a debug label.
+    -- Pipeline-proof demo (see runMessagePipelineDemo's own doc
+    -- comment) -- overlay line always present when the switch is on;
+    -- the actual visible on-screen textbox is drawn unconditionally
+    -- below (outside this debug gate) so a plain love . launch with
+    -- the switch on shows rendered proof, not just a debug label.
     if self.messagePipelineDemo then
       local demo = self.messagePipelineDemo
       self.overlay:addLine("script interpreter (message pipeline demo)",
@@ -2061,21 +2060,20 @@ function VictorySequence:draw()
     end
   end
 
-  -- Real, VISIBLE proof the interpreter->rendering pipeline works (see
-  -- `runMessagePipelineDemo`'s own doc comment) -- drawn regardless of
-  -- `debug`/overlay state (only present at all behind
-  -- `MYSTICQUEST_SCRIPT_INTERPRETER=1`), in a thin strip that doesn't
-  -- overlap `BOX_GEOMETRY.top`/`.bottom`'s own real dialogue boxes.
+  -- Visible proof the interpreter->rendering pipeline works (see
+  -- runMessagePipelineDemo's own doc comment) -- drawn regardless of
+  -- debug/overlay state (only present at all behind
+  -- MYSTICQUEST_SCRIPT_INTERPRETER=1), in a thin strip that doesn't
+  -- overlap BOX_GEOMETRY.top/.bottom's own dialogue boxes.
   if self.messagePipelineDemo and self.messagePipelineDemo.text and self.box then
-    -- A real screenshot check (see events.md's own dated "task #84"
-    -- section) caught TWO real layout bugs in this exact spot before
-    -- landing here: a 2-line label+text overflowed the box's own
-    -- 156px usable width, and a taller box (to fit 2 lines) overlapped
-    -- `BOX_GEOMETRY.bottom`'s own real story-text box (`y=64`,
-    -- `rows=8` -> `y=64..128`). `y=128, rows=2` is the one real gap
-    -- below that box that fits within the real `ROOM_H=144` screen
-    -- without overlapping it -- single short line only (the overlay's
-    -- own "script interpreter (message pipeline demo)" line already
+    -- A screenshot check (see events.md's dated "task #84" section)
+    -- caught two layout bugs in this exact spot before landing here: a
+    -- 2-line label+text overflowed the box's 156px usable width, and a
+    -- taller box (to fit 2 lines) overlapped BOX_GEOMETRY.bottom's own
+    -- story-text box (y=64, rows=8 -> y=64..128). y=128, rows=2 is the
+    -- one gap below that box that fits within ROOM_H=144 without
+    -- overlapping it -- single short line only (the overlay's own
+    -- "script interpreter (message pipeline demo)" line already
     -- carries a full label for anyone checking F1 debug info).
     local geo = { x = 0, y = 128, cols = 20, rows = 2 }
     self.box:drawBorder(geo.x, geo.y, geo.cols, geo.rows)
@@ -2086,12 +2084,12 @@ function VictorySequence:draw()
     local geo = BOX_GEOMETRY.top
     if self.box then
       local text = self.dialoguePages[self.dialoguePageIndex] or ""
-      -- Real line height CORRECTED (2026-08-14, see TextBox.lua's own
-      -- `LINE_HEIGHT` doc comment): `geo.rows` is `BOX_GEOMETRY`'s own
-      -- static, OLD-8px-spacing-era guess -- computing the real row
-      -- count THIS text needs at the now-correct 16px spacing avoids
-      -- a multi-line message (e.g. the real 3-line Willy exchange
-      -- pages) overflowing a box sized for the old, wrong spacing.
+      -- Line height CORRECTED (see TextBox.lua's own LINE_HEIGHT doc
+      -- comment): geo.rows is BOX_GEOMETRY's own static, old-8px-
+      -- spacing-era guess -- computing the row count this text needs
+      -- at the now-correct 16px spacing avoids a multi-line message
+      -- (e.g. the 3-line Willy exchange pages) overflowing a box sized
+      -- for the old, wrong spacing.
       local rows = math.max(geo.rows, TextBox.rowsNeeded(text, 8))
       self.box:drawBorder(geo.x, geo.y, geo.cols, rows)
       local elapsed = self.frame - self.dialogueStartFrame
