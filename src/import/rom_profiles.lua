@@ -1967,6 +1967,22 @@ RomProfiles.PROFILES = {
           "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
         cols = 20,
         rows = 16,
+        -- ADDED (2026-08-18, direct user report "7. raum ist auch auf
+        -- der weltkarte. genau wie 8 und 9"): this room already WAS a
+        -- real bank-5 (16x16 grid) catalog record (236) by construction
+        -- -- it just never got the same `worldMapCatalogRecord`
+        -- cross-reference field startRoom/fourthRoom/seventhRoom carry,
+        -- so the website's own 🗺 Weltkarte badge never showed it.
+        -- row/col via the project's own established formula
+        -- (row=floor(index/16), col=index%16, stride=16 for bank5 --
+        -- see worldmap.js's own doc comment): 236 -> (14,12). Same
+        -- confidence level as this room's own `status` above already
+        -- states (edge-match choice, not independently live-verified)
+        -- -- NOT the stronger live-VRAM standard startRoom/fourthRoom
+        -- carry; also on a DIFFERENT real grid than seventhRoom's own
+        -- bank6 badge (bank5 is a separate 16x16 "map0", not adjacent
+        -- to bank6's "map1").
+        worldMapCatalogRecord = { table = "bank5", recordIndex = 236, row = 14, col = 12 },
         tileOffsets = {
           [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
           [17] = 0x30110, [18] = 0x30120, [19] = 0x30130, [20] = 0x30140,
@@ -2035,6 +2051,12 @@ RomProfiles.PROFILES = {
           "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
         cols = 20,
         rows = 16,
+        -- ADDED (2026-08-18, same direct user report as eighthRoom's
+        -- own doc comment above): 237 -> (14,13), directly east of
+        -- eighthRoom's own (14,12) -- matching this room's own already-
+        -- documented "eighthRoom's own east neighbor" placement exactly.
+        -- Same honest confidence caveat as eighthRoom's own field.
+        worldMapCatalogRecord = { table = "bank5", recordIndex = 237, row = 14, col = 13 },
         tileOffsets = {
           [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
           [17] = 0x30110, [18] = 0x30120, [19] = 0x30130, [20] = 0x30140,

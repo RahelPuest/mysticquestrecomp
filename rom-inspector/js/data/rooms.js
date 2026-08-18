@@ -19,7 +19,13 @@ const ROOMS = [
     ],
     "heightTiles": 16,
     "name": "eighthRoom",
-    "widthTiles": 20
+    "widthTiles": 20,
+    "worldMapCatalogRecord": {
+      "col": 12,
+      "recordIndex": 236,
+      "row": 14,
+      "table": "bank5"
+    }
   },
   {
     "exits": [],
@@ -72,6 +78,18 @@ const ROOMS = [
       "recordIndex": 61,
       "row": 7,
       "table": "bank6"
+    }
+  },
+  {
+    "exits": [],
+    "heightTiles": 16,
+    "name": "ninthRoom",
+    "widthTiles": 20,
+    "worldMapCatalogRecord": {
+      "col": 13,
+      "recordIndex": 237,
+      "row": 14,
+      "table": "bank5"
     }
   },
   {
