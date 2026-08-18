@@ -331,100 +331,93 @@ TextDecoder.SPEAKER_COLON_BYTE = 0x2C
 -- text.md's "control bytes" section) -- this table only claims the
 -- specific byte values listed, not the whole sub-0xB0 range.
 --
--- VERIFIED 2026-08-11 (live execution trace, real ROM READ watchpoints
--- across a real message's raw bytes, see text.md's "0x12 is VERIFIED"
--- section): 0x12 is a real control byte, NOT text -- it halts the
--- dialogue engine's forward progress and the game waits for player
--- input once the read pointer reaches it (confirmed: the pointer never
--- advances past it, observed for thousands of frames with zero input).
--- Always followed by a second, variable byte -- VERIFIED 2026-08-11,
--- same day ("na dann finde raus was die anderen bytes bedeuten"), via
--- a real full-region static cross-reference (not just this one
--- message): [0x12][0x11] closes the dialogue and returns to gameplay
--- (30+ clean, unambiguous item-pickup messages, "<Item> gefunden
--- [0x12][0x11]", each a complete standalone interaction with nothing
--- following); [0x12][0x1B] closes the CURRENT box but immediately
--- shows the next queued box in the SAME conversation (18 confirmed
--- instances of "[0x12][0x1B]<Name>[0x2C]" with 6 different real named
--- speakers -- Cibba, Bogard, Julia, Willy, Sarah, Davias -- 0x2C
--- appears to be a "speaker name:" tag delimiter, the same shape used
--- for the hero's own lines via 0x14 below). This matches this
--- project's own earlier live-input test exactly: pressing input after
--- a "[0x1B]" page jumped straight to the next page's content instead
--- of returning control, while every "[0x11]" case in this dump is a
--- short one-off message with nothing to jump to. A third, rarer
--- variant, [0x12][0x13], recurs only twice in the dialogue region (vs.
--- 30+/18+ for the other two) -- both times immediately after a "?" or
--- "!", suggestively (not confirmed) a yes/no-choice-prompt marker;
--- left as an open HYPOTHESIS, not enough real contexts yet to call it.
--- Deliberately NOT added to decodeByte -- 0x12 already correctly falls
--- through to nil (unknown/non-text) with no change needed; this note
--- exists so a future reader doesn't mistake 0x12/0x11/0x1B/0x13 for
--- unassigned digraph slots still waiting to be filled in.
+-- VERIFIED (live execution trace, ROM READ watchpoints across a
+-- message's raw bytes, see text.md's "0x12 is VERIFIED" section): 0x12
+-- is a control byte, not text -- it halts the dialogue engine's
+-- forward progress and the game waits for player input once the read
+-- pointer reaches it (confirmed: the pointer never advances past it,
+-- observed for thousands of frames with zero input). Always followed
+-- by a second, variable byte -- verified via a full-region static
+-- cross-reference (not just this one message): [0x12][0x11] closes the
+-- dialogue and returns to gameplay (30+ clean, unambiguous item-pickup
+-- messages, "<Item> gefunden [0x12][0x11]", each a complete standalone
+-- interaction with nothing following); [0x12][0x1B] closes the current
+-- box but immediately shows the next queued box in the same
+-- conversation (18 confirmed instances of "[0x12][0x1B]<Name>[0x2C]"
+-- with 6 different named speakers -- Cibba, Bogard, Julia, Willy,
+-- Sarah, Davias -- 0x2C appears to be a "speaker name:" tag delimiter,
+-- the same shape used for the hero's own lines via 0x14 below). This
+-- matches an earlier live-input test exactly: pressing input after a
+-- "[0x1B]" page jumped straight to the next page's content instead of
+-- returning control, while every "[0x11]" case in this dump is a short
+-- one-off message with nothing to jump to. A third, rarer variant,
+-- [0x12][0x13], recurs only twice in the dialogue region (vs. 30+/18+
+-- for the other two) -- both times immediately after a "?" or "!",
+-- suggestively (not confirmed) a yes/no-choice-prompt marker; left as
+-- an open hypothesis, not enough contexts yet to call it. Deliberately
+-- not added to decodeByte -- 0x12 already correctly falls through to
+-- nil (unknown/non-text) with no change needed; this note exists so a
+-- future reader doesn't mistake 0x12/0x11/0x1B/0x13 for unassigned
+-- digraph slots still waiting to be filled in.
 --
--- VERIFIED 2026-08-11 (same pass): 0x14 is a real control byte, NOT a
--- digraph -- it's the HERO NAME substitution token (this project's own
--- `storyPages[1]` already used "%s" for exactly this role). Confirmed
--- two ways: (1) mid-sentence substitution, e.g. "[14] i[2D][42]in
--- \ntapferer Kämpfer."="<Name> ist ein\ntapferer Kämpfer." (a fully
--- grammatical German sentence); (2) as a SPEAKER TAG, used exactly
--- like the other characters' literal names before 0x2C -- e.g.
+-- VERIFIED (same pass): 0x14 is a control byte, not a digraph -- it's
+-- the HERO NAME substitution token (this project's `storyPages[1]`
+-- already used "%s" for exactly this role). Confirmed two ways: (1)
+-- mid-sentence substitution, e.g. "[14] i[2D][42]in \ntapferer
+-- Kämpfer."="<Name> ist ein\ntapferer Kämpfer." (a fully grammatical
+-- German sentence); (2) as a SPEAKER TAG, used exactly like the other
+-- characters' literal names before 0x2C -- e.g.
 -- "[14][2C]Bogard!"="<Name>: Bogard!" (the hero calling out to Bogard)
 -- and "[14][2C]Ja,..aber.."="<Name>: Ja,..aber.." -- i.e. the hero's
 -- own dialogue lines are tagged with this same placeholder rather than
 -- a literal name, consistent with the mid-sentence use.
--- [0x58]="or" added 2026-08-10, same full-ROM re-scan as the punctuation
--- bytes above -- confirmed via the real end-of-credits screen's staff
--- names, decoded consistently across TWO different real, unrelated
--- words: "Yosh[0x29][0x58]i Kitase" = "Yoshinori Kitase" (a real,
--- verifiable Seiken Densetsu 1 staff credit) and "G[0x58]o O[?]shi" =
--- "Goro O[?]shi" (LANDKARTE/map credit) -- same byte, same 2 letters,
--- two unrelated names, this project's normal VERIFIED bar.
+-- [0x58]="or" -- confirmed via the end-of-credits screen's staff
+-- names, decoded consistently across two unrelated words:
+-- "Yosh[0x29][0x58]i Kitase" = "Yoshinori Kitase" (a real, verifiable
+-- Seiken Densetsu 1 staff credit) and "G[0x58]o O[?]shi" = "Goro
+-- O[?]shi" (LANDKARTE/map credit) -- same byte, same 2 letters, two
+-- unrelated names, this project's normal VERIFIED bar.
 TextDecoder.DIGRAPH_PARTIAL = {
-  -- HYPOTHESIS, 2026-08-16 (direct user instruction, "textbyte
-  -- entschlüsseln zur not mach eine statistische analyse", after this
-  -- byte first surfaced as a real stopping point in a live script
-  -- trace): `0xFC` is a real, high-frequency blocker (149 occurrences
-  -- in the main dialogue region, 0x34800-) whose surrounding context
-  -- is unusually noisy (heavily intermixed with still-undecoded
+  -- HYPOTHESIS: `0xFC` is a high-frequency blocker (149 occurrences in
+  -- the main dialogue region, 0x34800-) whose surrounding context is
+  -- unusually noisy (heavily intermixed with still-undecoded
   -- control-code-shaped bytes), unlike most other entries in this
   -- table. Ranked all 149 occurrences by "how many neighboring bytes
   -- already decode cleanly" and tested a TRIGRAPH candidate (not a
   -- digraph -- genuinely different shape from every other entry here,
   -- but "sch" is an extremely common German 3-letter combination, a
-  -- real, plausible dedicated compression code) against the cleanest
+  -- plausible dedicated compression code) against the cleanest
   -- results: 2 independent, clean hits, neither needing a borrowed
   -- letter from an adjacent (still-undecoded) byte --
   -- `"na" .. [FC] .. "en"` = "naschen" (to snack/nibble, file 0x3a25b)
   -- and `[FC] .. "au"` = "schau" (look!, file 0x350d2, directly
-  -- preceding a real speaker-tag transition, "Lester:"). No occurrence
+  -- preceding a speaker-tag transition, "Lester:"). No occurrence
   -- among the 30 cleanest contradicts this reading. NOT promoted to
   -- VERIFIED: only 2 independent words (this project's usual bar is
   -- "2+", but every other VERIFIED entry here has stronger,
   -- often-3+-occurrence support), no live/independent cross-check, and
-  -- a real, unresolved competing observation this same pass found:
-  -- `0xFC` also appears unusually often immediately adjacent to
-  -- speaker-tag transitions across several OTHER occurrences (not just
-  -- the "schau" one), which could ALSO be read as "this byte plays a
-  -- formatting/control role near textbox boundaries" rather than being
-  -- a plain letter -- not ruled out, left honestly unresolved.
+  -- an unresolved competing observation: `0xFC` also appears unusually
+  -- often immediately adjacent to speaker-tag transitions across
+  -- several other occurrences (not just the "schau" one), which could
+  -- also be read as "this byte plays a formatting/control role near
+  -- textbox boundaries" rather than being a plain letter -- not ruled
+  -- out, left honestly unresolved.
   --
-  -- IMPORTANT DOMAIN CAVEAT (2026-08-16, following a direct user
-  -- request to examine the real ROM's own text parser -- see
-  -- docs/reverse-engineering/text.md's "The real script-driven
-  -- typewriter parser" section for the full disassembly): the real
-  -- SCRIPT-DRIVEN typewriter-tick handler (opcode 0x04, ROM `$333D`)
-  -- decisively sends every byte `>= 0x99` -- including 0xFC -- to a
-  -- separate non-text control path (`$3480`), never the character
-  -- table, in THAT code path. This does NOT retract "sch" here: this
-  -- table models the STATIC message-text blob decode
-  -- (`TextDecoder.decodeString`), a different, not-yet-located ROM
-  -- routine, and the two domains are already independently confirmed
-  -- to diverge over this exact byte range (0x99-0x9B are verified
-  -- umlauts Ä/Ö/Ü in THIS static domain -- see UMLAUT_PARTIAL above --
-  -- while the script-tick domain sends that same range to `$3480`).
-  -- Read: the same byte VALUE can carry different meanings in the two
-  -- domains, and this entry only claims the static one.
+  -- IMPORTANT DOMAIN CAVEAT (see docs/reverse-engineering/text.md's
+  -- "The script-driven typewriter parser" section for the full
+  -- disassembly): the script-driven typewriter-tick handler (opcode
+  -- 0x04, ROM `$333D`) decisively sends every byte `>= 0x99` --
+  -- including 0xFC -- to a separate non-text control path (`$3480`),
+  -- never the character table, in that code path. This does NOT
+  -- retract "sch" here: this table models the static message-text
+  -- blob decode (`TextDecoder.decodeString`), a different, not-yet-
+  -- located ROM routine, and the two domains are already
+  -- independently confirmed to diverge over this exact byte range
+  -- (0x99-0x9B are verified umlauts Ä/Ö/Ü in this static domain -- see
+  -- UMLAUT_PARTIAL above -- while the script-tick domain sends that
+  -- same range to `$3480`). Read: the same byte value can carry
+  -- different meanings in the two domains, and this entry only claims
+  -- the static one.
   [0xFC] = "sch",
 
   [0x24] = "en",
@@ -443,15 +436,14 @@ TextDecoder.DIGRAPH_PARTIAL = {
   [0x5A] = "ma",
   [0x5C] = "em",
   [0x5F] = "li",
-  -- CONFIRMED 2026-08-11 ("wechsel zu den Dialogtexten und bringe das
-  -- zuende"): a full-ROM lenient scan (this project's own established
-  -- digraph-cross-referencing technique, now run systematically instead
-  -- of against one opportunistic 1KB window) found a MUCH larger real
-  -- dialogue block than previously known (real file range roughly
+  -- CONFIRMED: a full-ROM lenient scan (this project's established
+  -- digraph-cross-referencing technique, now run systematically
+  -- instead of against one opportunistic 1KB window) found a much
+  -- larger dialogue block than previously known (file range roughly
   -- `0x34800`-`0x3B000`, the full Willy/Dark-Lord/Bogard story
-  -- sequence) -- see docs/reverse-engineering/text.md's own new section
+  -- sequence) -- see docs/reverse-engineering/text.md's new section
   -- for the full derivation of each entry below, each confirmed via 2+
-  -- independent real words/names, same rigor bar as the original 15.
+  -- independent words/names, same rigor bar as the original 15.
   [0x23] = "er", -- "H[23]r"="Herr" (x2+), "tapf[23][23]"="tapferer", "Kämpf[23]"="Kämpfer"
   [0x25] = "n ", -- "abe[25]das"="aben das" (Sie haben das), "obe[4F][25]"="oberen " (space-inclusive digraph, same shape as 0x3A)
   [0x29] = "in", -- "E[29] Jun[2B]e"="Ein Junge", "E[29][52]äd-"="Ein Mäd-(chen)" -- promotes the earlier single-occurrence "Yoshinori" hypothesis to VERIFIED
@@ -460,22 +452,21 @@ TextDecoder.DIGRAPH_PARTIAL = {
   [0x3F] = "he", -- "hier[3F]r?"/"Komm hier[3F]r!"="hierher" (x2, "Komm hierher!" and a standalone "hierher?")
   [0x47] = "ar", -- "W[47]te...ier"="Warte hier", "Bog[47]d"="Bogard" (a real character name, 20+ identical occurrences)
   [0x4C] = " b", -- "Zyklop[4C]ezwungen"/"Garuda[4C]ezwungen"/"Chimä[4F][4C]ezwungen"="...bezwungen" (3 different monster names, space-inclusive)
-  -- REVISED, 2026-08-17 (direct user decision after the real digraph
-  -- table conflict was presented -- see this table's own header note):
-  -- was "a" (25+ occurrences of "Juli[5B]", read as "Julia"). The real
-  -- ROM digraph table (`$3F3F`, formula proven against ~85 other
-  -- entries with zero exceptions) reads this byte as "us" -- i.e. the
-  -- name is really "Julius", not "Julia". This also reads MORE
-  -- grammatically natural in the flagship regression sentence ("Was
-  -- hast du ihr angetan, Julius?" = "What have you done to HER,
-  -- Julius?" -- Julius asked about a THIRD person, "ihr"/her, rather
-  -- than Julia implausibly being asked about herself in the 3rd
-  -- person). User explicitly chose to trust the disassembly-proven
-  -- table over the old pattern-matched guess. See text.md's own
-  -- "FOUND: the real digraph lookup table" section for the full
-  -- evidence trail; every doc/comment elsewhere in this project that
-  -- still says "Julia" for this character reflects the OLD, now-
-  -- corrected reading and should be read as "Julius" instead.
+  -- REVISED (after a digraph table conflict was presented -- see this
+  -- table's header note): was "a" (25+ occurrences of "Juli[5B]", read
+  -- as "Julia"). The ROM digraph table (`$3F3F`, formula proven
+  -- against ~85 other entries with zero exceptions) reads this byte as
+  -- "us" -- i.e. the name is really "Julius", not "Julia". This also
+  -- reads more grammatically natural in the flagship regression
+  -- sentence ("Was hast du ihr angetan, Julius?" = "What have you done
+  -- to HER, Julius?" -- Julius asked about a third person, "ihr"/her,
+  -- rather than Julia implausibly being asked about herself in the 3rd
+  -- person). Chose to trust the disassembly-proven table over the old
+  -- pattern-matched guess. See text.md's "FOUND: the digraph lookup
+  -- table" section for the full evidence trail; every doc/comment
+  -- elsewhere in this project that still says "Julia" for this
+  -- character reflects the old, now-corrected reading and should be
+  -- read as "Julius" instead.
   [0x5B] = "us", -- "Juli[5B]"="Julius" (a real character name, 25+
   -- identical occurrences)
   -- RESOLVED, 2026-08-17 (was: "NEWLY FOUND CONTRADICTION", 2026-08-15,
