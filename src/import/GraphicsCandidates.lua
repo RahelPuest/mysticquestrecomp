@@ -312,12 +312,12 @@ GraphicsCandidates.ENTRIES = {
   },
 }
 
---- Expand one entry's own `fileOffset`/`tileCount` into a plain array
--- of real, contiguous 16-byte-stride tile offsets (the SAME shape
--- `rom_profiles.lua`'s own `tileOffsets` fields already use elsewhere
--- in this project, e.g. `enemySprite.tileOffsets`) -- lets the website/
--- CatalogExplorer draw these with the exact same tile-grid renderer,
--- no special-casing needed.
+--- Expand one entry's `fileOffset`/`tileCount` into a plain array of
+-- contiguous 16-byte-stride tile offsets (the same shape
+-- `rom_profiles.lua`'s `tileOffsets` fields already use elsewhere in
+-- this project, e.g. `enemySprite.tileOffsets`) -- lets the website/
+-- CatalogExplorer draw these with the exact same tile-grid renderer, no
+-- special-casing needed.
 function GraphicsCandidates.tileOffsets(entry)
   local offsets = {}
   for i = 0, entry.tileCount - 1 do
