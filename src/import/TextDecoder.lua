@@ -3,32 +3,29 @@
 -- found (dynamic tracing with a real emulator, since static analysis
 -- alone could not crack it -- see docs/reverse-engineering/tooling.md).
 --
--- PROVEN BY DISASSEMBLY (2026-08-17, see text.md's "FOUND: the real
--- static message-text decoder, $3777" section): the real static-text
--- decode dispatcher (ROM `$3777`, bank 0) was located and disassembled.
--- For every byte >= 0x99 -- i.e. the whole MAIN_GLYPHS range (>=0xB0)
--- and the UMLAUT_PARTIAL range 0x99-0x9F -- the real ROM formula is
--- simply `vramTile = rawByte XOR 0x80` (== `rawByte - 0x80` for this
--- range), executed at ROM `$3794`. This is no longer just a dynamically
--- cross-checked pattern; it's a proven match against real CPU
--- instructions. Bytes < 0x99 (the whole digraph range) take a
--- genuinely different path (`$37DC`) that turned out to be word-wrap/
--- line-cursor bookkeeping, not yet traced to a concrete digraph lookup
--- table -- still open, see text.md for the exact disassembly reached
--- so far.
+-- PROVEN BY DISASSEMBLY (see text.md's "FOUND: the static message-text
+-- decoder, $3777" section): the static-text decode dispatcher (ROM
+-- `$3777`, bank 0) was located and disassembled. For every byte >= 0x99
+-- -- i.e. the whole MAIN_GLYPHS range (>=0xB0) and the UMLAUT_PARTIAL
+-- range 0x99-0x9F -- the ROM formula is simply `vramTile = rawByte XOR
+-- 0x80` (== `rawByte - 0x80` for this range), executed at ROM `$3794`.
+-- Bytes < 0x99 (the whole digraph range) take a genuinely different
+-- path (`$37DC`) that turned out to be word-wrap/line-cursor
+-- bookkeeping, not yet traced to a concrete digraph lookup table --
+-- still open, see text.md for the exact disassembly reached so far.
 --
 -- Confirmed formula: a byte >= 0xB0 encodes a character as
 -- `MAIN_GLYPHS[byte - 0xB0 + 1]` (1-based Lua string indexing), covering
--- the same 64-glyph alphabet as the font's own ROM tile order (digits,
--- A-Z, a-z, apostrophe, comma -- see src/import/rom_profiles.lua's
+-- the same 64-glyph alphabet as the font's ROM tile order (digits, A-Z,
+-- a-z, apostrophe, comma -- see src/import/rom_profiles.lua's
 -- `graphics.font.rowGlyphs`). 0xFF is a space (the font's last tile is a
 -- blank glyph). 0x00 terminates a string. 0x90-0xAF is a partially-
 -- decoded umlaut/icon block -- only a few bytes are confirmed so far
 -- (see UMLAUT_PARTIAL below); anything else in that range decodes to nil
 -- rather than a guess, per the project's "no silent fallbacks" rule.
--- Below 0xB0, a real two-character (digraph) compression table also
--- exists -- 16 entries confirmed so far (see DIGRAPH_PARTIAL below);
--- the rest of that range is a mix of still-unidentified digraphs and
+-- Below 0xB0, a two-character (digraph) compression table also exists
+-- -- 16 entries confirmed so far (see DIGRAPH_PARTIAL below); the rest
+-- of that range is a mix of still-unidentified digraphs and
 -- script/control opcodes, and stays UNKNOWN rather than guessed.
 -- Outside both ranges: 0xF0=period, 0xF2=hyphen, 0xF3=exclamation,
 -- 0xF4=question mark, 0xF5=colon (all VERIFIED), 0x1A=newline.
@@ -43,54 +40,52 @@ TextDecoder.MAIN_BASE = 0xB0
 TextDecoder.SPACE_BYTE = 0xFF
 TextDecoder.TERMINATOR_BYTE = 0x00
 
--- Confirmed by context (2026-08-08): 0x9D appears exactly where German
--- "erh[?]ht" must read "erhoeht" (increased) -- i.e. the o-umlaut letter.
--- 0x9C confirmed the same way (2026-08-08, sixth pass): appears exactly
--- where "K[?]mpfer" must read "Kaempfer" (fighter) in a live dialogue
--- box read directly from VRAM tile indices (see
--- docs/reverse-engineering/text.md). Every other byte 0x90-0xAF is
--- UNKNOWN until similarly cross-checked against a real decoded sentence.
+-- Confirmed by context: 0x9D appears exactly where German "erh[?]ht"
+-- must read "erhoeht" (increased) -- the o-umlaut letter. 0x9C
+-- confirmed the same way: appears exactly where "K[?]mpfer" must read
+-- "Kaempfer" (fighter) in a live dialogue box read directly from VRAM
+-- tile indices (see docs/reverse-engineering/text.md). Every other
+-- byte 0x90-0xAF is UNKNOWN until similarly cross-checked against a
+-- decoded sentence.
 --
--- CORRECTED (2026-08-10, direct user report: "es gibt ein problem mit
--- umlauten"): these 7 bytes were being decoded as their ASCII-safe
--- 2-LETTER spellings ("ae","oe",...) -- a real rendering bug, not just
--- a source-code convenience. Live-decoded the REAL font tile graphics
+-- CORRECTED (direct user report of a rendering bug with umlauts):
+-- these 7 bytes were being decoded as their ASCII-safe 2-letter
+-- spellings ("ae","oe",...). Live-decoded the font tile graphics
 -- directly from ROM (same linear formula already established for
 -- period/hyphen/exclamation, `0x22900 + (tileId-0x10)*16`) and found
--- the real glyphs are genuine SINGLE umlaut/eszett characters (visible
--- dots over the letter, or the real double-loop eszett shape), not two
--- separate letter tiles -- tiles 25-31 (0x19-0x1F), immediately
--- preceding the main font block, in the exact order Ä,Ö,Ü,ä,ö,ü,ß.
--- Cross-checked TWICE against real, independently-captured live VRAM
--- text: tile 28 appears exactly where "wächst"/"Kräfte" need ä (2
--- unrelated words), tile 30 exactly where "berührt"/"überirdi-" need ü
--- (2 unrelated words) -- an exact match to this table's own byte
--- semantics (0x9C=ä, 0x9E=ü), not a coincidence. Now decoded as their
--- real single UTF-8 characters (written as `\ddd` byte escapes so this
--- source file's own bytes stay plain ASCII, matching this project's
--- existing convention) -- Font.lua's own `:print`/`:measure` were
--- updated to iterate UTF-8-aware instead of assuming one byte = one
--- glyph, and rom_profiles.lua's `font.extraGlyphs` now has the 7 real
--- ROM tile offsets these characters need to actually render as the
--- correct single glyph instead of two ASCII letters.
+-- the glyphs are genuine single umlaut/eszett characters (visible dots
+-- over the letter, or the double-loop eszett shape), not two separate
+-- letter tiles -- tiles 25-31 (0x19-0x1F), immediately preceding the
+-- main font block, in the exact order Ä,Ö,Ü,ä,ö,ü,ß. Cross-checked
+-- twice against independently-captured live VRAM text: tile 28
+-- appears exactly where "wächst"/"Kräfte" need ä (2 unrelated words),
+-- tile 30 exactly where "berührt"/"überirdi-" need ü (2 unrelated
+-- words) -- an exact match to this table's byte semantics (0x9C=ä,
+-- 0x9E=ü), not a coincidence. Now decoded as their single UTF-8
+-- characters (written as `\ddd` byte escapes so this source file's
+-- bytes stay plain ASCII, matching this project's existing
+-- convention) -- Font.lua's `:print`/`:measure` were updated to
+-- iterate UTF-8-aware instead of assuming one byte = one glyph, and
+-- rom_profiles.lua's `font.extraGlyphs` now has the 7 ROM tile offsets
+-- these characters need to actually render as the correct single
+-- glyph instead of two ASCII letters.
 TextDecoder.UMLAUT_PARTIAL = {
   [0x9C] = "\195\164", -- ä (U+00E4)
-  -- Confirmed 2026-08-09 by decoding the real intro-text scroll live
-  -- (see rom_profiles.lua's `introText` entry) -- both appear exactly
-  -- where German requires them: 0x9E in "ber[?]hrt" (beruehrt) and
+  -- Confirmed by decoding the intro-text scroll live (see
+  -- rom_profiles.lua's `introText` entry) -- both appear exactly where
+  -- German requires them: 0x9E in "ber[?]hrt" (beruehrt) and
   -- "[?]berirdische" (ueberirdische); 0x9F in "mi[?]brauchen"
   -- (missbrauchen, the German "scharfes S").
   [0x9D] = "\195\182", -- ö (U+00F6)
   [0x9E] = "\195\188", -- ü (U+00FC)
   [0x9F] = "\195\159", -- ß (U+00DF, eszett/scharfes S)
-  -- Confirmed 2026-08-09, same pass, from the real name-entry on-screen
-  -- keyboard grid (see rom_profiles.lua's `nameEntry` entry): its
-  -- digits row is immediately followed by these 3 tiles, then the
-  -- already-confirmed lowercase 0x9C/0x9D/0x9E in the very next
-  -- position -- i.e. the real keyboard groups uppercase-then-lowercase
-  -- umlaut PAIRS (Ä/ä, Ö/ö, Ü/ü), confirming both the byte values here
-  -- AND (independently) that 0x9C/0x9D/0x9E really are the lowercase
-  -- forms as already assumed, not left ambiguous.
+  -- Confirmed from the name-entry on-screen keyboard grid (see
+  -- rom_profiles.lua's `nameEntry` entry): its digits row is
+  -- immediately followed by these 3 tiles, then the already-confirmed
+  -- lowercase 0x9C/0x9D/0x9E in the very next position -- the keyboard
+  -- groups uppercase-then-lowercase umlaut pairs (Ä/ä, Ö/ö, Ü/ü),
+  -- confirming both the byte values here and (independently) that
+  -- 0x9C/0x9D/0x9E really are the lowercase forms as already assumed.
   [0x99] = "\195\132", -- Ä (U+00C4)
   [0x9A] = "\195\150", -- Ö (U+00D6)
   [0x9B] = "\195\156", -- Ü (U+00DC)
