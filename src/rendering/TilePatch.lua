@@ -1,44 +1,44 @@
--- General real ROM "tile-patch" overlay: temporarily repaints a small
--- block of BG cells for a scripted frame window, then reveals the
--- room's own static base art again once the window ends.
+-- General ROM "tile-patch" overlay: temporarily repaints a small block
+-- of BG cells for a scripted frame window, then reveals the room's own
+-- static base art again once the window ends.
 --
--- GENERALIZED (2026-08-12, direct instruction after a user playtest bug
--- sweep: "untersuche die dinge die ueber einzelfixes hinnaus gehen,
--- dokumentiere sie als systeme und implementiere sie in der app so das
--- sie allgemeingueltig sind"): this project has now found the SAME real
--- ROM mechanism -- a small ROM-resident tile-patch blob repointing a
--- handful of BG cells for a scripted window, then letting the room's
--- own static art show through again -- in THREE independent places
--- (willyRoom's door, the courtyard gate, the courtyard's right-wall
--- entrance). That's not a coincidence worth re-implementing three
--- separate ways; it's this ROM's general convention for "a temporary
--- opening," and any future one found should fit this same shape. This
--- module replaces the two frame-window-driven instances that used to be
--- separate, near-identical modules (`GateAnimation.lua`, the courtyard
--- gate; `EntranceSeal.lua`, the right-wall entrance) with one general
--- implementation. `willyRoom`'s own door is NOT folded in here -- it's
--- driven by a live proximity/state condition, not a frame window, and
--- swaps a whole second pre-built background image rather than drawing
--- a small overlay (see VictorySequence.lua's own `willyRoomDoorOpenBg`)
--- -- a genuinely different real implementation shape for the same
--- general ROM concept, left as-is rather than forced into this module.
+-- GENERALIZED (direct instruction after a user playtest bug sweep to
+-- look for things beyond one-off fixes, document them as systems, and
+-- implement them generally in the app): this project has now found the
+-- same ROM mechanism -- a small ROM-resident tile-patch blob
+-- repointing a handful of BG cells for a scripted window, then letting
+-- the room's static art show through again -- in three independent
+-- places (willyRoom's door, the courtyard gate, the courtyard's
+-- right-wall entrance). That's not a coincidence worth re-implementing
+-- three separate ways; it's this ROM's general convention for "a
+-- temporary opening," and any future one found should fit this same
+-- shape. This module replaces the two frame-window-driven instances
+-- that used to be separate, near-identical modules
+-- (`GateAnimation.lua`, the courtyard gate; `EntranceSeal.lua`, the
+-- right-wall entrance) with one general implementation. `willyRoom`'s
+-- door is not folded in here -- it's driven by a live proximity/state
+-- condition, not a frame window, and swaps a whole second pre-built
+-- background image rather than drawing a small overlay (see
+-- VictorySequence.lua's `willyRoomDoorOpenBg`) -- a genuinely
+-- different implementation shape for the same general ROM concept,
+-- left as-is rather than forced into this module.
 --
--- Two real tile-SOURCING shapes, both real ROM data, exactly one
--- required per patch:
+-- Two tile-sourcing shapes, both ROM data, exactly one required per
+-- patch:
 --  - `openTilePattern`: one uniform literal 2bpp byte pattern, repeated
---    across every cell -- for a real tile with no single identified ROM
---    source offset (see the courtyard gate's own rom_profiles.lua doc
+--    across every cell -- for a tile with no single identified ROM
+--    source offset (see the courtyard gate's rom_profiles.lua doc
 --    comment for why). Stretched across the full `rows`x`cols` block.
---  - `openGrid` + `tileOffsets`: a real grid of (possibly different)
---    real tile IDs, each individually addressable via the room's own
---    `tileOffsets` table -- for a patch built from ordinary, already-
---    catalogued room tiles (the courtyard's right-wall entrance).
+--  - `openGrid` + `tileOffsets`: a grid of (possibly different) tile
+--    IDs, each individually addressable via the room's `tileOffsets`
+--    table -- for a patch built from ordinary, already-catalogued room
+--    tiles (the courtyard's right-wall entrance).
 --
--- The "closed" state is deliberately NOT drawn by this module at all --
--- every real instance found so far patches to exactly what the room's
--- own static base grid already shows underneath (confirmed byte-for-
--- byte for the right-wall entrance), so redrawing it would be a no-op
--- at best and a silent second source of truth to drift out of sync at
+-- The "closed" state is deliberately not drawn by this module at all --
+-- every instance found so far patches to exactly what the room's own
+-- static base grid already shows underneath (confirmed byte-for-byte
+-- for the right-wall entrance), so redrawing it would be a no-op at
+-- best and a silent second source of truth to drift out of sync at
 -- worst. `:isOpen(frame)` tells the caller when to skip `:draw()`
 -- entirely and just let the base room art show through, same
 -- convention the original `GateAnimation.lua` already used.
