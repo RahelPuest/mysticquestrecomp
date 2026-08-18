@@ -190,15 +190,43 @@ function render_rooms(main) {
     nodeNames.add(r.name);
     roomByName[r.name] = r;
   }
-  const edges = [];
+  let edges = [];
   for (const r of ROOMS) {
     if (r.mergeInto) continue; // a merged room's own listed exits (if any) are not rendered separately
     for (const ex of r.exits) {
       const target = resolveMerge(ex.targetRoom);
       nodeNames.add(target);
-      edges.push({ from: r.name, to: target, ...ex });
+      edges.push({ from: r.name, to: target, redirected: target !== ex.targetRoom, ...ex });
     }
   }
+  // BUG FIX, 2026-08-18 (direct user report "die website hängt beim
+  // laden" -- a real regression from the `mergeInto` redirect above,
+  // not a pre-existing issue): redirecting an alias's own edge can turn
+  // an already-real edge into a direct 2-cycle -- concretely,
+  // thirdRoom->fourthRoom already existed, and fourthRoom's own real
+  // north exit (originally ->fifthRoom) now resolves to ->thirdRoom,
+  // the exact reverse. The BFS leveling loop below has no cycle guard
+  // (`level[e.to] < l + 1` stays true forever around a cycle, since
+  // both directions keep pushing each other's level higher without
+  // bound) -- a genuine infinite loop, not just a slow one, which is
+  // exactly why the page hung rather than just rendering wrong.
+  //
+  // Fixed generically, not special-cased to this one pair: for any
+  // reverse-direction pair, keep the edge that was NOT itself a merge
+  // redirect (the real, original transition) and drop the redirected
+  // one -- its semantic info isn't lost, it's already stated in the
+  // source room's own `bridgeNote` tooltip (see fourthRoom's own doc
+  // comment). If somehow both sides of a pair were redirected, fall
+  // back to a deterministic name-order tie-break so exactly one survives
+  // either way -- never both, never neither.
+  const pairSet = new Set(edges.map(e => e.from + "→" + e.to));
+  edges = edges.filter(e => {
+    if (!pairSet.has(e.to + "→" + e.from)) return true; // no reverse edge at all, always keep
+    const reverse = edges.find(o => o.from === e.to && o.to === e.from);
+    if (e.redirected && !reverse.redirected) return false; // drop the redirected side
+    if (!e.redirected && reverse.redirected) return true; // keep the original side
+    return e.from < e.to; // both/neither redirected -- deterministic tie-break
+  });
   const incoming = new Set(edges.map(e => e.to));
   const roots = [...nodeNames].filter(n => !incoming.has(n));
 
