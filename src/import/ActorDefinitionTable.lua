@@ -200,14 +200,14 @@ function ActorDefinitionTable.readRecord(romData, index)
 end
 
 --- Resolves a record's own `spriteSource` (see `readRecord`) into the
--- full, ordered list of real ROM file offsets for every raw GFX-tile
--- this entity's sprite actually uses -- no live OAM capture needed,
--- see `SpriteTileFormula.lua`'s own doc comment for the formula and its
--- live validation. `tableBank` defaults to this module's own `BANK`
--- (3) since the outer record's `innerPtr` is a same-bank pointer.
--- When `record.spriteSource.arrangementFamily == "humanoid4pose"`, the
--- result is ALREADY reordered into the real on-screen pose order (see
--- `SpriteTileFormula.reconstructPoseOrder`'s own doc comment) -- callers
+-- full, ordered list of ROM file offsets for every raw GFX-tile this
+-- entity's sprite actually uses -- no live OAM capture needed, see
+-- `SpriteTileFormula.lua`'s doc comment for the formula and its live
+-- validation. `tableBank` defaults to this module's `BANK` (3) since
+-- the outer record's `innerPtr` is a same-bank pointer. When
+-- `record.spriteSource.arrangementFamily == "humanoid4pose"`, the
+-- result is already reordered into the on-screen pose order (see
+-- `SpriteTileFormula.reconstructPoseOrder`'s doc comment) -- callers
 -- don't need to reorder it themselves.
 function ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
   local SpriteTileFormula = require("src.import.SpriteTileFormula")
@@ -218,12 +218,12 @@ function ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
   return offsets, bank
 end
 
---- Reads every real record across the table's own measured extent
--- (`TABLE_COUNT`, indices 0..TABLE_COUNT-1). Each entry additionally
--- carries `spriteSubRecord` (via `readSpriteSubRecord`) when its own
--- `spritePointer` is plausible (skipped, left nil, for anomalous
--- records -- following an out-of-window pointer with the same-bank
--- formula would silently read the wrong bank's bytes).
+--- Reads every record across the table's measured extent (`TABLE_COUNT`,
+-- indices 0..TABLE_COUNT-1). Each entry additionally carries
+-- `spriteSubRecord` (via `readSpriteSubRecord`) when its `spritePointer`
+-- is plausible (skipped, left nil, for anomalous records -- following
+-- an out-of-window pointer with the same-bank formula would silently
+-- read the wrong bank's bytes).
 function ActorDefinitionTable.scanTable(romData)
   local records = {}
   for index = 0, TABLE_COUNT - 1 do
@@ -238,12 +238,11 @@ function ActorDefinitionTable.scanTable(romData)
   return records
 end
 
---- Follows a record's own `spritePointer` to its real sprite sub-
--- record (same bank, same 24-byte stride convention). Returns raw
--- bytes only -- see this module's own doc comment above for what's
--- understood about their shape (small, <=0x6e tile-ID-like varying
--- bytes, separated by fixed 0x10/0x30 structural bytes) and what's
--- still open.
+--- Follows a record's `spritePointer` to its sprite sub-record (same
+-- bank, same 24-byte stride convention). Returns raw bytes only -- see
+-- this module's doc comment above for what's understood about their
+-- shape (small, <=0x6e tile-ID-like varying bytes, separated by fixed
+-- 0x10/0x30 structural bytes) and what's still open.
 function ActorDefinitionTable.readSpriteSubRecord(romData, record)
   local off = fileOffset(BANK, record.spritePointer)
   local raw = romData:sub(off + 1, off + RECORD_SIZE)
@@ -251,11 +250,10 @@ function ActorDefinitionTable.readSpriteSubRecord(romData, record)
   return { fileOffset = off, raw = raw }
 end
 
---- The two real spawn events captured live this session (2026-08-16)
--- via mGBA watchpoint + PC-history tracing during the willyRoom ->
--- secondRoom scroll. `plausibleCharacter` is a REASONED, NOT
--- independently re-verified, assignment (see this module's own doc
--- comment above for exactly what is and isn't confirmed).
+--- The two spawn events captured live via mGBA watchpoint + PC-history
+-- tracing during the willyRoom -> secondRoom scroll. `plausibleCharacter`
+-- is a reasoned, not independently re-verified, assignment (see this
+-- module's doc comment above for exactly what is and isn't confirmed).
 ActorDefinitionTable.LIVE_CONFIRMED = {
   { index = 121, plausibleCharacter = "secondRoom.scene.characterA (lower sub-record tile bytes)" },
   { index = 99, plausibleCharacter = "secondRoom.scene.characterB / Amanda (sub-record tile bytes are index 121's own +0x20, matching the independently-confirmed real OAM tile-ID shift)" },
