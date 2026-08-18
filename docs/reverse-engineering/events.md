@@ -11399,3 +11399,99 @@ Level/XP's own reward-value side for free. No code changed for this
 finding (a documentation/roadmap correction, not a decode) --
 `docs/roadmap.md`'s own Level/XP and Bestiary entries updated to state
 this connection.
+
+## 2026-08-18, same day ("die 9 schleifenden unknown room a skripte, fahr fort") -- two real stub bugs fixed, the 9 (now 10) loops cleanly classified into 3 groups, static angle genuinely exhausted
+
+Direct continuation of the unknownRoomA reachability scan above. Before
+live-tracing anything, disassembled what each of the 9 loop points
+actually IS: `ScriptRuntime.lastOpcode`/`interp:handlerAddress()` at each
+loop cursor, cross-referenced against `ScriptOpcodeTable.lua`'s own named
+handler constants.
+
+**Two real bugs found and fixed in the scan's own synthetic stub `ctx`**
+(not ROM mysteries -- methodology bugs in yesterday's tool): the generic
+`__index` fallback (`function() return true end`) is only correct for
+the project's own documented "unwired gate defaults open" convention
+(`isActorReady`, `isAnyButtonPressed`, `isTextboxDone`, ...) -- it was
+silently misapplied to two fields whose OWN doc comments/live evidence
+say the opposite:
+- `isFadeActive`: `StandardScriptHandlers.gatedByteLeafCommand`'s own doc
+  comment states plainly "defaults to 'never active' (the happy path)" --
+  the blanket `true` fallback was routing every `0xD4`/`0xD6`/`0xD8`
+  dispatch into the unmodeled `$3ADE` halt path instead of the real,
+  modeled continue.
+- `isQueueBlocked` (`queueGate`'s own `isBlocked`): the ONE real,
+  live-traced case this project has (the boss-defeat script,
+  `queueGate`'s own "RETRACTED" doc paragraph) found WRAM `$D874` bit 0
+  "never changes at all across a reproduced ~200,000-step boss-defeat
+  block" -- genuinely false the whole time in the one case anyone has
+  actually checked.
+
+Both set explicitly (`isFadeActive = false, isQueueBlocked = false`) in
+`scripts/scan_unknown_room_a_trigger.lua`. Real, measurable effect on
+re-run: `halt_undecoded` 313 -> 336, `loop_detected` 1044 -> 1021 (23
+scripts now progress further before stopping), a 16th real cross-bank
+CHAIN appears (script #1139, previously stuck before it could even
+attempt one). **Core structural finding UNCHANGED**: still zero hits,
+still bank 12 is the furthest any script's cursor ever reaches --
+`unknownRoomA`'s own bank 14 stays two banks out of reach. The fix was
+real and honest to make, but it doesn't change the headline conclusion,
+and is reported as such rather than oversold.
+
+**All 16 bank-11/12 arrivals now cleanly fall into exactly 3 groups,
+each with a real, already-understood, correctly-attributed cause**
+(re-checked `runtime.stopError` directly this time, not the
+previous-turn's `lastOpcode` reporting, which named the opcode BEFORE
+the one that actually failed -- a real reporting bug in yesterday's
+diagnostic, caught and corrected here rather than repeated):
+
+1. **1 script (#530)**: genuine, still-undecoded opcode `0xEC` -- one of
+   the 6 known-hard, deliberately-unwired family (see Milestone 7's own
+   "6 known-hard" characterization -- needs the separately-scoped bigger
+   "puppeteering" driver, not more disassembly).
+2. **5 scripts (#790-794)**: still the SAME already-honestly-flagged
+   opcode `0x0C` "list exhausted" limitation (`exhaustedListStub`'s own
+   doc comment) -- a genuine, data-dependent live-WRAM resume cursor this
+   synthetic scan structurally cannot fabricate, by design, not a bug.
+   The stub fix let them reach one opcode further (`0xE1`, a real,
+   already-decoded trigger-event gate that executed cleanly) before
+   hitting the exact same wall.
+3. **10 scripts (703, 879, 1038, 1139, 1140, 1141, 1324, 1325, 1335,
+   1355)**: ALL halt at the identical real handler, `$3297` -- the
+   `queueGate` opcode (`0x00`), and specifically its "queue empty" branch
+   (confirmed: the `isQueueBlocked` fix did NOT change their behavior at
+   all, ruling out halt #1 as the cause). This is, per
+   `StandardScriptHandlers.queueGate`'s own doc comment, THE single
+   largest blocker in the whole 1357-script corpus (275 scripts) -- and
+   its own doc comment already establishes, from the one real
+   live-traced case, that progress past it comes NOT from the queue
+   gaining content through any single script's own logic, but from a
+   completely separate, external `$31AD` cross-actor dispatcher firing
+   for a different trigger and overwriting the persistent cursor. This
+   is a real, structural, ROM-verified boundary: **no single-script,
+   stateless synthetic interpretation, however well-tuned, can ever get
+   past it** -- it requires genuine multi-actor, live gameplay state this
+   scan's whole approach cannot model by construction, not a missing
+   opcode or a wrong stub value.
+
+**Honest conclusion: the static angle is now genuinely exhausted for
+`unknownRoomA`.** Every one of the 16 real candidates has a specific,
+correctly-attributed, already-understood cause; none is fixable by
+further stub-tuning or more disassembly of THIS reachability question
+specifically. The two remaining real avenues are: (a) close opcode
+`0xEC` (script #530's own blocker) -- a separately-scoped, larger
+"puppeteering" undertaking, not a quick continuation; or (b) genuinely
+live, multi-actor gameplay tracing to see whether the `$31AD` dispatcher
+or the `0x0C` list-continuation cursor ever legitimately produces a
+bank-14 jump during real, extended play -- but this exact kind of
+time-boxed live exploration was already tried and came back
+clean-negative for `unknownRoomA` specifically (2026-08-16's own entry,
+"every wall of every currently-wired room... found zero new `$D499`
+activity"). Repeating that same undirected live search now would not be
+a new strategy -- recommending this thread be set aside in favor of
+`docs/roadmap.md`'s other open blockers (Magic/MP-opcode search,
+Level/XP's now-unblocked reward-value side) until either new story
+progression or the 6-known-hard-opcode puppeteering work opens a
+genuinely new angle. `luajit tests/run_tests.lua`: 575/575 pass, no
+production `src/` behavior changed (the fix is scoped entirely to the
+scan script's own synthetic stub).

@@ -2813,6 +2813,27 @@ live-diff/opcode-audit searches above never found an XP write (a real
 ROM fact, not a tooling gap). See `events.md`'s own 2026-08-18 entry for
 the full trail. Both priority-table rows above updated.
 
+**2026-08-18, direct continuation** ("die 9 schleifenden unknown room a
+skripte, fahr fort"): disassembled each of the 9 loop points before
+live-tracing anything. Found and fixed 2 real bugs in the scan's own
+synthetic stub (`isFadeActive`/`isQueueBlocked` were defaulting the
+wrong direction per their own handlers' doc comments) -- real, measured
+effect (23 more scripts progress further, a 16th cross-bank CHAIN
+appears), but the headline finding is UNCHANGED: still bank 12 is the
+furthest reached, still zero hits. All 16 real candidates now cleanly
+classified into 3 already-understood causes: 1 hits known-hard opcode
+`0xEC`; 5 hit the already-flagged `0x0C` list-exhaustion limit; the
+other 10 ALL hit the exact same handler (`$3297`, `queueGate`'s "queue
+empty" branch) -- confirmed, per that handler's own doc comment, to be
+THE single largest blocker in the whole 1357-script corpus, unblockable
+by any single-script synthetic run by construction (needs a separate,
+external cross-actor dispatcher). **Static angle genuinely exhausted for
+unknownRoomA** -- live re-exploration would repeat the already-negative
+2026-08-16 time-boxed search, not a new strategy. Recommending this
+thread be set aside for now in favor of other open blockers. See
+`events.md`'s own 2026-08-18 entry for the full trail. `luajit
+tests/run_tests.lua`: 575/575 pass, no production code changed.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

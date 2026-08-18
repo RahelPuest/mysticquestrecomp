@@ -127,6 +127,26 @@ local function freshStubCtx()
     onRunListExhausted0C = exhaustedListStub("0x0C"),
     onControlCode = false,
     queue = false,
+    -- Two explicit, evidence-backed fixes (2026-08-18, found while tracing
+    -- this scan's own 9 loop points): the generic `__index` fallback below
+    -- answers EVERY unset ctx field with "true", which is only the
+    -- project's own documented "unwired gate defaults open" convention for
+    -- READY/CLEAR/DONE-shaped predicates (isActorReady, isAnyButtonPressed,
+    -- isTextboxDone, ...). It is WRONG for these two, which this project's
+    -- own doc comments/live traces establish default the other way:
+    --   isFadeActive: StandardScriptHandlers.gatedByteLeafCommand's own doc
+    --     comment states plainly "isFadeActive defaults to 'never active'
+    --     (the happy path)" -- the blanket "true" fallback was making every
+    --     0xD4/0xD6/0xD8 dispatch halt on the UNMODELED $3ADE path instead
+    --     of falling through to the real, modeled continue.
+    --   isQueueBlocked (queueGate's own `isBlocked`): the ONE real,
+    --     live-traced case this project has (the boss-defeat script, see
+    --     StandardScriptHandlers.queueGate's own doc comment's "RETRACTED"
+    --     paragraph) found WRAM $D874 bit 0 "never changes at all across a
+    --     reproduced ~200,000-step boss-defeat block" -- i.e. genuinely
+    --     false the whole time in the one case anyone has actually checked.
+    isFadeActive = false,
+    isQueueBlocked = false,
   }, { __index = function() return function() return true end end })
 end
 
