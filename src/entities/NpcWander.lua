@@ -1,29 +1,28 @@
--- Pure random-walk NPC movement step -- extracted 2026-08-10 from
--- VictorySequence.lua's own inline `updateNpcWander` (see that method's
--- own doc comment: a reasonable approximation of secondRoom's real
--- wandering NPCs, NOT a reproduction of the real PRNG algorithm --
--- that wasn't decoded, only the fact that they genuinely move was
--- confirmed live). Pulled out here (no love.* calls, and the RNG
--- itself is injectable) so it's directly unit-testable -- see
--- tests/unit/npc_wander_test.lua.
+-- Pure random-walk NPC movement step -- extracted from
+-- VictorySequence.lua's inline `updateNpcWander` (see that method's doc
+-- comment: a reasonable approximation of secondRoom's wandering NPCs,
+-- not a reproduction of the real PRNG algorithm -- that wasn't decoded,
+-- only the fact that they genuinely move was confirmed live). Pulled
+-- out here (no love.* calls, and the RNG itself is injectable) so it's
+-- directly unit-testable -- see tests/unit/npc_wander_test.lua.
 
 local NpcWander = {}
 
 NpcWander.DIRECTIONS = { "up", "down", "left", "right", "pause" }
 
---- Advances one real frame of wander movement. `state`: `{x=,y=,
+--- Advances one frame of wander movement. `state`: `{x=,y=,
 -- facing=,wanderDir=,wanderTimer=}`, mutated in place (matches this
 -- project's existing per-frame `:update(dt, ...)` convention rather
 -- than returning a new table). `canMoveTo(x,y)`: optional collision
--- predicate (a room's own `TileWalkability`-built function) -- a
--- blocked step leaves `state.x/y` unchanged. `rng`: optional
--- `function() -> float in [0,1)`, defaults to `math.random` (called
--- with no arguments, which is exactly this signature) -- inject a
--- fixed/fake sequence for deterministic tests instead of relying on
+-- predicate (a room's `TileWalkability`-built function) -- a blocked
+-- step leaves `state.x/y` unchanged. `rng`: optional `function() ->
+-- float in [0,1)`, defaults to `math.random` (called with no
+-- arguments, which is exactly this signature) -- inject a fixed/fake
+-- sequence for deterministic tests instead of relying on
 -- `math.random`'s global seed.
 --
 -- Returns `moving` (boolean) -- false while paused or blocked, matching
--- the real captured behavior that the sprite freezes its walk-cycle
+-- the captured behavior that the sprite freezes its walk-cycle
 -- animation exactly then (see NpcSprite.lua).
 function NpcWander.step(state, dt, canMoveTo, rng)
   rng = rng or math.random
