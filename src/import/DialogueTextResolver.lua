@@ -1,32 +1,32 @@
--- Resolves real, hand-transcribed dialogue lines back into REAL,
--- LIVE-DECODED text read from actual ROM bytes at runtime -- the
--- concrete first step of a direct user request ("was fehlt um eine
--- komplett autark interpretierte App-Variante zu entwickeln, die auf
--- keinerlei precoded raeume/events setzt"): several real NPC dialogue
--- lines (`rom_profiles.lua`'s `secondRoom.scene.characterA/
--- characterB.dialogue`) were originally found via live capture/static
--- analysis and then HAND-TRANSCRIBED as plain string literals -- real,
--- byte-exact-confirmed text, but not actually decoded from the ROM at
--- runtime the way `VictorySequence.lua`'s own story-page/Willy-exchange
--- lines already are (`TextDecoder.decodeString(romData, OFFSET)`,
--- established 2026-08-12). This module generalizes that SAME pattern
--- for lines that need more than one plain `decodeString` call.
+-- Resolves hand-transcribed dialogue lines back into live-decoded text
+-- read from actual ROM bytes at runtime -- the concrete first step of
+-- a direct user request (what's missing to build a fully autonomously
+-- interpreted app variant that relies on no precoded rooms/events):
+-- several NPC dialogue lines (`rom_profiles.lua`'s
+-- `secondRoom.scene.characterA/characterB.dialogue`) were originally
+-- found via live capture/static analysis and then hand-transcribed as
+-- plain string literals -- byte-exact-confirmed text, but not actually
+-- decoded from the ROM at runtime the way `VictorySequence.lua`'s
+-- story-page/Willy-exchange lines already are
+-- (`TextDecoder.decodeString(romData, OFFSET)`). This module
+-- generalizes that same pattern for lines that need more than one
+-- plain `decodeString` call.
 --
 -- WHY a new module instead of more inline `TextDecoder.decodeString`
--- calls (VictorySequence.lua's own established convention for the
--- simple case): 2 of the 4 real lines this project has needed so far
--- hit an ALREADY-DOCUMENTED, per-occurrence digraph ambiguity (`0x5B`,
--- `0x82` -- see `TextDecoder.lua`'s own doc comment: both are real
--- bytes whose SHARED default mapping is correct almost everywhere but
--- wrong in a few specific, already-cross-checked real occurrences --
--- "raus!" needs `0x5B` read as "us" here, not the shared table's "a";
--- "meinem" needs `0x82` read as "me"). A single `decodeString` call
--- can't express "decode normally, except this ONE already-known real
--- byte, right here" -- this module's `resolve()` takes an explicit,
--- itemized segment list (real byte ranges to decode + real literal
--- overrides for specific already-documented exceptions) so that
--- per-occurrence exception is spelled out and testable, not silently
--- baked into a hand-typed string with no ROM citation at all.
+-- calls (VictorySequence.lua's established convention for the simple
+-- case): 2 of the 4 lines this project has needed so far hit an
+-- already-documented, per-occurrence digraph ambiguity (`0x5B`, `0x82`
+-- -- see `TextDecoder.lua`'s doc comment: both are bytes whose shared
+-- default mapping is correct almost everywhere but wrong in a few
+-- specific, already-cross-checked occurrences -- "raus!" needs `0x5B`
+-- read as "us" here, not the shared table's "a"; "meinem" needs `0x82`
+-- read as "me"). A single `decodeString` call can't express "decode
+-- normally, except this one already-known byte, right here" -- this
+-- module's `resolve()` takes an explicit, itemized segment list (byte
+-- ranges to decode + literal overrides for specific already-documented
+-- exceptions) so that per-occurrence exception is spelled out and
+-- testable, not silently baked into a hand-typed string with no ROM
+-- citation at all.
 --
 -- Pure Lua, no love.* calls, same convention as MessageTextPointer.lua.
 
