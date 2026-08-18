@@ -509,13 +509,12 @@ local function resolveMapTableRecordStream(romData, mapTable, recordIndex, calle
   return layoutStreamFileOffset, header.rleLength
 end
 
--- UPDATED 2026-08-14 ("weiter bohren bis es fertig ist"): now dispatches
--- on the map's own real header `encodingMode` -- mode 0 (RLE) via the
+-- Dispatches on the map's header `encodingMode` -- mode 0 (RLE) via the
 -- original path below, mode 1 (Templated) via `buildRoomFromTemplated
--- MapTableRecord` (see that function's own doc comment for the CRACKED
+-- MapTableRecord` (see that function's doc comment for the CRACKED
 -- format). Callers no longer need to know or care which encoding a
--- given `mapTable` profile uses -- this is genuinely now "ANY record
--- from ANY real MapTable-shaped source," matching the promise above.
+-- given `mapTable` profile uses -- this is genuinely "any record from
+-- any MapTable-shaped source," matching the promise above.
 function RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIndex, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and opts.tilesetFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
@@ -541,16 +540,15 @@ function RoomFloorLayout.buildRoomFromMapTableRecord(romData, mapTable, recordIn
   })
 end
 
---- Templated-mode (encodingMode 1) sibling, same real record
--- resolution as `buildRoomFromTemplatedMapTableRecord` (base template
--- + per-record diff, see that function and `MapTable.applyTemplatedDiff`)
--- but returns `buildCollisionGridFromIndices`'s own POSITION-AWARE
--- walkable/wall grid instead of a pixel-tile grid. Added 2026-08-14,
--- direct follow-up ("ok weiter mit tür und kollision") to the tile
--- decode -- same HONEST CAVEAT as `buildCollisionGridFromMapTableRecord`
--- below: no live gameplay reaches any bank-7 room either, so this is a
--- genuine, UNVERIFIED extrapolation of the bank-5/6 collision rule, not
--- a confirmed fact for bank 7's own metatile table.
+--- Templated-mode (encodingMode 1) sibling, same record resolution as
+-- `buildRoomFromTemplatedMapTableRecord` (base template + per-record
+-- diff, see that function and `MapTable.applyTemplatedDiff`) but
+-- returns `buildCollisionGridFromIndices`'s position-aware walkable/
+-- wall grid instead of a pixel-tile grid. Same honest caveat as
+-- `buildCollisionGridFromMapTableRecord` below: no live gameplay
+-- reaches any bank-7 room either, so this is a genuine, unverified
+-- extrapolation of the bank-5/6 collision rule, not a confirmed fact
+-- for bank 7's metatile table.
 function RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord(romData, mapTable, recordIndex, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
@@ -578,29 +576,26 @@ function RoomFloorLayout.buildCollisionGridFromTemplatedMapTableRecord(romData, 
   return RoomFloorLayout.buildCollisionGridFromIndices(romData, indices, opts, opts.isWalkable)
 end
 
--- UPDATED 2026-08-14 ("ok weiter mit tür und kollision"): now dispatches
--- on the map's own real header `encodingMode`, same as
+-- Dispatches on the map's header `encodingMode`, same as
 -- `buildRoomFromMapTableRecord` -- mode 1 (Templated) via
 -- `buildCollisionGridFromTemplatedMapTableRecord` above.
 --
--- Same real record resolution as `buildRoomFromMapTableRecord`, but
--- returns `buildCollisionGrid`'s own POSITION-AWARE walkable/wall grid
--- instead of a pixel-tile grid -- 2026-08-12, quick win #2 ("1 dann 2
--- dann 3 dann 4"): real per-room collision for the room browser,
+-- Same record resolution as `buildRoomFromMapTableRecord`, but returns
+-- `buildCollisionGrid`'s position-aware walkable/wall grid instead of a
+-- pixel-tile grid -- real per-room collision for the room browser,
 -- replacing its original permissive-floor placeholder.
 --
--- HONEST CAVEAT, carried over from `COLLISION_WALL_MASK`'s own doc
--- comment above: the "upper nibble non-zero = wall" rule this leans on
--- is CONFIRMED for fourthRoom's own real metatile table (a live
--- movement test) but DEMONSTRABLY WRONG for willyRoom's (the same rule
--- misreads its own live-verified checkerboard floor as wall in some
--- cells there). Bank 5/bank 6/bank 7's own metatile-table region has
--- never had ANY live movement test -- no gameplay reaches these rooms
--- at all, which is the whole reason this ROM-static pipeline exists --
--- so applying this rule here is a genuine, UNVERIFIED extrapolation,
--- not a confirmed fact. Callers (see RoomExplorer.lua) must present
--- this as "best-effort, not verified ROM collision," not as decoded
--- truth.
+-- HONEST CAVEAT, carried over from `COLLISION_WALL_MASK`'s doc comment
+-- above: the "upper nibble non-zero = wall" rule this leans on is
+-- confirmed for fourthRoom's metatile table (a live movement test) but
+-- demonstrably wrong for willyRoom's (the same rule misreads its
+-- live-verified checkerboard floor as wall in some cells there). Bank
+-- 5/bank 6/bank 7's metatile-table region has never had any live
+-- movement test -- no gameplay reaches these rooms at all, which is the
+-- whole reason this ROM-static pipeline exists -- so applying this rule
+-- here is a genuine, unverified extrapolation, not a confirmed fact.
+-- Callers (see RoomExplorer.lua) must present this as "best-effort, not
+-- verified ROM collision," not as decoded truth.
 function RoomFloorLayout.buildCollisionGridFromMapTableRecord(romData, mapTable, recordIndex, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
@@ -626,23 +621,21 @@ function RoomFloorLayout.buildCollisionGridFromMapTableRecord(romData, mapTable,
 end
 
 --- Adapter: turn a `buildRoomFromMapTableRecord`/`buildPixelGridFromTileset`
--- grid (real ROM FILE OFFSETS per cell) into the `{cols, rows, grid,
+-- grid (ROM file offsets per cell) into the `{cols, rows, grid,
 -- tileOffsets}` shape `src/rendering/TileGridBackground.lua` actually
--- consumes (a tile-ID grid + a `[tileId]=romOffset` dict) -- 2026-08-12,
--- direct instruction "1 dann 2 dann 3 dann 4", quick win #1: browse
--- ALL 320 real rooms live, not just the 6 that got hand-baked into
--- `rom_profiles.lua`. Deliberately a thin, separate adapter rather
--- than changing `buildPixelGridFromTileset`'s own return shape --
--- that function's real contract (a grid of real file offsets) is
--- already locked in by its own test, and other real, ROM-static use
--- cases (e.g. direct `gbtile` decoding, no ID layer at all) want the
--- file-offset form directly.
+-- consumes (a tile-ID grid + a `[tileId]=romOffset` dict) -- lets
+-- callers browse all 320 rooms live, not just the 6 that got hand-baked
+-- into `rom_profiles.lua`. Deliberately a thin, separate adapter rather
+-- than changing `buildPixelGridFromTileset`'s own return shape -- that
+-- function's contract (a grid of file offsets) is already locked in by
+-- its own test, and other ROM-static use cases (e.g. direct `gbtile`
+-- decoding, no ID layer at all) want the file-offset form directly.
 --
 -- The "tile ID" used here is just the raw GFX-tile byte (0-255) the
--- metatile record itself stored -- a real, ROM-native identifier
--- already unique WITHIN one room's own tileset window (recovered from
--- the file offset via the exact inverse of `resolveGfxTileFileOffset`),
--- not an invented numbering.
+-- metatile record itself stored -- a ROM-native identifier already
+-- unique within one room's own tileset window (recovered from the file
+-- offset via the exact inverse of `resolveGfxTileFileOffset`), not an
+-- invented numbering.
 function RoomFloorLayout.toTileGridBackgroundData(fileOffsetGrid, tilesetFileOffset)
   assert(type(fileOffsetGrid) == "table" and fileOffsetGrid[1],
     "RoomFloorLayout.toTileGridBackgroundData expects a non-empty grid")
