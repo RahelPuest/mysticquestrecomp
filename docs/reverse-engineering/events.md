@@ -11811,3 +11811,52 @@ honestly unverified: actual in-browser pixel rendering (CSS layout
 positioning of the new group background, the exact visual result) --
 Playwright remains unavailable in this sandbox; ask the user to check
 in their own browser if anything still looks wrong visually.
+
+## 2026-08-18, same day, direct follow-up ("na dann fixe das") -- exhaustive whole-catalog re-check for eighthRoom/ninthRoom: honest negative result, positions kept
+
+Context: `eighthRoom`'s and `ninthRoom`'s `worldMapCatalogRecord` badges
+(bank5 records 236/237) were originally placed via a byte-exact
+shared-edge match against `seventhRoom`'s own south row -- but that
+match is itself now known-invalid, since `seventhRoom`'s own tileset
+was corrected onto bank6 (a different, non-adjacent 16x16 grid) earlier
+this session, retracting the `seventhRoom -> eighthRoom` edge entirely.
+User's direct instruction was to re-check, not just leave the old,
+now-unsupported match standing.
+
+**Method** (same "compare by real file offset, not local tile ID"
+standard already established for startRoom's 98.8%/fourthRoom's 67.5%
+real matches): wrote a scratch script
+(`scratchpad/scan_room_matches.lua`) that decodes each room's own real
+grid, converts local tile IDs to real ROM file offsets via the room's
+own `tileOffsets`, and cell-by-cell compares against every OTHER bank5
+(255) and bank6 (64) catalog record's own decoded grid (via
+`RoomFloorLayout.buildRoomFromMapTableRecord`) -- 319 candidates
+checked per room, both banks, own current record excluded.
+
+**Result**: no decisive match for either room.
+- `eighthRoom`: best candidate is bank5 record 217 (row 13, col 9 --
+  not even spatially adjacent to eighthRoom's own row 14, col 12) at
+  only 48.1% (154/320 cells), with a gradual, structureless falloff
+  from there (47.8%, 46.2%, 44.4%, ...).
+- `ninthRoom`: best candidate is bank5 record 249 at only 45.3%
+  (145/320), same gradual falloff shape.
+
+Both are well below the ~65%+ threshold real identity matches show
+elsewhere in this project (startRoom, fourthRoom) -- this is the shape
+of generic shared-tileset overlap across a catalog built from a common
+tile pool, not a real room-identity spike.
+
+**Conclusion (honest negative, documented directly in both rooms' own
+`rom_profiles.lua` doc comments, no data changed)**: no evidence found
+to move either room off its existing bank5 position (236/237). The
+real, still-open gap for these two rooms is connectivity -- no known
+live trigger reaches them since `seventhRoom`'s own edge into them was
+retracted -- not their own content or catalog position. This is the
+same, already-documented "how does the ROM select any room beyond the
+16 known `roomSelectorTable` slots" mystery flagged elsewhere in this
+project, not a new, separate problem.
+
+`luajit tests/run_tests.lua`: 578/578 pass, unchanged (doc-comment-only
+change, no data/behavior modified). `rom-inspector` data re-exported
+and diffed against git: zero changes, confirming `worldMapCatalogRecord`
+values themselves are untouched.

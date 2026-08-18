@@ -1982,6 +1982,33 @@ RomProfiles.PROFILES = {
         -- carry; also on a DIFFERENT real grid than seventhRoom's own
         -- bank6 badge (bank5 is a separate 16x16 "map0", not adjacent
         -- to bank6's "map1").
+        --
+        -- RE-CHECKED, NOT MOVED (2026-08-18, direct user instruction
+        -- "na dann fixe das", after being told this room sits on a
+        -- different map than seventhRoom's now-corrected bank6
+        -- position): since the OLD seventhRoom->eighthRoom edge-match
+        -- that originally placed this room is itself now known-invalid
+        -- (see this room's own `status` above), ran a full, exhaustive
+        -- content re-check -- decoded this room's own real grid as file
+        -- offsets (via its own tileOffsets) and compared cell-by-cell
+        -- against EVERY OTHER bank5 (255) and bank6 (64) catalog
+        -- record's own real decoded content, the exact same "compare by
+        -- real file offset" method that found startRoom's 98.8%/
+        -- fourthRoom's 67.5% exact matches. Result: NO decisive match --
+        -- best candidate (bank5 record 217, row13/col9, not even
+        -- spatially adjacent to this room's own row14/col12) is only
+        -- 48.1% (154/320), with a gradual, structureless falloff from
+        -- there (47.8%, 46.2%, 44.4%, ...) -- the shape of generic
+        -- shared-tileset overlap across the whole catalog, not a real
+        -- identity spike the way the 65%+ real matches elsewhere show.
+        -- Honest conclusion: this room's own existing bank5 position
+        -- (236) remains the best-supported placement -- no evidence
+        -- found to move it. The real, still-open gap is connectivity
+        -- (no known live trigger reaches it since seventhRoom moved),
+        -- not this room's own content or position -- the same
+        -- "how does the ROM select any room beyond the 16 known
+        -- roomSelectorTable slots" mystery already flagged elsewhere,
+        -- not a new, separate problem. See events.md 2026-08-18.
         worldMapCatalogRecord = { table = "bank5", recordIndex = 236, row = 14, col = 12 },
         tileOffsets = {
           [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
@@ -2056,6 +2083,15 @@ RomProfiles.PROFILES = {
         -- eighthRoom's own (14,12) -- matching this room's own already-
         -- documented "eighthRoom's own east neighbor" placement exactly.
         -- Same honest confidence caveat as eighthRoom's own field.
+        --
+        -- RE-CHECKED, NOT MOVED (2026-08-18, same "na dann fixe das"
+        -- re-check as eighthRoom's own doc comment above, same exhaustive
+        -- whole-catalog method): best candidate for THIS room's own real
+        -- content is bank5 record 249 at only 45.3% (145/320), again a
+        -- gradual, structureless falloff -- not a real-identity spike.
+        -- Own existing bank5 position (237) remains the best-supported
+        -- placement. Same open connectivity gap as eighthRoom, not a
+        -- content/position problem. See events.md 2026-08-18.
         worldMapCatalogRecord = { table = "bank5", recordIndex = 237, row = 14, col = 13 },
         tileOffsets = {
           [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
