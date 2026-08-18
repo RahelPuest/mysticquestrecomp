@@ -542,19 +542,18 @@ for name, room in pairs(profile.graphics) do
     end
     rooms[#rooms + 1] = {
       name = name, widthTiles = widthTiles, heightTiles = heightTiles, exits = exits,
-      -- Real, structured cross-reference (currently only fifthRoom) --
-      -- see rom_profiles.lua's own `sameRomIdentityAs`/`sameRomIdentity
-      -- Note` doc comment: a real, live-confirmed byte-identical WRAM
-      -- room-identity register match to another already-named room,
-      -- not a generic "similar tileset" guess.
+      -- Structured cross-reference (currently only fifthRoom) -- see
+      -- rom_profiles.lua's `sameRomIdentityAs`/`sameRomIdentityNote`
+      -- doc comment: a live-confirmed byte-identical WRAM room-identity
+      -- register match to another already-named room, not a generic
+      -- "similar tileset" guess.
       sameRomIdentityAs = room.sameRomIdentityAs,
       sameRomIdentityNote = room.sameRomIdentityNote,
-      -- Real, structured world-map catalog cross-reference (currently
-      -- startRoom/fourthRoom, 2026-08-17, direct user report) -- see
-      -- rom_profiles.lua's own `worldMapCatalogRecord` doc comment: this
-      -- room's presence in the bank6 (8x8) world-map catalog at the
-      -- given grid position, live-verified cell-by-cell against the
-      -- ROM file offsets.
+      -- Structured world-map catalog cross-reference (currently
+      -- startRoom/fourthRoom) -- see rom_profiles.lua's
+      -- `worldMapCatalogRecord` doc comment: this room's presence in
+      -- the bank6 (8x8) world-map catalog at the given grid position,
+      -- live-verified cell-by-cell against the ROM file offsets.
       worldMapCatalogRecord = room.worldMapCatalogRecord,
       -- Structured dispute flag (currently seventhRoom/eighthRoom/
       -- ninthRoom) -- see rom_profiles.lua's `tilesetDisputed`/
@@ -1257,36 +1256,34 @@ do
     freqTableFileOffset = MusicDecoder.FREQ_TABLE_FILE_OFFSET,
     durationTableFileOffset = MusicDecoder.DURATION_TABLE_FILE_OFFSET,
     songs = songs,
-  }, "Real Bank-15 sound-driver data: the real 30-song table (file " ..
+  }, "Bank-15 sound-driver data: the 30-song table (file " ..
     string.format("%#x", MusicDecoder.SONG_TABLE_FILE_OFFSET) ..
-    ") plus each song's 3 real channel event streams, decoded by src/import/MusicDecoder.lua " ..
-    "(a direct Lua port of tools/rom/decode_music.py, the tool this format was originally found " ..
-    "and proven with -- see that file's own doc comment / rom-map.md's \"Audio format -- DECODED\" " ..
-    "section for the full disassembly trail). Event `type`s: NOTE (real note-on, `noteName`/" ..
-    "`durationFrames`/`regPair` all real, decoded values -- `regPair` is the literal GB hardware " ..
-    "register pair this event writes, `noteName` is a DERIVED convenience via the real GB " ..
-    "period formula, not itself a ROM finding), REST, NOTE_OFF, SET_OCTAVE/SHIFT_OCTAVE (real " ..
-    "octave-select commands), COMMAND (one of the 13 real driver commands -- `jumpTarget` on a " ..
-    "0xE1 COMMAND is the real loop-back target this decoder actually follows), LOOP_DETECTED " ..
-    "(the real stream returned to an already-visited position -- this IS the real song " ..
-    "repeating, not a decoder bug), STOP (real 0xFF hard-stop), EOF (ran past the ROM data this " ..
-    "exporter was given, only relevant near a bank boundary). NOT decoded: the auxiliary per-" ..
-    "frame vibrato/pitch-delta stream (real, disassembled, structurally confirmed, but a fine " ..
-    "modulation layer this decoder doesn't walk -- see rom-map.md); exact musical intent of " ..
-    "several commands beyond their real WRAM side effect.")
+    ") plus each song's 3 channel event streams, decoded by src/import/MusicDecoder.lua (a " ..
+    "direct Lua port of tools/rom/decode_music.py, the tool this format was originally found " ..
+    "and proven with -- see that file's doc comment / rom-map.md's \"Audio format -- DECODED\" " ..
+    "section for the full disassembly trail). Event `type`s: NOTE (note-on, `noteName`/" ..
+    "`durationFrames`/`regPair` all decoded values -- `regPair` is the literal GB hardware " ..
+    "register pair this event writes, `noteName` is a derived convenience via the GB period " ..
+    "formula, not itself a ROM finding), REST, NOTE_OFF, SET_OCTAVE/SHIFT_OCTAVE (octave-select " ..
+    "commands), COMMAND (one of 13 driver commands -- `jumpTarget` on a 0xE1 COMMAND is the " ..
+    "loop-back target this decoder follows), LOOP_DETECTED (the stream returned to an " ..
+    "already-visited position -- this IS the song repeating, not a decoder bug), STOP (0xFF " ..
+    "hard-stop), EOF (ran past the ROM data this exporter was given, only relevant near a bank " ..
+    "boundary). NOT decoded: the auxiliary per-frame vibrato/pitch-delta stream (disassembled, " ..
+    "structurally confirmed, but a fine modulation layer this decoder doesn't walk -- see " ..
+    "rom-map.md); exact musical intent of several commands beyond their WRAM side effect.")
 end
 
 ----------------------------------------------------------------------
 -- 16. Cut-transition landing/connectivity table (CutTransitionTable
--- .lua, 2026-08-16, task "komplett autark interpretiert"/blocker
--- resolution) -- real, general ROM structure that encodes BOTH the
--- target roomSelector AND the real landing tile for every "wipe-style"
--- room-to-room cut transition in the game, found via a live hardware
--- watchpoint (the exact indirect-write blind spot 6+ earlier static
--- passes couldn't cover) then generalized via static pattern search.
--- See CutTransitionTable.lua's own doc comment for the full
--- disassembly/live-trace chain and docs/reverse-engineering/rom-map.md
--- "Consolidated reference" section 4 for the closed-blocker summary.
+-- .lua) -- a general ROM structure that encodes both the target
+-- roomSelector and the landing tile for every "wipe-style" room-to-room
+-- cut transition, found via a live hardware watchpoint (the exact
+-- indirect-write blind spot 6+ earlier static passes couldn't cover)
+-- then generalized via static pattern search. See CutTransitionTable
+-- .lua's doc comment for the full disassembly/live-trace chain and
+-- docs/reverse-engineering/rom-map.md "Consolidated reference" section
+-- 4 for the closed-blocker summary.
 ----------------------------------------------------------------------
 do
   local distinct = CutTransitionTable.distinctLandings(romData)
@@ -1304,32 +1301,30 @@ do
           "(byte-identical $D392/$D393/$C3F0/$C3F5, live-confirmed 2026-08-17), not an " ..
           "independent room -- see rooms.fifthRoom's own sameRomIdentityNote" },
     },
-  }, "Real, general ROM structure (bank 14, 186 raw records collapsing to " ..
-    #distinct .. " genuinely distinct real transitions) that encodes BOTH the target " ..
-    "roomSelectorTable index AND the real landing tile for every wipe-style room-to-room cut " ..
-    "transition -- found 2026-08-16 via a live hardware watchpoint on WRAM $C244/$C245 (the " ..
-    "real write is INDIRECT, LD (HL),D/LD (HL),E, the exact blind spot 6+ earlier static-only " ..
-    "passes across prior sessions could never cover), then generalized via static byte-pattern " ..
-    "search once the real record shape was known. Only 2 of the 82 distinct real transitions " ..
-    "are currently live-verified end to end and wired into actual gameplay (see `knownLive` " ..
-    "above); the rest are real, ROM-decoded DATA whose real in-game TRIGGER (which story/dialogue " ..
-    "moment actually invokes each one) is honestly still unknown -- a time-boxed live search " ..
-    "across every wall of every currently-reachable room found nothing new. targetFamily=" ..
-    "\"unknownRoomA\" entries (roomSelector 8-13) are especially notable: real, ROM-verified " ..
-    "proof this long-mysterious room family (never reached live in any earlier session) is " ..
-    "genuine intended content, not dead data. selectorRecords is a real, structurally distinct " ..
-    "sibling record type this same investigation found (originally suspected to be the " ..
-    "connectivity key -- that hypothesis turned out to be wrong, its own real meaning stays " ..
-    "undecoded, kept here as a real, verified structural finding.)")
+  }, "General ROM structure (bank 14, 186 raw records collapsing to " ..
+    #distinct .. " genuinely distinct transitions) that encodes both the target " ..
+    "roomSelectorTable index and the landing tile for every wipe-style room-to-room cut " ..
+    "transition -- found via a live hardware watchpoint on WRAM $C244/$C245 (the write is " ..
+    "INDIRECT, LD (HL),D/LD (HL),E, a blind spot 6+ earlier static-only passes could never " ..
+    "cover), then generalized via static byte-pattern search once the record shape was known. " ..
+    "Only 2 of the 82 distinct transitions are currently live-verified end to end and wired into " ..
+    "actual gameplay (see `knownLive` above); the rest are ROM-decoded DATA whose in-game TRIGGER " ..
+    "(which story/dialogue moment actually invokes each one) is honestly still unknown -- a " ..
+    "time-boxed live search across every wall of every currently-reachable room found nothing " ..
+    "new. targetFamily=\"unknownRoomA\" entries (roomSelector 8-13) are especially notable: " ..
+    "ROM-verified proof this long-mysterious room family (never reached live) is genuine intended " ..
+    "content, not dead data. selectorRecords is a structurally distinct sibling record type this " ..
+    "same investigation found (originally suspected to be the connectivity key -- that hypothesis " ..
+    "turned out wrong, its own meaning stays undecoded, kept here as a verified structural " ..
+    "finding).")
 end
 
 ----------------------------------------------------------------------
--- 17. Actor-definition table (ActorDefinitionTable.lua, 2026-08-16,
--- task "NPC-Platzierungstabelle suchen" / "Tabelle voll ausmessen") --
--- the real, live-traced RNG-gated spawn table behind secondRoom's two
--- NPCs, its full measured extent (218 records, indices 0-217, 5
--- anomalous). See ActorDefinitionTable.lua's own doc comment for the
--- full live-trace chain and disassembly.
+-- 17. Actor-definition table (ActorDefinitionTable.lua) -- the
+-- live-traced RNG-gated spawn table behind secondRoom's two NPCs, its
+-- full measured extent (218 records, indices 0-217, 5 anomalous). See
+-- ActorDefinitionTable.lua's doc comment for the full live-trace chain
+-- and disassembly.
 ----------------------------------------------------------------------
 do
   local function toHex(s)
@@ -1358,20 +1353,20 @@ do
     tableCount = ActorDefinitionTable.TABLE_COUNT,
     records = exported,
     liveConfirmed = ActorDefinitionTable.LIVE_CONFIRMED,
-  }, "Real, RNG-gated actor-definition table (bank 3, CPU $5f5a, 24-byte stride, " ..
+  }, "RNG-gated actor-definition table (bank 3, CPU $5f5a, 24-byte stride, " ..
     ActorDefinitionTable.TABLE_COUNT .. " records, indices 0-" .. (ActorDefinitionTable.TABLE_COUNT - 1) ..
-    ") -- found 2026-08-16 live-tracing secondRoom's two NPC spawns (a proximity check calls " ..
-    "the already-known combat PRNG, $2B1E, to compute an index into this table). Each record " ..
-    "embeds a pointer (bytes[8..9]) to a SECOND 24-byte sprite sub-record; the two live-captured " ..
-    "indices' (99, 121) own sub-records differ by EXACTLY +0x20 on every varying byte -- a " ..
+    ") -- found live-tracing secondRoom's two NPC spawns (a proximity check calls the " ..
+    "already-known combat PRNG, $2B1E, to compute an index into this table). Each record embeds " ..
+    "a pointer (bytes[8..9]) to a SECOND 24-byte sprite sub-record; the two live-captured " ..
+    "indices' (99, 121) sub-records differ by exactly +0x20 on every varying byte -- a " ..
     "byte-exact match, via a totally independent method (live OAM tile-ID capture), to this " ..
-    "project's own already-confirmed 'characterB's tile IDs are characterA's own +0x20' fact. " ..
-    "Honest scope: this is NOT a static per-room placement table -- the index is computed at " ..
-    "runtime (RNG-influenced), which is why static search alone never found one. 5 records " ..
+    "project's already-confirmed 'characterB's tile IDs are characterA's own +0x20' fact. Honest " ..
+    "scope: this is NOT a static per-room placement table -- the index is computed at runtime " ..
+    "(RNG-influenced), which is why static search alone never found one. 5 records " ..
     "(anomalous=true) point into the fixed bank-0 region instead of the normal bank-3 window -- " ..
     "index 0 plus a tight cluster at 12-15, plausibly a reserved/fixed-graphics family. Only " ..
     "indices 99 and 121 (see liveConfirmed) have a confirmed live spawn behind them -- every " ..
-    "other record is real, structured ROM data whose own in-game trigger is honestly unknown.")
+    "other record is structured ROM data whose in-game trigger is honestly unknown.")
 end
 
 io.stderr:write("done.\n")
