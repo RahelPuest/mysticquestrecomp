@@ -1,33 +1,32 @@
--- The starting-room vertical slice: real input, real FixedStep timing,
--- a VERIFIED movement speed (see src/entities/Player.lua), a real
--- enemy blocking a chokepoint with real collision and contact combat
--- (see src/entities/Enemy.lua), and the real dialogue sequence this
--- project found live past it (docs/reverse-engineering/rom-map.md
--- "Breakthrough").
+-- The starting-room vertical slice: input, FixedStep timing, a VERIFIED
+-- movement speed (see src/entities/Player.lua), an enemy blocking a
+-- chokepoint with collision and contact combat (see
+-- src/entities/Enemy.lua), and the dialogue sequence this project found
+-- live past it (docs/reverse-engineering/rom-map.md "Breakthrough").
 --
--- The room background, player sprite, and enemy sprite/position all draw
--- REAL, live-ground-truth-verified content (src/rendering
+-- The room background, player sprite, and enemy sprite/position all
+-- draw live-ground-truth-verified content (src/rendering
 -- /TileGridBackground.lua, rom_profiles.lua's `startRoom`/`playerSprite`
--- /`enemySprite` entries) -- a real barred-gate courtyard with a real
--- enemy, not a generic placeholder or a guessed arrangement. See
--- rom_profiles.lua's `startRoom` doc comment for the correction history
--- (an earlier capture this same project session was mistakenly the
--- pause menu, not the room -- caught and fixed). Combat numbers (enemy HP,
--- player attack damage) remain reasonable stand-ins, not decoded ROM
--- values -- see Enemy.lua's doc comment for exactly which parts of the
--- combat model are VERIFIED vs. a placeholder.
+-- /`enemySprite` entries) -- a barred-gate courtyard with an enemy, not
+-- a generic placeholder or a guessed arrangement. See rom_profiles.lua's
+-- `startRoom` doc comment for the correction history (an earlier
+-- capture was mistakenly the pause menu, not the room -- caught and
+-- fixed). Combat numbers (enemy HP, player attack damage) remain
+-- reasonable stand-ins, not decoded ROM values -- see Enemy.lua's doc
+-- comment for exactly which parts of the combat model are VERIFIED vs.
+-- a placeholder.
 --
--- The boss-defeat dialogue now fires through a real, reusable event/
--- trigger system (src/scripting/EventSystem.lua -- see FIELD_EVENTS
--- below), not an inline `if` check -- a direct fix for this project's
--- own master brief calling that pattern out by name. The dialogue
--- *text* itself is still hardcoded, not decoded live from ROM bytes --
--- see DialogueBox.lua's provenance note; general dialogue compression
--- remains unsolved (docs/reverse-engineering/text.md).
+-- The boss-defeat dialogue fires through a reusable event/trigger
+-- system (src/scripting/EventSystem.lua -- see FIELD_EVENTS below), not
+-- an inline `if` check -- a direct fix for this project's master brief
+-- calling that pattern out by name. The dialogue *text* itself is still
+-- hardcoded, not decoded live from ROM bytes -- see DialogueBox.lua's
+-- provenance note; general dialogue compression remains unsolved
+-- (docs/reverse-engineering/text.md).
 --
 -- Controls: arrows move, A attacks the enemy while adjacent, START
--- opens the real menu (Menu.lua), SELECT pops back to whatever pushed
--- this state.
+-- opens the menu (Menu.lua), SELECT pops back to whatever pushed this
+-- state.
 
 local Player = require("src.entities.Player")
 local Enemy = require("src.entities.Enemy")
@@ -54,51 +53,48 @@ local MusicPlayer = require("src.audio.MusicPlayer")
 local Field = { opaque = true }
 Field.__index = Field
 
--- VERIFIED (see module doc comment / docs/progress.md): a real Mystic
--- Quest room is exactly one 160x144 GB screen, HUD taking the bottom 2
+-- VERIFIED (see module doc comment / docs/progress.md): a Mystic Quest
+-- room is exactly one 160x144 GB screen, HUD taking the bottom 2
 -- tile-rows (16px), leaving a 160x128 playable area, no camera scroll.
 local ROOM_W, ROOM_H = 160, 144
 local HUD_H = 16
 local PLAY_H = ROOM_H - HUD_H
 
--- REMOVED (2026-08-09): a fixed ATTACK_REACH circle used to approximate
--- attack range -- replaced by real per-phase swing hitboxes
--- (AttackSwing:getHitboxes) now that the real swing animation itself is
--- implemented, so hit detection checks the actual displayed sword
--- rectangles against the enemy instead of a guessed radius. Direct fix
--- for a user report that the enemy "seems to take no damage" -- the old
--- circle check ran once at press time, before the swing had visually
--- moved anywhere near the enemy.
+-- REMOVED: a fixed ATTACK_REACH circle used to approximate attack
+-- range -- replaced by per-phase swing hitboxes (AttackSwing
+-- :getHitboxes) now that the swing animation itself is implemented, so
+-- hit detection checks the actual displayed sword rectangles against
+-- the enemy instead of a guessed radius. Direct fix for a user report
+-- that the enemy "seems to take no damage" -- the old circle check ran
+-- once at press time, before the swing had visually moved anywhere
+-- near the enemy.
 
--- The real post-victory scene (victory line, real black-screen wipe,
--- lore pages, "WILLY" exchange) now lives in VictorySequence.lua -- see
--- that module's doc comment for the full real ROM-code trace this
--- replaced the old flat WILLY_DIALOGUE/DialogueBox pairing with
--- (2026-08-09, "mach mal die scene transition... auf basis des codes und
--- moeglichst allgemein").
+-- The post-victory scene (victory line, black-screen wipe, lore pages,
+-- "WILLY" exchange) now lives in VictorySequence.lua -- see that
+-- module's doc comment for the full ROM-code trace this replaced the
+-- old flat WILLY_DIALOGUE/DialogueBox pairing with.
 --
--- Real, reusable event data (see src/scripting/EventSystem.lua's doc
--- comment for why this replaced an inline `if self.dialogueQueued`
--- check -- a direct fix for this project's own master brief calling out
--- exactly that pattern as something to avoid). `state` here is the
--- Field instance itself (see Field:update's `self.events:update(self,
--- ...)` call) -- the trigger only reads `state.enemyDefeated`, a real
--- boolean this state sets the instant the boss-clearing hit lands, not
--- a queued/deferred flag.
--- Real background music during actual gameplay (2026-08-16, direct
--- continuation after "es muss doch irgendwo vorrangehen" -- picking a
--- concrete, achievable win after several genuinely blocked/inconclusive
--- investigations this session: `MusicPlayer`/`love.audio` playback
--- already shipped, task #151, but only reachable via the dev-only F9
--- Jukebox until now). HONEST SCOPE, same "real content, no fabricated
--- trigger" precedent as `sixthRoom`'s own static-exit engineering
--- choice: no live ROM trigger for "which song plays during ordinary
--- field exploration" has been found (see MusicPlayer.lua's own doc
--- comment) -- `FIELD_MUSIC_SONG_INDEX` is a deliberate, clearly-labeled
--- ENGINEERING CHOICE (an arbitrary real song from the decoded table,
--- picked for being pleasant to loop, not a claimed ROM fact), not a
--- reverse-engineered fact. Every note played IS real, decoded ROM
--- audio data -- only the "when" is this project's own choice.
+-- Reusable event data (see src/scripting/EventSystem.lua's doc comment
+-- for why this replaced an inline `if self.dialogueQueued` check -- a
+-- direct fix for this project's master brief calling out exactly that
+-- pattern as something to avoid). `state` here is the Field instance
+-- itself (see Field:update's `self.events:update(self, ...)` call) --
+-- the trigger only reads `state.enemyDefeated`, a boolean this state
+-- sets the instant the boss-clearing hit lands, not a queued/deferred
+-- flag.
+-- Background music during actual gameplay (picking a concrete,
+-- achievable win after several blocked/inconclusive investigations:
+-- `MusicPlayer`/`love.audio` playback already shipped, but only
+-- reachable via the dev-only F9 Jukebox until now). HONEST SCOPE, same
+-- "real content, no fabricated trigger" precedent as `sixthRoom`'s
+-- static-exit engineering choice: no live ROM trigger for "which song
+-- plays during ordinary field exploration" has been found (see
+-- MusicPlayer.lua's doc comment) -- `FIELD_MUSIC_SONG_INDEX` is a
+-- deliberate, clearly-labeled engineering choice (an arbitrary song
+-- from the decoded table, picked for being pleasant to loop, not a
+-- claimed ROM fact), not a reverse-engineered fact. Every note played
+-- is decoded ROM audio data -- only the "when" is this project's own
+-- choice.
 local FIELD_MUSIC_SONG_INDEX = 1
 
 local FIELD_EVENTS = {
@@ -109,23 +105,22 @@ local FIELD_EVENTS = {
   },
 }
 
---- `savedStats`: optional plain table of Stats fields from a real,
--- loaded save (see SaveFile.load()/SaveData.deserialize) -- used by
--- TitleScreen.lua's real "Weiterspielen" path instead of the fresh-
--- character defaults below. Absent for every other entry point (a new
--- game, dev shortcuts, tests), which is not a fallback -- those
--- genuinely have no save to restore from.
+--- `savedStats`: optional plain table of Stats fields from a loaded
+-- save (see SaveFile.load()/SaveData.deserialize) -- used by
+-- TitleScreen.lua's "Weiterspielen" path instead of the fresh-character
+-- defaults below. Absent for every other entry point (a new game, dev
+-- shortcuts, tests), which is not a fallback -- those genuinely have no
+-- save to restore from.
 --
--- `enemyState`: optional `{x=, y=, movementIndex=}` (2026-08-12, direct
--- user report: "der boss intro sequenz stimmt noch nicht") -- lets
--- `BattleIntro.lua` hand off its own already-in-progress real patrol
--- (see `Enemy.MOVEMENT_CYCLE`) seamlessly instead of this state
--- silently resetting the creature back to its own static rest position
--- the instant the cutscene ends (a real, visible position "jump" the
--- old code had). Absent for every other entry point (dev shortcuts,
--- tests, a hypothetical future "reload mid-game" path) -- those fall
--- back to the same real rest position (`enemySprite.screenX/screenY`)
--- as before, unchanged.
+-- `enemyState`: optional `{x=, y=, movementIndex=}` -- lets
+-- `BattleIntro.lua` hand off its already-in-progress patrol (see
+-- `Enemy.MOVEMENT_CYCLE`) seamlessly instead of this state silently
+-- resetting the creature back to its static rest position the instant
+-- the cutscene ends (a visible position "jump" the old code had).
+-- Absent for every other entry point (dev shortcuts, tests, a
+-- hypothetical future "reload mid-game" path) -- those fall back to the
+-- same rest position (`enemySprite.screenX/screenY`) as before,
+-- unchanged.
 function Field.new(romData, profile, input, overlay, stack, heroName, savedStats, enemyState)
   local self = setmetatable({
     romData = romData,
@@ -133,57 +128,57 @@ function Field.new(romData, profile, input, overlay, stack, heroName, savedStats
     input = input,
     overlay = overlay,
     stack = stack,
-    -- The real player-entered name (see NameEntry.lua), threaded through
-    -- BattleIntro -- used by VictorySequence's real captured text
-    -- ("<name> ist ein tapferer Kaempfer.", etc). A clearly-labeled
-    -- fallback for dev shortcuts that construct Field directly without
-    -- going through NameEntry (e.g. tests, F-key dev entry points), not
-    -- a silent default for the real flow.
+    -- The player-entered name (see NameEntry.lua), threaded through
+    -- BattleIntro -- used by VictorySequence's captured text ("<name>
+    -- ist ein tapferer Kaempfer.", etc). A clearly-labeled fallback for
+    -- dev shortcuts that construct Field directly without going through
+    -- NameEntry (e.g. tests, F-key dev entry points), not a silent
+    -- default for the real flow.
     heroName = heroName or "HELD",
-    -- VERIFIED spawn position (2026-08-09, corrected same day -- see
-    -- docs/progress.md): a live mGBA ground-truth capture of the REAL
-    -- starting room (not the earlier-mistaken pause-menu capture) read
-    -- the player's actual OAM position and converted it to screen space
-    -- (Pan Docs OAM offset convention) -- see rom_profiles.lua's
+    -- VERIFIED spawn position (see docs/progress.md): a live mGBA
+    -- ground-truth capture of the starting room (not the earlier-
+    -- mistaken pause-menu capture) read the player's actual OAM
+    -- position and converted it to screen space (Pan Docs OAM offset
+    -- convention) -- see rom_profiles.lua's
     -- `playerSprite.screenX/screenY`.
     player = Player.new(0, 0),
-    -- VERIFIED fresh-character stats (see module doc comment) -- a real
-    -- data model, not placeholder numbers; the same fields this
-    -- project's own dynamic tracing read live out of a fresh save.
-    -- Overridden by `savedStats` (task P6, "Weiterspielen") when given.
+    -- VERIFIED fresh-character stats (see module doc comment) -- a
+    -- data model, not placeholder numbers; the same fields dynamic
+    -- tracing read live out of a fresh save. Overridden by
+    -- `savedStats` ("Weiterspielen") when given.
     stats = Stats.new(savedStats or { curLP = 19, maxLP = 19, curMP = 6, maxMP = 6, level = 1, gold = 50 }),
-    -- Real inventory/equipment data model (task P5, see Inventory.lua's
-    -- own doc comment) -- built once here (not by Menu.lua, which used
-    -- to decode WeaponTable itself just to find one name) so equip/item
-    -- state persists across opening and closing the real menu.
+    -- Inventory/equipment data model (see Inventory.lua's doc comment)
+    -- -- built once here (not by Menu.lua, which used to decode
+    -- WeaponTable itself just to find one name) so equip/item state
+    -- persists across opening and closing the menu.
     inventory = Inventory.new(romData, profile),
-    -- Real contact-hit reaction: knockback + invincibility flicker
-    -- (task #12, see KnockbackFlicker.lua's own doc comment for the
-    -- precise live-captured schedule this reproduces).
+    -- Contact-hit reaction: knockback + invincibility flicker (see
+    -- KnockbackFlicker.lua's doc comment for the precise live-captured
+    -- schedule this reproduces).
     knockback = KnockbackFlicker.new(),
-    -- VERIFIED position (2026-08-09, corrected -- see rom_profiles.lua's
-    -- `enemySprite.screenX/screenY`): the real creature blocking the
-    -- gate, read from the same corrected live capture as the player.
-    -- Real size set below once the profile's sprite data is available;
-    -- Enemy.new's own default (see Enemy.DEFAULT_WIDTH/HEIGHT) applies
+    -- VERIFIED position (see rom_profiles.lua's
+    -- `enemySprite.screenX/screenY`): the creature blocking the gate,
+    -- read from the same corrected live capture as the player. Size
+    -- set below once the profile's sprite data is available;
+    -- Enemy.new's default (see Enemy.DEFAULT_WIDTH/HEIGHT) applies
     -- otherwise. Drawn by default now (see enemyConfirmedVisible below)
     -- -- this is the real thing, not a placeholder.
     enemy = Enemy.new(0, 0),
     enemyConfirmedVisible = true,
-    -- Real hit-flash countdown (see rom_profiles.lua's `enemyHitFlash`)
-    -- -- real GB frames remaining to show the flashed palette sprite,
-    -- 0 = normal. Decremented once per Field:update (one real GB frame).
+    -- Hit-flash countdown (see rom_profiles.lua's `enemyHitFlash`) --
+    -- frames remaining to show the flashed palette sprite, 0 = normal.
+    -- Decremented once per Field:update (one GB frame).
     enemyFlashTimer = 0,
-    -- Real event/trigger system (see FIELD_EVENTS/EventSystem.lua) --
-    -- `enemyDefeated` is real state this instance owns and updates, not
-    -- a one-off queued flag; the event system reads it every step.
+    -- Event/trigger system (see FIELD_EVENTS/EventSystem.lua) --
+    -- `enemyDefeated` is state this instance owns and updates, not a
+    -- one-off queued flag; the event system reads it every step.
     enemyDefeated = false,
     events = EventSystem.new(FIELD_EVENTS),
   }, Field)
-  -- Bounds/collision fallback for when no real ROM is loaded (see the
-  -- `if romData and profile` block below for the real, profile-derived
-  -- values) -- uses the player's own generic single-tile default size,
-  -- not a guessed creature size.
+  -- Bounds/collision fallback for when no ROM is loaded (see the
+  -- `if romData and profile` block below for the profile-derived
+  -- values) -- uses the player's generic single-tile default size, not
+  -- a guessed creature size.
   self.playerBounds = { 0, 0, ROOM_W - self.player.width, PLAY_H - self.player.height }
   if romData and profile then
     self.font = Font.new(romData, profile)
