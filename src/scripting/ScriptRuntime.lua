@@ -417,89 +417,81 @@ ScriptRuntime.__index = ScriptRuntime
 --                             `RomScriptStream` it feeds the next
 --                             `:step()` call when that's needed.
 --   ctx.onTypewriterCommand(v) -- opcode 0x03.
---   ctx.isQueueBlocked()    -- opcode 0x00's own real WRAM `$D874`
---                             bit-0 gate. RETRACTED 2026-08-14, same
---                             day (task #86, re-verified with a DIRECT
+--   ctx.isQueueBlocked()    -- opcode 0x00's WRAM `$D874` bit-0 gate.
+--                             RETRACTED (re-verified with a direct
 --                             `$D874` watchpoint): the "actor-command
 --                             queue" story above does NOT hold -- bit 0
---                             never changes across a real, reproduced
+--                             never changes across a reproduced
 --                             ~200,000-step boss-defeat block, and the
---                             `$C5A0` table it depended on stays all-
---                             zero throughout. **CLOSED FOR REAL, same
---                             day**: that specific block turned out to
---                             be a COMPLETELY SEPARATE mechanism (not
---                             this gate at all) -- a periodic edge
---                             detector (`$1F35` selector `0x13` ->
---                             `$4BE0`, cached at `$C5AF`) that fires
---                             only once a real entity's own actor slot
---                             finishes despawning, which then directly
+--                             `$C5A0` table it depended on stays
+--                             all-zero throughout. CLOSED: that block
+--                             turned out to be a completely separate
+--                             mechanism -- a periodic edge detector
+--                             (`$1F35` selector `0x13` -> `$4BE0`,
+--                             cached at `$C5AF`) that fires only once
+--                             an entity's actor slot finishes
+--                             despawning, which then directly
 --                             overwrites the persistent script cursor
---                             (via `$24A7` -> `$31AD`, task #85) rather
---                             than going through this queue at all. Bit
---                             0 itself is still real and presumably
+--                             (via `$24A7` -> `$31AD`) rather than
+--                             going through this queue at all. Bit 0
+--                             itself is still real and presumably
 --                             gates something else -- just not this.
 --                             `isQueueBlocked` still defaults to "never
 --                             blocked" -- an honest gap, now for a
---                             DIFFERENT, still-unmodeled reason than
+--                             different, still-unmodeled reason than
 --                             originally documented. See
---                             `StandardScriptHandlers.queueGate`'s own
---                             doc comment and events.md's dated entries
---                             for the complete live trace.
---   ctx.onQueueIdle()       -- opcode 0x00's own real "queue empty" side
---                             effect.
---   ctx.onFlagTest(byte) -- opcode 0x08's own real per-item leaf (see
+--                             `StandardScriptHandlers.queueGate`'s doc
+--                             comment and events.md's entries for the
+--                             complete live trace.
+--   ctx.onQueueIdle()       -- opcode 0x00's "queue empty" side effect.
+--   ctx.onFlagTest(byte) -- opcode 0x08's per-item leaf (see
 --                             `StandardScriptHandlers
---                             .zeroTerminatedFlagList`'s own doc
---                             comment) -- defaults to "always NZ",
---                             matching the one real case this project
---                             has actually observed live.
---   ctx.onGatedByteLeaf(incrementedByte) -- opcodes 0xD4/0xD6/0xD8 (added
---                             2026-08-13, task #86) -- see
---                             `StandardScriptHandlers
---                             .gatedByteLeafCommand`'s own doc comment.
---   ctx.isFadeActive() -- optional gate for the same 3 opcodes' real
+--                             .zeroTerminatedFlagList`'s doc comment)
+--                             -- defaults to "always NZ", matching the
+--                             one case this project has actually
+--                             observed live.
+--   ctx.onGatedByteLeaf(incrementedByte) -- opcodes 0xD4/0xD6/0xD8 --
+--                             see `StandardScriptHandlers
+--                             .gatedByteLeafCommand`'s doc comment.
+--   ctx.isFadeActive() -- optional gate for the same 3 opcodes'
 --                             `$D86F` bit-1 check; defaults to "never
---                             active" (matches every real occurrence
---                             this project has observed live).
---   ctx.onFlagListExhausted(cursorAfterTerminator) -- opcode 0x08's own
---                             real "force next opcode to 1" leaf effect
---                             (added 2026-08-13, task #86) -- REQUIRED
---                             in practice (asserts loudly if reached
---                             without it): this project decisively
---                             disproved its own earlier guess at this
---                             continuation this same pass, so a caller
---                             needs real, live-traced knowledge of
---                             where it lands (see `BossSequenceInterpreter`
---                             for the one scene this project has that
+--                             active" (matches every occurrence this
+--                             project has observed live).
+--   ctx.onFlagListExhausted(cursorAfterTerminator) -- opcode 0x08's
+--                             "force next opcode to 1" leaf effect --
+--                             REQUIRED in practice (asserts loudly if
+--                             reached without it): this project
+--                             decisively disproved its own earlier
+--                             guess at this continuation, so a caller
+--                             needs live-traced knowledge of where it
+--                             lands (see `BossSequenceInterpreter` for
+--                             the one scene this project has that
 --                             knowledge for).
---   ctx.onPaletteFadeCompletionPhase(phase) -- opcode `0xF3` (WIRED
---                             2026-08-15, replacing the old generic
---                             `ctx.isPeekGateClear` default) -- optional
---                             observer for the real `$1ED7` selector-
---                             `0x10` 6-phase state machine that gates
---                             `0xF3`'s own real release -- see
---                             `StandardScriptHandlers
---                             .paletteFadeCompletionGate`'s own doc
+--   ctx.onPaletteFadeCompletionPhase(phase) -- opcode `0xF3` (replaces
+--                             the old generic `ctx.isPeekGateClear`
+--                             default) -- optional observer for the
+--                             `$1ED7` selector-`0x10` 6-phase state
+--                             machine that gates `0xF3`'s release --
+--                             see `StandardScriptHandlers
+--                             .paletteFadeCompletionGate`'s doc
 --                             comment. `0xF3` also reuses
---                             `ctx.isTriggerEventGateClear` directly for
---                             its own 2 real dual-gate phases (same real
---                             `$C8E0`/`$CEE8` cells as `0xFC`/`0xFD`/
---                             `0xE8`-`0xEB`).
+--                             `ctx.isTriggerEventGateClear` directly
+--                             for its own 2 dual-gate phases (same
+--                             `$C8E0`/`$CEE8` cells as
+--                             `0xFC`/`0xFD`/`0xE8`-`0xEB`).
 --   ctx.onPaletteFadeStep(outer, inner) -- opcodes `0xBC`/`0xBD`/`0xBE`
---                             (real, genuine conditional-halt family --
---                             WIRED 2026-08-15, reversing the 2026-08-14
---                             "deliberately unwired" call once the
---                             shared real pacing leaf `$1142` was fully
---                             disassembled) -- optional observer, fires
---                             on EVERY real call (halting or releasing)
---                             with the current real `$D499`/`$D49A`
---                             counter pair -- see `StandardScriptHandlers
---                             .paletteFadeCycle`'s own doc comment for
---                             the full real 6x11=66-tick pacing gate
---                             this models. All 3 opcodes share ONE
---                             private `{inner, outer}` state table
---                             (real WRAM `$D499`/`$D49A` are genuinely
---                             shared across all 3 real handlers).
+--                             (a genuine conditional-halt family, wired
+--                             once the shared pacing leaf `$1142` was
+--                             fully disassembled) -- optional observer,
+--                             fires on every call (halting or
+--                             releasing) with the current `$D499`/
+--                             `$D49A` counter pair -- see
+--                             `StandardScriptHandlers.paletteFadeCycle`'s
+--                             doc comment for the full 6x11=66-tick
+--                             pacing gate this models. All 3 opcodes
+--                             share one private `{inner, outer}` state
+--                             table (WRAM `$D499`/`$D49A` are genuinely
+--                             shared across all 3 handlers).
 function ScriptRuntime.new(opcodeEntries, ctx)
   ctx = ctx or {}
   local self = setmetatable({
@@ -507,91 +499,88 @@ function ScriptRuntime.new(opcodeEntries, ctx)
     queue = ctx.queue or ScriptContinuationQueue.new(),
     ctx = ctx,
     stepCount = 0,
-    opcodeCounts = {}, -- real per-opcode dispatch histogram, keyed by opcode byte
-    finished = false, -- true once a real fetch runs off the stream's own end
+    opcodeCounts = {}, -- per-opcode dispatch histogram, keyed by opcode byte
+    finished = false, -- true once a fetch runs off the stream's own end
     stopped = false, -- true once a genuinely undecoded opcode halted this run for good
     stopError = nil,
-    -- Real opcode-pinning state (2026-08-15, task #144/#145 -- see
-    -- ScriptInterpreter:step's own "PINNING" doc comment for the full
-    -- real evidence/mechanism this models). `nil` = normal dispatch
-    -- (read the next opcode from the stream, the overwhelming majority
-    -- case); an opcode byte = "keep re-dispatching THIS SAME real
-    -- opcode's handler regardless of what raw byte now sits at cursor"
-    -- -- set/cleared automatically from each `interp:step`'s own `pin`
-    -- return value, never touched directly by callers.
+    -- Opcode-pinning state (see ScriptInterpreter:step's "PINNING" doc
+    -- comment for the full evidence/mechanism this models). `nil` =
+    -- normal dispatch (read the next opcode from the stream, the
+    -- overwhelming majority case); an opcode byte = "keep
+    -- re-dispatching this same opcode's handler regardless of what raw
+    -- byte now sits at cursor" -- set/cleared automatically from each
+    -- `interp:step`'s own `pin` return value, never touched directly
+    -- by callers.
     pinnedOpcode = nil,
   }, ScriptRuntime)
   self:registerStandardHandlers()
   return self
 end
 
---- Registers every currently-decoded real handler this project has
--- against `self.interp`, wired to `self.ctx`'s own callbacks -- see
--- `ScriptRuntime.new`'s own doc comment for the full field list. Kept
--- as its own method (not inlined into `.new`) so a caller could, in
--- principle, build a runtime with a DIFFERENT handler set (e.g. a
+--- Registers every currently-decoded handler this project has against
+-- `self.interp`, wired to `self.ctx`'s callbacks -- see
+-- `ScriptRuntime.new`'s doc comment for the full field list. Kept as
+-- its own method (not inlined into `.new`) so a caller could, in
+-- principle, build a runtime with a different handler set (e.g. a
 -- future test double) without duplicating this whole registration list.
 function ScriptRuntime:registerStandardHandlers()
   local ctx = self.ctx
   local interp = self.interp
   local isDone = ctx.isTextboxDone or function() return true end
-  -- Real per-opcode gate for the actor-flag/state and queued-action
-  -- families (see StandardScriptHandlers.actorAction/.queuedAction's own
-  -- doc comments): the real condition is a live WRAM actor-record check
+  -- Per-opcode gate for the actor-flag/state and queued-action families
+  -- (see StandardScriptHandlers.actorAction/.queuedAction's doc
+  -- comments): the real condition is a live WRAM actor-record check
   -- this project has no runtime model of yet -- defaults to "always
   -- ready" (never blocks), the same explicitly-flagged simplification
-  -- those handlers' own doc comments already describe as honest, not a
-  -- claim about real timing.
+  -- those handlers already describe as honest, not a claim about real
+  -- timing.
   local isActorReady = ctx.isActorReady or function() return true end
-  -- Real gate for `0xAD`'s own "wait for any button" opcode (see
-  -- StandardScriptHandlers.waitForAnyButtonCommand's own doc comment)
-  -- -- defaults to "always pressed" (never blocks) when the caller
-  -- hasn't wired real Input.lua awareness yet, same "unwired gate
-  -- defaults open" convention as `isActorReady` above.
+  -- Gate for `0xAD`'s "wait for any button" opcode (see
+  -- StandardScriptHandlers.waitForAnyButtonCommand's doc comment) --
+  -- defaults to "always pressed" (never blocks) when the caller hasn't
+  -- wired real Input.lua awareness yet, same "unwired gate defaults
+  -- open" convention as `isActorReady` above.
   local isAnyButtonPressed = ctx.isAnyButtonPressed or function() return true end
-  -- Real evaluator for `0x8B`'s own "waypoint step" opcode (see
-  -- StandardScriptHandlers.waypointStepCommand's own doc comment) --
+  -- Evaluator for `0x8B`'s "waypoint step" opcode (see
+  -- StandardScriptHandlers.waypointStepCommand's doc comment) --
   -- defaults to "always done immediately" (never blocks, step index
-  -- irrelevant) when the caller hasn't wired the real, untraced
-  -- waypoint-table walk, same "unwired gate defaults open" convention
-  -- as `isActorReady`/`isAnyButtonPressed` above.
+  -- irrelevant) when the caller hasn't wired the untraced waypoint-
+  -- table walk, same "unwired gate defaults open" convention as
+  -- `isActorReady`/`isAnyButtonPressed` above.
   local advanceWaypointStep = ctx.advanceWaypointStep or function() return true, 0 end
-  -- Real evaluator for `0xAC`/`0xAE`'s own real phase-2 "2 markers
-  -- converged" check (see StandardScriptHandlers.wipeCompletionGate's
-  -- own doc comment) -- defaults to "always converged immediately"
-  -- (never blocks) when the caller hasn't wired the real, untraced
-  -- $D3A0/$D3A3 marker WRAM state, same "unwired gate defaults open"
-  -- convention as `isActorReady`/`isAnyButtonPressed` above.
+  -- Evaluator for `0xAC`/`0xAE`'s phase-2 "2 markers converged" check
+  -- (see StandardScriptHandlers.wipeCompletionGate's doc comment) --
+  -- defaults to "always converged immediately" (never blocks) when the
+  -- caller hasn't wired the untraced $D3A0/$D3A3 marker WRAM state,
+  -- same "unwired gate defaults open" convention as
+  -- `isActorReady`/`isAnyButtonPressed` above.
   local isWipeMarkerConverged = ctx.isWipeMarkerConverged or function() return true end
 
-  -- `0x80` (added 2026-08-14, task 10, "die 6 $02AB-Geschwister
-  -- wirklich lösen" -- CRACKING the whole-corpus scan's own longest-
-  -- standing known-hard opcode): `$02AB` (the leaf this opcode's own
-  -- real group depends on) turned out to be a plain read of the
-  -- PLAYER's own real facing-direction byte (`$C240`'s low nibble --
-  -- see `EntityStructLayout.lua`'s own `PLAYER_FACING_BIT` doc
-  -- comment for the complete live-trace evidence), NOT an unmodelable
-  -- leaf. Registered here explicitly (still excluded from the generic
-  -- sweep below, but for a DIFFERENT reason now -- it needs this
-  -- specific dynamic-group wiring, not a blanket skip) using
-  -- `.actorAction`'s own existing dynamic-`group`-as-function support:
-  -- `ctx.getPlayerFacing()` (optional, defaults to `"up"`, matching
-  -- this project's own already-independently-verified
-  -- `Player.DEFAULT_FACING`) is looked up in the real
-  -- `EntityStructLayout.PLAYER_FACING_BIT` table and combined with
-  -- the real fixed `+0x90` offset the ROM's own code applies.
-  -- Shared by 0x80 and 0x81 below (factored out 2026-08-14 when 0x81
-  -- turned out to need the SAME safe facing lookup, just combined
-  -- differently afterward): resolves `ctx.getPlayerFacing()` to a real
-  -- facing STRING, coercing anything missing/unrecognized to the
-  -- documented `"up"` default (matching `Player.DEFAULT_FACING`) rather
-  -- than asserting. SELF-CAUGHT BUG this guards against: a generic
-  -- caller (e.g. this project's own whole-corpus scan tool) may supply
-  -- a stub `ctx.getPlayerFacing` that returns a non-facing placeholder
-  -- (its own generic `__index` stub returns `true` for every unset
-  -- callback, regardless of that callback's own real return type -- the
-  -- SAME crash class already caught and fixed twice earlier this same
-  -- session for `twoBitFieldCommand`/`threeWayFlagBitCommand`).
+  -- `0x80` (cracking the whole-corpus scan's longest-standing
+  -- known-hard opcode): `$02AB` (the leaf this opcode's group depends
+  -- on) turned out to be a plain read of the player's facing-direction
+  -- byte (`$C240`'s low nibble -- see `EntityStructLayout.lua`'s
+  -- `PLAYER_FACING_BIT` doc comment for the complete live-trace
+  -- evidence), not an unmodelable leaf. Registered here explicitly
+  -- (still excluded from the generic sweep below, but for a different
+  -- reason now -- it needs this specific dynamic-group wiring, not a
+  -- blanket skip) using `.actorAction`'s existing dynamic-`group`-
+  -- as-function support: `ctx.getPlayerFacing()` (optional, defaults
+  -- to `"up"`, matching this project's already-independently-verified
+  -- `Player.DEFAULT_FACING`) is looked up in the
+  -- `EntityStructLayout.PLAYER_FACING_BIT` table and combined with the
+  -- fixed `+0x90` offset the ROM's code applies.
+  -- Shared by 0x80 and 0x81 below (0x81 needs the same safe facing
+  -- lookup, just combined differently afterward): resolves
+  -- `ctx.getPlayerFacing()` to a facing string, coercing anything
+  -- missing/unrecognized to the documented `"up"` default (matching
+  -- `Player.DEFAULT_FACING`) rather than asserting. Guards against a
+  -- generic caller (e.g. this project's whole-corpus scan tool)
+  -- supplying a stub `ctx.getPlayerFacing` that returns a non-facing
+  -- placeholder (its generic `__index` stub returns `true` for every
+  -- unset callback, regardless of that callback's real return type --
+  -- the same crash class already caught and fixed twice earlier for
+  -- `twoBitFieldCommand`/`threeWayFlagBitCommand`).
   local function resolvePlayerFacing()
     local facing = ctx.getPlayerFacing and ctx.getPlayerFacing()
     if not EntityStructLayout.PLAYER_FACING_BIT[facing] then
