@@ -1,29 +1,29 @@
 -- A stationary field enemy blocking a chokepoint -- models this
--- project's own live-verified finding (docs/reverse-engineering/rom-
--- map.md "Breakthrough"): the starting room's creature is a real,
--- enforced collision blocker, not scenery, and deals real contact
--- damage while the player is adjacent to it.
+-- project's live-verified finding (docs/reverse-engineering/rom-
+-- map.md "Breakthrough"): the starting room's creature is an enforced
+-- collision blocker, not scenery, and deals contact damage while the
+-- player is adjacent to it.
 --
 -- What's VERIFIED and modeled faithfully: real-time contact combat (no
 -- separate battle screen), a hard collision block while alive, periodic
 -- contact damage roughly once per second (CONTACT_TICK below), and the
--- attack button itself (A, not B -- re-verified 2026-08-09 by actually
--- fighting the real boss live under mGBA with the corrected room/reach
--- sequence, see docs/progress.md; this project's own rom-map.md
--- "Breakthrough" entry had already found this but the engine wasn't
--- updated to match until this pass).
+-- attack button itself (A, not B -- re-verified by actually fighting
+-- the boss live under mGBA with the corrected room/reach sequence, see
+-- docs/progress.md; this project's rom-map.md "Breakthrough" entry had
+-- already found this but the engine wasn't updated to match until this
+-- pass).
 --
--- What's a reasonable, clearly-labeled CHOICE, not a decoded ROM fact:
--- the exact HP/damage numbers (the real `$50AC` formula's operands are
--- still UNKNOWN, see rom-map.md "Player stats struct and combat").
--- HP_TO_CLEAR is now grounded in a real, reproduced measurement, not a
--- round-number guess: fighting the real boss with a fixed, steady press
--- cadence (A held 6 frames, released 10) took exactly 19 presses before
--- its death animation started. This is NOT necessarily "19 HP" in the
--- ROM's own terms (a press and a landed hit aren't provably 1:1 -- the
--- real attack could have an animation lock this project hasn't measured
--- against press timing), but it's a real, falsifiable, reproduced
--- number under a stated methodology, replacing a plain guess.
+-- What's a reasonable, clearly-labeled choice, not a decoded ROM fact:
+-- the exact HP/damage numbers (the `$50AC` formula's operands are still
+-- unknown, see rom-map.md "Player stats struct and combat"). HP_TO_CLEAR
+-- is now grounded in a reproduced measurement, not a round-number
+-- guess: fighting the boss with a fixed, steady press cadence (A held
+-- 6 frames, released 10) took exactly 19 presses before its death
+-- animation started. This is not necessarily "19 HP" in the ROM's own
+-- terms (a press and a landed hit aren't provably 1:1 -- the attack
+-- could have an animation lock this project hasn't measured against
+-- press timing), but it's a falsifiable, reproduced number under a
+-- stated methodology, replacing a plain guess.
 
 local Stats = require("src.entities.Stats")
 local FixedStep = require("src.core.FixedStep")
@@ -33,59 +33,55 @@ local EnemyMovementInterpreter = require("src.entities.EnemyMovementInterpreter"
 local Enemy = {}
 Enemy.__index = Enemy
 
--- VERIFIED (2026-08-09) real movement, not an invented/empirical
--- pattern: this project's earlier engine had the creature frozen in
--- place, which real live play does not match -- pointed out directly
--- ("noch bewegt sich nichts... bassierend auf den Daten des ROMs").
--- Traced the real enemy's own live OAM position (screen = OAM - 8/-16,
--- same convention as the player) with NO player input at all, sampling
--- every single frame for 700 frames. Real result: the position holds
--- perfectly still, then jumps directly to a new position (no
--- interpolation) -- 32 such waypoints captured. Independently CROSS-
--- CHECKED against actual rendered pixels, not just memory reads (direct
--- user suspicion that this was a sampling artifact -- "die boss
--- positionen springen (liegt wahrscheinli an dem screenshot
--- intervallen)"): screenshotted every single individual frame across a
--- hold-to-jump boundary and pixel-diffed them. Result: 4 fully
--- pixel-identical frames, then one frame whose diff bounding box is
--- exactly the enemy sprite's own box, then pixel-identical again --
--- this is the literal displayed picture holding still and jumping, not
--- a gap between samples.
+-- VERIFIED real movement, not an invented/empirical pattern: this
+-- project's earlier engine had the creature frozen in place, which real
+-- live play does not match -- pointed out directly by a user report
+-- that the boss should move based on ROM data. Traced the enemy's live
+-- OAM position (screen = OAM - 8/-16, same convention as the player)
+-- with no player input at all, sampling every single frame for 700
+-- frames. Result: the position holds perfectly still, then jumps
+-- directly to a new position (no interpolation) -- 32 such waypoints
+-- captured. Independently cross-checked against actual rendered
+-- pixels, not just memory reads (a user suspicion that this was a
+-- sampling artifact of the screenshot interval): screenshotted every
+-- individual frame across a hold-to-jump boundary and pixel-diffed
+-- them. Result: 4 fully pixel-identical frames, then one frame whose
+-- diff bounding box is exactly the enemy sprite's own box, then
+-- pixel-identical again -- this is the literal displayed picture
+-- holding still and jumping, not a gap between samples.
 --
 -- Frame-to-frame (dx, dy) deltas repeat as a clean 8-step cycle (a
 -- flying/hovering patrol pattern), not noise or a random walk:
 --   (+20,+7) (-30,+7) (+17,+5) (-31,0) (+17,-5) (-30,-7) (+20,-7) (-27,-3)
--- **Per-step duration is itself real, measured data, not a single
--- assumed constant** (direct user insight: "vielleicht gibt es... auch
--- ein time delta... aber nur eine Vermutung" -- correct, and this
--- project's own earlier capture already contained the answer, just
--- oversimplified away)...
+-- Per-step duration is itself measured data, not a single assumed
+-- constant (a user insight that there might be a time delta too --
+-- correct, and this project's earlier capture already contained the
+-- answer, just oversimplified away)...
 --
--- CORRECTED (2026-08-12, direct user report: "der boss bewegungspattern
--- ist nicht 100% korrekt"): the 8-step table below (and the whole
--- "forward then mirrored-negated return leg" model) turned out to be
--- built from a mis-tracked live capture -- re-verified fresh via mgba,
--- this time reading every real OAM entry belonging to the creature (not
--- assuming a single 2x2/4-tile sprite the way the player/Willy are: the
--- real gate creature uses TWELVE real OAM entries, tracked here both by
--- a single stable slot AND by the full 12-entry centroid, which agree
--- exactly) over a MUCH longer 6000-real-frame window (the original pass
--- only covered 700 frames -- not long enough to ever see this cycle
--- close). Real result: the creature's true patrol is a real, GENUINELY
--- CLOSED 33-step cycle (825 real frames, each step 25 frames, same
--- timing as before) -- summing to EXACTLY (0,0), confirmed by the
--- centroid position at real frame 950 matching real frame 125 (one full
--- period earlier) to the pixel, and by 9+ further consecutive steps
--- matching one period later still. No "boundary bounce"/correction hop
--- and no invented mirror-return are needed at all -- the real cycle
--- already returns to its own start on its own; the previous model's
--- own "8 deltas don't sum to (0,0), so mirror them back" reasoning was
--- a real, honestly-reported observation at the time, but from a
--- 700-frame window that was simply too short to catch the true, longer
--- real period. HONEST LIMIT UNCHANGED: the underlying ROM routine/table
--- was still not traced back to a ROM address this pass -- this is the
--- real, now much more completely captured *output*, not the decoded
--- *algorithm*.
+-- CORRECTED (direct user report that the boss movement pattern wasn't
+-- 100% correct): the 8-step table below (and the whole "forward then
+-- mirrored-negated return leg" model) turned out to be built from a
+-- mis-tracked live capture -- re-verified fresh via mgba, this time
+-- reading every OAM entry belonging to the creature (not assuming a
+-- single 2x2/4-tile sprite the way the player/Willy are: the gate
+-- creature uses twelve OAM entries, tracked here both by a single
+-- stable slot and by the full 12-entry centroid, which agree exactly)
+-- over a much longer 6000-frame window (the original pass only covered
+-- 700 frames -- not long enough to ever see this cycle close). Result:
+-- the creature's true patrol is a genuinely closed 33-step cycle (825
+-- frames, each step 25 frames, same timing as before) -- summing to
+-- exactly (0,0), confirmed by the centroid position at frame 950
+-- matching frame 125 (one full period earlier) to the pixel, and by 9+
+-- further consecutive steps matching one period later still. No
+-- "boundary bounce"/correction hop and no invented mirror-return are
+-- needed at all -- the cycle already returns to its own start on its
+-- own; the previous model's "8 deltas don't sum to (0,0), so mirror
+-- them back" reasoning was an honestly-reported observation at the
+-- time, but from a 700-frame window that was simply too short to catch
+-- the true, longer period. HONEST LIMIT UNCHANGED: the underlying ROM
+-- routine/table was still not traced back to a ROM address this pass --
+-- this is the now much more completely captured *output*, not the
+-- decoded *algorithm*.
 Enemy.MOVEMENT_CYCLE = {
   { dx = 4, dy = 7 }, { dx = 6, dy = 7 }, { dx = 7, dy = 5 }, { dx = 7, dy = 0 },
   { dx = 7, dy = -5 }, { dx = 6, dy = -8 }, { dx = 4, dy = -8 }, { dx = 1, dy = 2 },
