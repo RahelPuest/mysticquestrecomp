@@ -594,8 +594,8 @@ function ScriptRuntime:registerStandardHandlers()
       return EntityStructLayout.PLAYER_FACING_BIT[resolvePlayerFacing()] + 0x90
     end, isActorReady, ctx.onActorAction))
 
-  -- `0x81` (CRACKED 2026-08-14, direct continuation of the same $02AB
-  -- investigation): same leaf (`$02AB`, via `resolvePlayerFacing`
+  -- `0x81` (continuation of the same $02AB investigation): same leaf
+  -- (`$02AB`, via `resolvePlayerFacing`
   -- above) but combined through `$29E4`'s "opposite facing" bit trick
   -- before the fixed `OR 0xB0` -- see `ScriptOpcodeTable
   -- .ACTOR_ACTION_HANDLER_ADDRESS_81`'s doc comment for the full
@@ -1006,63 +1006,56 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.byteWordCommand(ctx.onByteWordCommand))
   interp:registerHandler(ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS,
     StandardScriptHandlers.twoByteCommand(ctx.onTwoByteCommand))
-  -- `0xCB` ($392C, added 2026-08-13, task #82): the SAME real 2-operand-
-  -- byte "read into DE, call a leaf, always continue" SHAPE as
-  -- `TWO_BYTE_COMMAND_HANDLER_ADDRESS` above, but a genuinely DIFFERENT
-  -- real target ($3937, untraced) -- gets its OWN `ctx` callback rather
-  -- than sharing `ctx.onTwoByteCommand`, since conflating two different
-  -- real leaf routines under one callback would misrepresent them as
-  -- the same real action.
+  -- `0xCB` ($392C): the same 2-operand-byte "read into DE, call a
+  -- leaf, always continue" shape as `TWO_BYTE_COMMAND_HANDLER_ADDRESS`
+  -- above, but a genuinely different target ($3937, untraced) -- gets
+  -- its own `ctx` callback rather than sharing `ctx.onTwoByteCommand`,
+  -- since conflating two different leaf routines under one callback
+  -- would misrepresent them as the same action.
   interp:registerHandler(ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CB,
     StandardScriptHandlers.twoByteCommand(ctx.onTwoByteCommandCB))
-  -- `0xC9`/`0xCA` (added 2026-08-13, task #86): same family as `0xCB`
-  -- above, own dedicated callbacks (different fixed `BC` each -- see
-  -- ScriptOpcodeTable's own doc comment).
+  -- `0xC9`/`0xCA`: same family as `0xCB` above, own dedicated callbacks
+  -- (different fixed `BC` each -- see ScriptOpcodeTable's doc comment).
   interp:registerHandler(ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_C9,
     StandardScriptHandlers.twoByteCommand(ctx.onTwoByteCommandC9))
   interp:registerHandler(ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CA,
     StandardScriptHandlers.twoByteCommand(ctx.onTwoByteCommandCA))
-  -- `0xF3` (WIRED 2026-08-15, replacing the old generic
-  -- `ctx.isPeekGateClear` default with the REAL, fully-disassembled
-  -- release condition -- `$1ED7` selector `0x10`'s own 6-phase `$D499`
-  -- state machine, see `ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER
-  -- _ADDRESS_F3`'s own doc comment). Reuses `ctx.isTriggerEventGateClear`
-  -- directly for the 2 real dual-gate phases (the SAME real `$C8E0`/
-  -- `$CEE8` cells `0xFC`/`0xFD`/`0xE8`-`0xEB` already model) -- a fresh
-  -- private `{phase=0}` state table per registration (this real
-  -- mechanism is genuinely per-occurrence, unlike the palette-fade
-  -- family's own shared-across-occurrences state).
-  -- `extraBytesOnRelease=2` (task #126, 2026-08-15): a live mGBA
-  -- execution-address trace found 0xF3's own real total instruction
-  -- length is 5 bytes (2 peeked + 2 MORE, real bytes `14 00` right
-  -- after the peek, both silently consumed by `$1ED7` selector-0x10's
-  -- own internal work, never re-entering the top-level dispatch) --
-  -- see `.peekTwoByteGate`'s own doc comment for the full byte-exact
-  -- evidence. This is what RESOLVES the long-standing `0x4798` desync.
+  -- `0xF3` (replacing the old generic `ctx.isPeekGateClear` default
+  -- with the fully-disassembled release condition -- `$1ED7` selector
+  -- `0x10`'s 6-phase `$D499` state machine, see
+  -- `ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3`'s doc
+  -- comment). Reuses `ctx.isTriggerEventGateClear` directly for the 2
+  -- dual-gate phases (the same `$C8E0`/`$CEE8` cells `0xFC`/`0xFD`/
+  -- `0xE8`-`0xEB` already model) -- a fresh private `{phase=0}` state
+  -- table per registration (this mechanism is genuinely per-occurrence,
+  -- unlike the palette-fade family's shared-across-occurrences state).
+  -- `extraBytesOnRelease=2`: a live mGBA execution-address trace found
+  -- 0xF3's total instruction length is 5 bytes (2 peeked + 2 more,
+  -- bytes `14 00` right after the peek, both silently consumed by
+  -- `$1ED7` selector-0x10's internal work, never re-entering the
+  -- top-level dispatch) -- see `.peekTwoByteGate`'s doc comment for the
+  -- full byte-exact evidence. This is what resolves the long-standing
+  -- `0x4798` desync.
   interp:registerHandler(ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F3,
     StandardScriptHandlers.peekTwoByteGate(ctx.onPeekTwoByteGate,
       StandardScriptHandlers.paletteFadeCompletionGate({}, ctx.isTriggerEventGateClear, ctx.onPaletteFadeCompletionPhase),
       2))
-  -- `0xF4` (added 2026-08-13, task #86): real selector `0x0F` (not
-  -- `0x10`) remains untraced -- keeps the old, honestly-unwired
-  -- `ctx.isPeekGateClear` generic default (see
-  -- `StandardScriptHandlers.peekTwoByteGate`'s own doc comment) rather
-  -- than guessing it shares `0xF3`'s own real sequence.
+  -- `0xF4`: selector `0x0F` (not `0x10`) remains untraced -- keeps the
+  -- old, honestly-unwired `ctx.isPeekGateClear` generic default (see
+  -- `StandardScriptHandlers.peekTwoByteGate`'s doc comment) rather than
+  -- guessing it shares `0xF3`'s sequence.
   interp:registerHandler(ScriptOpcodeTable.PEEK_TWO_BYTE_GATE_HANDLER_ADDRESS_F4,
     StandardScriptHandlers.peekTwoByteGate(ctx.onPeekTwoByteGate, ctx.isPeekGateClear))
-  -- `0xAC`/`0xAE` (added 2026-08-15, direct follow-up "laut website
-  -- sind noch 2 offen. beende die auch", task #152's own final pair):
-  -- real 8-phase `$D499` state machines -- see
-  -- `StandardScriptHandlers.wipeCompletionGate`'s own doc comment for
-  -- the complete real disassembly. Each gets its OWN private `{}` state
-  -- table (real per-occurrence state, same precedent as `0xF3`'s own
-  -- `paletteFadeCompletionGate` registration above) and its OWN
-  -- `onPhase` observer, but SHARE `ctx.isTriggerEventGateClear` for
-  -- their real dual-gate phases (the SAME real `$C8E0`/`$CEE8` cells)
-  -- and `isWipeMarkerConverged` for their real phase-2 marker check
-  -- (structurally identical between `0xAC`/`0xAE`; the ONE real
-  -- difference, phase 3/5's own opaque leaf work, doesn't affect this
-  -- gate's own shape).
+  -- `0xAC`/`0xAE`: 8-phase `$D499` state machines -- see
+  -- `StandardScriptHandlers.wipeCompletionGate`'s doc comment for the
+  -- complete disassembly. Each gets its own private `{}` state table
+  -- (per-occurrence state, same precedent as `0xF3`'s
+  -- `paletteFadeCompletionGate` registration above) and its own
+  -- `onPhase` observer, but share `ctx.isTriggerEventGateClear` for
+  -- their dual-gate phases (the same `$C8E0`/`$CEE8` cells) and
+  -- `isWipeMarkerConverged` for their phase-2 marker check
+  -- (structurally identical between `0xAC`/`0xAE`; the one difference,
+  -- phase 3/5's opaque leaf work, doesn't affect this gate's shape).
   interp:registerHandler(ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AC,
     StandardScriptHandlers.completionPredicateCommand(
       StandardScriptHandlers.wipeCompletionGate({}, ctx.isTriggerEventGateClear, isWipeMarkerConverged, ctx.onWipeCompletionPhaseAC)))
@@ -1070,71 +1063,68 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.completionPredicateCommand(
       StandardScriptHandlers.wipeCompletionGate({}, ctx.isTriggerEventGateClear, isWipeMarkerConverged, ctx.onWipeCompletionPhaseAE)))
 
-  -- CORRECTED/EXTENDED (2026-08-13, direct follow-up to a real, live
-  -- shadow-run against the actual boss-defeat script bytes: the FIRST
-  -- opcode this project's own hand-picked registration list above
-  -- didn't cover turned out to be `0x48`, a real, already-NAMED
-  -- `QUEUED_ACTION_HANDLER_ADDRESS_48` constant -- i.e. this runtime was
-  -- stopping on opcodes this project HAS already decoded the dispatch
-  -- shape for, just because nothing had registered them here yet, not
-  -- because they're genuinely undecoded). Real opcode FAMILIES sharing
-  -- one handler shape (actor-action, queued-action, trigger-event, sound
-  -- -param, word-command) are now registered GENERICALLY, by scanning
-  -- every matching `ScriptOpcodeTable.*_HANDLER_ADDRESS*` constant --
-  -- picks up every opcode this project has currently decoded into that
-  -- family (and any future addition) without a hand-maintained,
-  -- easily-stale list here.
+  -- Found via a live shadow-run against the actual boss-defeat script
+  -- bytes: the first opcode this project's hand-picked registration
+  -- list above didn't cover turned out to be `0x48`, an already-named
+  -- `QUEUED_ACTION_HANDLER_ADDRESS_48` constant -- i.e. this runtime
+  -- was stopping on opcodes this project has already decoded the
+  -- dispatch shape for, just because nothing had registered them here
+  -- yet, not because they're genuinely undecoded. Opcode families
+  -- sharing one handler shape (actor-action, queued-action,
+  -- trigger-event, sound-param, word-command) are now registered
+  -- generically, by scanning every matching
+  -- `ScriptOpcodeTable.*_HANDLER_ADDRESS*` constant -- picks up every
+  -- opcode this project has currently decoded into that family (and
+  -- any future addition) without a hand-maintained, easily-stale list
+  -- here.
   --
-  -- HONEST LIMIT: the real, specific "group" value each actor-action
-  -- opcode's own real ROM code bakes in (see ScriptOpcodeTable.lua's own
+  -- HONEST LIMIT: the specific "group" value each actor-action
+  -- opcode's ROM code bakes in (see ScriptOpcodeTable.lua's
   -- per-constant `-- group 0xNN` comments) is only recorded there as a
-  -- Lua COMMENT, not machine-readable data -- this generic pass has no
+  -- Lua comment, not machine-readable data -- this generic pass has no
   -- way to look it up per-address, so `onActorAction`/`onQueuedAction`
-  -- fire with `group = nil` here (a real, honest "unknown" marker, not a
+  -- fire with `group = nil` here (an honest "unknown" marker, not a
   -- fabricated placeholder value) rather than reproducing a specific
-  -- opcode's own real group. A caller that needs the real per-opcode
-  -- group should register that one address directly (see
-  -- `:registerHandler`, exposed via `self.interp`) with a real, specific
-  -- `StandardScriptHandlers.actorAction(<real group>, ...)` call instead.
+  -- opcode's group. A caller that needs the per-opcode group should
+  -- register that one address directly (see `:registerHandler`,
+  -- exposed via `self.interp`) with a specific
+  -- `StandardScriptHandlers.actorAction(<group>, ...)` call instead.
   for key, addr in pairs(ScriptOpcodeTable) do
     if type(addr) == "number" then
       if key:match("^ACTOR_ACTION_HANDLER_ADDRESS_80$") then
-        -- UPDATED 2026-08-14 (task 10, "$02AB wirklich lösen"):
-        -- already explicitly registered above with its real, live,
-        -- dynamic group (the player's own real facing direction, see
-        -- that registration's own doc comment) -- excluded here only
-        -- so this generic sweep doesn't overwrite that more precise
+        -- Already explicitly registered above with its live, dynamic
+        -- group (the player's facing direction, see that
+        -- registration's doc comment) -- excluded here only so this
+        -- generic sweep doesn't overwrite that more precise
         -- registration with a group-less generic one, same pattern as
         -- the `_7B$`/`WORD_COMMAND_HANDLER_ADDRESS_EF$` exclusions
-        -- below. No longer "documented-dynamic, unmodelable" -- that
-        -- was the OLD, since-corrected reasoning.
+        -- below.
       elseif key:match("^ACTOR_ACTION_HANDLER_ADDRESS_81$") then
-        -- CRACKED 2026-08-14 (direct continuation of the 0x80 fix,
-        -- same session, "gamemap absolute prio" pass): already
-        -- explicitly registered above with its real, live, dynamic
-        -- group (opposite-facing | 0xB0, see that registration's own
-        -- doc comment) -- excluded here for the SAME reason as the
-        -- `_80$` exclusion right above: so this generic sweep doesn't
+        -- Already explicitly registered above with its live, dynamic
+        -- group (opposite-facing | 0xB0, see that registration's doc
+        -- comment) -- excluded here for the same reason as the `_80$`
+        -- exclusion right above: so this generic sweep doesn't
         -- overwrite it with a group-less generic registration.
       elseif key:match("^ACTOR_ACTION_HANDLER_ADDRESS_7B$") then
-        -- SELF-CAUGHT BUG, fixed 2026-08-14 (task-11 quality pass, "kommentiere
-        -- alles"): opcode `0x7B` was originally discovered TWICE, in two
-        -- separate sessions -- first as a plain Family-A member (this old
-        -- constant, `$157C`, registered generically with a FIXED, discarded
-        -- group and NO real `param`), then again the SAME day as part of the
-        -- `actorActionWithReadinessParam` family (`ACTOR_ACTION_WITH_
-        -- READINESS_PARAM_HANDLER_ADDRESS_7B`, same real address, exposing
-        -- the real computed `param` -- see that function's own doc comment).
-        -- This loop used to ALSO match the old constant and silently
-        -- OVERWRITE the newer, more precise explicit registration (which
-        -- runs earlier in this same function) -- LIVE-VERIFIED: before this
-        -- fix, dispatching opcode `0x7B` fired `ctx.onActorAction` (the
-        -- generic, information-losing callback), never `ctx
-        -- .onActorActionWithReadinessParam` (the correct, already-wired
-        -- one). Excluded here (same pattern as the `_80$`/`WORD_COMMAND_
-        -- HANDLER_ADDRESS_EF$` exclusions above) so the explicit, more
-        -- precise registration wins. The old constant is kept, not deleted
-        -- (existing tests assert it against the real opcode-table bytes).
+        -- Self-caught bug: opcode `0x7B` was originally discovered
+        -- twice, in two separate sessions -- first as a plain Family-A
+        -- member (this old constant, `$157C`, registered generically
+        -- with a fixed, discarded group and no real `param`), then
+        -- again as part of the `actorActionWithReadinessParam` family
+        -- (`ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_7B`,
+        -- same address, exposing the computed `param` -- see that
+        -- function's doc comment). This loop used to also match the
+        -- old constant and silently overwrite the newer, more precise
+        -- explicit registration (which runs earlier in this same
+        -- function) -- live-verified: before this fix, dispatching
+        -- opcode `0x7B` fired `ctx.onActorAction` (the generic,
+        -- information-losing callback), never `ctx
+        -- .onActorActionWithReadinessParam` (the correct, already-
+        -- wired one). Excluded here (same pattern as the `_80$`/
+        -- `WORD_COMMAND_HANDLER_ADDRESS_EF$` exclusions above) so the
+        -- explicit, more precise registration wins. The old constant
+        -- is kept, not deleted (existing tests assert it against the
+        -- opcode-table bytes).
       elseif key:match("^ACTOR_ACTION_HANDLER_ADDRESS_") then
         interp:registerHandler(addr, StandardScriptHandlers.actorAction(nil, isActorReady, ctx.onActorAction))
       elseif key:match("^QUEUED_ACTION_HANDLER_ADDRESS_") then
@@ -1144,17 +1134,16 @@ function ScriptRuntime:registerStandardHandlers()
       elseif key:match("^SOUND_PARAM") then
         interp:registerHandler(addr, StandardScriptHandlers.soundParam(ctx.onSoundParam))
       elseif key:match("^WORD_COMMAND_HANDLER_ADDRESS_EF$") then
-        -- SELF-CAUGHT BUG, fixed 2026-08-14 (whole-corpus scan
-        -- follow-up): this generic sweep used to also pick up
-        -- `WORD_COMMAND_HANDLER_ADDRESS_EF` and silently OVERWRITE the
+        -- Self-caught bug: this generic sweep used to also pick up
+        -- `WORD_COMMAND_HANDLER_ADDRESS_EF` and silently overwrite the
         -- more precise, explicit `TILE_CURSOR_SET_HANDLER_ADDRESS_EF`
-        -- registration above (same real address, `$0E7F`) with the
-        -- less precise generic `wordCommand` handler, since this loop
-        -- runs AFTER that explicit call -- meaning the new handler was
-        -- dead code the whole time it existed. Excluded here (same
-        -- pattern as the `ACTOR_ACTION_HANDLER_ADDRESS_80` exclusion
-        -- above) so the explicit registration actually wins. See
-        -- `ScriptOpcodeTable.lua`'s own `WORD_COMMAND_HANDLER_ADDRESS_EF`
+        -- registration above (same address, `$0E7F`) with the less
+        -- precise generic `wordCommand` handler, since this loop runs
+        -- after that explicit call -- meaning the new handler was dead
+        -- code the whole time it existed. Excluded here (same pattern
+        -- as the `ACTOR_ACTION_HANDLER_ADDRESS_80` exclusion above) so
+        -- the explicit registration actually wins. See
+        -- `ScriptOpcodeTable.lua`'s `WORD_COMMAND_HANDLER_ADDRESS_EF`
         -- doc comment for the full story.
       elseif key:match("^WORD_COMMAND_HANDLER_ADDRESS") then
         interp:registerHandler(addr, StandardScriptHandlers.wordCommand(ctx.onWordCommand))
@@ -1163,13 +1152,13 @@ function ScriptRuntime:registerStandardHandlers()
   end
 end
 
---- One real per-tick step. Safe to call every real game frame (or in a
--- tight burst, see `:run()`) -- once a real, still-undecoded opcode is
--- reached (or any other Lua error), captures it into `self.stopped`/
+--- One per-tick step. Safe to call every game frame (or in a tight
+-- burst, see `:run()`) -- once a still-undecoded opcode is reached (or
+-- any other Lua error), captures it into `self.stopped`/
 -- `self.stopError` and becomes a permanent no-op from then on (never
 -- re-throws), so a caller doesn't need its own pcall boilerplate. The
--- failure is real, inspectable state, not swallowed -- see this
--- module's own "no silent fallbacks" note above.
+-- failure is inspectable state, not swallowed -- see this module's
+-- "no silent fallbacks" note above.
 function ScriptRuntime:step(stream, cursor)
   if self.stopped or self.finished then
     return cursor
@@ -1187,20 +1176,19 @@ function ScriptRuntime:step(stream, cursor)
   self.lastOpcode = opcode
   self.lastKind = kind
   self.lastCursor = newCursorOrErr
-  -- Real opcode-pinning (see ScriptInterpreter:step's own doc comment):
-  -- `pin==true` keeps this SAME opcode active for the next real
-  -- dispatch; anything else releases back to normal stream-driven
-  -- opcode selection.
+  -- Opcode-pinning (see ScriptInterpreter:step's doc comment):
+  -- `pin==true` keeps this same opcode active for the next dispatch;
+  -- anything else releases back to normal stream-driven opcode
+  -- selection.
   self.pinnedOpcode = pin and opcode or nil
   return newCursorOrErr
 end
 
 --- Steps up to `maxSteps` times (or until this run stops/finishes,
 -- whichever comes first) -- a bounded burst, so a caller running this
--- synchronously (e.g. VictorySequence.lua's own shadow-run at
--- construction time, not per real game frame) can never hang on a real
--- script that happens to loop far longer than expected. Returns the
--- final cursor.
+-- synchronously (e.g. VictorySequence.lua's shadow-run at construction
+-- time, not per game frame) can never hang on a script that happens to
+-- loop far longer than expected. Returns the final cursor.
 function ScriptRuntime:run(stream, cursor, maxSteps)
   for _ = 1, maxSteps do
     if self.stopped or self.finished then break end
