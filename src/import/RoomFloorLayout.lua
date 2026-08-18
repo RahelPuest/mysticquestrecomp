@@ -255,33 +255,31 @@ end
 -- `buildPixelGrid`'s own output, so the two can be zipped together
 -- directly.
 --
--- WHY THIS EXISTS, not just another `floorTileIds` set (2026-08-12,
--- direct instruction to generalize beyond one-off fixes): every real
--- room's own walkability so far (`startRoom`/`willyRoom`/`secondRoom`/
--- `thirdRoom`/`fourthRoom`) is recorded as a flat `floorTileIds` SET
--- keyed by final rendered tile ID (`TileWalkability.build` checks
--- `floorTileIds[grid[row][col]]`, no position awareness at all) --
--- fine as long as no single tile ID is ever legitimately BOTH floor
--- and wall decoration in the same room. This function sidesteps that
--- limitation entirely by keying on GRID POSITION (via the metatile
--- stream's own real per-cell collision byte) instead of on the
--- remapped tile ID -- strictly more precise than a flat tile-ID set,
--- for any room with real metatile+layout-stream data available.
+-- WHY THIS EXISTS, not just another `floorTileIds` set (generalizing
+-- beyond one-off fixes): every room's walkability so far
+-- (`startRoom`/`willyRoom`/`secondRoom`/`thirdRoom`/`fourthRoom`) is
+-- recorded as a flat `floorTileIds` set keyed by final rendered tile ID
+-- (`TileWalkability.build` checks `floorTileIds[grid[row][col]]`, no
+-- position awareness at all) -- fine as long as no single tile ID is
+-- ever legitimately both floor and wall decoration in the same room.
+-- This function sidesteps that limitation entirely by keying on grid
+-- position (via the metatile stream's per-cell collision byte) instead
+-- of the remapped tile ID -- strictly more precise than a flat tile-ID
+-- set, for any room with metatile+layout-stream data available.
 --
--- GENERALIZED (2026-08-14, task "Kollision generalisieren"): takes an
--- explicit `isWalkable(collision)` predicate now, instead of always
--- calling the module-level `isWalkableCollision`. This fixes a real
--- design flaw the willyRoom investigation exposed: `isWalkableCollision`
--- 's own bit rule is CONFIRMED for fourthRoom's real metatile table but
--- DEMONSTRABLY WRONG (opposite polarity) for willyRoom's -- there is no
--- single ROM-wide rule, so hardcoding one function call here was always
--- going to be right for at most one table. Defaults to
--- `RoomFloorLayout.isWalkableCollision` (unchanged behavior for
--- existing callers -- the bank 5/6 320-room browser, which has no
--- ground truth of its own yet to prefer a different rule); pass
+-- GENERALIZED: takes an explicit `isWalkable(collision)` predicate now,
+-- instead of always calling the module-level `isWalkableCollision`.
+-- This fixes a design flaw the willyRoom investigation exposed:
+-- `isWalkableCollision`'s bit rule is confirmed for fourthRoom's
+-- metatile table but demonstrably wrong (opposite polarity) for
+-- willyRoom's -- there is no single ROM-wide rule, so hardcoding one
+-- function call here was always going to be right for at most one
+-- table. Defaults to `RoomFloorLayout.isWalkableCollision` (unchanged
+-- behavior for existing callers -- the bank 5/6 320-room browser, which
+-- has no ground truth of its own yet to prefer a different rule); pass
 -- `RoomFloorLayout.isWalkableCollisionWillyFamily` explicitly for
--- willyRoom's own table (see that function's own doc comment for the
--- full, exhaustive ground-truth derivation).
+-- willyRoom's table (see that function's doc comment for the full,
+-- exhaustive ground-truth derivation).
 function RoomFloorLayout.buildCollisionGrid(romData, layout, isWalkable)
   assert(type(layout) == "table" and layout.metatileTableFileOffset and
     layout.layoutStreamFileOffset and layout.rleLength and
@@ -296,11 +294,11 @@ function RoomFloorLayout.buildCollisionGrid(romData, layout, isWalkable)
 end
 
 --- Finishing step shared by `buildCollisionGrid` (RLE mode) and
--- `buildCollisionGridFromTemplatedMapTableRecord` (Templated mode,
--- 2026-08-14) -- factored out the exact same way `buildPixelGridFromIndices`
--- was factored out of `buildPixelGridFromTileset`, same reasoning: both
--- real decode paths turn a flat metatile-INDEX array into the same
--- final collision grid, however that index array itself was produced.
+-- `buildCollisionGridFromTemplatedMapTableRecord` (Templated mode) --
+-- factored out the exact same way `buildPixelGridFromIndices` was
+-- factored out of `buildPixelGridFromTileset`, same reasoning: both
+-- decode paths turn a flat metatile-index array into the same final
+-- collision grid, however that index array itself was produced.
 function RoomFloorLayout.buildCollisionGridFromIndices(romData, indices, opts, isWalkable)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
@@ -329,39 +327,35 @@ function RoomFloorLayout.buildCollisionGridFromIndices(romData, indices, opts, i
   return grid
 end
 
--- GENERAL "decode ANY room, no live emulator needed" capability
--- (2026-08-12, direct instruction "du sollst in der lage sein alle
--- räume zu dekodieren. nicht stoppen bevor das nicht möglich ist").
+-- GENERAL "decode ANY room, no live emulator needed" capability.
 --
--- Everything above this point needs a LIVE `$D070` snapshot
+-- Everything above this point needs a live `$D070` snapshot
 -- (`buildPixelGrid`) -- fine for rooms this project has actually
--- walked through, useless for the ~300+ real map-table records no
--- gameplay has ever reached. `unknownRoomA`'s own 6 rooms were
--- already rendered WITHOUT a live snapshot (see rom_profiles.lua's
--- own `unknownRoomACandidates` doc comment): each metatile's raw GFX-
--- tile byte resolves DIRECTLY through `MapTable.lua`'s own already-
--- VERIFIED, ROM-STATIC formula (`tilesetFileOffset + gfxByte*16` =
--- the tile's own real 16-byte 2bpp graphic, no WRAM remap in the
--- loop at all) -- real, tested, and reproducibly correct (tile_entropy
--- ~1.0-1.8 bits, matching real art, for all 6 rooms). This section
--- generalizes that SAME real recipe to any record from any real
--- MapTable-shaped source (bank 5's own 256-record table, PLUS a
--- second, independently-found one in bank 6 -- see rom_profiles.lua's
--- `mapTableBank6` entry for the full evidence trail: same header
--- shape at file `0x18000` [`00 04 08 08`], real 64-record pointer
--- table at `0x18004`, all 64 records real-render as coherent dungeon
--- art, tile_entropy 1.08-1.63 bits every single one, zero blank/noise
--- outliers).
+-- walked through, useless for the ~300+ map-table records no gameplay
+-- has ever reached. `unknownRoomA`'s 6 rooms were already rendered
+-- without a live snapshot (see rom_profiles.lua's
+-- `unknownRoomACandidates` doc comment): each metatile's raw GFX-tile
+-- byte resolves directly through `MapTable.lua`'s already-VERIFIED,
+-- ROM-static formula (`tilesetFileOffset + gfxByte*16` = the tile's
+-- 16-byte 2bpp graphic, no WRAM remap in the loop at all) -- real,
+-- tested, and reproducibly correct (tile_entropy ~1.0-1.8 bits,
+-- matching real art, for all 6 rooms). This section generalizes that
+-- same recipe to any record from any MapTable-shaped source (bank 5's
+-- 256-record table, plus a second, independently-found one in bank 6
+-- -- see rom_profiles.lua's `mapTableBank6` entry for the full evidence
+-- trail: same header shape at file `0x18000` [`00 04 08 08`], a
+-- 64-record pointer table at `0x18004`, all 64 records render as
+-- coherent dungeon art, tile_entropy 1.08-1.63 bits every single one,
+-- zero blank/noise outliers).
 
---- Resolve one raw metatile GFX-tile byte DIRECTLY to its own real
--- ROM file offset (16 raw 2bpp bytes, ready for `gbtile`-style
--- decoding) -- `MapTable.lua`'s own already-VERIFIED
--- `tilesetFileOffset + tileId*16` formula, factored out here so
--- `RoomFloorLayout` callers don't need to require `MapTable` just for
--- this one arithmetic step. Deliberately NOT a `$D070` remap (see
--- `remapTile` above for that, live-snapshot-only path) -- this is the
--- ROM-STATIC alternative that works for a room no gameplay has ever
--- reached.
+--- Resolve one raw metatile GFX-tile byte directly to its ROM file
+-- offset (16 raw 2bpp bytes, ready for `gbtile`-style decoding) --
+-- `MapTable.lua`'s already-VERIFIED `tilesetFileOffset + tileId*16`
+-- formula, factored out here so `RoomFloorLayout` callers don't need
+-- to require `MapTable` just for this one arithmetic step. Deliberately
+-- not a `$D070` remap (see `remapTile` above for that, live-snapshot-
+-- only path) -- this is the ROM-static alternative that works for a
+-- room no gameplay has ever reached.
 function RoomFloorLayout.resolveGfxTileFileOffset(tilesetFileOffset, gfxByte)
   assert(type(tilesetFileOffset) == "number", "RoomFloorLayout.resolveGfxTileFileOffset expects a numeric tilesetFileOffset")
   assert(type(gfxByte) == "number" and gfxByte >= 0 and gfxByte <= 255,
@@ -392,11 +386,11 @@ function RoomFloorLayout.buildPixelGridFromTileset(romData, layout)
 end
 
 --- Finishing step shared by `buildPixelGridFromTileset` (RLE mode) and
--- `buildRoomFromTemplatedMapTableRecord` (Templated mode, 2026-08-14) --
--- factored out (same real per-metatile logic, unchanged) so both real
--- decode paths turn a flat metatile-INDEX array into the same final
--- pixel-tile-file-offset grid shape, however that index array itself
--- was produced. `indices` must already be a flat, row-major array of
+-- `buildRoomFromTemplatedMapTableRecord` (Templated mode) -- factored
+-- out (same per-metatile logic, unchanged) so both decode paths turn a
+-- flat metatile-index array into the same final pixel-tile-file-offset
+-- grid shape, however that index array itself was produced. `indices`
+-- must already be a flat, row-major array of
 -- `metatileGridRows*metatileGridCols` metatile-table indices.
 function RoomFloorLayout.buildPixelGridFromIndices(romData, indices, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and opts.tilesetFileOffset and
@@ -427,15 +421,14 @@ end
 --- Templated-mode (encodingMode 1) sibling of `buildRoomFromMapTableRecord`
 -- -- decodes record `recordIndex` from a Templated `mapTable` profile
 -- (e.g. `rom_profiles.lua`'s `mapTableBank7`) by RLE-decoding the map's
--- own shared base-room template (`MapTable.readTemplatedHeader`) and
--- applying that record's own real diff list on top
--- (`MapTable.applyTemplatedDiff`) -- see that function's own doc
--- comment for the CRACKED format and its evidence. Same `opts`/return
--- shape as `buildRoomFromMapTableRecord`; normally called THROUGH that
--- function (it dispatches here automatically based on the map's own
--- real header `encodingMode`), not directly, but exposed separately so
--- callers who already know they have a Templated map can skip the
--- header re-read.
+-- shared base-room template (`MapTable.readTemplatedHeader`) and
+-- applying that record's diff list on top (`MapTable.applyTemplatedDiff`)
+-- -- see that function's doc comment for the CRACKED format and its
+-- evidence. Same `opts`/return shape as `buildRoomFromMapTableRecord`;
+-- normally called through that function (it dispatches here
+-- automatically based on the map's header `encodingMode`), not
+-- directly, but exposed separately so callers who already know they
+-- have a Templated map can skip the header re-read.
 function RoomFloorLayout.buildRoomFromTemplatedMapTableRecord(romData, mapTable, recordIndex, opts)
   assert(type(opts) == "table" and opts.metatileTableFileOffset and opts.tilesetFileOffset and
     opts.metatileGridRows and opts.metatileGridCols,
@@ -464,38 +457,37 @@ function RoomFloorLayout.buildRoomFromTemplatedMapTableRecord(romData, mapTable,
   return RoomFloorLayout.buildPixelGridFromIndices(romData, indices, opts)
 end
 
---- The real, general entry point: decode ANY record from ANY real
--- MapTable-shaped source (`mapTable` = a `profile.mapTable`-style
--- table -- `bankFileStart`/`pointerTableFileOffset`/`recordCount`,
--- see `MapTable.lua`) into a full pixel-tile-file-offset grid, using
--- the record's own real header-derived `rleLength` (via
--- `MapTable.readMapHeader`) and a caller-supplied `metatileTableFileOffset`
--- (the shared bank-8 metatile pool -- see rom_profiles.lua's own
+--- The general entry point: decode ANY record from any MapTable-shaped
+-- source (`mapTable` = a `profile.mapTable`-style table --
+-- `bankFileStart`/`pointerTableFileOffset`/`recordCount`, see
+-- `MapTable.lua`) into a full pixel-tile-file-offset grid, using the
+-- record's header-derived `rleLength` (via `MapTable.readMapHeader`)
+-- and a caller-supplied `metatileTableFileOffset` (the shared bank-8
+-- metatile pool -- see rom_profiles.lua's
 -- `roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset` for
--- the real, structurally-derived default this project's own callers
--- use for arbitrary bank-5/bank-6 records, or `unknownRoomACandidates
+-- the structurally-derived default this project's callers use for
+-- arbitrary bank-5/bank-6 records, or `unknownRoomACandidates
 -- .metatileTableFileOffset` specifically for `unknownRoomA` itself).
--- `metatileGridRows`/`metatileGridCols` must be supplied by the
--- caller (this project has only ever confirmed 8x10 = 80 metatiles
--- for both bank 5 and bank 6's own real records -- not re-derived
--- from `mapTable`'s own header `gridHeight`/`gridWidth` fields here,
--- since those were found NOT to mean "metatile grid shape" directly
--- for bank 6 -- see rom-map.md's own honest note on that).
+-- `metatileGridRows`/`metatileGridCols` must be supplied by the caller
+-- (this project has only ever confirmed 8x10 = 80 metatiles for both
+-- bank 5 and bank 6's records -- not re-derived from `mapTable`'s
+-- header `gridHeight`/`gridWidth` fields here, since those were found
+-- not to mean "metatile grid shape" directly for bank 6 -- see
+-- rom-map.md's honest note on that).
 --
 -- Returns the same shape as `buildPixelGridFromTileset` -- a grid of
--- real ROM file offsets, no live emulator state needed anywhere in
--- this call.
+-- ROM file offsets, no live emulator state needed anywhere in this
+-- call.
 --- Shared record-resolution step behind `buildRoomFromMapTableRecord`
 -- and `buildCollisionGridFromMapTableRecord` -- both need the exact
--- same real `[encodingMode, rleLength]` header plus the record's own
--- real `layoutStreamFileOffset`; factored out here (2026-08-12, quick
--- win #2) so the two callers can't drift apart on how a record's
--- stream address is computed. RLE/mode-0 ONLY, by design -- Templated/
--- mode-1's own base+diff scheme has no single contiguous
--- "layoutStreamFileOffset" to hand back this way, so `buildRoom
--- FromMapTableRecord` AND `buildCollisionGridFromMapTableRecord` (as
--- of 2026-08-14) both dispatch to their own SEPARATE `...Templated...`
--- path before ever reaching this helper -- see those two functions.
+-- same `[encodingMode, rleLength]` header plus the record's
+-- `layoutStreamFileOffset`; factored out here so the two callers can't
+-- drift apart on how a record's stream address is computed. RLE/mode-0
+-- only, by design -- Templated/mode-1's base+diff scheme has no single
+-- contiguous "layoutStreamFileOffset" to hand back this way, so
+-- `buildRoomFromMapTableRecord` and `buildCollisionGridFromMapTableRecord`
+-- both dispatch to their own separate `...Templated...` path before
+-- ever reaching this helper -- see those two functions.
 local function resolveMapTableRecordStream(romData, mapTable, recordIndex, callerName)
   assert(type(romData) == "string", callerName .. " expects a byte string")
   assert(type(mapTable) == "table" and mapTable.pointerTableFileOffset and mapTable.bankFileStart,
