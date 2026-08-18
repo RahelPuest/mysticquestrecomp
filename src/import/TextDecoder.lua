@@ -779,22 +779,21 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- "nur ein", "Meer nordoestlich", "So nimm".
   [0x62] = "nn", -- "Sensenmann" (Grim Reaper monster), "Mann" (man),
   -- "koennen"/"konnten" (can/could).
-  -- REVISED, 2026-08-17: was "! " (exclaim+space), based on plausible-
-  -- but-explicitly-uncertain context ("nothing found actively
-  -- CONTRADICTS", per this entry's own original note -- "RAUS!" and
-  -- "das Boese! Halte durch" fit, but so would a plain "." or "?").
-  -- The real digraph table (`$3F3F`, see this table's own header note)
-  -- reads slot 0x46 as tiles (0xF0,0xFF) -> period+space, and the real
-  -- font tile bitmap for tile `0x70` is now visually confirmed as a
-  -- period, not an exclamation mark (see the punctuation-tiles note
-  -- above) -- both independent lines of NEW evidence agree on ". ",
-  -- overturning the old admittedly-uncertain guess.
+  -- REVISED: was "! " (exclaim+space), based on plausible-but-
+  -- explicitly-uncertain context (this entry's original note: "RAUS!"
+  -- and "das Boese! Halte durch" fit, but so would a plain "." or
+  -- "?"). The digraph table (`$3F3F`, see this table's header note)
+  -- reads slot 0x46 as tiles (0xF0,0xFF) -> period+space, and the font
+  -- tile bitmap for tile `0x70` is now visually confirmed as a period,
+  -- not an exclamation mark (see the punctuation-tiles note above) --
+  -- both independent lines of new evidence agree on ". ", overturning
+  -- the old admittedly-uncertain guess.
   [0x66] = ". ", -- period+space: "RAUS." (a shouted, all-caps
   -- declaration -- the capitalization alone already carries the
   -- emphasis) and "das Boese. Halte durch" both read naturally; the
-  -- real ROM digraph table plus the real font tile bitmap for `0x70`
-  -- (see above) now agree independently, superseding the earlier
-  -- context-only guess.
+  -- ROM digraph table plus the font tile bitmap for `0x70` (see above)
+  -- now agree independently, superseding the earlier context-only
+  -- guess.
   [0x67] = "ef", -- "Gefuehle" (feelings), "Gefahr" (danger) -- the
   -- SAME value this session's earlier "Saph[50][4A][67]unden" cluster
   -- already flagged as an unconfirmed lead, now promoted.
@@ -818,113 +817,110 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- "hat" (x2), "halte", "festgehalten", "verhalf", "Spitzhacke"
   -- (pickaxe), "geschaffen", "Charakter", "Unterhaltung", "schaffe",
   -- "geschah", "Chance".
-  -- RESOLVED, 2026-08-17 (direct user instruction, "jetzt alle missing
-  -- digraphen damit entschlüsseln" -- "damit" = with the real decode
-  -- table just found by disassembly, see text.md's "FOUND: the real
-  -- static message-text decoder" section): `0x82` was previously left
-  -- unmapped on purpose (see the retired note this replaces) because
-  -- dynamic word-matching found it "genuinely CONTRADICTORY" across
-  -- occurrences. The real ROM digraph table (`$3F3F`, real bank 0) has
-  -- now been located and read directly -- it is a STATIC lookup table,
-  -- so the same input byte can never legitimately decode two different
-  -- ways; the earlier "contradiction" was a real transcription/
-  -- attribution mistake in that pass, not a genuine ambiguity. Ground
-  -- truth: `0x82` decodes to "me" (table slot `0x82-0x30=0x52`, tiles
-  -- `0x40,0xD8` -> `m`,`e`), matching the ONE reading this pass's own
-  -- narrower sample had already found independently.
+  -- RESOLVED (once the decode table was found by disassembly, see
+  -- text.md's "FOUND: the static message-text decoder" section):
+  -- `0x82` was previously left unmapped on purpose (see the retired
+  -- note this replaces) because dynamic word-matching found it
+  -- "genuinely contradictory" across occurrences. The ROM digraph
+  -- table (`$3F3F`, bank 0) has now been located and read directly --
+  -- it is a static lookup table, so the same input byte can never
+  -- legitimately decode two different ways; the earlier "contradiction"
+  -- was a transcription/attribution mistake in that pass, not a
+  -- genuine ambiguity. Ground truth: `0x82` decodes to "me" (table
+  -- slot `0x82-0x30=0x52`, tiles `0x40,0xD8` -> `m`,`e`), matching the
+  -- one reading a narrower sample had already found independently.
   [0x82] = "me",
 
-  -- FOUND, 2026-08-17: the real ROM digraph decode table itself, ROM
-  -- `$3F3F` (fixed bank 0, real file offset == CPU address). Located by
-  -- disassembling the real static-text decode dispatcher (`$3777`,
-  -- see text.md) down to its digraph-render routine (`$34A4`, already
-  -- known from the earlier script-tick-parser pass): `HL=0x3F3F`, then
-  -- `A = inputByte - 0x20`, `HL += A*2` -- a genuine, 2-bytes-per-entry
-  -- lookup table indexed directly by the input byte for `0x20-0x7F`.
-  -- Each entry's 2 bytes are VRAM tile IDs (normalize with the SAME
-  -- proven `t>=0x80 -> t XOR 0x80` rule as the outer single-glyph
-  -- formula, then read through the same MAIN_GLYPHS/space/`!` tile
-  -- convention). Cross-checked against every one of this table's own
-  -- ~85 already-independently-confirmed entries in the `0x20-0x8F`
-  -- range: exact match, zero contradictions, for every entry except 5
-  -- pre-existing single-LETTER codes (`0x30`,`0x3D`,`0x43`,`0x5E`,
-  -- `0x60` -- the real table technically encodes a 2nd character there
-  -- too, a trailing space or (as corrected below) a period, left
-  -- AS-IS below rather than overwritten since it's unclear whether
-  -- that 2nd tile actually renders in practice or is swallowed by
-  -- word-wrap logic -- attempted live via injection 2026-08-17, real
-  -- effort, inconclusive (see text.md's own follow-up section for why)
-  -- -- a real, open follow-up, not resolved by this table alone) and 2
-  -- direct conflicts with earlier single-word dynamic findings, both
-  -- since RESOLVED (2026-08-17, after presenting the conflict to the
-  -- user -- see `0x5B`'s and `0x86`'s own entries below for the full
-  -- reasoning): `0x5B` revised from "a" ("Julia") to "us" ("Julius"),
-  -- `0x86` revised from "ih" to "Di" (same reasoning, applied for
+  -- FOUND: the ROM digraph decode table itself, ROM `$3F3F` (fixed
+  -- bank 0, file offset == CPU address). Located by disassembling the
+  -- static-text decode dispatcher (`$3777`, see text.md) down to its
+  -- digraph-render routine (`$34A4`, already known from the earlier
+  -- script-tick-parser pass): `HL=0x3F3F`, then `A = inputByte - 0x20`,
+  -- `HL += A*2` -- a 2-bytes-per-entry lookup table indexed directly by
+  -- the input byte for `0x20-0x7F`. Each entry's 2 bytes are VRAM tile
+  -- IDs (normalize with the same proven `t>=0x80 -> t XOR 0x80` rule as
+  -- the outer single-glyph formula, then read through the same
+  -- MAIN_GLYPHS/space/`!` tile convention). Cross-checked against every
+  -- one of this table's ~85 already-independently-confirmed entries in
+  -- the `0x20-0x8F` range: exact match, zero contradictions, for every
+  -- entry except 5 pre-existing single-letter codes
+  -- (`0x30`,`0x3D`,`0x43`,`0x5E`,`0x60` -- the table technically
+  -- encodes a 2nd character there too, a trailing space or (as
+  -- corrected below) a period, left as-is below rather than
+  -- overwritten since it's unclear whether that 2nd tile actually
+  -- renders in practice or is swallowed by word-wrap logic -- attempted
+  -- live via injection, inconclusive (see text.md's follow-up section
+  -- for why) -- an open follow-up, not resolved by this table alone)
+  -- and 2 direct conflicts with earlier single-word dynamic findings,
+  -- both since resolved (after presenting the conflict to the user --
+  -- see `0x5B`'s and `0x86`'s entries below for the full reasoning):
+  -- `0x5B` revised from "a" ("Julia") to "us" ("Julius"), `0x86`
+  -- revised from "ih" to "Di" (same reasoning, applied for
   -- consistency).
   --
-  -- Bytes `0x80-0x8F` alias the SAME table slots as `0x70-0x7F`
-  -- (verified: both formulas index the identical bytes) via a real
-  -- `-0x10` remap for `inputByte >= 0x80` (the same remap the script-
-  -- tick handler's `$333D` already showed) -- i.e. `0x70` and `0x80`
-  -- decode identically on purpose, not a bug in this reading.
-  -- PUNCTUATION TILES IDENTIFIED, 2026-08-17: rendered the real font
-  -- tile bitmaps directly from ROM (same `0x22900 + (vramTile-0x10)*16`
-  -- formula the umlaut tiles above were confirmed with -- see
-  -- text.md). Visually unambiguous: tile `0x70`=period (a single small
-  -- dot), `0x71`=colon (two dots), `0x72`=hyphen (one flat bar),
-  -- `0x73`=exclamation mark, `0x74`=question mark. This CORRECTS an
-  -- earlier same-day guess in this table's own history that read tile
-  -- `0x70` as `!` (cross-checked, wrongly, against the existing
-  -- `0x66="! "` entry below -- see that entry's own note for the
-  -- resulting flagged conflict). Tiles `0x76`-`0x7E` are NOT
-  -- punctuation or letters at all -- their bitmaps are clearly
-  -- fragments of ONE larger image (diagonal lines, box-drawing bars)
-  -- spanning multiple tiles, not individual glyphs; no digraph entry
-  -- in this table actually lands on any of them, so this doesn't
-  -- change any decode, just rules out ever reading them as text.
+  -- Bytes `0x80-0x8F` alias the same table slots as `0x70-0x7F`
+  -- (verified: both formulas index the identical bytes) via a `-0x10`
+  -- remap for `inputByte >= 0x80` (the same remap the script-tick
+  -- handler's `$333D` already showed) -- i.e. `0x70` and `0x80` decode
+  -- identically on purpose, not a bug in this reading.
+  -- PUNCTUATION TILES IDENTIFIED: rendered the font tile bitmaps
+  -- directly from ROM (same `0x22900 + (vramTile-0x10)*16` formula the
+  -- umlaut tiles above were confirmed with -- see text.md). Visually
+  -- unambiguous: tile `0x70`=period (a single small dot),
+  -- `0x71`=colon (two dots), `0x72`=hyphen (one flat bar),
+  -- `0x73`=exclamation mark, `0x74`=question mark. This corrects an
+  -- earlier guess in this table's history that read tile `0x70` as `!`
+  -- (cross-checked, wrongly, against the existing `0x66="! "` entry
+  -- below -- see that entry's note for the resulting flagged
+  -- conflict). Tiles `0x76`-`0x7E` are not punctuation or letters at
+  -- all -- their bitmaps are clearly fragments of one larger image
+  -- (diagonal lines, box-drawing bars) spanning multiple tiles, not
+  -- individual glyphs; no digraph entry in this table actually lands
+  -- on any of them, so this doesn't change any decode, just rules out
+  -- ever reading them as text.
   [0x27] = "..", -- table slot 0x07 (tiles 0x70,0x70) -- a doubled
   -- period; unverified against a live word (no clean example found
   -- this pass), but a direct, unambiguous table read like every other
   -- entry here, now using the visually-confirmed tile identification.
   [0x63] = "ng", -- table slot 0x43 (tiles 0xE1,0xDA) -- matches the
-  -- EARLIER, independently-found dynamic hypothesis exactly (text.md,
-  -- 2026-08-12: "mostly ng (3 clean words...)"), and RESOLVES that
-  -- pass's own "one real counter-example" as a real mis-attribution,
-  -- not a genuine second reading (same reasoning as 0x82 above).
+  -- earlier, independently-found dynamic hypothesis exactly (text.md:
+  -- "mostly ng (3 clean words...)"), and resolves that pass's "one
+  -- counter-example" as a mis-attribution, not a genuine second
+  -- reading (same reasoning as 0x82 above).
   [0x70] = "rt", -- table slot 0x50 (tiles 0xE5,0xE7) -- aliases with
-  -- 0x80's own already-established "rt" entry above one-for-one, via
-  -- the `-0x10` remap note above (0x70 direct == 0x80 remapped, same
-  -- slot 0x50) -- a real, addressable, distinct input byte even though
-  -- it shares table content with 0x80.
+  -- 0x80's already-established "rt" entry above one-for-one, via the
+  -- `-0x10` remap note above (0x70 direct == 0x80 remapped, same slot
+  -- 0x50) -- an addressable, distinct input byte even though it shares
+  -- table content with 0x80.
   [0x71] = " a", [0x72] = "me", [0x73] = " G", [0x74] = "ac",
   [0x75] = "di", [0x76] = "Di", [0x77] = "na", [0x78] = "Da",
   [0x79] = "a ", [0x7A] = "eh", [0x7B] = "ns", [0x7C] = "ha",
   [0x7D] = "Ic", [0x7E] = "ra", [0x7F] = "eg",
-  -- ^ 0x71-0x7F: direct table reads (slot=byte-0x20), each ALIASING
-  -- the corresponding already-established 0x81-0x8F entry above one-
-  -- for-one (0x71=" a"==0x81, 0x72="me"==0x82 above, ... 0x7F="eg"==
-  -- 0x8F) -- real, addressable, distinct INPUT bytes even though they
-  -- share table content with the 0x8X family via the same `-0x10`
-  -- remap relationship.
+  -- ^ 0x71-0x7F: direct table reads (slot=byte-0x20), each aliasing the
+  -- corresponding already-established 0x81-0x8F entry above one-for-
+  -- one (0x71=" a"==0x81, 0x72="me"==0x82 above, ... 0x7F="eg"==0x8F)
+  -- -- addressable, distinct input bytes even though they share table
+  -- content with the 0x8X family via the same `-0x10` remap
+  -- relationship.
 }
 
--- A real, now better-understood side-finding from this third round:
--- several of the space-inclusive digraphs found here (0x42=" e",
--- 0x46=" s", 0x4A=" g", 0x4D=" w", 0x52=" M", 0x57=" m", 0x61=" n",
--- 0x6F=" B", 0x81=" a") are exactly the "missing space" cases flagged
--- as an unexplained artifact in the previous round's own notes --
--- most of them turned out to be real, ordinary space-inclusive digraph
--- codes this pass just hadn't reached yet, not a separate mechanism.
--- A few genuine gaps remain even now (e.g. "in der" decoding as
--- "inder", "auf der" as "aufder") where the SPACE-FREE forms of "d"
--- (0x30), " B"/etc. get used back-to-back with no space byte at all --
--- still real and still unexplained, but a much smaller residue than
--- before, and clearly cosmetic rather than a sign of wrong values.
+-- A now better-understood side-finding from this third round: several
+-- of the space-inclusive digraphs found here (0x42=" e", 0x46=" s",
+-- 0x4A=" g", 0x4D=" w", 0x52=" M", 0x57=" m", 0x61=" n", 0x6F=" B",
+-- 0x81=" a") are exactly the "missing space" cases flagged as an
+-- unexplained artifact in the previous round's notes -- most of them
+-- turned out to be ordinary space-inclusive digraph codes this pass
+-- just hadn't reached yet, not a separate mechanism. A few genuine
+-- gaps remain even now (e.g. "in der" decoding as "inder", "auf der"
+-- as "aufder") where the space-free forms of "d" (0x30), " B"/etc. get
+-- used back-to-back with no space byte at all -- still unexplained,
+-- but a much smaller residue than before, and clearly cosmetic rather
+-- than a sign of wrong values.
 
 -- Genuinely still open after the systematic pass above (not enough
--- independent, MUTUALLY CONSISTENT contexts to promote, per this
--- table's own 2-independent-words bar) -- recorded as real leads, not
--- guessed into the table:
+-- independent, mutually consistent contexts to promote, per this
+-- table's 2-independent-words bar) -- recorded as leads, not guessed
+-- into the table:
 --   0x82 = CONTRADICTORY across its own occurrences ("Klang[82]iner"/
 --     "wegen[82]iner" want "e" for "seiner"/"einer"; "Krae[82]rlaeden"
 --     wants "ute" for "Kraeuterlaeden"; "bekom[82]n" wants "me" for
