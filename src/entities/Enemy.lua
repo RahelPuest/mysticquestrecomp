@@ -98,119 +98,111 @@ Enemy.MOVEMENT_CYCLE = {
 -- right).
 Enemy.MOVEMENT_STEP_SECONDS = 25 * FixedStep.STEP
 
--- SUPERSEDED (2026-08-09, later pass) -- kept only as a dated note of
--- what this project used to reproduce empirically before the real
--- values below were found by direct ROM code trace (task P1, "real
--- enemy/monster stat table"), per explicit user instruction ("bearbeite
--- die großen Milestones jetzt" -> P1 was the highest-priority pending
--- item). 19 A-presses (hold 6f, wait 10f) landed the killing blow in a
--- live mGBA fight -- not proven to be exactly 19 landed hits 1:1, and
--- now known to be neither: real HP is 31, real damage/hit is 4 (see
--- HP_INIT_TRACE_NOTE / PLAYER_ATTACK_DAMAGE below) -- ceil(31/4) = 8
--- real landed hits, with the rest of those 19 presses being real misses
--- (the swing/thrust hitbox only overlaps the enemy for part of each
--- animation's real frame window -- see AttackSwing.lua/AttackThrust
--- .lua), not a formula mismatch.
+-- SUPERSEDED -- kept only as a note of what this project used to
+-- reproduce empirically before the values below were found by direct
+-- ROM code trace (real enemy/monster stat table). 19 A-presses (hold
+-- 6f, wait 10f) landed the killing blow in a live mGBA fight -- not
+-- proven to be exactly 19 landed hits 1:1, and now known to be
+-- neither: real HP is 31, real damage/hit is 4 (see HP_INIT_TRACE_NOTE
+-- / PLAYER_ATTACK_DAMAGE below) -- ceil(31/4) = 8 landed hits, with the
+-- rest of those 19 presses being misses (the swing/thrust hitbox only
+-- overlaps the enemy for part of each animation's frame window -- see
+-- AttackSwing.lua/AttackThrust.lua), not a formula mismatch.
 Enemy.HITS_TO_CLEAR_METHOD_NOTE = "SUPERSEDED -- see HP_INIT_TRACE_NOTE."
 
--- VERIFIED (2026-08-09, direct ROM code trace, not empirical): the real
--- starting enemy's initial HP, watched live at WRAM `$D3F4`/`$D3F5`
--- (the same real 16-bit HP field this project's death investigation
--- found earlier the same session -- see docs/reverse-engineering
--- /combat.md's "Enemy HP" entry) from the very first write at spawn.
--- Real ROM routine, bank 4 file offset `0x10340-0x10372`: computes a
--- product via the same real 8-iteration shift-add multiply primitive
--- already found driving the player damage formula (`$2B7B`), then
--- divides the 16-bit product by 16 (a real `ADD A,A`/`RL C`/`RL B` x4
--- shift-right-by-4 idiom, confirmed by hand-tracing the exact captured
--- register values: product `$01F0` (496) -> final `$001F` (31), and
--- `496 >> 4 == 31` exactly).
+-- VERIFIED (direct ROM code trace, not empirical): the starting enemy's
+-- initial HP, watched live at WRAM `$D3F4`/`$D3F5` (the same 16-bit HP
+-- field this project's death investigation found earlier -- see
+-- docs/reverse-engineering/combat.md's "Enemy HP" entry) from the very
+-- first write at spawn. ROM routine, bank 4 file offset
+-- `0x10340-0x10372`: computes a product via the same 8-iteration
+-- shift-add multiply primitive already found driving the player damage
+-- formula (`$2B7B`), then divides the 16-bit product by 16 (an `ADD
+-- A,A`/`RL C`/`RL B` x4 shift-right-by-4 idiom, confirmed by
+-- hand-tracing the exact captured register values: product `$01F0`
+-- (496) -> final `$001F` (31), and `496 >> 4 == 31` exactly).
 --
--- UPGRADED (2026-08-09, further pass, task P1 continued): the multiply's
--- own two operands are now decoded too, by re-running the same live
--- trace with a watchpoint set BEFORE the enemy-spawn stretch (a first
--- attempt reused `reach_combat()` as-is and found the spawn write had
--- already happened before the watchpoint was even installed -- fixed by
--- installing it right before the battle-intro block instead). Real
--- result, both operands read straight off live CPU registers:
---   * `HL=2` at the `CALL $2B7B` site -- this is a real per-species byte
---     read from `(recordPtr+1)`, where `recordPtr` (`$48B9` in this live
---     capture) is itself a real per-creature record pointer, statically
---     confirmed against the ROM file (record base file offset `0x108B9`
---     -- see rom-map.md's enemy-record entry for the other identified
---     fields at this same offset).
---   * `A=0xF8` (248) at the same site -- NOT a fixed constant: it is
+-- UPGRADED: the multiply's two operands are now decoded too, by
+-- re-running the same live trace with a watchpoint set before the
+-- enemy-spawn stretch (a first attempt reused `reach_combat()` as-is
+-- and found the spawn write had already happened before the watchpoint
+-- was even installed -- fixed by installing it right before the
+-- battle-intro block instead). Result, both operands read straight off
+-- live CPU registers:
+--   * `HL=2` at the `CALL $2B7B` site -- a per-species byte read from
+--     `(recordPtr+1)`, where `recordPtr` (`$48B9` in this live capture)
+--     is itself a per-creature record pointer, statically confirmed
+--     against the ROM file (record base file offset `0x108B9` -- see
+--     rom-map.md's enemy-record entry for the other identified fields
+--     at this same offset).
+--   * `A=0xF8` (248) at the same site -- not a fixed constant: it is
 --     `NEG(x >> 4)` of a value `x` returned by a *different* subroutine
 --     (`$2B1E`) that reads-and-increments a persistent WRAM counter
---     (`$C0B0`, clamped against a cap at `$C0B1`) and uses it to index a
---     real, genuinely noise-shaped 256-byte table living at fixed-bank
---     ROM offset `0x2A1E` -- i.e. this is a real PRNG-via-noise-table
---     mechanism, and enemy HP has a small but real random component,
---     not a single fixed value. `x=0x88` (136) was this live capture's
---     actual draw; `136 >> 4 == 8`, `NEG(8) == 248` (two's-complement,
---     matches the captured `A`).
--- Full formula (species byte = 2 for this one real creature): for
--- `n = randomByte >> 4` (0-15, uniform over the noise table), real HP
--- is `((256-n) * 2) >> 4` for `n >= 1` (31 for `n=1..8`, 30 for
--- `n=9..15` -- i.e. 31 with real probability 8/16, 30 with 7/16), or a
--- degenerate `species_byte >> 4 == 0` for the `n=0` case (1/16) via a
--- real conditional skip of the multiply entirely (`JR Z` in the ROM
--- routine) -- this last case is UNEXPLAINED (possibly dead code for
--- this creature, possibly a real "can spawn with 0 HP" edge case) and
--- NOT implemented here; `HP_TO_CLEAR` below stays pinned to 31, the
--- single most-common real draw, rather than guessing at the edge case.
--- Real per-species multiplier byte and PRNG mechanism are now decoded;
--- what remains open is a second creature's own species-byte value (to
--- confirm the *record layout*, not just this one instance, generalizes)
--- -- see docs/reverse-engineering/rom-map.md for the full trace,
--- the real per-creature record dump, and the open next step.
+--     (`$C0B0`, clamped against a cap at `$C0B1`) and uses it to index
+--     a genuinely noise-shaped 256-byte table living at fixed-bank ROM
+--     offset `0x2A1E` -- a PRNG-via-noise-table mechanism, and enemy HP
+--     has a small but real random component, not a single fixed value.
+--     `x=0x88` (136) was this live capture's actual draw; `136 >> 4 ==
+--     8`, `NEG(8) == 248` (two's-complement, matches the captured `A`).
+-- Full formula (species byte = 2 for this one creature): for `n =
+-- randomByte >> 4` (0-15, uniform over the noise table), HP is
+-- `((256-n) * 2) >> 4` for `n >= 1` (31 for `n=1..8`, 30 for `n=9..15`
+-- -- i.e. 31 with probability 8/16, 30 with 7/16), or a degenerate
+-- `species_byte >> 4 == 0` for the `n=0` case (1/16) via a conditional
+-- skip of the multiply entirely (`JR Z` in the ROM routine) -- this
+-- last case is unexplained (possibly dead code for this creature,
+-- possibly a real "can spawn with 0 HP" edge case) and not implemented
+-- here; `HP_TO_CLEAR` below stays pinned to 31, the single most-common
+-- draw, rather than guessing at the edge case. The per-species
+-- multiplier byte and PRNG mechanism are now decoded; what remains
+-- open is a second creature's species-byte value (to confirm the
+-- *record layout*, not just this one instance, generalizes) -- see
+-- docs/reverse-engineering/rom-map.md for the full trace, the
+-- per-creature record dump, and the open next step.
 --
--- IMPLEMENTED (2026-08-14, task #5 continuation): the real formula
--- above (`n=1..15` case) is now a real, tested Lua function --
--- `CombatFormulas.rollHP(speciesByte, noiseByte)` -- exhaustively
--- cross-checked against every real noiseByte in every real n's own
--- 16-byte range, matching this project's own live-verified 31/30
--- split exactly. The genuinely unexplained `n=0` case (1/16 odds)
--- fails loudly there rather than guessing, per this project's own "no
--- silent fallbacks" rule -- see that function's own doc comment.
--- `HP_TO_CLEAR` below is DELIBERATELY left as the fixed modal value
--- (31), not wired to call `rollHP` at spawn time -- doing so would
--- introduce real, live 1/16-odds crashes for the unexplained n=0
--- case in actual gameplay, a live-availability regression this
--- project isn't willing to make for an edge case that's still
--- genuinely open. `rollHP` is available, correct, and tested for a
--- future caller once the `n=0` case is resolved (or a caller that
--- deliberately wants to accept that risk).
+-- IMPLEMENTED: the formula above (`n=1..15` case) is now a tested Lua
+-- function -- `CombatFormulas.rollHP(speciesByte, noiseByte)` --
+-- exhaustively cross-checked against every noiseByte in every n's own
+-- 16-byte range, matching this project's live-verified 31/30 split
+-- exactly. The genuinely unexplained `n=0` case (1/16 odds) fails
+-- loudly there rather than guessing, per this project's "no silent
+-- fallbacks" rule -- see that function's doc comment. `HP_TO_CLEAR`
+-- below is deliberately left as the fixed modal value (31), not wired
+-- to call `rollHP` at spawn time -- doing so would introduce live
+-- 1/16-odds crashes for the unexplained n=0 case in actual gameplay, a
+-- live-availability regression this project isn't willing to make for
+-- an edge case that's still genuinely open. `rollHP` is available,
+-- correct, and tested for a future caller once the `n=0` case is
+-- resolved (or a caller that deliberately wants to accept that risk).
 --
--- UPDATED (2026-08-10): this "per-creature record" turned out to be the
--- SAME real 24-byte struct as the message-settings table found
--- independently the same day (see docs/reverse-engineering/text.md) --
--- a genuinely unified "battle/event trigger" record combining message-
--- display settings AND enemy-spawn setup, not two coincidentally-
--- overlapping systems. The species byte (+0x01) now confirmed varying
--- realistically (2-255) across 20 real records, not just this one
--- instance. `+0x02`/`+0x03` (the earlier "ATK/DEF?" candidates) were
--- live-traced this pass to a real hardware-palette-shadow-register
--- write ($C0AC) -- real per-creature PALETTE config, NOT combat stats;
--- that specific hypothesis is retired. Real ATK/DEF, if it exists
--- separately, is not at this position -- see rom-map.md's own entry
--- for the full trace.
+-- UPDATED: this "per-creature record" turned out to be the same
+-- 24-byte struct as the message-settings table found independently the
+-- same day (see docs/reverse-engineering/text.md) -- a genuinely
+-- unified "battle/event trigger" record combining message-display
+-- settings and enemy-spawn setup, not two coincidentally-overlapping
+-- systems. The species byte (+0x01) now confirmed varying realistically
+-- (2-255) across 20 records, not just this one instance. `+0x02`/`+0x03`
+-- (the earlier "ATK/DEF?" candidates) were live-traced this pass to a
+-- hardware-palette-shadow-register write ($C0AC) -- per-creature
+-- PALETTE config, not combat stats; that specific hypothesis is
+-- retired. ATK/DEF, if it exists separately, is not at this position --
+-- see rom-map.md's own entry for the full trace.
 --
--- RESOLVED (2026-08-10, later same day): real enemy ATK found -- NOT
--- in this 24-byte record at all, but in a separate, dedicated 8-byte-
--- stride "entity command dispatcher" table (bank4 file 0x10c80-
--- 0x10df0). Live-confirmed: the bank-4 command dispatcher (command
--- byte 0xC9 = "attack") resolves this entity's slot in $D442, reads a
--- record pointer, and loads B=*(pointer+3) before dispatching into the
--- real damage formula ($50AC) -- B live-matched the enemy's own ATK
--- (8) exactly, twice, independently. See rom-map.md's "P1 resolved"
--- section and combat.md's "$50AC" section for the full trace, byte
--- dump, and field map. DEF for enemies still open (two other varying
--- fields in the same record, unconfirmed).
+-- RESOLVED: enemy ATK found -- not in this 24-byte record at all, but
+-- in a separate, dedicated 8-byte-stride "entity command dispatcher"
+-- table (bank4 file 0x10c80-0x10df0). Live-confirmed: the bank-4
+-- command dispatcher (command byte 0xC9 = "attack") resolves this
+-- entity's slot in $D442, reads a record pointer, and loads
+-- B=*(pointer+3) before dispatching into the damage formula ($50AC) --
+-- B live-matched the enemy's ATK (8) exactly, twice, independently.
+-- See rom-map.md's "P1 resolved" section and combat.md's "$50AC"
+-- section for the full trace, byte dump, and field map. DEF for
+-- enemies still open (two other varying fields in the same record,
+-- unconfirmed).
 --
--- WIRED (2026-08-10, further same day): real enemy ATK, plus the now
--- fully-decoded $50AC formula itself, are wired into actual gameplay
--- -- see CONTACT_DAMAGE's own doc comment below.
+-- WIRED: enemy ATK, plus the now fully-decoded $50AC formula itself,
+-- are wired into actual gameplay -- see CONTACT_DAMAGE's doc comment
+-- below.
 Enemy.ATK = 8
 Enemy.HP_INIT_TRACE_NOTE = "Real WRAM $D3F4/$D3F5 spawn-time write, " ..
   "bank4 ROM $10340-$10372 -- HP = ((256-n)*speciesByte)>>4 where n is " ..
