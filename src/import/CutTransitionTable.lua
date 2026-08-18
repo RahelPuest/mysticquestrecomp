@@ -92,24 +92,23 @@ local CutTransitionTable = {}
 CutTransitionTable.LANDING_RECORD_BODY_LENGTH = 9
 CutTransitionTable.SELECTOR_RECORD_BODY_LENGTH = 12
 
---- Real, already-established `roomSelectorTable` family assignments
--- (see `docs/reverse-engineering/rom-map.md`'s own "Consolidated
--- reference" section) -- curated project knowledge, NOT derived by
--- this module itself. Every real `roomSelector` value `scanLandingRecords`
--- can return (`1`-`15`) has an entry; `0` is included too (never
--- actually used by a real landing record, per this module's own doc
--- comment, but a real, valid `roomSelectorTable` index nonetheless).
+--- Already-established `roomSelectorTable` family assignments (see
+-- `docs/reverse-engineering/rom-map.md`'s "Consolidated reference"
+-- section) -- curated project knowledge, not derived by this module
+-- itself. Every `roomSelector` value `scanLandingRecords` can return
+-- (`1`-`15`) has an entry; `0` is included too (never actually used by
+-- a landing record, per this module's doc comment, but a valid
+-- `roomSelectorTable` index nonetheless).
 --
--- UPGRADED from "curated/assumed" to LIVE-VERIFIED for selectors 2-6
--- (2026-08-17, direct user claim "ich bin mir sehr sicher das er
--- übergang von fourth in den fith room einfach nur ein übergang
--- zurück in den third room ist"): a real live WRAM register trace
--- ($D392/$D393/$C3F0/$C3F5) confirmed willyRoom/secondRoom/thirdRoom/
--- fifthRoom really do share one identical real room identity, not
--- just this table's own coarse label -- see `rom_profiles.lua`'s
+-- UPGRADED from "curated/assumed" to live-verified for selectors 2-6
+-- (direct user claim that the fourth-to-fifth-room transition is
+-- simply a transition back into the third room): a live WRAM register
+-- trace ($D392/$D393/$C3F0/$C3F5) confirmed willyRoom/secondRoom/
+-- thirdRoom/fifthRoom really do share one identical room identity, not
+-- just this table's coarse label -- see `rom_profiles.lua`'s
 -- `fifthRoom.sameRomIdentityAs`/`sameRomIdentityNote` and
--- `docs/reverse-engineering/events.md`'s same-dated entry for the
--- full register table, screenshots, and grid-overlap numbers.
+-- `docs/reverse-engineering/events.md`'s matching entry for the full
+-- register table, screenshots, and grid-overlap numbers.
 CutTransitionTable.FAMILY_BY_ROOM_SELECTOR = {
   [0] = "startRoom/fourthRoom",
   [1] = "startRoom/fourthRoom",
@@ -129,19 +128,19 @@ CutTransitionTable.FAMILY_BY_ROOM_SELECTOR = {
   [15] = "unknownRoomB (schwarzer Wipe-Hintergrund)",
 }
 
---- Scans `romData` for every real landing record body
+--- Scans `romData` for every landing record body
 -- (`00 05 F4 A1 A2 tileCol tileRow 00 0B`). Returns a plain 1-based
 -- array of `{ fileOffset, bank, roomSelector, subIndexByte, tileCol,
 -- tileRow, pixelX, pixelY }`, `fileOffset` pointing at the record
--- body's own leading `0x00` byte (NOT at whatever precedes it, which
--- varies -- see this module's own doc comment). `roomSelector` (the
--- record's own first operand byte, `A1` in this module's own doc
--- comment) is the REAL target `roomSelectorTable` index, fed
--- unmodified to `$026DC` -- live-confirmed, see doc comment above.
--- `subIndexByte` (`A2`) is `$026DC`'s own real nibble-split `D`/`E`
--- sub-index argument, real but not further decoded by this module.
--- `pixelX`/`pixelY` use the already-VERIFIED real formula
--- (`TileLandingPosition.lua`): `(tileCol+1)*8`, `(tileRow+2)*8`.
+-- body's leading `0x00` byte (not at whatever precedes it, which
+-- varies -- see this module's doc comment). `roomSelector` (the
+-- record's first operand byte, `A1` in this module's doc comment) is
+-- the target `roomSelectorTable` index, fed unmodified to `$026DC` --
+-- live-confirmed, see doc comment above. `subIndexByte` (`A2`) is
+-- `$026DC`'s nibble-split `D`/`E` sub-index argument, real but not
+-- further decoded by this module. `pixelX`/`pixelY` use the already-
+-- VERIFIED formula (`TileLandingPosition.lua`): `(tileCol+1)*8`,
+-- `(tileRow+2)*8`.
 function CutTransitionTable.scanLandingRecords(romData)
   assert(type(romData) == "string", "CutTransitionTable.scanLandingRecords expects a byte string")
   local records = {}
@@ -173,20 +172,20 @@ function CutTransitionTable.scanLandingRecords(romData)
   return records
 end
 
---- Collapses `scanLandingRecords`' own raw records into the real,
--- GENUINELY DISTINCT set of `(roomSelector, pixelX, pixelY)`
--- transitions -- the same real story/dialogue transition is referenced
--- from many different points in the corpus (e.g. `roomSelector=2,
--- pixel=(136,32)` alone accounts for 11 of the 186 raw records), not
--- 11 different real transitions. Returns a plain 1-based array of
--- `{ roomSelector, targetFamily, pixelX, pixelY, tileCol, tileRow,
--- occurrences, exampleFileOffset }`, sorted by `roomSelector` then
--- `pixelX` then `pixelY` (a stable, deterministic order for a caller
--- that renders this as a table/list). `targetFamily` is looked up from
+--- Collapses `scanLandingRecords`' raw records into the genuinely
+-- distinct set of `(roomSelector, pixelX, pixelY)` transitions -- the
+-- same story/dialogue transition is referenced from many different
+-- points in the corpus (e.g. `roomSelector=2, pixel=(136,32)` alone
+-- accounts for 11 of the 186 raw records), not 11 different
+-- transitions. Returns a plain 1-based array of `{ roomSelector,
+-- targetFamily, pixelX, pixelY, tileCol, tileRow, occurrences,
+-- exampleFileOffset }`, sorted by `roomSelector` then `pixelX` then
+-- `pixelY` (a stable, deterministic order for a caller that renders
+-- this as a table/list). `targetFamily` is looked up from
 -- `FAMILY_BY_ROOM_SELECTOR` above (`"unbekannt (roomSelector N)"` for
--- any value that table doesn't cover, an honest fallback rather than
--- a crash if a future ROM revision's own scan finds a value outside
--- the currently-known 0-15 range).
+-- any value that table doesn't cover, an honest fallback rather than a
+-- crash if a future ROM revision's scan finds a value outside the
+-- currently-known 0-15 range).
 function CutTransitionTable.distinctLandings(romData)
   local records = CutTransitionTable.scanLandingRecords(romData)
   local byKey = {}
@@ -219,19 +218,19 @@ function CutTransitionTable.distinctLandings(romData)
   return order
 end
 
---- Scans `romData` for every real "selector-shaped" record body
--- (`00 08 C5 idx F4 a b 09 0C EC 00 0B`) -- a real, structurally
--- distinct sibling record this same investigation found. HONEST
--- STATUS: this was originally suspected to be the real room-
--- connectivity key (its own `idx` operand happens to range 0-15, the
--- same as `roomSelectorTable`'s own size) -- that lead turned out to
--- be a coincidence, not the real mechanism: connectivity is actually
--- encoded directly in `scanLandingRecords`' own `roomSelector` field
--- (see this module's own doc comment for the live-traced proof). This
--- record type's own real meaning remains genuinely undecoded -- kept
--- here as a real, verified structural finding for whoever investigates
--- it next, not removed just because the original hypothesis about it
--- didn't pan out. Returns `{ fileOffset, bank, idx, a, b }`.
+--- Scans `romData` for every "selector-shaped" record body
+-- (`00 08 C5 idx F4 a b 09 0C EC 00 0B`) -- a structurally distinct
+-- sibling record this same investigation found. HONEST STATUS: this
+-- was originally suspected to be the room-connectivity key (its `idx`
+-- operand happens to range 0-15, the same as `roomSelectorTable`'s
+-- size) -- that lead turned out to be a coincidence, not the real
+-- mechanism: connectivity is actually encoded directly in
+-- `scanLandingRecords`'s `roomSelector` field (see this module's doc
+-- comment for the live-traced proof). This record type's meaning
+-- remains genuinely undecoded -- kept here as a verified structural
+-- finding for whoever investigates it next, not removed just because
+-- the original hypothesis about it didn't pan out. Returns
+-- `{ fileOffset, bank, idx, a, b }`.
 function CutTransitionTable.scanSelectorRecords(romData)
   assert(type(romData) == "string", "CutTransitionTable.scanSelectorRecords expects a byte string")
   local records = {}
