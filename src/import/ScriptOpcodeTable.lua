@@ -1677,220 +1677,197 @@ ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B7 = 0x0D9B
 
 -- `0xA1`/`0xA2` (`$01A3`/`$01B2`) -- CLOSED 2026-08-15 (direct user
 -- request "ok dann mal die fehlenden opcodes dekodieren"): byte-for-
--- byte the SAME `PUSH HL / CALL <helper> / POP HL / CALL $3727 / RET`
--- shape as `0xB7` above, where `<helper>` is `PUSH AF / LD A,<sel> /
--- JP $1ED7` -- `0xA1` uses selector `0x0A` (real target `$5156`),
--- `0xA2` uses selector `0x0B` (real target `$5176`). Both real
--- selector bodies are STRUCTURALLY IDENTICAL to each other (only 2
--- small immediate constants differ -- `0x0D`/`0xF1` for `0xA1` vs.
--- `0x0E`/`0xF5` for `0xA2`): `LD A,<c1> / CALL $3E9A / LD C,4 / CALL
--- $29BA / LD C,4 / LD A,2 / CALL $0C5D / LD C,4 / LD A,<c2> / CALL
--- $0C86 / XOR A / LD ($C4D2),A / CALL $28D5 / RET` -- a real, always-
--- unconditional multi-step actor sub-effect (resets the real `$C4D2`
--- actor-state flag, several opaque leaf calls with small baked-in
+-- byte the same PUSH HL / CALL <helper> / POP HL / CALL $3727 / RET
+-- shape as 0xB7 above, where <helper> is PUSH AF / LD A,<sel> / JP
+-- $1ED7 -- 0xA1 uses selector 0x0A (target $5156), 0xA2 uses selector
+-- 0x0B (target $5176). Both selector bodies are structurally identical
+-- to each other (only 2 small immediate constants differ -- 0x0D/0xF1
+-- for 0xA1 vs. 0x0E/0xF5 for 0xA2): LD A,<c1> / CALL $3E9A / LD C,4 /
+-- CALL $29BA / LD C,4 / LD A,2 / CALL $0C5D / LD C,4 / LD A,<c2> /
+-- CALL $0C86 / XOR A / LD ($C4D2),A / CALL $28D5 / RET -- an always-
+-- unconditional multi-step actor sub-effect (resets the $C4D2 actor-
+-- state flag, several opaque leaf calls with small baked-in
 -- parameters -- plausibly a sound/animation trigger pair, not
--- independently confirmed further). Zero explicit script-stream
--- operand bytes, unconditional -- reuses `StandardScriptHandlers
--- .chainedOpaqueEffectCommand` directly, no new Lua code.
+-- independently confirmed further). Zero explicit operand bytes,
+-- unconditional -- reuses StandardScriptHandlers
+-- .chainedOpaqueEffectCommand directly, no new Lua code.
 ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A1 = 0x01A3 -- selector 0x0A
 ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A2 = 0x01B2 -- selector 0x0B
 
--- `0xB6` (`$0D8C`) -- CLOSED 2026-08-15, same pass: SAME wrapper shape
--- again, selector `0x16` (real target `$4059`). This one's real body
--- is substantially larger (a real VRAM tile-copy/animation-load
--- sequence -- writes `$C0AA`/`$C0A5` pending-graphics flags, then
--- copies real tile data via `$02F3`/`$2DF5` toward VRAM `$8F00`) but
--- the WRAPPER's own contract doesn't depend on what the delegate does
--- internally -- still zero operand bytes, still unconditional (no
--- branch anywhere in the wrapper). Real leaf effect HYPOTHESIS (a
--- graphics/animation trigger), matching this project's established
--- scope for this whole opaque-effect family -- reuses the same
--- factory, no new Lua code.
+-- 0xB6 ($0D8C) -- CLOSED, same pass: same wrapper shape again,
+-- selector 0x16 (target $4059). This one's body is substantially
+-- larger (a VRAM tile-copy/animation-load sequence -- writes $C0AA/
+-- $C0A5 pending-graphics flags, then copies tile data via $02F3/$2DF5
+-- toward VRAM $8F00) but the wrapper's contract doesn't depend on what
+-- the delegate does internally -- still zero operand bytes, still
+-- unconditional. Leaf effect HYPOTHESIS (a graphics/animation trigger)
+-- -- reuses the same factory.
 ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B6 = 0x0D8C -- selector 0x16
 
--- `0xAA` (`$2F7F`) -- CLOSED 2026-08-15, same pass: `PUSH HL / CALL
--- $2EF7 / POP HL / CALL $3727 / RET`, where `$2EF7` is ITSELF another
--- `$1ED7` trampoline, selector `0x1F` -- the SAME real selector
--- rom-map.md's own "$1ED7" section ALREADY documents: "processes a
--- real 7-slot 'pending sound-trigger queue' at WRAM `$CEF0`, each
--- entry played via `$0611`". A real, ALREADY-understood effect (not a
--- new leaf this pass had to characterize) -- zero operand bytes,
--- unconditional -- reuses the same factory.
-ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AA = 0x2F7F -- selector 0x1F (real pending-sound-queue processor)
+-- 0xAA ($2F7F) -- CLOSED, same pass: PUSH HL / CALL $2EF7 / POP HL /
+-- CALL $3727 / RET, where $2EF7 is itself another $1ED7 trampoline,
+-- selector 0x1F -- the same selector rom-map.md's "$1ED7" section
+-- already documents: processes a 7-slot "pending sound-trigger queue"
+-- at WRAM $CEF0, each entry played via $0611. An already-understood
+-- effect -- zero operand bytes, unconditional -- reuses the same factory.
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AA = 0x2F7F -- selector 0x1F (pending-sound-queue processor)
 
--- `0xAB` (`$0D83`) -- CLOSED 2026-08-15, same pass: `PUSH HL / CALL
--- $21B4 / POP HL / CALL $3727 / RET` -- UNLIKE its siblings above,
--- `$21B4` does NOT go through `$1ED7` at all, it's a direct real leaf:
--- `LD HL,$C400 / LD B,0x80 / LD A,0xFF / CALL $2B5D / RET`, where
--- `$2B5D` is a real, generic "fill B bytes starting at HL with A"
--- primitive -- i.e. this opcode's real effect is UNCONDITIONALLY
--- filling the entire 128-byte real WRAM block `$C400`-`$C47F` with
--- `0xFF`. `$C400` is the SAME real per-actor state-flag region this
--- project already tracks elsewhere this session (task #146's own
--- `$C400`+index bit-7 marker) -- plausibly a real "reset all actor
--- states" bulk operation. Zero operand bytes, unconditional -- reuses
--- the same factory (the real fill effect itself is not reproduced,
--- same honest scope as every other member of this family).
-ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB = 0x0D83 -- real 128-byte $C400 block fill (0xFF)
+-- 0xAB ($0D83) -- CLOSED, same pass: PUSH HL / CALL $21B4 / POP HL /
+-- CALL $3727 / RET -- unlike its siblings above, $21B4 doesn't go
+-- through $1ED7 at all, it's a direct leaf: LD HL,$C400 / LD B,0x80 /
+-- LD A,0xFF / CALL $2B5D / RET, where $2B5D is a generic "fill B bytes
+-- starting at HL with A" primitive -- this opcode's effect is
+-- unconditionally filling the entire 128-byte WRAM block $C400-$C47F
+-- with 0xFF. $C400 is the same per-actor state-flag region this
+-- project already tracks elsewhere (task #146's $C400+index bit-7
+-- marker) -- plausibly a "reset all actor states" bulk operation. Zero
+-- operand bytes, unconditional -- reuses the same factory (the fill
+-- effect itself isn't reproduced).
+ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB = 0x0D83 -- 128-byte $C400 block fill (0xFF)
 
--- `0xAD` ($0DBC) -- CLOSED 2026-08-15, direct follow-up ("ok die
--- restlichen bitte auch noch", task #152): `PUSH HL / CALL $1ED1 / CP
--- 0x00 / JR NZ,<release>`, where `$1ED1` (`PUSH AF / LD A,0x01 / JP
--- $1F06`) reaches selector `0x01` of the ALREADY-known bank-2
--- `$1F35`/`$1F06` dispatcher family (rom-map.md's own "$1ED7" section
--- already flags this as `$1ED7`'s real sibling, just bank 2 instead of
--- bank 1 -- confirmed here: passing `A=2` instead of `A=1` to the
--- shared `$29FB` bank-switch primitive lands on a COMPLETELY DIFFERENT
--- real table, ruling out a shared-table coincidence). Selector `0x01`
--- (`$4218`) is a complete, classic Game Boy joypad-polling routine
--- (real `$FF00` D-pad/button hardware reads, including the real
--- A+B+Select+Start soft-reset combo check) that returns the current
--- 8-bit button state in `A`. `0xAD` itself: **releases immediately if
--- ANY real button is held; while nothing is held, halts, incrementing
--- a real idle counter and calling one of 2 opaque leaves every real
--- tick** -- a real "wait for any button press" gate. See
--- `StandardScriptHandlers.waitForAnyButtonCommand`'s own doc comment
--- for the complete real disassembly.
+-- 0xAD ($0DBC) -- CLOSED, direct follow-up to decode the remaining
+-- opcodes, task #152: PUSH HL / CALL $1ED1 / CP 0x00 / JR NZ,<release>,
+-- where $1ED1 (PUSH AF / LD A,0x01 / JP $1F06) reaches selector 0x01
+-- of the already-known bank-2 $1F35/$1F06 dispatcher family (rom-
+-- map.md's "$1ED7" section already flags this as $1ED7's sibling, just
+-- bank 2 instead of bank 1 -- confirmed here: passing A=2 instead of
+-- A=1 to the shared $29FB bank-switch primitive lands on a completely
+-- different table). Selector 0x01 ($4218) is a complete, classic Game
+-- Boy joypad-polling routine ($FF00 D-pad/button hardware reads,
+-- including the A+B+Select+Start soft-reset combo check) that returns
+-- the current 8-bit button state in A. 0xAD itself: releases
+-- immediately if any button is held; while nothing is held, halts,
+-- incrementing an idle counter and calling one of 2 opaque leaves
+-- every tick -- a "wait for any button press" gate. See
+-- StandardScriptHandlers.waitForAnyButtonCommand's own doc comment for
+-- the complete disassembly.
 ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD = 0x0DBC
 
--- `0x8B` ($0D1B) -- CLOSED 2026-08-15, direct follow-up ("ok die
--- restlichen bitte auch noch", task #152, continuing straight from
--- `0xAD` above): a real, self-contained "play back a pre-baked
--- waypoint/step sequence" gate. Byte-for-byte: `LD A,($D499) / CP 0 /
--- CALL Z,$0D51 / LD B,A / LD A,($D49A) / DEC A / LD ($D49A),A / RET
--- NZ / <else: PUSH HL / LD C,0x04 / PUSH BC / CALL $0C99 / LD D,A /
--- POP BC / LD A,($D498) / LD E,A / LD A,B / LD B,0 / CALL $2C27 / POP
--- HL / LD ($D499),A / CP 0 / JR Z,<release> / LD A,0x08 / LD
--- ($D49A),A / RET>`.
+-- 0x8B ($0D1B) -- CLOSED, direct follow-up to decode the remaining
+-- opcodes, task #152, continuing straight from 0xAD above: a self-
+-- contained "play back a pre-baked waypoint/step sequence" gate.
+-- Byte-for-byte: LD A,($D499) / CP 0 / CALL Z,$0D51 / LD B,A / LD
+-- A,($D49A) / DEC A / LD ($D49A),A / RET NZ / <else: PUSH HL / LD
+-- C,0x04 / PUSH BC / CALL $0C99 / LD D,A / POP BC / LD A,($D498) / LD
+-- E,A / LD A,B / LD B,0 / CALL $2C27 / POP HL / LD ($D499),A / CP 0 /
+-- JR Z,<release> / LD A,0x08 / LD ($D49A),A / RET>.
 --
--- **Real INIT** (`$0D51`, fires exactly once, when `$D499==0`): reads
--- ONE real script-stream operand byte (`LD A,(HL+)`), stores
--- `operand-0x20` into `$D498` (a fixed real "which waypoint table"
--- selector, unchanged for the rest of this opcode's lifetime), and
--- arms the real wait counter `$D49A=1`.
+-- Init ($0D51, fires exactly once, when $D499==0): reads one operand
+-- byte (LD A,(HL+)), stores operand-0x20 into $D498 (a fixed "which
+-- waypoint table" selector, unchanged for the rest of this opcode's
+-- lifetime), and arms the wait counter $D49A=1.
 --
--- **Real per-tick pacing**: `$D49A` decrements every real tick; while
--- still nonzero, HALTS (bare `RET`, no `$3727`, no further bytes
--- consumed) -- 1 real frame after init, 8 real frames after every
--- subsequent step (`LD A,0x08` on the re-arm path).
+-- Per-tick pacing: $D49A decrements every tick; while still nonzero,
+-- halts (bare RET, no $3727, no further bytes consumed) -- 1 frame
+-- after init, 8 frames after every subsequent step (LD A,0x08 on the
+-- re-arm path).
 --
--- **Real step-advance** (once `$D49A` hits 0): `$0C99` is the ALREADY-
--- confirmed real entity-slot ALIVE-field getter (`WRAM $C200 +
--- slotIndex*16 + 0`, see `EntityStructLayout.FIELD.ALIVE`), called
--- with a FIXED `C=4` -- this project's own already-confirmed PLAYER
--- slot -- giving the player's current ALIVE/state byte (`D`). `$2C27`
--- (`PUSH AF / LD A,0x1C / JP $1ED7`) reaches `$1ED7` selector `0x1C`
--- (real target `$76AB`, cross-checked against the ALREADY-known
--- selector `0x08`->`$50F9` before trusting this new selector read):
--- a real WAYPOINT-TABLE WALK, indexing a real 2-byte-per-entry table
--- at `$776F` by `E` (the fixed `$D498` selector) to get a BASE
--- address, then reading the 16-bit entry at `base + A*2` (`A` = the
--- real step index, 0 on the first check, else the PERSISTED previous
--- `$D499` result) as a `(D,E)` coordinate/delta pair. **A real `0x80`
--- low-byte SENTINEL means "sequence finished"** -- returns `A=0`,
--- released. Otherwise, a second real table (`$78EF`, indexed by
--- `E&0x1F`) plus a real `C<7` branch (`$08D4` vs `$2889`, both real,
--- untraced distance helpers) computes a real per-step distance,
--- returned as `A = 1+distance` (always nonzero on this path) -- this
--- becomes the NEXT real step index, persisted into `$D499`, and the
--- wait counter re-arms to 8 frames.
+-- Step-advance (once $D49A hits 0): $0C99 is the already-confirmed
+-- entity-slot ALIVE-field getter (WRAM $C200 + slotIndex*16 + 0, see
+-- EntityStructLayout.FIELD.ALIVE), called with a fixed C=4 -- this
+-- project's already-confirmed player slot -- giving the player's
+-- current ALIVE/state byte (D). $2C27 (PUSH AF / LD A,0x1C / JP
+-- $1ED7) reaches $1ED7 selector 0x1C (target $76AB, cross-checked
+-- against the already-known selector 0x08->$50F9 before trusting this
+-- new selector read): a waypoint-table walk, indexing a 2-byte-per-
+-- entry table at $776F by E (the fixed $D498 selector) to get a base
+-- address, then reading the 16-bit entry at base + A*2 (A = the step
+-- index, 0 on the first check, else the persisted previous $D499
+-- result) as a (D,E) coordinate/delta pair. A 0x80 low-byte sentinel
+-- means "sequence finished" -- returns A=0, released. Otherwise, a
+-- second table ($78EF, indexed by E&0x1F) plus a C<7 branch ($08D4 vs
+-- $2889, both untraced distance helpers) computes a per-step distance,
+-- returned as A = 1+distance (always nonzero on this path) -- this
+-- becomes the next step index, persisted into $D499, and the wait
+-- counter re-arms to 8 frames.
 --
--- **Real total consumption across the whole opcode's lifetime**:
--- opcode(1) + operand(1, at init only) + zero bytes on every halting
--- tick + the standard `$3727` trailing skip (1, at release) -- exactly
--- 2 real bytes beyond the opcode itself, matching this project's own
--- generic `ScriptInterpreter.fetch`-based tail convention.
+-- Total consumption across the whole opcode's lifetime: opcode(1) +
+-- operand(1, at init only) + zero bytes on every halting tick + the
+-- standard $3727 trailing skip (1, at release) -- exactly 2 bytes
+-- beyond the opcode itself, matching this project's generic
+-- ScriptInterpreter.fetch-based tail convention.
 --
--- The exact real waypoint-table CONTENTS (`$776F`/`$78EF`) and the two
--- real distance helpers (`$08D4`/`$2889`) are deliberately NOT
--- reproduced -- `advanceStep(operand, stepIndex)` is the caller's own
--- opaque real evaluator (same abstraction level as
--- `chainedOpaqueEffectCommand`'s own untraced leaves), returning
--- `(done, nextStepIndex)` once per real check. See
--- `StandardScriptHandlers.waypointStepCommand`'s own doc comment.
+-- The exact waypoint-table contents ($776F/$78EF) and the two distance
+-- helpers ($08D4/$2889) are deliberately not reproduced --
+-- advanceStep(operand, stepIndex) is the caller's own opaque evaluator
+-- (same abstraction level as chainedOpaqueEffectCommand's untraced
+-- leaves), returning (done, nextStepIndex) once per check. See
+-- StandardScriptHandlers.waypointStepCommand's own doc comment.
 ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B = 0x0D1B
 
--- `0xAC`/`0xAE` (`$11E5`/`$11F8`) -- CLOSED 2026-08-15, direct follow-up
--- ("laut website sind noch 2 offen. beende die auch", task #152's own
--- final pair). Real `$1ED7` selectors `0x11`/`0x12` (targets
--- `$4164`/`$4180`), each a `LD D,H/LD E,L / LD A,($D499) / LD
--- HL,<table> / CALL $2B70 / RET` real jump-table dispatch (the SAME
--- `$2B63`-based "multiply by 2, read a 16-bit entry, JP" shape already
--- trusted for selector `0x10`'s own table). Reading BOTH real tables'
--- raw bytes directly (not disassembling them as code, which would
--- misread real DATA as instructions) found a real, 8-PHASE state
--- machine (0-7, NOT 6 like the sibling `paletteFadeCompletionGate`
+-- 0xAC/0xAE ($11E5/$11F8) -- CLOSED, direct follow-up saying the
+-- website still shows 2 open, close those too, task #152's final pair.
+-- $1ED7 selectors 0x11/0x12 (targets $4164/$4180), each a LD D,H/LD
+-- E,L / LD A,($D499) / LD HL,<table> / CALL $2B70 / RET jump-table
+-- dispatch (the same $2B63-based "multiply by 2, read a 16-bit entry,
+-- JP" shape already trusted for selector 0x10's own table). Reading
+-- both tables' raw bytes directly (not disassembling them as code,
+-- which would misread data as instructions) found an 8-phase state
+-- machine (0-7, not 6 like the sibling paletteFadeCompletionGate
 -- family -- confirmed by checking where each table degrades into
--- obvious garbage addresses past index 7, same boundary-detection
--- discipline this project uses for every other real table). See
--- `StandardScriptHandlers.wipeCompletionGate`'s own doc comment for
--- the complete, byte-exact real disassembly of all 8 phases (including
--- a self-caught correction of this SAME DAY's earlier "phase 0 is
--- byte-identical in shape to the sibling family" claim -- it isn't;
--- phase 0 does substantial extra real palette/effect work the sibling
--- family's own phase 0 doesn't) and the decisive real evidence for the
--- phase-2/phase-6 SYMMETRIC-duration design (both share ONE real WRAM
--- tick counter, `$D49A`).
+-- garbage addresses past index 7). See StandardScriptHandlers
+-- .wipeCompletionGate's own doc comment for the complete, byte-exact
+-- disassembly of all 8 phases (including a self-caught correction of
+-- an earlier "phase 0 is byte-identical in shape to the sibling
+-- family" claim -- it isn't; phase 0 does substantial extra palette/
+-- effect work the sibling family's phase 0 doesn't) and the decisive
+-- evidence for the phase-2/phase-6 symmetric-duration design (both
+-- share one WRAM tick counter, $D49A).
 --
--- The outer opcode itself (`$11E5`/`$11F8`): `CALL <trampoline> / LD
--- A,($D499) / CP 0 / RET NZ / CALL $3727 / RET` -- zero real explicit
--- script-stream operand bytes; releases exactly when the real 8-phase
--- state machine reports `$D499==0` again. See
--- `StandardScriptHandlers.completionPredicateCommand`'s own doc
--- comment for this generic outer shape.
+-- The outer opcode itself ($11E5/$11F8): CALL <trampoline> / LD
+-- A,($D499) / CP 0 / RET NZ / CALL $3727 / RET -- zero explicit
+-- operand bytes; releases exactly when the 8-phase state machine
+-- reports $D499==0 again. See StandardScriptHandlers
+-- .completionPredicateCommand's own doc comment for this generic
+-- outer shape.
 ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AC = 0x11E5
 ScriptOpcodeTable.WIPE_COMPLETION_COMMAND_HANDLER_ADDRESS_AE = 0x11F8
 
--- `0x9A`/`0x9B` ($1674/$1681, added 2026-08-14, whole-corpus scan's
--- own next real untouched blockers after `0xB7`, found right next to
--- the ALREADY-known `0x8F`/`0x99` in the same neighborhood): 2 more
--- real, PLAIN Family-A `actorAction` members (`CALL $28C2 / JR
--- NZ,<halt> / LD A,<group> / LD C,0x00 / CALL $2879 / RET`, a real
--- TRUE HALT via `JR NZ` -- NOT the `_OR_SKIP_` soft-skip family).
--- Picked up automatically by the existing generic
--- `^ACTOR_ACTION_HANDLER_ADDRESS_` loop.
+-- 0x9A/0x9B ($1674/$1681, whole-corpus scan's next untouched blockers
+-- after 0xB7, found right next to the already-known 0x8F/0x99 in the
+-- same neighborhood): 2 more plain Family-A actorAction members (CALL
+-- $28C2 / JR NZ,<halt> / LD A,<group> / LD C,0x00 / CALL $2879 / RET,
+-- a true halt via JR NZ -- not the _OR_SKIP_ soft-skip family). Picked
+-- up automatically by the existing generic ^ACTOR_ACTION_HANDLER_
+-- ADDRESS_ loop.
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_9A = 0x1674 -- group 0x0E
 ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_9B = 0x1681 -- group 0x0F
 
--- `0x5A`/`0x5B` ($1488/$1494, added 2026-08-14, same neighborhood
--- sweep): 2 more real `actorActionWithReadinessParam` members (SAME
--- shape as `0x7A`/`0x7B`), offset `0x04`, groups `0x0E`/`0x0F`.
+-- 0x5A/0x5B ($1488/$1494, same neighborhood sweep): 2 more
+-- actorActionWithReadinessParam members (same shape as 0x7A/0x7B),
+-- offset 0x04, groups 0x0E/0x0F.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_5A = 0x1488 -- group 0x0E, offset 0x04
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_5B = 0x1494 -- group 0x0F, offset 0x04
 
--- `0x6A`/`0x6B` ($14FC/$1508, added 2026-08-14, same neighborhood
--- sweep -- the pair that triggered this session's own self-caught
--- Family-A/readiness-as-parameter unification, see
--- `StandardScriptHandlers.actorActionWithReadinessParam`'s own doc
--- comment): 2 more real `actorActionWithReadinessParam` members,
--- offset `0x05`, groups `0x0E`/`0x0F`.
+-- 0x6A/0x6B ($14FC/$1508, same neighborhood sweep -- the pair that
+-- triggered this session's self-caught Family-A/readiness-as-parameter
+-- unification, see StandardScriptHandlers
+-- .actorActionWithReadinessParam's own doc comment): 2 more
+-- actorActionWithReadinessParam members, offset 0x05, groups 0x0E/0x0F.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_6A = 0x14FC -- group 0x0E, offset 0x05
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_6B = 0x1508 -- group 0x0F, offset 0x05
 
--- `0x24` ($1300, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0x6B`): 1 more real
--- `actorActionWithReadinessParam` member, offset `0x01`, group
--- `0x1E`. (Its own immediate neighbor, `0x25`/`$130C`, is REAL bytes
--- for this SAME shape too -- but already closed under the plain
--- `ACTOR_ACTION_HANDLER_ADDRESS_25` constant via the generic Family-A
--- loop; left as-is since it's already clean, not re-migrated.)
+-- 0x24 ($1300, whole-corpus scan's next untouched blocker after
+-- 0x6B): 1 more actorActionWithReadinessParam member, offset 0x01,
+-- group 0x1E. (Its immediate neighbor, 0x25/$130C, is bytes for this
+-- same shape too -- but already closed under the plain ACTOR_ACTION_
+-- HANDLER_ADDRESS_25 constant via the generic Family-A loop; left as-
+-- is since it's already clean.)
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_24 = 0x1300 -- group 0x1E, offset 0x01
 
--- `0x68` ($14E8, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0x24`): a real "queued action, readiness-
--- as-parameter" command (the `$2859`-leaf sibling of
--- `actorActionWithReadinessParam`) -- see `StandardScriptHandlers
--- .queuedActionWithReadinessParam`'s own doc comment.
+-- 0x68 ($14E8, whole-corpus scan's next untouched blocker after
+-- 0x24): a "queued action, readiness-as-parameter" command (the
+-- $2859-leaf sibling of actorActionWithReadinessParam) -- see
+-- StandardScriptHandlers.queuedActionWithReadinessParam's own doc
+-- comment.
 ScriptOpcodeTable.QUEUED_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_68 = 0x14E8 -- offset 0x05
 
--- `0x74` ($1544, same neighborhood sweep): 1 more real
--- `actorActionWithReadinessParam` member, offset `0x06`, group
--- `0x1E`.
+-- 0x74 ($1544, same neighborhood sweep): 1 more
+-- actorActionWithReadinessParam member, offset 0x06, group 0x1E.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_74 = 0x1544 -- group 0x1E, offset 0x06
 
--- `0x54` ($145C, same neighborhood sweep): 1 more real
--- `actorActionWithReadinessParam` member, offset `0x04`, group
--- `0x1E`.
+-- 0x54 ($145C, same neighborhood sweep): 1 more
+-- actorActionWithReadinessParam member, offset 0x04, group 0x1E.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_54 = 0x145C -- group 0x1E, offset 0x04
 
 -- `0xA9` ($0D5F, added 2026-08-14, whole-corpus scan's own next real
