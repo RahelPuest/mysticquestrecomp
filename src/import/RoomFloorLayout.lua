@@ -1,55 +1,55 @@
--- Decodes the real, general room-FLOOR-layout pipeline found in the
--- Mystic Quest (EU) ROM -- see docs/reverse-engineering/rom-map.md
--- "MILESTONE 3 SOLVED: the full room-layout decompression pipeline,
--- found and cross-verified end to end" for the full disassembly/
--- live-tracing evidence. This module is the Lua port of that pipeline,
--- verified against willyRoom this pass (see the "Real ROM" tests in
--- this module's own test file).
+-- Decodes the general room-FLOOR-layout pipeline found in the Mystic
+-- Quest (EU) ROM -- see docs/reverse-engineering/rom-map.md "MILESTONE
+-- 3 SOLVED: the full room-layout decompression pipeline, found and
+-- cross-verified end to end" for the full disassembly/live-tracing
+-- evidence. This module is the Lua port of that pipeline, verified
+-- against willyRoom (see the "Real ROM" tests in this module's own
+-- test file).
 --
--- Three real, distinct stages, each ROM-verified separately:
+-- Three distinct stages, each ROM-verified separately:
 --
 --   1. METATILE TABLE: a flat array of 6-byte records
 --      `[gfxTL, gfxTR, gfxBL, gfxBR, collision, interaction]` -- the 4
 --      GFX-tile bytes are indices into a general environment tileset,
 --      *not* final tile IDs -- see stage 3. Matches the FFA-Disassembly
---      project's own documented format for the US cartridge exactly
---      (see rom-map.md's external-source section).
+--      project's documented format for the US cartridge exactly (see
+--      rom-map.md's external-source section).
 --
---   2. LAYOUT STREAM: a real RLE-compressed byte stream, decoded by the
---      ROM's own `$242B` routine: a byte with its high bit (0x80) SET
---      means "emit `byte - 0x80`, repeated `rleLength` times"; any
---      other byte is ONE literal metatile index. `rleLength` is a real,
---      PER-ROOM WRAM value (`$C3F9`) -- this project has only ever
---      observed it live (=4 for willyRoom), not derived it statically;
---      callers must supply it (see `rom_profiles.lua`'s
+--   2. LAYOUT STREAM: an RLE-compressed byte stream, decoded by the
+--      ROM's `$242B` routine: a byte with its high bit (0x80) set means
+--      "emit `byte - 0x80`, repeated `rleLength` times"; any other byte
+--      is one literal metatile index. `rleLength` is a per-room WRAM
+--      value (`$C3F9`) -- this project has only ever observed it live
+--      (=4 for willyRoom), not derived it statically; callers must
+--      supply it (see `rom_profiles.lua`'s
 --      `roomFloorLayoutPipeline.exampleRoom.rleLength`). The decoded
 --      stream is a flat array of `metatileGridRows * metatileGridCols`
 --      indices into the metatile table (stage 1), laid out row-major
---      (ROM-verified: `$23F1`'s own real `$C350 + row*stride + col`
---      WRAM addressing).
+--      (ROM-verified: `$23F1`'s `$C350 + row*stride + col` WRAM
+--      addressing).
 --
 --   3. TILE REMAP: each metatile's 4 raw GFX-tile bytes must be passed
---      through a 256-entry remap table (`table[byte] = real tile ID`)
---      before they mean anything -- this is the ALREADY-KNOWN `$D070`
---      WRAM table this project's room-drawing pipeline has used since
---      much earlier this project (see rom-map.md's original "real
---      room-tile decompression pipeline" section). `$D070` is
---      POPULATED AT RUNTIME, not ROM-static -- this module does not
---      (cannot yet) derive it; callers must supply a live snapshot (a
---      256-byte string, `d070[byte+1] = real tile ID`, 1-based like
---      every other byte string in this codebase). Finding $D070's own
---      real populator is a named, still-open follow-up (see rom-map.md).
+--      through a 256-entry remap table (`table[byte] = tile ID`) before
+--      they mean anything -- this is the already-known `$D070` WRAM
+--      table this project's room-drawing pipeline has used since much
+--      earlier (see rom-map.md's original "real room-tile
+--      decompression pipeline" section). `$D070` is populated at
+--      runtime, not ROM-static -- this module does not (cannot yet)
+--      derive it; callers must supply a live snapshot (a 256-byte
+--      string, `d070[byte+1] = tile ID`, 1-based like every other byte
+--      string in this codebase). Finding $D070's own populator is a
+--      named, still-open follow-up (see rom-map.md).
 --
 -- HONEST SCOPE: this reconstructs the room's base FLOOR layout only.
--- The 4 door/exit graphics (North/West/East/South) are DELIBERATELY
--- NOT part of it -- the real compressed stream encodes blank
--- placeholder metatiles there, and the real door art is drawn by a
--- SEPARATE, already-documented mechanism (`$235B`/`$225D`/`$2281`/
--- `$056C`, see rom-map.md "Following $C3F8's consumers"). Verified
--- against willyRoom: this module's `buildPixelGrid` reproduces 288/320
--- real tiles exactly; the remaining 32 fall precisely inside those 4
--- door zones and are NOT a bug -- see this module's own test file for
--- the exact zone-by-zone check, not a hand-waved "close enough".
+-- The 4 door/exit graphics (North/West/East/South) are deliberately not
+-- part of it -- the compressed stream encodes blank placeholder
+-- metatiles there, and the door art is drawn by a separate,
+-- already-documented mechanism (`$235B`/`$225D`/`$2281`/`$056C`, see
+-- rom-map.md "Following $C3F8's consumers"). Verified against
+-- willyRoom: this module's `buildPixelGrid` reproduces 288/320 tiles
+-- exactly; the remaining 32 fall precisely inside those 4 door zones
+-- and are not a bug -- see this module's own test file for the exact
+-- zone-by-zone check, not a hand-waved "close enough".
 --
 -- Pure Lua, no love.* calls, so it's headlessly testable like
 -- MapTable/RoomSelectorTable.
@@ -162,91 +162,89 @@ function RoomFloorLayout.buildPixelGrid(romData, layout, d070)
   return grid
 end
 
--- Real, bitmask-based collision-byte interpretation, from the
--- fourthRoom/unknownRoomA investigation (2026-08-12) -- a metatile's
--- own real 5th byte (`collision`) has its upper nibble (bits 4-7)
--- non-zero exactly on real wall/border/solid-decoration metatiles in
--- THOSE rooms (consistent with a real N/E/S/W-style directional block
--- mask -- matches the FFA-Disassembly documented format's own
--- `$10/$20/$30/$40/$80/$C0` values).
+-- Bitmask-based collision-byte interpretation, from the
+-- fourthRoom/unknownRoomA investigation -- a metatile's 5th byte
+-- (`collision`) has its upper nibble (bits 4-7) non-zero exactly on
+-- wall/border/solid-decoration metatiles in THOSE rooms (consistent
+-- with an N/E/S/W-style directional block mask -- matches the
+-- FFA-Disassembly documented format's `$10/$20/$30/$40/$80/$C0`
+-- values).
 --
--- CORRECTED (2026-08-12, same day, direct follow-up while trying to
--- generalize this rule to willyRoom): this bitmask rule is NOT a
--- universal, ROM-wide fact -- it does NOT hold for willyRoom. Running
--- this exact rule against willyRoom's own real metatile stream shows
--- its already-extensively-LIVE-VERIFIED real checkerboard floor (tile
--- IDs 151-154 -- real movement through this exact area has been core,
--- tested gameplay since early in this project) has collision `0x30`
--- EVERY place it actually appears in the room -- i.e. this rule would
--- wrongly call willyRoom's own real floor "wall." The one thing that
--- IS directly, independently confirmed is fourthRoom's own case
--- specifically (a real LIVE MOVEMENT test -- held UP, watched the real
--- player walk freely through tiles this rule calls "floor" -- an
--- empirical fact about that room, true regardless of whether the rule
+-- CORRECTED (while trying to generalize this rule to willyRoom): this
+-- bitmask rule is not a universal, ROM-wide fact -- it does not hold
+-- for willyRoom. Running this exact rule against willyRoom's metatile
+-- stream shows its already-extensively-live-verified checkerboard
+-- floor (tile IDs 151-154 -- real movement through this exact area has
+-- been core, tested gameplay since early in this project) has
+-- collision `0x30` every place it actually appears in the room -- i.e.
+-- this rule would wrongly call willyRoom's floor "wall." The one thing
+-- that IS directly, independently confirmed is fourthRoom's case
+-- specifically (a live movement test -- held UP, watched the player
+-- walk freely through tiles this rule calls "floor" -- an empirical
+-- fact about that room, true regardless of whether the rule
 -- generalizes). Most likely explanation: bank 8's metatile table
 -- collision byte is not one single global encoding -- different
 -- rooms/metatile-table regions plausibly assign their own meaning to
--- the same byte VALUES (ordinary for a hand-authored, per-map
+-- the same byte values (ordinary for a hand-authored, per-map
 -- collision-class scheme). Practical consequence: `UNKNOWN_ROOM_A_
--- FLOOR_TILE_IDS` (rom_profiles.lua) rests on this SAME rule,
--- extrapolated to a THIRD, independent metatile table (unknownRoomA's
--- own, not fourthRoom's or willyRoom's) with no live-movement
--- confirmation possible (no live gameplay trigger exists) -- this
--- counter-example is real, material evidence that its own "still
--- HYPOTHESIS" status is doing real work, not a formality. This module
--- keeps the rule/function available (see `buildCollisionGrid` below)
--- as real, tested MECHANISM -- position-aware collision from real
--- per-metatile-instance data is a genuine improvement over a flat
--- tile-ID set regardless -- but callers must NOT assume this specific
--- bit-interpretation transfers to a new room without either a live
--- movement check (fourthRoom's own standard) or the room's own
--- independent cross-check (matching a metatile whose real ROLE is
--- already known some other way).
+-- FLOOR_TILE_IDS` (rom_profiles.lua) rests on this same rule,
+-- extrapolated to a third, independent metatile table (unknownRoomA's,
+-- not fourthRoom's or willyRoom's) with no live-movement confirmation
+-- possible (no live gameplay trigger exists) -- this counter-example is
+-- material evidence that its own "still HYPOTHESIS" status is doing
+-- real work, not a formality. This module keeps the rule/function
+-- available (see `buildCollisionGrid` below) as a tested mechanism --
+-- position-aware collision from per-metatile-instance data is a
+-- genuine improvement over a flat tile-ID set regardless -- but callers
+-- must not assume this specific bit-interpretation transfers to a new
+-- room without either a live movement check (fourthRoom's standard) or
+-- the room's own independent cross-check (matching a metatile whose
+-- role is already known some other way).
 RoomFloorLayout.COLLISION_WALL_MASK = 0xF0
 
---- Whether a real metatile `collision` byte reads as walkable floor
--- under this project's own established bitmask rule (see
--- `COLLISION_WALL_MASK`'s own doc comment). This is the fourthRoom/
--- unknownRoomA-style rule specifically -- NOT a ROM-wide default, see
--- `buildCollisionGrid`'s own `isWalkable` parameter below. Kept as the
--- default for existing callers (`buildCollisionGridFromMapTableRecord`,
--- used by bank 5/6's un-ground-truthed 320-room browser) that have no
--- reason yet to prefer a different table's own rule.
+--- Whether a metatile `collision` byte reads as walkable floor under
+-- this project's established bitmask rule (see `COLLISION_WALL_MASK`'s
+-- doc comment). This is the fourthRoom/unknownRoomA-style rule
+-- specifically -- not a ROM-wide default, see `buildCollisionGrid`'s
+-- `isWalkable` parameter below. Kept as the default for existing
+-- callers (`buildCollisionGridFromMapTableRecord`, used by bank 5/6's
+-- un-ground-truthed 320-room browser) that have no reason yet to
+-- prefer a different table's rule.
 function RoomFloorLayout.isWalkableCollision(collision)
   return bit.band(collision, RoomFloorLayout.COLLISION_WALL_MASK) == 0
 end
 
--- CRACKED for real (2026-08-14, task "Kollision generalisieren"):
--- willyRoom's own metatile table (`roomFloorLayoutPipeline.exampleRoom`,
--- file 0x206B0) uses the OPPOSITE polarity from fourthRoom/unknownRoomA
--- -- confirmed decisively, not extrapolated, by cross-tabulating EVERY
--- ONE of willyRoom's real 320 grid cells' own collision byte against
+-- CRACKED: willyRoom's metatile table
+-- (`roomFloorLayoutPipeline.exampleRoom`, file 0x206B0) uses the
+-- opposite polarity from fourthRoom/unknownRoomA -- confirmed
+-- decisively, not extrapolated, by cross-tabulating every one of
+-- willyRoom's 320 grid cells' collision byte against
 -- `rom_profiles.lua`'s already-live-movement-verified `floorTileIds`
--- (only 151-154 are real floor, confirmed 2026-08-09 by holding UP and
--- watching the real player stop dead at the wall boundary): tiles
--- 151-154 show collision `0x30` at EVERY one of their 192 real
--- occurrences (48 each), and every other one of the room's 39 other
--- real tile IDs shows ONLY `0x00`/`0x08`, NEVER `0x30`, at any of their
--- combined 128 occurrences -- a perfectly clean, zero-exception split
--- across all 320 real grid cells, not a majority/heuristic rule. So for
--- THIS table specifically: `collision == 0x30` means floor, full stop
--- -- exactly backwards from `isWalkableCollision`'s own `COLLISION_WALL_
--- MASK` rule. Matches this module's own earlier "collision byte meanings
--- are set per metatile TABLE, not fixed ROM-wide" hypothesis (see
--- `COLLISION_WALL_MASK`'s doc comment) -- now confirmed with a second,
--- independently-derived real table, not just asserted.
+-- (only 151-154 are floor, confirmed by holding UP and watching the
+-- player stop dead at the wall boundary): tiles 151-154 show collision
+-- `0x30` at every one of their 192 occurrences (48 each), and every
+-- other one of the room's 39 other tile IDs shows only `0x00`/`0x08`,
+-- never `0x30`, at any of their combined 128 occurrences -- a perfectly
+-- clean, zero-exception split across all 320 grid cells, not a
+-- majority/heuristic rule. So for this table specifically: `collision
+-- == 0x30` means floor, full stop -- exactly backwards from
+-- `isWalkableCollision`'s `COLLISION_WALL_MASK` rule. Matches this
+-- module's earlier "collision byte meanings are set per metatile
+-- TABLE, not fixed ROM-wide" hypothesis (see `COLLISION_WALL_MASK`'s
+-- doc comment) -- now confirmed with a second, independently-derived
+-- table, not just asserted.
 --
--- NOTE on an earlier, less precise claim: this module's own
--- `buildCollisionGrid` doc comment (below) used to say willyRoom's real
--- floor tiles 151-154 show "BOTH 0x08 (open) AND 0x30 (wall) collision
+-- Note on an earlier, less precise claim: this module's
+-- `buildCollisionGrid` doc comment (below) used to say willyRoom's
+-- floor tiles 151-154 show "both 0x08 (open) and 0x30 (wall) collision
 -- bytes across different metatile instances." A full, exhaustive
--- re-derivation this pass (all 320 cells, not a sample) found this is
--- NOT the case for 151-154 specifically -- they are 0x30 at every one
--- of their 192 real occurrences, no exceptions. The earlier claim may
--- have been checking a different tile range or an earlier, since-
--- corrected version of `willyRoom.grid`; left as an open historical
--- discrepancy rather than silently erased, since this project doesn't
--- overwrite an earlier claim without flagging the correction.
+-- re-derivation (all 320 cells, not a sample) found this is not the
+-- case for 151-154 specifically -- they are 0x30 at every one of their
+-- 192 occurrences, no exceptions. The earlier claim may have been
+-- checking a different tile range or an earlier, since-corrected
+-- version of `willyRoom.grid`; left as an open historical discrepancy
+-- rather than silently erased, since this project doesn't overwrite an
+-- earlier claim without flagging the correction.
 function RoomFloorLayout.isWalkableCollisionWillyFamily(collision)
   return collision == 0x30
 end
