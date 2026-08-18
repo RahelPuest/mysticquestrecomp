@@ -109,24 +109,22 @@ local BANK = 3
 local TABLE_BASE_CPU = 0x5f5a
 local RECORD_SIZE = 24
 
---- 2026-08-16, direct continuation ("Tabelle voll ausmessen"): the
--- table's real extent, measured (not guessed) via a static plausibility
--- scan -- for every index, is bytes[8..9] (LE) a CPU address inside the
--- real bank-3 banked window (0x4000-0x7fff)? Real, structured records
--- run through index 217 (218 entries, 0-217); index 218 onward
+--- The table's extent, measured (not guessed) via a static
+-- plausibility scan -- for every index, is bytes[8..9] (LE) a CPU
+-- address inside the bank-3 banked window (0x4000-0x7fff)? Structured
+-- records run through index 217 (218 entries, 0-217); index 218 onward
 -- abruptly changes shape (repeating 4-byte groups like `24 77 24 77`,
--- `bd bd bd bd` -- a visibly different, NOT actor-record-shaped, data
--- region starts exactly there). WITHIN 0-217, 5 entries are real but
+-- `bd bd bd bd` -- a visibly different, not actor-record-shaped, data
+-- region starts exactly there). Within 0-217, 5 entries are real but
 -- anomalous: index 0, plus a tight cluster at 12/13/14/15 (near-
--- identical bytes[1..8], 2 repeated bank-0 pointers) -- their own
--- bytes[8..9] point into the FIXED bank-0 region (0x0000-0x3fff,
--- always mapped regardless of the active bank), not the swappable
--- bank-3 window every other real record uses -- plausibly a small
--- reserved/fixed-graphics family, not confirmed live.
--- `TABLE_COUNT` includes all of them (218 total) since they ARE real,
--- structurally present ROM data at the expected stride -- `scanTable`
--- marks each one `anomalous = true` rather than silently treating them
--- like the rest.
+-- identical bytes[1..8], 2 repeated bank-0 pointers) -- their
+-- bytes[8..9] point into the fixed bank-0 region (0x0000-0x3fff, always
+-- mapped regardless of the active bank), not the swappable bank-3
+-- window every other record uses -- plausibly a small reserved/
+-- fixed-graphics family, not confirmed live. `TABLE_COUNT` includes all
+-- of them (218 total) since they are structurally present ROM data at
+-- the expected stride -- `scanTable` marks each one `anomalous = true`
+-- rather than silently treating them like the rest.
 local TABLE_COUNT = 218
 
 --- Converts a bank + CPU address (0x4000-0x7fff, banked ROM window) to
@@ -147,16 +145,16 @@ end
 
 --- Reads the raw 24-byte outer record at table index `index` (0-based).
 -- Returns the raw bytes plus the currently-understood fields:
--- `allocParam` (byte[0], passed as `C` into the real `$0A74` entity
--- allocator), `spritePointer` (bytes[8..9], little-endian CPU address
--- of the record's own OAM-arrangement sub-record, same bank -- WHICH
--- on-screen tile slots this entity uses, see `readSpriteSubRecord`),
--- and `spriteSource` (bytes[2..7], the real ROM->VRAM sprite-tile
--- SOURCE formula's own "outer record" -- WHICH raw ROM pixel bytes fill
--- them, see `SpriteTileFormula.lua`'s own doc comment for the full
--- derivation and live-validation). All other bytes are real ROM data
--- but NOT decoded -- available only inside `raw`, honestly left
--- uninterpreted rather than guessed at.
+-- `allocParam` (byte[0], passed as `C` into the `$0A74` entity
+-- allocator), `spritePointer` (bytes[8..9], little-endian CPU address of
+-- the record's OAM-arrangement sub-record, same bank -- which on-screen
+-- tile slots this entity uses, see `readSpriteSubRecord`), and
+-- `spriteSource` (bytes[2..7], the ROM->VRAM sprite-tile source
+-- formula's "outer record" -- which raw ROM pixel bytes fill them, see
+-- `SpriteTileFormula.lua`'s doc comment for the full derivation and
+-- live-validation). All other bytes are real ROM data but not decoded
+-- -- available only inside `raw`, honestly left uninterpreted rather
+-- than guessed at.
 function ActorDefinitionTable.readRecord(romData, index)
   local off = fileOffset(BANK, TABLE_BASE_CPU) + index * RECORD_SIZE
   local raw = romData:sub(off + 1, off + RECORD_SIZE)
@@ -174,11 +172,11 @@ function ActorDefinitionTable.readRecord(romData, index)
     -- other record (see `TABLE_COUNT`'s doc comment; index 0 is the
     -- one currently-known case).
     anomalous = not inBankedWindow(spritePointer),
-    -- Real "outer sprite record" (2026-08-17, see SpriteTileFormula.lua)
-    -- -- bytes[2..7] of this SAME 24-byte row, not a separate pointer
-    -- chase. Live-validated exactly against BOTH characterA (index 121)
-    -- and characterB (index 99)'s own already-known real tileOffsets,
-    -- all 16 tiles each.
+    -- "Outer sprite record" (see SpriteTileFormula.lua) -- bytes[2..7]
+    -- of this same 24-byte row, not a separate pointer chase.
+    -- Live-validated exactly against both characterA (index 121) and
+    -- characterB (index 99)'s already-known tileOffsets, all 16 tiles
+    -- each.
     spriteSource = {
       dest0 = raw:byte(3),
       count = raw:byte(4),
@@ -186,15 +184,15 @@ function ActorDefinitionTable.readRecord(romData, index)
       kindByte = raw:byte(6),
       innerPtr = raw:byte(7) + raw:byte(8) * 256,
       bank = 8 + math.floor(raw:byte(6) / 64),
-      -- Real, live-corroborated "family" membership (2026-08-17, see
-      -- SpriteTileFormula.lua's own `HUMANOID_4POSE_INNER_PTR` doc
-      -- comment): true when this record shares the exact same
-      -- `innerPtr` as characterA/characterB AND its own `count` is
-      -- even (so its raw tiles divide cleanly into 4-tile pose groups)
-      -- -- 172 of 218 records qualify (190 share the innerPtr, 18 of
-      -- those have an odd count=1 and are excluded), 91 of them with a
-      -- DISTINCT `kindByte` (a genuinely different real NPC design, not
-      -- a repeat placement of an already-known one).
+      -- Live-corroborated "family" membership (see SpriteTileFormula
+      -- .lua's `HUMANOID_4POSE_INNER_PTR` doc comment): true when this
+      -- record shares the exact same `innerPtr` as characterA/
+      -- characterB and its `count` is even (so its raw tiles divide
+      -- cleanly into 4-tile pose groups) -- 172 of 218 records qualify
+      -- (190 share the innerPtr, 18 of those have an odd count=1 and
+      -- are excluded), 91 of them with a distinct `kindByte` (a
+      -- genuinely different NPC design, not a repeat placement of an
+      -- already-known one).
       arrangementFamily = (raw:byte(7) + raw:byte(8) * 256 == 0x7B5A and raw:byte(4) % 2 == 0)
         and "humanoid4pose" or nil,
     },
