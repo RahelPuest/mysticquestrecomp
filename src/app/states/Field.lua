@@ -183,8 +183,8 @@ function Field.new(romData, profile, input, overlay, stack, heroName, savedStats
   if romData and profile then
     self.font = Font.new(romData, profile)
     self.background = TileGridBackground.new(romData, profile.graphics.startRoom)
-    -- Real background music (see FIELD_MUSIC_SONG_INDEX's own doc
-    -- comment above for the honest "real audio, chosen trigger" scope).
+    -- Background music (see FIELD_MUSIC_SONG_INDEX's doc comment above
+    -- for the honest "real audio, chosen trigger" scope).
     -- `MusicPlayer.new` itself is love.*-free (headlessly testable,
     -- same as every other constructor here) -- only `:play()` touches
     -- `love.audio`, guarded below for the headless test suite.
@@ -192,140 +192,132 @@ function Field.new(romData, profile, input, overlay, stack, heroName, savedStats
     if love and love.audio then
       self.musicPlayer:play(FIELD_MUSIC_SONG_INDEX)
     end
-    -- WIRED (2026-08-10): the real combat PRNG (ROM $2B1E, see
-    -- CombatNoise.lua's own doc comment for the exact ported algorithm)
-    -- -- one shared, persistent instance so its internal counter/cap
-    -- state advances across the whole session like the real hardware's
-    -- own $C0B0/$C0B1 WRAM bytes would, not a fresh draw sequence every
-    -- contact hit.
+    -- The combat PRNG (ROM $2B1E, see CombatNoise.lua's doc comment for
+    -- the exact ported algorithm) -- one shared, persistent instance so
+    -- its internal counter/cap state advances across the whole session
+    -- like the hardware's $C0B0/$C0B1 WRAM bytes would, not a fresh
+    -- draw sequence every contact hit.
     if profile.noiseTable then
       self.combatNoise = CombatNoise.new(NoiseTable.decode(romData, profile.noiseTable))
-      -- WIRED (2026-08-13, direct user instruction: "der boss kampf an
-      -- sich... soll aus den romdaten raus interpretiert werden"): the
-      -- real, ROM-data-driven movement AI (see EnemyMovementInterpreter's
-      -- own doc comment for the full 3-level decoded mechanism).
+      -- The ROM-data-driven movement AI (see EnemyMovementInterpreter's
+      -- doc comment for the full 3-level decoded mechanism).
       --
-      -- CORRECTED (2026-08-13, same day, direct user report: "der
-      -- einlauf durch das tor sieht immernoch komisch aus"): a real
-      -- interpreter already exists by the time `Field.lua` runs
-      -- whenever this room was reached through `BattleIntro.lua` (see
-      -- that state's own construction site) -- building a SECOND, fresh
-      -- one here (as this code used to) discards its real, already-
-      -- advanced internal state and restarts the whole real AI system
-      -- from scratch, a genuine discontinuity at the cutscene->gameplay
-      -- boundary. Reuse the handed-off instance when present;
-      -- otherwise (dev shortcuts/tests reaching Field directly, with no
-      -- real BattleIntro run first) build + `skipTicks` a fresh one,
-      -- same as before.
+      -- CORRECTED: an interpreter already exists by the time
+      -- `Field.lua` runs whenever this room was reached through
+      -- `BattleIntro.lua` (see that state's construction site) --
+      -- building a second, fresh one here (as this code used to)
+      -- discards its already-advanced internal state and restarts the
+      -- whole AI system from scratch, a genuine discontinuity at the
+      -- cutscene->gameplay boundary. Reuse the handed-off instance when
+      -- present; otherwise (dev shortcuts/tests reaching Field
+      -- directly, with no BattleIntro run first) build + `skipTicks` a
+      -- fresh one, same as before.
       if enemyState and enemyState.movementInterpreter then
         self.enemy.movementInterpreter = enemyState.movementInterpreter
       else
         self.enemy.movementInterpreter = EnemyMovementInterpreter.new(romData, self.combatNoise)
-        -- See `EnemyMovementInterpreter:skipTicks`'s own doc comment:
-        -- the interpreter's first `#enemyDescent.path` real ticks are
-        -- the SAME real event as the (here, unplayed -- no BattleIntro
-        -- ran) descent animation -- skip them so THIS entry point's own
-        -- starting position/behavior still matches the real, settled
-        -- patrol point instead of the real "entrance" ticks.
+        -- See `EnemyMovementInterpreter:skipTicks`'s doc comment: the
+        -- interpreter's first `#enemyDescent.path` ticks are the same
+        -- event as the (here, unplayed -- no BattleIntro ran) descent
+        -- animation -- skip them so this entry point's starting
+        -- position/behavior still matches the settled patrol point
+        -- instead of the "entrance" ticks.
         if profile.graphics.enemyDescent then
           self.enemy.movementInterpreter:skipTicks(#profile.graphics.enemyDescent.path)
         end
       end
     end
-    -- Real DMG sprite palette (OBP0/OBP1, both $D0 -- VERIFIED live, see
+    -- DMG sprite palette (OBP0/OBP1, both $D0 -- VERIFIED live, see
     -- rom_profiles.lua's `spritePalette` entry): raw pixel index 1
     -- renders as white (same as background), not a mid-grey -- set once
     -- so every CreatureSprite (here and future ones) renders with the
-    -- real hardware palette instead of an arbitrary identity grey ramp.
+    -- hardware palette instead of an arbitrary identity grey ramp.
     if profile.graphics.spritePalette then
       CreatureSprite.setDefaultPalette(
         TileImage.paletteFromShadeIndices(profile.graphics.spritePalette.shadeIndices))
     end
     -- Player sprite AND size: size still derived from `playerSprite`
-    -- (real ROM cols/rows, see Player.lua's DEFAULT_WIDTH/HEIGHT doc
-    -- comment -- direct user correction, 2026-08-09: "bitte hardcode die
-    -- sprite sizes nicht, nimm sie aus dem rom"). The sprite itself is
-    -- now real, animated (PlayerSprite.lua, rom_profiles.lua's
-    -- `playerAnimation`) -- CORRECTED 2026-08-09 (same day): this used
-    -- to be a static CreatureSprite because "no walk-cycle animation was
-    -- ever observed live," which turned out to be wrong (see
-    -- `playerAnimation`'s doc comment for the real capture that
-    -- disproved it -- direct user pushback: "es muss doch irgendwo im
-    -- ROM eine tabelle... geben").
+    -- (ROM cols/rows, see Player.lua's DEFAULT_WIDTH/HEIGHT doc comment
+    -- -- direct user correction to not hardcode sprite sizes and take
+    -- them from the ROM). The sprite itself is animated (PlayerSprite
+    -- .lua, rom_profiles.lua's `playerAnimation`) -- CORRECTED: this
+    -- used to be a static CreatureSprite because "no walk-cycle
+    -- animation was ever observed live," which turned out to be wrong
+    -- (see `playerAnimation`'s doc comment for the capture that
+    -- disproved it -- direct user pushback that the ROM must have such
+    -- a table somewhere).
     local ps = profile.graphics.playerSprite
     self.playerSprite = PlayerSprite.new(romData, profile)
     self.player.x, self.player.y = ps.screenX, ps.screenY
     self.player.width, self.player.height = ps.cols * GBTile.TILE_W, ps.rows * GBTile.TILE_H
     self.playerBounds = { 0, 0, ROOM_W - self.player.width, PLAY_H - self.player.height }
     -- Enemy sprite AND size: same reasoning as the player above --
-    -- rom_profiles.lua's `enemySprite` entry, 8 real tiles at
-    -- individually-confirmed ROM offsets (not a regular stride, hence
+    -- rom_profiles.lua's `enemySprite` entry, 8 tiles at individually-
+    -- confirmed ROM offsets (not a regular stride, hence
     -- CreatureSprite.fromOffsets rather than .new/.static). `rowSpacing`
-    -- (2026-08-13 correction, see that entry's own doc comment): the
-    -- real row-to-row gap is 16px, not flush -- both the visual sheet
-    -- AND the real collision height below need to account for it.
+    -- (see that entry's doc comment): the row-to-row gap is 16px, not
+    -- flush -- both the visual sheet and the collision height below
+    -- need to account for it.
     local es = profile.graphics.enemySprite
     self.enemySprite = CreatureSprite.fromOffsets(romData, es.tileOffsets, es.cols, es.rows, nil, es.rowSpacing)
     self.enemy.x, self.enemy.y = es.screenX, es.screenY
     self.enemy.width = es.cols * GBTile.TILE_W
     self.enemy.height = es.rowSpacing and ((es.rows - 1) * es.rowSpacing + GBTile.TILE_H) or (es.rows * GBTile.TILE_H)
-    -- Real handoff from BattleIntro's own already-in-progress patrol
-    -- (see Field.new's own `enemyState` doc comment) -- overrides the
-    -- static rest position above only when the caller actually has a
-    -- real in-progress position to hand off.
+    -- Handoff from BattleIntro's already-in-progress patrol (see
+    -- Field.new's `enemyState` doc comment) -- overrides the static
+    -- rest position above only when the caller actually has an
+    -- in-progress position to hand off.
     if enemyState then
       self.enemy.x, self.enemy.y = enemyState.x, enemyState.y
       self.enemy.movementIndex = enemyState.movementIndex
     end
-    -- Real hit-flash (2026-08-09, see rom_profiles.lua's `enemyHitFlash`
-    -- doc comment) -- direct fix for a named gap: "der Gegnersprite
-    -- flasht kurz, wenn er von einem Angriff getroffen wird." A second
-    -- real sprite instance sharing the exact same tile art, built with
-    -- the real flashed OBP1 palette instead of the normal one --
-    -- CreatureSprite bakes its palette in at construction, so the flash
-    -- is a real palette-swapped image, not a runtime tint/shader.
+    -- Hit-flash (see rom_profiles.lua's `enemyHitFlash` doc comment) --
+    -- direct fix for a named gap: the enemy sprite should flash briefly
+    -- when hit by an attack. A second sprite instance sharing the exact
+    -- same tile art, built with the flashed OBP1 palette instead of the
+    -- normal one -- CreatureSprite bakes its palette in at construction,
+    -- so the flash is a palette-swapped image, not a runtime
+    -- tint/shader.
     local flash = profile.graphics.enemyHitFlash
     if flash then
       self.enemySpriteFlash = CreatureSprite.fromOffsets(romData, es.tileOffsets, es.cols, es.rows,
         TileImage.paletteFromShadeIndices(flash.shadeIndices))
       self.enemyFlashFrames = flash.frames
     end
-    -- Real death "explosion" sprite (2026-08-12, CORRECTED 2026-08-14 --
-    -- see rom_profiles.lua's own `enemyDeath` doc comment for the full
-    -- live-OAM re-trace this fix is based on): used to combine all 4
-    -- real tile offsets into ONE static 2x2 (16x16) image, always fully
-    -- shown -- the real ROM never draws all 4 together; each of the 6
-    -- real flying pieces is a 2-tile-wide, 1-tile-tall sprite that
-    -- alternates between 2 real captured frames. Two separate 2x1
-    -- sprites built here; `:draw()` below alternates between them (a
-    -- real, live-confirmed 2-frame debris flap/spin, not a guess).
+    -- Death "explosion" sprite (see rom_profiles.lua's `enemyDeath` doc
+    -- comment for the live-OAM re-trace this is based on): used to
+    -- combine all 4 tile offsets into one static 2x2 (16x16) image,
+    -- always fully shown -- the ROM never draws all 4 together; each of
+    -- the 6 flying pieces is a 2-tile-wide, 1-tile-tall sprite that
+    -- alternates between 2 captured frames. Two separate 2x1 sprites
+    -- built here; `:draw()` below alternates between them (a
+    -- live-confirmed 2-frame debris flap/spin, not a guess).
     local deathData = profile.graphics.enemyDeath
     if deathData then
       self.enemyDeathSpriteA = CreatureSprite.fromOffsets(romData, deathData.frameA, 2, 1)
       self.enemyDeathSpriteB = CreatureSprite.fromOffsets(romData, deathData.frameB, 2, 1)
     end
-    -- Real per-tile wall collision (2026-08-09) -- see Player.lua's
-    -- `canMoveTo` doc comment and rom_profiles.lua's `startRoom
-    -- .floorTileIds` for exactly what "real" means here (a real
-    -- captured tile grid, classified into floor/wall by this project,
-    -- not a decoded ROM collision table).
+    -- Per-tile wall collision -- see Player.lua's `canMoveTo` doc
+    -- comment and rom_profiles.lua's `startRoom.floorTileIds` for
+    -- exactly what "real" means here (a captured tile grid, classified
+    -- into floor/wall by this project, not a decoded ROM collision
+    -- table).
     self.canMoveTo = Field.buildWalkabilityCheck(
       profile.graphics.startRoom, self.player.width, self.player.height)
-    -- Real attack visuals (2026-08-09, see AttackSwing.lua/AttackThrust
-    -- .lua) -- direct fix for a named gap: attacking previously applied
-    -- damage with zero visual feedback (direct user report: "es gibt
-    -- noch keine attacke"). Two real, distinct attacks exist -- standing
-    -- still swings, moving thrusts (direct user report, same
-    -- investigation round: "wenn sich der Spieler nach vorne bewegt und
-    -- dabei angreift, wird das Schwert nach vorne gestochen").
+    -- Attack visuals (see AttackSwing.lua/AttackThrust.lua) -- direct
+    -- fix for a named gap: attacking previously applied damage with
+    -- zero visual feedback. Two distinct attacks exist -- standing
+    -- still swings, moving thrusts (direct user report from the same
+    -- investigation round that the sword should thrust forward when
+    -- attacking while moving).
     if profile.graphics.attackSwing then
       self.attackSwing = AttackSwing.new(romData, profile)
     end
     if profile.graphics.attackThrust then
       self.attackThrust = AttackThrust.new(romData, profile)
     end
-    -- Real HUD bar decoration (2026-08-09, see HudBar.lua) -- direct fix
-    -- for a named gap (user report: "Poweranzeige fehlt im HUD").
+    -- HUD bar decoration (see HudBar.lua) -- direct fix for a named gap
+    -- (the HUD was missing its power/status bar).
     if profile.graphics.hudBar then
       self.hudBar = HudBar.new(romData, profile)
     end
@@ -337,9 +329,9 @@ end
 -- `startRoom`-shaped profile entry. Thin wrapper kept for backward
 -- compatibility (existing callers/tests reference `Field
 -- .buildWalkabilityCheck`) -- the real logic now lives in
--- `src/entities/TileWalkability.lua` (extracted 2026-08-09 once a
--- second real room, the post-victory scene, needed the exact same
--- mechanism -- see that module's doc comment).
+-- `src/entities/TileWalkability.lua` (extracted once a second room,
+-- the post-victory scene, needed the exact same mechanism -- see that
+-- module's doc comment).
 function Field.buildWalkabilityCheck(startRoom, footprintW, footprintH)
   return TileWalkability.build(startRoom, footprintW, footprintH)
 end
@@ -348,76 +340,66 @@ end
 -- doc comment) on top of the field, without disturbing field state
 -- underneath (StateStack:push, not :replace) -- part of "debugging
 -- tools are a first-class feature." Only wired when this Field was
--- built with real ROM data/profile, matching every other ROM-dependent
+-- built with ROM data/profile, matching every other ROM-dependent
 -- feature in this state.
 --
--- F3/F4/F5/F6: developer shortcuts, per the master brief's own explicit
--- request ("Developer shortcuts may include: reload map, teleport,
--- encounter/enemy spawner, give item, set HP... Debug tools will
--- significantly accelerate reverse engineering"). None of these claim
--- to be verified ROM behavior -- they're development aids, same spirit
--- as the F1 overlay and F2 viewer.
+-- F3/F4/F5/F6: developer shortcuts, per the master brief's explicit
+-- request for reload/teleport/spawner/give-item/set-HP dev tools to
+-- accelerate reverse engineering. None of these claim to be verified
+-- ROM behavior -- they're development aids, same spirit as the F1
+-- overlay and F2 viewer.
 --
--- F7 (2026-08-10, task P6): save the real game state (Stats + heroName)
--- via SaveFile.write -- the real, VERIFIED nibble-packed/magic-byte/
--- duplicate-copy container format (see src/save/SaveFormat.lua), this
--- project's own field layout on top of it (SaveData.lua). WHEN a real
--- save happens is a dev-only choice, not a reproduced ROM trigger --
--- the original ROM's own trigger condition is UNKNOWN (see rom-map.md
--- "Save RAM"'s own honest note). Loading happens via the title
--- screen's real "Weiterspielen" option (TitleScreen.lua), not a
--- second dev key here.
+-- F7: save the game state (Stats + heroName) via SaveFile.write -- the
+-- VERIFIED nibble-packed/magic-byte/duplicate-copy container format
+-- (see src/save/SaveFormat.lua), this project's field layout on top of
+-- it (SaveData.lua). WHEN a save happens is a dev-only choice, not a
+-- reproduced ROM trigger -- the original ROM's trigger condition is
+-- unknown (see rom-map.md "Save RAM"'s honest note). Loading happens
+-- via the title screen's "Weiterspielen" option (TitleScreen.lua), not
+-- a second dev key here.
 --
--- F9 (2026-08-16, task #151, "port the decoded music format into src/
--- audio/ + love.audio playback"): opens MusicJukebox.lua -- a dev-only
--- browser for all 30 real songs this project's own MusicDecoder/
--- MusicScore/MusicPlayer pipeline can now actually play through
--- `love.audio`. Same "real content, no fabricated trigger" reasoning
--- as F8 below: no live ROM trigger for "which song plays at which
--- real game moment" has been found yet.
+-- F9: opens MusicJukebox.lua -- a dev-only browser for all 30 songs
+-- this project's MusicDecoder/MusicScore/MusicPlayer pipeline can now
+-- actually play through `love.audio`. Same "real content, no
+-- fabricated trigger" reasoning as F8 below: no live ROM trigger for
+-- "which song plays at which game moment" has been found yet.
 --
--- F8 (2026-08-12, REWRITTEN same day to cover all 320 bank-5/bank-6
--- records, see RoomExplorer.lua's own doc comment): opens
--- RoomExplorer.lua -- a dev-only browser, originally for just
--- `unknownRoomA`'s 6 real rooms, now for the WHOLE room catalog (see
--- that module's own doc comment for the full "why dev-only, not a
--- real door" reasoning: no live ROM trigger into any of these rooms
--- was ever found, so wiring one in as a real in-fiction exit would
--- fabricate ROM behavior this project doesn't actually have evidence
--- for). Still gated on `profile.graphics.unknownRoomA_8` existing --
--- a real, still-present field, just no longer itself rendered by this
--- path (RoomExplorer decodes everything live from the ROM instead).
+-- F8 (see RoomExplorer.lua's doc comment): opens RoomExplorer.lua -- a
+-- dev-only browser, originally for just `unknownRoomA`'s 6 rooms, now
+-- for the whole room catalog (see that module's doc comment for the
+-- full "why dev-only, not a real door" reasoning: no live ROM trigger
+-- into any of these rooms was ever found, so wiring one in as an
+-- in-fiction exit would fabricate ROM behavior this project doesn't
+-- actually have evidence for). Still gated on
+-- `profile.graphics.unknownRoomA_8` existing -- a real, still-present
+-- field, just no longer itself rendered by this path (RoomExplorer
+-- decodes everything live from the ROM instead).
 --
--- F10 (2026-08-16, task "komplett autark interpretiert"/blocker
--- resolution): opens TransitionExplorer.lua -- a dev-only browser for
--- the real, general cut-transition landing table this session found
--- (CutTransitionTable.lua). Same "real content, no fabricated
--- trigger" reasoning as F8/F9: 82 genuinely distinct real transitions
--- are fully decoded (target roomSelector + real landing tile), but
--- only 2 have a known real in-game trigger and are actually wired as
--- ordinary exits -- the other 80 (including 36 targeting the long-
--- mysterious `unknownRoomA` family) are real ROM data with an
--- honestly-unknown real trigger, not fabricated new doors.
+-- F10: opens TransitionExplorer.lua -- a dev-only browser for the
+-- general cut-transition landing table this project found
+-- (CutTransitionTable.lua). Same "real content, no fabricated trigger"
+-- reasoning as F8/F9: 82 genuinely distinct transitions are fully
+-- decoded (target roomSelector + landing tile), but only 2 have a
+-- known in-game trigger and are actually wired as ordinary exits --
+-- the other 80 (including 36 targeting the long-mysterious
+-- `unknownRoomA` family) are ROM data with an honestly-unknown
+-- trigger, not fabricated new doors.
 --
--- F11 (2026-08-16, direct continuation, "NPC-Platzierungstabelle
--- suchen" -> "Tabelle voll ausmessen" -> "alles konsolidieren
--- dokumentieren und in app und website einbauen"): opens
--- ActorExplorer.lua -- a dev-only browser for the real, RNG-gated
--- actor-definition table this session found (ActorDefinitionTable
--- .lua). Same "real content, no fabricated trigger" reasoning as F8-
--- F10: 218 real records are fully decoded (measured full extent),
--- but only 2 have a confirmed live spawn behind them -- the index
--- actually used at runtime is computed via the real combat PRNG, not
--- a fixed per-room constant, so most entries' own real in-game
--- relevance stays honestly unknown.
+-- F11: opens ActorExplorer.lua -- a dev-only browser for the RNG-gated
+-- actor-definition table this project found (ActorDefinitionTable
+-- .lua). Same "real content, no fabricated trigger" reasoning as
+-- F8-F10: 218 records are fully decoded (measured full extent), but
+-- only 2 have a confirmed live spawn behind them -- the index actually
+-- used at runtime is computed via the combat PRNG, not a fixed
+-- per-room constant, so most entries' in-game relevance stays honestly
+-- unknown.
 --
--- F12 (2026-08-16, direct user selection "Item/Ausrüstung nutzbar
--- machen"): grants a few real catalog items/weapons into `self
--- .inventory` -- NOT a screen, just inventory-state mutation. Exists
--- only to make Menu.lua's own new real Dinge/Waffe interactivity
--- reachable: the real ROM's own item-granting trigger (shop? chest?)
--- is honestly still unknown, so a fresh, un-F12'd game still shows
--- the exact same real, VERIFIED empty-inventory menu as before.
+-- F12: grants a few catalog items/weapons into `self.inventory` -- not
+-- a screen, just inventory-state mutation. Exists only to make
+-- Menu.lua's Dinge/Waffe interactivity reachable: the ROM's
+-- item-granting trigger (shop? chest?) is honestly still unknown, so a
+-- fresh, un-F12'd game still shows the exact same VERIFIED
+-- empty-inventory menu as before.
 function Field:keypressed(key)
   if key == "f2" and self.romData and self.profile and self.stack then
     local TileViewer = require("src.app.states.TileViewer")
