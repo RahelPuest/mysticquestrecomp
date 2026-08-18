@@ -667,10 +667,10 @@ function Field:update(dt)
     end
   end
 
-  -- Real event/trigger system tick (see FIELD_EVENTS/EventSystem.lua) --
+  -- Event/trigger system tick (see FIELD_EVENTS/EventSystem.lua) --
   -- replaces the old inline "if self.dialogueQueued" check. Overlay line
   -- is added from :draw (not here) -- Overlay:clearLines() runs right
-  -- before :draw each real frame (see main.lua), so a line added during
+  -- before :draw each frame (see main.lua), so a line added during
   -- :update would already be wiped by the time it could ever show.
   local firedIds = self.events:update(self, function(action, state)
     self:dispatchEvent(action, state)
@@ -688,15 +688,14 @@ function Field:update(dt)
 end
 
 --- Format the VERIFIED "LP <n> MP <n> G <n>" HUD string (see
--- docs/reverse-engineering/text.md) from a real Stats instance.
+-- docs/reverse-engineering/text.md) from a Stats instance.
 function Field.formatHud(stats)
   return string.format("LP %d MP %d G %d", stats.curLP, stats.curMP, stats.gold)
 end
 
 --- A plain, `love.*`-free snapshot of key fields -- for automated
--- scripted verification (`MYSTICQUEST_WAIT_FOR`, see main.lua's own doc
--- comment and VictorySequence.lua's own matching method), added
--- 2026-08-11.
+-- scripted verification (`MYSTICQUEST_WAIT_FOR`, see main.lua's doc
+-- comment and VictorySequence.lua's matching method).
 function Field:debugState()
   return {
     room = "startRoom",
@@ -705,10 +704,9 @@ function Field:debugState()
     enemyAlive = self.enemy:isAlive(),
     enemyDefeated = self.enemyDefeated,
     curLP = self.stats.curLP,
-    -- ADDED (2026-08-16, real field background music) -- live-verify
-    -- actual love.audio playback the same way MusicJukebox.lua's own
-    -- debugState already does (segIndex only climbs once real audio is
-    -- genuinely synthesized/queued, not just "no crash happened").
+    -- Live-verify actual love.audio playback the same way MusicJukebox
+    -- .lua's debugState already does (segIndex only climbs once audio
+    -- is genuinely synthesized/queued, not just "no crash happened").
     musicPlaying = self.musicPlayer and self.musicPlayer:isPlaying(),
     musicSongIndex = self.musicPlayer and self.musicPlayer.songIndex,
   }
@@ -716,11 +714,11 @@ end
 
 --- Execute one EventSystem action (see src/scripting/EventSystem.lua's
 -- doc comment for the overall design). Action *types* are named after
--- the master brief's own list; only "dialogue" has a real handler so
--- far -- an unimplemented type fails loudly (this project's "no silent
+-- the master brief's list; only "dialogue" has a handler so far -- an
+-- unimplemented type fails loudly (this project's "no silent
 -- fallbacks" rule) instead of being silently skipped, so a future event
--- definition that names a type nothing handles yet is caught immediately
--- rather than quietly doing nothing.
+-- definition that names a type nothing handles yet is caught
+-- immediately rather than quietly doing nothing.
 function Field:dispatchEvent(action, state)
   if action.type == "dialogue" then
     if state.font then
@@ -741,10 +739,10 @@ function Field:dispatchEvent(action, state)
   end
 end
 
--- Real collision/hitbox visualization -- master brief, "debugging tools
--- are a first-class feature": "F1... collision display, hitbox
--- display." Draws outlines only (no fill), only while the F1 overlay is
--- visible, so it never affects the normal play view.
+-- Collision/hitbox visualization -- master brief, "debugging tools are
+-- a first-class feature": "F1... collision display, hitbox display."
+-- Draws outlines only (no fill), only while the F1 overlay is visible,
+-- so it never affects the normal play view.
 local DEBUG_PLAYER_COLOR = { 0, 1, 1, 1 }
 local DEBUG_ENEMY_COLOR = { 1, 0.3, 0.3, 1 }
 local DEBUG_SWING_COLOR = { 1, 1, 0, 0.8 }
@@ -761,10 +759,10 @@ function Field:drawDebugOverlay()
     love.graphics.rectangle("line", self.enemy.x, self.enemy.y, self.enemy.width, self.enemy.height)
   end
 
-  -- Real attack hitboxes (see AttackSwing/AttackThrust:getHitboxes) --
-  -- replaces the old static reach circle (2026-08-09): hit detection
-  -- itself now uses these same real per-phase rectangles, so this is
-  -- what actually determines a landed hit, not an approximation of it.
+  -- Attack hitboxes (see AttackSwing/AttackThrust:getHitboxes) --
+  -- replaces the old static reach circle: hit detection itself now
+  -- uses these same per-phase rectangles, so this is what actually
+  -- determines a landed hit, not an approximation of it.
   love.graphics.setColor(DEBUG_SWING_COLOR)
   for _, attack in ipairs({ self.attackSwing, self.attackThrust }) do
     if attack then
@@ -788,22 +786,21 @@ function Field:draw()
   -- a visible enemy yet can still say so explicitly instead of drawing
   -- an unverified guess.
   if self.enemy.death and self.enemyDeathSpriteA and not self.enemy:deathComplete() then
-    -- Real death "explosion" (2026-08-12, CORRECTED 2026-08-14, see
-    -- rom_profiles.lua's own `enemyDeath` doc comment for the full
-    -- live-traced re-check): the real creature's six body-part tile
-    -- pairs scatter outward over `totalFrames` real frames -- linear
-    -- interpolation between the real captured start (its own resting
-    -- pose) and end (frame 81, the last real sample before the
-    -- frame-86 vanish) positions, per part, matching that field's own
-    -- "honest simplification" note. Each part now alternates between
-    -- the 2 real captured debris frames (`frameA`/`frameB`) instead of
-    -- showing both stacked together as one static double-height block
-    -- -- the alternation CADENCE itself (every 4 real frames here) is
-    -- an honest approximation, not independently re-verified to the
-    -- exact real frame boundary (the live trace that found the real
-    -- 2-frame shape sampled every 8 frames, coarser than the real
-    -- period) -- same "not frame-exact, real shape not real timing"
-    -- honesty bar as the position interpolation already documented.
+    -- Death "explosion" (see rom_profiles.lua's `enemyDeath` doc
+    -- comment for the full live-traced re-check): the creature's six
+    -- body-part tile pairs scatter outward over `totalFrames` frames --
+    -- linear interpolation between the captured start (its resting
+    -- pose) and end (frame 81, the last sample before the frame-86
+    -- vanish) positions, per part, matching that field's "honest
+    -- simplification" note. Each part alternates between the 2
+    -- captured debris frames (`frameA`/`frameB`) instead of showing
+    -- both stacked together as one static double-height block -- the
+    -- alternation cadence itself (every 4 frames here) is an honest
+    -- approximation, not independently re-verified to the exact frame
+    -- boundary (the live trace that found the 2-frame shape sampled
+    -- every 8 frames, coarser than the real period) -- same "not
+    -- frame-exact, real shape not real timing" honesty bar as the
+    -- position interpolation already documented.
     local d = self.profile.graphics.enemyDeath
     local es = self.profile.graphics.enemySprite
     local elapsed = self.enemy.death.elapsedFrames
@@ -815,16 +812,15 @@ function Field:draw()
       sprite:draw(px, py)
     end
   elseif self.enemy:isAlive() and self.enemyConfirmedVisible then
-    -- Real hit-flash (2026-08-09, see rom_profiles.lua's
-    -- `enemyHitFlash`): a real OBP1 palette swap for a couple real
-    -- frames right when a hit lands, not an invented tint.
+    -- Hit-flash (see rom_profiles.lua's `enemyHitFlash`): an OBP1
+    -- palette swap for a couple frames right when a hit lands, not an
+    -- invented tint.
     --
-    -- Real X-flip patrol flap (2026-08-12, see rom_profiles.lua's
+    -- X-flip patrol flap (see rom_profiles.lua's
     -- `enemySprite.flipXTogglesPerStep` doc comment and
-    -- `Enemy:isFlipped()` -- CORRECTED same day, this used to be wired
-    -- into `flipY`, a real bits-5/6 mixup): applies to all three draw
-    -- paths below (flash/normal/fallback-rect all show the same real
-    -- creature).
+    -- `Enemy:isFlipped()` -- CORRECTED: this used to be wired into
+    -- `flipY`, a bits-5/6 mixup): applies to all three draw paths below
+    -- (flash/normal/fallback-rect all show the same creature).
     local flipX = self.enemy:isFlipped()
     if self.enemyFlashTimer > 0 and self.enemySpriteFlash then
       self.enemySpriteFlash:draw(self.enemy.x, self.enemy.y, flipX)
@@ -837,47 +833,46 @@ function Field:draw()
     end
   end
 
-  -- Real invincibility flicker (task #12, KnockbackFlicker.lua): the
-  -- player sprite itself is skipped on real "invisible" frames, exactly
-  -- reproducing the live-captured on/off schedule rather than a dimmed/
-  -- tinted placeholder.
+  -- Invincibility flicker (KnockbackFlicker.lua): the player sprite
+  -- itself is skipped on "invisible" frames, exactly reproducing the
+  -- live-captured on/off schedule rather than a dimmed/tinted
+  -- placeholder.
   if self.playerSprite and self.knockback:isVisible() then
-    -- VERIFIED real facing mechanism (2026-08-09 -- see CreatureSprite
-    -- .draw's doc comment): X-flip only while facing right, same art
-    -- otherwise. Direct user prompt: "ich glaube er müsste sich auch
-    -- drehen" -- re-checked live rather than guessing, and confirmed:
-    -- not a 4-direction sprite set, just a real mirror for one facing.
-    -- REVERTED (2026-08-15, same day, direct user report: "im ersten
-    -- bossraum scheint die kollision verschoben zu sein" -- collision
-    -- looks shifted in the first boss room). This briefly called
-    -- `self.player:renderPosition()` (the real, OAM-verified `(-8,-16)`
-    -- hardware offset, see Player.lua's own doc comment) here too --
-    -- WRONG for this specific room: `startRoom`'s own real
-    -- `floorTileIds`/sprite positions were historically captured and
-    -- cross-checked via direct screenshot comparison against the RAW,
-    -- unshifted `self.player.x/y` -- this whole room's own visual
-    -- calibration already implicitly assumes that convention. Applying
-    -- the render offset here shifts the sprite 8px left/16px up
-    -- relative to that already-correct calibration -- a real, self-
-    -- inflicted regression, not a fix. The underlying OAM finding
-    -- itself is still real (confirmed via live hardware OAM dump) --
-    -- it just isn't safe to apply blindly to every room this project
-    -- already calibrated the OLD way. Back to the raw, untouched
-    -- position here; see `rom_profiles.lua`'s own `thirdRoom.exits`
-    -- doc comment for where this offset DOES apply (one specific,
-    -- individually-verified landing spot, not a global draw-time rule).
+    -- VERIFIED facing mechanism (see CreatureSprite.draw's doc
+    -- comment): X-flip only while facing right, same art otherwise.
+    -- Re-checked live rather than guessing after a user prompt
+    -- questioning whether the player should turn -- confirmed: not a
+    -- 4-direction sprite set, just a mirror for one facing.
+    -- REVERTED (direct user report that collision looks shifted in the
+    -- first boss room). This briefly called `self.player
+    -- :renderPosition()` (the OAM-verified `(-8,-16)` hardware offset,
+    -- see Player.lua's doc comment) here too -- wrong for this
+    -- specific room: `startRoom`'s `floorTileIds`/sprite positions
+    -- were historically captured and cross-checked via direct
+    -- screenshot comparison against the raw, unshifted `self.player
+    -- .x/y` -- this whole room's visual calibration already implicitly
+    -- assumes that convention. Applying the render offset here shifts
+    -- the sprite 8px left/16px up relative to that already-correct
+    -- calibration -- a self-inflicted regression, not a fix. The
+    -- underlying OAM finding itself is still real (confirmed via live
+    -- hardware OAM dump) -- it just isn't safe to apply blindly to
+    -- every room this project already calibrated the old way. Back to
+    -- the raw, untouched position here; see `rom_profiles.lua`'s
+    -- `thirdRoom.exits` doc comment for where this offset does apply
+    -- (one specific, individually-verified landing spot, not a global
+    -- draw-time rule).
     self.playerSprite:draw(self.player.x, self.player.y, self.player.facing == "right")
-    -- Real attack visuals, drawn on top of the player (see AttackSwing
-    -- .lua/AttackThrust.lua) -- a no-op draw while inactive; at most one
-    -- of the two is ever active at once (Field:update only triggers
-    -- one per A press).
+    -- Attack visuals, drawn on top of the player (see AttackSwing
+    -- .lua/AttackThrust.lua) -- a no-op draw while inactive; at most
+    -- one of the two is ever active at once (Field:update only
+    -- triggers one per A press).
     if self.attackSwing then self.attackSwing:draw(self.player.x, self.player.y) end
     if self.attackThrust then self.attackThrust:draw(self.player.x, self.player.y) end
   else
     -- No ROM loaded -- fall back to a plain rectangle at the player's
-    -- own current size (the generic single-tile default when no real
-    -- ROM sprite data is available -- see Player.DEFAULT_WIDTH/HEIGHT)
-    -- rather than crash.
+    -- current size (the generic single-tile default when no ROM sprite
+    -- data is available -- see Player.DEFAULT_WIDTH/HEIGHT) rather
+    -- than crash.
     love.graphics.setColor(0.9, 0.2, 0.2, 1)
     love.graphics.rectangle("fill", self.player.x, self.player.y,
       self.player.width, self.player.height)
@@ -886,10 +881,9 @@ function Field:draw()
 
   self:drawDebugOverlay()
 
-  -- VERIFIED (2026-08-09, corrected -- see docs/progress.md): the real
-  -- HUD strip is WHITE with black text, not a solid black bar -- caught
-  -- comparing against the (also newly-corrected) real ground-truth
-  -- screenshot.
+  -- VERIFIED (corrected -- see docs/progress.md): the HUD strip is
+  -- white with black text, not a solid black bar -- caught comparing
+  -- against the (also newly-corrected) ground-truth screenshot.
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.rectangle("fill", 0, PLAY_H, ROOM_W, HUD_H)
   local hudText = Field.formatHud(self.stats)
@@ -897,7 +891,7 @@ function Field:draw()
     self.font:print(hudText, 2, PLAY_H + 4, { 0, 0, 0, 1 })
   else
     -- No ROM loaded (e.g. this state constructed without romData/profile)
-    -- -- fall back to love's own font rather than crash, but say so.
+    -- -- fall back to love's font rather than crash, but say so.
     love.graphics.setColor(0.5, 0.4, 0, 1)
     love.graphics.print(hudText .. " (no ROM font loaded)", 2, PLAY_H + 4)
   end
