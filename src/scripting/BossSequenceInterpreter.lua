@@ -116,15 +116,15 @@ local FLAG_TEST_RESULTS = {
   [0x88] = true,  -- Z (confirmed via the real subsequent-byte trace)
 }
 
---- `ctx` fields (all optional, passed straight through to the real
--- `ScriptRuntime` -- see that module's own doc comment for the full
--- list): `stats`, `flags`, `isTextboxDone`, `onMessage`, `onTick`,
+--- `ctx` fields (all optional, passed straight through to the
+-- `ScriptRuntime` -- see that module's doc comment for the full list):
+-- `stats`, `flags`, `isTextboxDone`, `onMessage`, `onTick`,
 -- `onSetActorSlotPosition`, `onTriggerEvent`, `isTriggerEventGateClear`,
--- and any other real callback that module supports. This constructor
--- adds its own `ctx.onChainTarget` (the bank-switch wiring described
--- above) -- a caller-supplied `ctx.onChainTarget` would be
--- OVERWRITTEN, not composed, since only this module has the real,
--- empirical knowledge of which bank to switch to.
+-- and any other callback that module supports. This constructor adds
+-- its own `ctx.onChainTarget` (the bank-switch wiring described above)
+-- -- a caller-supplied `ctx.onChainTarget` would be overwritten, not
+-- composed, since only this module has the empirical knowledge of
+-- which bank to switch to.
 function BossSequenceInterpreter.new(romData, ctx)
   assert(type(romData) == "string", "BossSequenceInterpreter.new expects a byte string")
   local RomIdentity = require("src.import.RomIdentity")
@@ -138,100 +138,98 @@ function BossSequenceInterpreter.new(romData, ctx)
     cursor = START_CPU_ADDRESS,
     bank = START_BANK,
     stream = RomScriptStream.forBank(romData, START_BANK),
-    bankSwitched = false, -- true once the real, one-time 13->14 switch has happened
+    bankSwitched = false, -- true once the one-time 13->14 switch has happened
     done = false, -- true once the runtime genuinely finishes or stops
   }, BossSequenceInterpreter)
 
   ctx = ctx or {}
   ctx.onChainTarget = function(_newCursor)
-    -- The real, empirically-verified switch (see this module's own
-    -- doc comment) -- unconditional: every real CHAIN observed in the
-    -- live trace either causes or confirms this exact bank, so always
-    -- switching (even if already on bank 14) is harmless and correct
-    -- for this one scene.
+    -- The empirically-verified switch (see this module's doc comment)
+    -- -- unconditional: every CHAIN observed in the live trace either
+    -- causes or confirms this exact bank, so always switching (even if
+    -- already on bank 14) is harmless and correct for this one scene.
     self.bank = POST_CHAIN_BANK
     self.stream = RomScriptStream.forBank(romData, POST_CHAIN_BANK)
     self.bankSwitched = true
   end
 
   ctx.onFlagTest = function(byte)
-    -- Real, empirically-traced Z/NZ result -- see this module's own
+    -- Empirically-traced Z/NZ result -- see this module's
     -- `FLAG_TEST_RESULTS` doc comment. Fails loudly (not a silent
-    -- fallback) on a real byte value this project hasn't live-traced
-    -- yet.
+    -- fallback) on a byte value this project hasn't live-traced yet.
     local result = FLAG_TEST_RESULTS[byte]
     if result == nil then
-      error(("BossSequenceInterpreter: opcode 0x08's real flag-test result " ..
-        "for byte 0x%x is NOT yet live-traced -- refusing to guess (see " ..
-        "StandardScriptHandlers.zeroTerminatedFlagList's own doc comment)"):format(byte))
+      error(("BossSequenceInterpreter: opcode 0x08's flag-test result " ..
+        "for byte 0x%x is not yet live-traced -- refusing to guess (see " ..
+        "StandardScriptHandlers.zeroTerminatedFlagList's doc comment)"):format(byte))
     end
     return result
   end
 
   ctx.onFlagListExhausted = function(cursorAfterTerminator)
-    -- Real, empirically-traced continuation for opcode 0x08's own
-    -- "list exhausted" leaf effect -- see this module's own
+    -- Empirically-traced continuation for opcode 0x08's "list
+    -- exhausted" leaf effect -- see this module's
     -- `FLAG_LIST_EXHAUSTED_TARGETS` doc comment and
-    -- `StandardScriptHandlers.zeroTerminatedFlagList`'s own doc
-    -- comment for why a formula isn't used here. Fails loudly (not a
-    -- silent fallback) on a real occurrence this project hasn't
-    -- live-traced yet -- exactly the same honesty this project already
-    -- applies to genuinely undecoded opcodes.
+    -- `StandardScriptHandlers.zeroTerminatedFlagList`'s doc comment for
+    -- why a formula isn't used here. Fails loudly (not a silent
+    -- fallback) on an occurrence this project hasn't live-traced yet --
+    -- exactly the same honesty this project already applies to
+    -- genuinely undecoded opcodes.
     local key = flagListExhaustedKey(self.bank, cursorAfterTerminator)
     local target = FLAG_LIST_EXHAUSTED_TARGETS[key]
     if not target then
-      error(("BossSequenceInterpreter: opcode 0x08's real 'list exhausted' " ..
-        "continuation for bank %d, cursor 0x%x is NOT yet live-traced -- " ..
+      error(("BossSequenceInterpreter: opcode 0x08's 'list exhausted' " ..
+        "continuation for bank %d, cursor 0x%x is not yet live-traced -- " ..
         "refusing to guess (see StandardScriptHandlers.zeroTerminatedFlagList's " ..
-        "own doc comment)"):format(self.bank, cursorAfterTerminator))
+        "doc comment)"):format(self.bank, cursorAfterTerminator))
     end
     return target
   end
 
   local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTable)
-  self.opcodeEntries = opcodeEntries -- kept for :rearm() -- see that method's own doc comment
+  self.opcodeEntries = opcodeEntries -- kept for :rearm() -- see that method's doc comment
   self.ctx = ctx
   self.runtime = ScriptRuntime.new(opcodeEntries, ctx)
   return self
 end
 
---- Real, general "re-arm" support for task #149 ("generalize the
--- one-shot trigger into a re-armable one"). Static disassembly this
--- pass (2026-08-16, see events.md's own dated entry) fully decoded
--- `$3297` (`QUEUE_GATE_HANDLER_ADDRESS`, opcode `0x00`) for the first
--- time -- previously only characterized via live behavior. Its real
--- "queue genuinely empty" path (gated on a real, NEWLY-found WRAM
--- cell, `$D865` -- 0 means empty) unconditionally clears bits 1/2/3 of
--- `$C0A1`/`$C0A2` before returning. `$31AD` itself opens with `BIT
--- 1,(HL=$C0A1) / RET NZ` -- i.e. it self-gates against re-firing via
--- that SAME bit, and its own completion re-sets it. So `$31AD` is NOT
--- hardware one-shot in the sense of "can only ever fire once" -- it is
--- gated to fire at most once PER busy period, and the real ROM itself
--- clears that gate at the EXACT SAME moment `StandardScriptHandlers
--- .queueGate` already models as its own "queue empty" halt (`kind ==
--- "halted"`, real opcode byte `0x00`). That is the real, decisive,
--- now-verified precondition for calling this method -- not `self.done`
--- (a genuine queue-gate halt never sets it, see `:tick()` below).
+--- General "re-arm" support (generalizing the one-shot trigger into a
+-- re-armable one). Static disassembly this pass (see events.md's
+-- matching entry) fully decoded `$3297` (`QUEUE_GATE_HANDLER_ADDRESS`,
+-- opcode `0x00`) for the first time -- previously only characterized
+-- via live behavior. Its "queue genuinely empty" path (gated on a
+-- newly-found WRAM cell, `$D865` -- 0 means empty) unconditionally
+-- clears bits 1/2/3 of `$C0A1`/`$C0A2` before returning. `$31AD` itself
+-- opens with `BIT 1,(HL=$C0A1) / RET NZ` -- i.e. it self-gates against
+-- re-firing via that same bit, and its own completion re-sets it. So
+-- `$31AD` is not hardware one-shot in the sense of "can only ever fire
+-- once" -- it is gated to fire at most once per busy period, and the
+-- ROM itself clears that gate at the exact same moment
+-- `StandardScriptHandlers.queueGate` already models as its "queue
+-- empty" halt (`kind == "halted"`, opcode byte `0x00`). That is the
+-- decisive, now-verified precondition for calling this method -- not
+-- `self.done` (a genuine queue-gate halt never sets it, see `:tick()`
+-- below).
 --
--- This project's own interpreter still has no way to DETECT which
--- fresh real script a live SECOND `$31AD` firing would redirect to
--- (it isn't running against real WRAM) -- a caller must supply the new
--- `bank`/`cpuAddress` explicitly, matching this whole module's own
+-- This project's interpreter still has no way to detect which fresh
+-- script a live second `$31AD` firing would redirect to (it isn't
+-- running against real WRAM) -- a caller must supply the new
+-- `bank`/`cpuAddress` explicitly, matching this whole module's
 -- established "empirical, not derived" epistemics (see
--- `START_BANK`/`START_CPU_ADDRESS`'s own doc comment). `REARM_BANK`/
--- `REARM_CPU_ADDRESS` above are the one real, live-traced data point
--- this project currently has for this one scene's own real redirect
--- target -- callers for a DIFFERENT real scene must supply their own
--- live-traced values, not reuse these blindly.
+-- `START_BANK`/`START_CPU_ADDRESS`'s doc comment). `REARM_BANK`/
+-- `REARM_CPU_ADDRESS` above are the one live-traced data point this
+-- project currently has for this one scene's redirect target --
+-- callers for a different scene must supply their own live-traced
+-- values, not reuse these blindly.
 --
--- Builds a genuinely FRESH `ScriptRuntime` (the old one's own
+-- Builds a genuinely fresh `ScriptRuntime` (the old one's
 -- `stopped`/`finished` flags permanently latch further `:step()` calls
--- into no-ops -- see that module's own doc comment -- so continuing
--- needs a new instance, not a reset of the old one) over the SAME
+-- into no-ops -- see that module's doc comment -- so continuing needs a
+-- new instance, not a reset of the old one) over the same
 -- `opcodeEntries`/`ctx` this instance was originally built with,
--- preserving every real callback/flag table a caller already wired
--- (`ctx.stats`, `ctx.flags`, `ctx.onMessage`, the `onControlCode`
--- state machine, ...) rather than discarding it.
+-- preserving every callback/flag table a caller already wired
+-- (`ctx.stats`, `ctx.flags`, `ctx.onMessage`, the `onControlCode` state
+-- machine, ...) rather than discarding it.
 function BossSequenceInterpreter:rearm(bank, cpuAddress)
   assert(self.runtime.lastKind == "halted" and self.runtime.lastOpcode == 0x00 and not self.runtime.stopped,
     "BossSequenceInterpreter:rearm called without the real $3297 queue-empty halt " ..
