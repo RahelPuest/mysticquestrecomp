@@ -1,32 +1,30 @@
--- Aggregates the real, ALREADY-VERIFIED map/environment tiles this
--- project has decoded across every fully-mapped room -- NOT a new
--- discovery, purely a dedup + grouping pass over data that already
--- exists, individually, per room, in `rom_profiles.lua`'s own
--- `graphics.<name>.tileOffsets` fields (the exact same real offsets
+-- Aggregates the already-VERIFIED map/environment tiles this project
+-- has decoded across every fully-mapped room -- not a new discovery,
+-- purely a dedup + grouping pass over data that already exists,
+-- individually, per room, in `rom_profiles.lua`'s
+-- `graphics.<name>.tileOffsets` fields (the exact same offsets
 -- `rom-inspector`'s Tile-Viewer page already lets you pick one room at
 -- a time and look at -- see js/viz/tiles.js).
 --
--- WHY THIS EXISTS (2026-08-16, direct user correction): after adding
--- `GraphicsCandidates.lua`'s `bank12_environment_b` (one genuinely
--- NEW, unconfirmed 256-tile region -- see that module's own doc
--- comment), the user pushed back: "du musst noch viel mehr tile daten
--- kennen, immerhin sind ein paar räume schon bekannt und komplett
--- kartiert" (you must already know a lot more tile data -- some rooms
--- are already known and completely mapped). Correct: this project has
--- 14 fully-decoded, VERIFIED rooms (`ROOM_MAPS`/`profile.graphics`),
--- together referencing 243 distinct REAL map/environment tile
--- offsets -- spanning bank 8 (28), bank 11 (85), and bank 12 (130),
--- NOT just bank 12 as this project's own `environmentTilesetBank12`
--- doc comment implied. That's real, already-confirmed content that
--- deserves a place in the new Grafiken tab right alongside the
--- honestly-unconfirmed candidates, exactly the way the Monster page
--- already shows its own one confirmed sprite before/separately from
--- unconfirmed candidates.
+-- WHY THIS EXISTS (direct user correction): after adding
+-- `GraphicsCandidates.lua`'s `bank12_environment_b` (one genuinely new,
+-- unconfirmed 256-tile region -- see that module's doc comment), the
+-- user pushed back that this project must already know a lot more tile
+-- data, since some rooms are already known and completely mapped.
+-- Correct: this project has 14 fully-decoded, VERIFIED rooms
+-- (`ROOM_MAPS`/`profile.graphics`), together referencing 243 distinct
+-- map/environment tile offsets -- spanning bank 8 (28), bank 11 (85),
+-- and bank 12 (130), not just bank 12 as this project's
+-- `environmentTilesetBank12` doc comment implied. That's already-
+-- confirmed content that deserves a place in the Grafiken tab right
+-- alongside the honestly-unconfirmed candidates, exactly the way the
+-- Monster page already shows its one confirmed sprite before/
+-- separately from unconfirmed candidates.
 --
--- Every entry here is CONFIRMED, not a candidate: each offset was
--- individually matched against a real, live-captured VRAM tile
--- pattern by a past session (see each room's own `status`/doc comment
--- in rom_profiles.lua) -- this module just deduplicates the (offset ->
+-- Every entry here is confirmed, not a candidate: each offset was
+-- individually matched against a live-captured VRAM tile pattern by a
+-- past session (see each room's `status`/doc comment in
+-- rom_profiles.lua) -- this module just deduplicates the (offset ->
 -- {which room(s) use it}) relationship so it can be shown as one
 -- aggregate "known map tiles" gallery instead of 14 separate,
 -- one-room-at-a-time dropdown picks.
