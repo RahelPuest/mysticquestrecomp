@@ -73,29 +73,28 @@ local SCREEN_W, SCREEN_H = 160, 144
 -- same scrolling coordinate space as the title screen's own 18-row
 -- (144px) content.
 --
--- CORRECTED TWICE (2026-08-10) -- the first "fix" this same pass was
--- itself wrong and is documented here rather than erased, since the
--- mistake and its correction are both real project history. First
--- pass: rendered tilemap row 16 as ASCII art and read it as "Der Mana
--- Baum" -- WRONG, caught by re-rendering the *entire* tilemap as an
--- actual image (not eyeballed ASCII art) instead of just 2 rows in
--- isolation: row 16 is really "LICENSED TO NINTENDO" and row 17 is
--- "(c) 1991 1993 SQUARE" -- the title screen's own copyright lines,
--- still visible at this scroll position, in the ORDINARY title-menu
--- font (the "special bold font for line 1" this project briefly
--- claimed to have found does not exist -- that was the same
--- misreading, not a real second font). Second, image-verified pass:
--- with all 32 tilemap rows rendered and every candidate line's row
--- number matched against actual on-screen letters (not tile-ID
--- guessing), "Der Mana Baum" is really row 22 (content-Y = 22*8 =
--- 176), "waechst durch die" row 24, "Kraefte der Natur." row 26, and
--- (after the real text's own blank line) "Er waechst hoch" row 30 --
--- gaps of exactly 2/2/4 tile-rows, matching `TextDecoder`'s own
--- decoded line breaks (no blank between lines 1-3, one blank line
--- before line 5) ONLY if each real line -- including blank ones --
--- occupies a full 2-tile-row (16px) slot, not 1 (8px). Static content,
--- cross-checked at 3 independent scroll offsets (+150/+300/+500
--- frames, byte-identical each time).
+-- CORRECTED TWICE -- the first "fix" was itself wrong and is
+-- documented here rather than erased, since the mistake and its
+-- correction are both real project history. First pass: rendered
+-- tilemap row 16 as ASCII art and read it as "Der Mana Baum" -- wrong,
+-- caught by re-rendering the *entire* tilemap as an actual image (not
+-- eyeballed ASCII art) instead of just 2 rows in isolation: row 16 is
+-- really "LICENSED TO NINTENDO" and row 17 is "(c) 1991 1993 SQUARE" --
+-- the title screen's copyright lines, still visible at this scroll
+-- position, in the ordinary title-menu font (the "special bold font
+-- for line 1" this project briefly claimed to have found does not
+-- exist -- that was the same misreading, not a real second font).
+-- Second, image-verified pass: with all 32 tilemap rows rendered and
+-- every candidate line's row number matched against actual on-screen
+-- letters (not tile-ID guessing), "Der Mana Baum" is really row 22
+-- (content-Y = 22*8 = 176), "waechst durch die" row 24, "Kraefte der
+-- Natur." row 26, and (after the text's own blank line) "Er waechst
+-- hoch" row 30 -- gaps of exactly 2/2/4 tile-rows, matching
+-- `TextDecoder`'s decoded line breaks (no blank between lines 1-3, one
+-- blank line before line 5) only if each line -- including blank ones
+-- -- occupies a full 2-tile-row (16px) slot, not 1 (8px). Static
+-- content, cross-checked at 3 independent scroll offsets
+-- (+150/+300/+500 frames, byte-identical each time).
 local TEXT_START_Y = 176
 local LINE_HEIGHT = 16
 
@@ -119,22 +118,21 @@ function Intro.new(romData, profile, input, overlay, stack)
       self.scyPerFrame = data.scy.unitsPerFrame
       self.scyTotal = data.scy.totalUnits
 
-      -- CORRECTED (2026-08-09): direct user report ("nach dem Scroll
-      -- geht es noch nicht zu Namenseingabe") -- NOT a broken
-      -- transition (re-verified live: it does eventually fire, every
-      -- time, using `scyTotal` as originally captured). The real
-      -- problem: the real hardware's own `SCY` keeps scrolling for
-      -- ~14 more real seconds of nothing but blank padding tilemap
-      -- rows *after* the last real sentence has fully scrolled off
-      -- screen (verified: the real text's last line, decoded from the
+      -- CORRECTED (direct user report that name entry never arrives
+      -- after the scroll) -- not a broken transition (re-verified live:
+      -- it does eventually fire, every time, using `scyTotal` as
+      -- originally captured). The real problem: hardware's `SCY` keeps
+      -- scrolling for ~14 more seconds of nothing but blank padding
+      -- tilemap rows *after* the last sentence has fully scrolled off
+      -- screen (verified: the text's last line, decoded from the
       -- literal ROM bytes, clears the screen around scroll-unit ~312,
-      -- while the real captured `scyTotal` is ~475-494) -- accurate to
-      -- the hardware, but reads as a stuck/broken screen to a player
+      -- while the captured `scyTotal` is ~475-494) -- accurate to the
+      -- hardware, but reads as a stuck/broken screen to a player
       -- watching it with nothing on screen and no feedback. Ending the
-      -- scroll once the real text has cleared (plus a small buffer)
-      -- cuts only dead time, not real content -- a deliberate UX
-      -- deviation from strict frame-accuracy, not a claim that real
-      -- hardware actually stops here.
+      -- scroll once the text has cleared (plus a small buffer) cuts
+      -- only dead time, not real content -- a deliberate UX deviation
+      -- from strict frame-accuracy, not a claim that real hardware
+      -- actually stops here.
       local lastLineIndex = 0
       local n = 0
       for line in (self.text .. "\n"):gmatch("(.-)\n") do
@@ -159,13 +157,13 @@ end
 function Intro:update(dt)
   if self.done then return end
 
-  -- Real ROM mechanic (see module doc comment): pressing A during the
-  -- scroll is a genuine skip, code-verified (bank 2, file offset
-  -- 0xbca1) and empirically confirmed against B/START (both inert).
-  -- Real hardware takes ~16-20 more frames to reach NameEntry after the
-  -- press (clearing part of the tilemap, pinning SCY, waiting on a
-  -- close-out flag); collapsed to an immediate transition here since
-  -- that closing state machine itself isn't modeled.
+  -- ROM mechanic (see module doc comment): pressing A during the scroll
+  -- is a genuine skip, code-verified (bank 2, file offset 0xbca1) and
+  -- empirically confirmed against B/START (both inert). Real hardware
+  -- takes ~16-20 more frames to reach NameEntry after the press
+  -- (clearing part of the tilemap, pinning SCY, waiting on a close-out
+  -- flag); collapsed to an immediate transition here since that closing
+  -- state machine itself isn't modeled.
   if self.input and self.input:pressed("a") then
     self:advanceToNameEntry()
     return
@@ -173,7 +171,7 @@ function Intro:update(dt)
 
   -- Dev-only shortcut, kept separate from the real A-skip above (same
   -- "developer shortcuts" spirit as Field.lua's F3-F6) -- SELECT is
-  -- confirmed INERT on real hardware here, so this is purely a testing
+  -- confirmed inert on real hardware here, so this is purely a testing
   -- convenience, not a claimed ROM behavior.
   if self.input and self.input:pressed("select") then
     self:advanceToNameEntry()
@@ -198,10 +196,10 @@ function Intro:draw()
     return
   end
 
-  -- Real BG fill is white everywhere the logo/text tiles don't cover
-  -- (the confirmed-blank tile, see titleScreen's doc comment) -- drawn
-  -- first so the gap between the logo scrolling off and the text
-  -- scrolling in doesn't show the render canvas's own black clear color.
+  -- BG fill is white everywhere the logo/text tiles don't cover (the
+  -- confirmed-blank tile, see titleScreen's doc comment) -- drawn first
+  -- so the gap between the logo scrolling off and the text scrolling in
+  -- doesn't show the render canvas's own black clear color.
   love.graphics.setColor(1, 1, 1, 1)
   love.graphics.rectangle("fill", 0, 0, SCREEN_W, SCREEN_H)
 
@@ -218,7 +216,7 @@ function Intro:draw()
     end
   end
 
-  -- Real BGP-lightening effect during the scroll, approximated as a
+  -- BGP-lightening effect during the scroll, approximated as a
   -- translucent white wash rather than a frame-exact palette replay
   -- (see module doc comment).
   love.graphics.setColor(1, 1, 1, 0.35)
