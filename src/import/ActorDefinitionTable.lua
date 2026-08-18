@@ -1,108 +1,107 @@
--- 2026-08-16, direct continuation of the "NPC-Platzierungstabelle
--- suchen" investigation (user selection, AskUserQuestion) -- a REAL,
--- general ROM table found and decoded to structural certainty behind
--- at least one live, mGBA-traced NPC spawn. This is the FIRST concrete
--- mechanism ever traced for `rom_profiles.lua`'s own long-standing
--- `secondRoom.scene.characterA`/`characterB` doc comment, which has
--- called their placement "PRNG-driven" since before this session with
--- no traced mechanism behind that claim.
+-- A direct continuation of the "NPC-Platzierungstabelle suchen"
+-- investigation -- a general ROM table found and decoded to structural
+-- certainty behind at least one live, mGBA-traced NPC spawn. This is
+-- the first concrete mechanism ever traced for `rom_profiles.lua`'s
+-- long-standing `secondRoom.scene.characterA`/`characterB` doc comment,
+-- which has called their placement "PRNG-driven" with no traced
+-- mechanism behind that claim.
 --
--- THE REAL CHAIN (live-traced during the willyRoom -> secondRoom
--- scroll; every bank re-confirmed via `core._native.memory
--- .currentBank` at the live PC, never assumed -- see this session's own
--- "bank mislabeling" self-correction, the same pitfall this project has
--- hit and fixed more than once):
+-- THE CHAIN (live-traced during the willyRoom -> secondRoom scroll;
+-- every bank re-confirmed via `core._native.memory.currentBank` at the
+-- live PC, never assumed -- see this project's "bank mislabeling"
+-- self-correction, the same pitfall it has hit and fixed more than
+-- once):
 --   a proximity/distance-check routine (bank 3, ~$44A0) compares
 --   |D-H| / |E-L| against a threshold of 4
---     -> calls `$2B1E`, the ALREADY-KNOWN real combat PRNG (see
+--     -> calls `$2B1E`, the already-known combat PRNG (see
 --        `docs/reverse-engineering/combat.md`)
 --     -> calls a table-lookup helper (bank 3, CPU `$42BD`, file
 --        `0xc2bd`) which computes `TABLE_BASE_CPU (0x5f5a) + C*24`
 --        (`C` = a caller-supplied index, RNG-influenced)
 --     -> reads that table's byte[0] as an allocate "param" and its
---        bytes[8..9] (little-endian) as a SECOND pointer, into a
---        SECOND 24-byte record in the same bank
---     -> calls `$0A74` (the already-known real entity-slot allocator)
---        with A=2 (fixed "type"), C=the table's own param byte
+--        bytes[8..9] (little-endian) as a second pointer, into a
+--        second 24-byte record in the same bank
+--     -> calls `$0A74` (the already-known entity-slot allocator) with
+--        A=2 (fixed "type"), C=the table's own param byte
 --
--- WHAT THIS IS **NOT**: a simple "one row per room" NPC placement
--- table like `CutTransitionTable.lua`'s landing records. The index fed
--- into this table is computed AT RUNTIME (RNG-influenced), not a
--- static per-room constant baked into any call site -- which is
--- exactly why this project's own repeated static-table searches for
--- "the NPC placement table" (see `docs/reverse-engineering
--- /rom-map.md`, "NPCs" section, "no static ROM table backs NPC
--- placement") never found one: there IS a real table, but you cannot
--- read a row off it per room the way the cut-transition table works.
+-- WHAT THIS IS NOT: a simple "one row per room" NPC placement table
+-- like `CutTransitionTable.lua`'s landing records. The index fed into
+-- this table is computed at runtime (RNG-influenced), not a static
+-- per-room constant baked into any call site -- which is exactly why
+-- this project's repeated static-table searches for "the NPC placement
+-- table" (see `docs/reverse-engineering/rom-map.md`, "NPCs" section,
+-- "no static ROM table backs NPC placement") never found one: there is
+-- a real table, but you cannot read a row off it per room the way the
+-- cut-transition table works.
 --
--- LIVE-CONFIRMED INDICES: two real spawn events, captured live via
--- PC-history tracing (60-instruction window, not a static guess),
--- used table indices 99 and 121.
+-- LIVE-CONFIRMED INDICES: two spawn events, captured live via
+-- PC-history tracing (60-instruction window, not a static guess), used
+-- table indices 99 and 121.
 --
--- **UPDATE 2026-08-16, direct continuation ("Tabelle voll ausmessen")**:
--- the table's real extent is now MEASURED, not sampled. A static
--- plausibility scan (does bytes[8..9] land inside the real bank-3
--- banked window, 0x4000-0x7fff?) across every index that fits before
--- the bank ends finds real, structured data through index 217 -- then,
--- at index 218, the byte shape abruptly changes to short repeating
--- 4-byte groups (`24 77 24 77`, `bd bd bd bd`, ...), a visibly
--- different, NOT actor-record-shaped region -- confirming the table
--- really ends at 217 (218 entries total, indices 0-217). WITHIN that
--- range, 5 entries are real but anomalous (bytes[8..9] point into the
--- FIXED bank-0 region, 0x0000-0x3fff, not the swappable bank-3 window
--- every other entry uses): index 0 alone, then a tight cluster at
--- 12/13/14/15 that additionally share near-identical bytes[1..8] and
--- TWO repeated bank-0 pointers (0x2cab for 12-14, 0x2cc3 for 15) --
--- plausibly a small family of reserved/fixed-graphics slots (e.g.
--- always-loaded UI or story-specific actors that don't need the
--- swappable-bank sprite pipeline), not confirmed live. Both
--- live-confirmed indices (99, 121) sit inside the normal, non-anomalous
--- range. See `scanTable` for a full-extent reader.
+-- UPDATE (direct continuation, "Tabelle voll ausmessen"): the table's
+-- extent is now measured, not sampled. A static plausibility scan (does
+-- bytes[8..9] land inside the bank-3 banked window, 0x4000-0x7fff?)
+-- across every index that fits before the bank ends finds structured
+-- data through index 217 -- then, at index 218, the byte shape abruptly
+-- changes to short repeating 4-byte groups (`24 77 24 77`, `bd bd bd
+-- bd`, ...), a visibly different, not actor-record-shaped region --
+-- confirming the table really ends at 217 (218 entries total, indices
+-- 0-217). Within that range, 5 entries are real but anomalous
+-- (bytes[8..9] point into the fixed bank-0 region, 0x0000-0x3fff, not
+-- the swappable bank-3 window every other entry uses): index 0 alone,
+-- then a tight cluster at 12/13/14/15 that additionally share
+-- near-identical bytes[1..8] and two repeated bank-0 pointers (0x2cab
+-- for 12-14, 0x2cc3 for 15) -- plausibly a small family of
+-- reserved/fixed-graphics slots (e.g. always-loaded UI or
+-- story-specific actors that don't need the swappable-bank sprite
+-- pipeline), not confirmed live. Both live-confirmed indices (99, 121)
+-- sit inside the normal, non-anomalous range. See `scanTable` for a
+-- full-extent reader.
 --
--- THE EMBEDDED SECOND POINTER (bytes[8..9]) resolves to a SECOND real
+-- THE EMBEDDED SECOND POINTER (bytes[8..9]) resolves to a second
 -- 24-byte block, same bank, whose varying bytes are all small
--- (<=0x6e) -- structurally what OAM hardware sprite tile IDs look
--- like (NOT ROM file offsets, unlike this project's own `tileOffsets`
--- convention used elsewhere in `rom_profiles.lua`). Comparing the two
--- live-captured indices' sub-records byte-for-byte: EVERY varying byte
--- of index 99's sub-record is EXACTLY +0x20 above index 121's own
--- (same byte position), while the structural/separator bytes (0x10,
--- 0x30) stay identical. This is a
--- striking, byte-exact match to this project's OWN independently-
--- confirmed fact -- found via a completely different method, live OAM
--- tile-ID capture, not ROM table decoding -- that secondRoom's
--- characterB uses "a clean +0x20 shift" of characterA's own real OAM
--- tile IDs (see `rom_profiles.lua`'s `secondRoom.scene.characterA` doc
--- comment: "8 per character, a clean +0x20 shift between the two").
--- Two independent methods landing on the exact same "+0x20" number is
--- strong corroboration -- but HONESTLY NOT FULLY CLOSED: this project
--- has not independently re-confirmed, from the live trace itself,
--- WHICH of the two spawn events (index 99 vs. 121) was characterA vs.
--- characterB -- only that the pattern matches structurally. See
--- `LIVE_CONFIRMED` below for the exact, hedged wording.
+-- (<=0x6e) -- structurally what OAM hardware sprite tile IDs look like
+-- (not ROM file offsets, unlike this project's `tileOffsets` convention
+-- used elsewhere in `rom_profiles.lua`). Comparing the two
+-- live-captured indices' sub-records byte-for-byte: every varying byte
+-- of index 99's sub-record is exactly +0x20 above index 121's (same
+-- byte position), while the structural/separator bytes (0x10, 0x30)
+-- stay identical. This is a striking, byte-exact match to this
+-- project's own independently-confirmed fact -- found via a completely
+-- different method, live OAM tile-ID capture, not ROM table decoding --
+-- that secondRoom's characterB uses "a clean +0x20 shift" of
+-- characterA's own OAM tile IDs (see `rom_profiles.lua`'s
+-- `secondRoom.scene.characterA` doc comment: "8 per character, a clean
+-- +0x20 shift between the two"). Two independent methods landing on the
+-- exact same "+0x20" number is strong corroboration -- but honestly not
+-- fully closed: this project has not independently re-confirmed, from
+-- the live trace itself, which of the two spawn events (index 99 vs.
+-- 121) was characterA vs. characterB -- only that the pattern matches
+-- structurally. See `LIVE_CONFIRMED` below for the exact, hedged
+-- wording.
 --
--- Bottom line, matching this session's room-connectivity precedent (a
--- real, general table found and decoded, decisively explaining a
--- long-open mechanism, while the full general "what triggers each
--- entry" question stays open): the *spawn mechanism* is closed, and
--- (2026-08-16 update) the table's real total EXTENT is now measured
--- too (218 records, indices 0-217). What's still open: the *full
--- field semantics* (all 24 bytes of both record types beyond the 2
--- currently-decoded fields) and the exact RNG -> index derivation.
+-- Bottom line, matching this project's room-connectivity precedent (a
+-- general table found and decoded, decisively explaining a long-open
+-- mechanism, while the full general "what triggers each entry"
+-- question stays open): the *spawn mechanism* is closed, and (per the
+-- update) the table's total extent is now measured too (218 records,
+-- indices 0-217). What's still open: the *full field semantics* (all 24
+-- bytes of both record types beyond the 2 currently-decoded fields) and
+-- the exact RNG -> index derivation.
 
--- SPRITE PIXEL SOURCE FOUND (2026-08-17, direct user instruction
--- "versuche mal über einen ähnlichen hebel wie bei den tiles alle npc,
--- boss und monstersprites zu extrahieren"): every record's own bytes
--- [2..7] are a real "outer sprite record" (`readRecord`'s own
--- `spriteSource` field) feeding a general ROM->VRAM sprite-tile-copy
--- formula -- see `SpriteTileFormula.lua`'s own doc comment for the full
--- disassembly/live-validation. This is a DIFFERENT question from the
--- `spritePointer`/`spriteSubRecord` mechanism above (which OAM slots an
--- entity's sprite occupies on screen) -- this one answers WHICH REAL
--- ROM BYTES fill them. Live-validated exact against characterA/
--- characterB (both all 16 real tiles). `MonsterDefinitionTable.lua` is
--- the sibling table for monsters/bosses (bank 4, a separate 24-byte-
--- stride table, same outer-record shape at a different byte offset).
+-- SPRITE PIXEL SOURCE FOUND (direct user instruction to try a similar
+-- lever as the room tiles to extract all NPC, boss, and monster
+-- sprites): every record's bytes[2..7] are an "outer sprite record"
+-- (`readRecord`'s `spriteSource` field) feeding a general ROM->VRAM
+-- sprite-tile-copy formula -- see `SpriteTileFormula.lua`'s doc comment
+-- for the full disassembly/live-validation. This is a different
+-- question from the `spritePointer`/`spriteSubRecord` mechanism above
+-- (which OAM slots an entity's sprite occupies on screen) -- this one
+-- answers which ROM bytes fill them. Live-validated exact against
+-- characterA/characterB (both all 16 tiles). `MonsterDefinitionTable
+-- .lua` is the sibling table for monsters/bosses (bank 4, a separate
+-- 24-byte-stride table, same outer-record shape at a different byte
+-- offset).
 
 local ActorDefinitionTable = {}
 
