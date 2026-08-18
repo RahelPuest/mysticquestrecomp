@@ -1,15 +1,14 @@
--- The real first-battle intro: hero walks in from the right, a real
--- "Kaempfe!" ("Fight!") textbox appears and types itself out, then the
--- boss creature appears -- direct implementation of a detailed user-
--- supplied reference description, traced against the actual ROM CODE
--- per direct request ("suche die entsprechenden Stellen im ROM Code
--- anstatt das ganze evidenzbasiert zu machen"), not just inferred from
--- observed OAM/tilemap side effects. See rom_profiles.lua's
--- `battleIntro` entry for the full capture and the real ROM addresses
--- (`$0659`/`$065B` spawn init, `$0961-$09BE`/`$09A6` the same generic
--- entity-movement routine this project already found driving ordinary
--- player/enemy movement -- this cutscene reuses it with a synthetic
--- held-left input, not special-cased code, so this state does the same).
+-- The first-battle intro: hero walks in from the right, a "Kaempfe!"
+-- ("Fight!") textbox appears and types itself out, then the boss
+-- creature appears -- direct implementation of a detailed user-supplied
+-- reference description, traced against the actual ROM code per direct
+-- request (rather than inferring purely from observed OAM/tilemap side
+-- effects). See rom_profiles.lua's `battleIntro` entry for the full
+-- capture and the ROM addresses (`$0659`/`$065B` spawn init,
+-- `$0961-$09BE`/`$09A6` the same generic entity-movement routine this
+-- project already found driving ordinary player/enemy movement -- this
+-- cutscene reuses it with a synthetic held-left input, not special-cased
+-- code, so this state does the same).
 --
 -- Hands off to the real Field.lua once the sequence finishes -- Field
 -- itself is unchanged; this state exists purely to play the real,
@@ -38,10 +37,10 @@ BattleIntro.__index = BattleIntro
 local ROOM_W, ROOM_H = 160, 144
 local PLAY_H = 128
 
--- A synthetic src.core.Input-shaped object: real Player:update only
--- needs `:isDown`, so the real movement code (collision-free here --
--- see module doc comment) drives this cutscene the same way it drives
--- ordinary play, rather than a separately-hand-rolled position tween.
+-- A synthetic src.core.Input-shaped object: Player:update only needs
+-- `:isDown`, so the movement code (collision-free here -- see module
+-- doc comment) drives this cutscene the same way it drives ordinary
+-- play, rather than a separately-hand-rolled position tween.
 local function heldLeftInput()
   return { isDown = function(_, b) return b == "left" end }
 end
@@ -77,26 +76,24 @@ function BattleIntro.new(romData, profile, input, overlay, stack, heroName)
       self.player = Player.new(data.walkStartScreenX, ps.screenY, ps.cols * GBTile.TILE_W, ps.rows * GBTile.TILE_H)
       self.player.facing = "left"
 
-      -- Real textbox border, same tileset as NameEntry (see
-      -- rom_profiles.lua -- one real contiguous ROM block) -- now built
-      -- via the shared TextBox component (see that module's doc comment
-      -- for why this replaced this state's own original box-drawing
-      -- code, including a real fill-gap fix that code had).
+      -- Textbox border, same tileset as NameEntry (see rom_profiles.lua
+      -- -- one contiguous ROM block) -- now built via the shared TextBox
+      -- component (see that module's doc comment for why this replaced
+      -- this state's original box-drawing code, including a fill-gap
+      -- fix that code had).
       local tb = data.textbox
       self.box = TextBox.new(romData, profile, self.font, tb.border)
 
       self.text = TextDecoder.decodeString(romData, tb.fileOffset)
 
-      -- Real scripted tile-patch openings (2026-08-12, generalized --
-      -- see `src/rendering/TilePatch.lua`'s own doc comment): the
-      -- courtyard gate (a real, VERIFIED uniform-tile patch) and the
-      -- right-wall entrance the player walks in through (a real,
-      -- VERIFIED multi-tile-ID patch -- direct fix for a real user
-      -- report found by playing the app: the player previously
-      -- appeared to walk straight through solid wall here). Both are
-      -- real instances of the SAME general ROM mechanism, so both are
-      -- built the same way now instead of two separate near-identical
-      -- modules.
+      -- Scripted tile-patch openings (see `src/rendering/TilePatch.lua`'s
+      -- doc comment): the courtyard gate (a VERIFIED uniform-tile patch)
+      -- and the right-wall entrance the player walks in through (a
+      -- VERIFIED multi-tile-ID patch -- direct fix for a user report
+      -- found by playing the app: the player previously appeared to
+      -- walk straight through solid wall here). Both are instances of
+      -- the same general ROM mechanism, so both are built the same way
+      -- now instead of two separate near-identical modules.
       self.tilePatches = {}
       if data.gate then
         self.tilePatches[#self.tilePatches + 1] = TilePatch.new(romData, data.gate)
@@ -106,18 +103,17 @@ function BattleIntro.new(romData, profile, input, overlay, stack, heroName)
           TilePatch.new(romData, data.entranceSeal, profile.graphics.startRoom.tileOffsets)
       end
 
-      -- Real gate-to-patrol boss walk-in (2026-08-12, direct user
-      -- report: "der boss erscheint aber nicht einfach, er laeuft von
-      -- norden durch das tor") -- see rom_profiles.lua's own
-      -- `enemyDescent` doc comment for the live-traced evidence (the
-      -- real creature spawns at the courtyard's own barred gate,
-      -- descends straight down using a real, separate tile block, then
-      -- joins the same real patrol `Field.lua` already drives via
-      -- `Enemy.MOVEMENT_CYCLE`). Built here (not just in Field.lua) so
-      -- this cutscene can render/drive it during its own `postBoxFrames`
-      -- window, matching the real ROM's own timing (the real gate
-      -- open/close frames, `data.gate.openFrame`/`closeFrame`, land
-      -- inside that exact window -- see that field's own doc comment).
+      -- Gate-to-patrol boss walk-in (direct user report that the boss
+      -- doesn't just appear -- it walks in from the north through the
+      -- gate) -- see rom_profiles.lua's `enemyDescent` doc comment for
+      -- the live-traced evidence (the creature spawns at the
+      -- courtyard's barred gate, descends straight down using a
+      -- separate tile block, then joins the same patrol `Field.lua`
+      -- already drives via `Enemy.MOVEMENT_CYCLE`). Built here (not
+      -- just in Field.lua) so this cutscene can render/drive it during
+      -- its own `postBoxFrames` window, matching the ROM's timing (the
+      -- gate open/close frames, `data.gate.openFrame`/`closeFrame`,
+      -- land inside that exact window -- see that field's doc comment).
       local es = profile.graphics.enemySprite
       if es and profile.graphics.enemyDescent then
         local enemyHeight = es.rowSpacing and ((es.rows - 1) * es.rowSpacing + GBTile.TILE_H) or (es.rows * GBTile.TILE_H)
