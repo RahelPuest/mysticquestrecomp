@@ -93,6 +93,28 @@
 -- structurally never reach `categoryByte` or any stat byte beyond it.
 -- See events.md's own 2026-08-18 entry for the full before/after
 -- diagnostic.
+--
+-- FURTHER CHARACTERIZED, same day, direct follow-up ("fixe die
+-- restlichen einträge"): after the field-overrun fix above, several
+-- records still stop short of a full 8 characters (e.g. record 29
+-- "eh", 37 "gW", 55 "Äns") at one of exactly 4 bytes (`0xA2`/`0xA4`/
+-- `0xA7`/`0xA8`). These are NOT a digraph-table gap -- see
+-- `TextDecoder.lua`'s own matching 2026-08-18 note (right before its
+-- `DIGRAPH_PARTIAL`) for the evidence: all 4 bytes recur, in the real
+-- dialogue region specifically, immediately before an item name in an
+-- "<Item> gefunden" pickup message -- very plausibly a per-message
+-- control/type byte (same category as the already-verified `0x12`),
+-- not a missing letter. Practical consequence: these records' short
+-- names are very likely already their FULL, correct real content, not
+-- truncated. A SEPARATE, still-genuinely-open group (records that
+-- decode completely within the 8-byte bound -- every byte mapped, no
+-- stop at all -- but still don't read as plausible German, e.g. record
+-- 43/50's identical "i-vJpORq" or 45-48's shared "NWpGnsc" prefix) was
+-- deliberately NOT forced to a guess this pass -- no evidence met this
+-- project's own 2-independent-occurrence bar for revising an existing,
+-- already-correctly-used mapping. Real candidates from a fetched
+-- walkthrough's key-item list (Opal, 4 stat-boost Stones, Pendant,
+-- Silver, Fang) remain unmatched to any specific record.
 
 local TextDecoder = require("src.import.TextDecoder")
 

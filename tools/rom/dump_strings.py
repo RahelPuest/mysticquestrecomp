@@ -66,6 +66,13 @@ UMLAUT_PARTIAL = {
     0x99: "Ä", 0x9A: "Ö", 0x9B: "Ü",
 }
 
+# HYPOTHESIS (2026-08-18): 0xA2/0xA4/0xA7/0xA8 are very plausibly CONTROL
+# bytes (same category as the already-verified 0x12), not unmapped digraph
+# characters -- found sitting in the same consistent position (right before
+# an item name in an "<Item> gefunden" pickup message) across 5-12 real
+# occurrences each in the real dialogue region (file 0x34800-0x3B000).
+# Deliberately left OUT of this table -- see TextDecoder.lua's own matching
+# note (right before its DIGRAPH_PARTIAL) for the full evidence.
 DIGRAPH_PARTIAL = {
     0x24: "en", 0x2A: "ie", 0x2F: "te", 0x31: "be", 0x37: "un",
     0x39: "le", 0x3A: " i", 0x3B: "se", 0x3C: "as", 0x4E: "da",

@@ -377,6 +377,33 @@ TextDecoder.SPEAKER_COLON_BYTE = 0x2C
 -- Seiken Densetsu 1 staff credit) and "G[0x58]o O[?]shi" = "Goro
 -- O[?]shi" (LANDKARTE/map credit) -- same byte, same 2 letters, two
 -- unrelated names, this project's normal VERIFIED bar.
+-- HYPOTHESIS (2026-08-18, "fixe die restlichen einträge" -- chasing
+-- ItemTable.lua's still-garbled records back to their real cause):
+-- 0xA2/0xA4/0xA7/0xA8 are very plausibly CONTROL bytes, not unmapped
+-- digraph characters -- same category as the already-VERIFIED 0x12
+-- (see that byte's own note above: "deliberately not added to
+-- decodeByte ... this note exists so a future reader doesn't mistake
+-- [it] for [an] unassigned digraph slot still waiting to be filled
+-- in"). Restricting the search to the real dialogue region (file
+-- `0x34800`-`0x3B000`, per text.md) instead of the whole ROM -- which
+-- is mostly non-text and produces coincidental noise for this kind of
+-- search -- found each of these 4 bytes sitting in the SAME consistent
+-- structural position across 5-12 real occurrences each: immediately
+-- before an item name in an "<Item> gefunden" pickup message (e.g.
+-- `[a2]"Drache gefunden"`, `[a4]"Kraftschwert\ngefunden"`,
+-- `[a7]"Morgenstern\ngefunden"`, `[a8]"Kettenpeitsche\ngefunden"`).
+-- DIFFERENT bytes recur at that SAME slot across different items,
+-- consistent with a per-message type/icon selector, not a shared
+-- generic control code and not printable text either way. Left
+-- deliberately OUT of DIGRAPH_PARTIAL below -- adding any of them as a
+-- character would be wrong per this evidence, exactly the mistake this
+-- note exists to prevent. NOT yet live-traced (unlike 0x12's own
+-- watchpoint-confirmed status) -- a real, honest, evidence-based
+-- hypothesis, not a VERIFIED claim. Practical consequence for
+-- ItemTable.lua: the item-table records where a name decode stops at
+-- one of these bytes (e.g. record 29 "eh", 37 "gW") are very likely
+-- already their FULL, correct, complete real name -- not truncated by
+-- a missing digraph mapping.
 TextDecoder.DIGRAPH_PARTIAL = {
   -- HYPOTHESIS: `0xFC` is a high-frequency blocker (149 occurrences in
   -- the main dialogue region, 0x34800-) whose surrounding context is

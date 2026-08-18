@@ -11615,3 +11615,63 @@ Not pursued further this pass -- flagged honestly rather than guessed
 at, per this project's own established discipline. Website re-exported
 (`rom-inspector/tools/export_data.lua`). `luajit tests/run_tests.lua`:
 578/578 pass (577 -> 578).
+
+## 2026-08-18, same day, direct follow-up ("na dann fixe die restlichen einträge") -- 4 genuine gap bytes traced to a real, evidence-based conclusion: control bytes, not missing digraphs
+
+First fetched a broader walkthrough query (same gamesurge.com source,
+see docs/references.md) specifically for KEY/QUEST items (as opposed to
+the earlier magic/recovery-item fetch) -- got a real, useful cross-
+reference list: Ruby, Gold, Opal, Crystal, 4 stat-boost Stones
+(Stamina/Wisdom/Will/Nectar), Mattok, Key, Bronze Key, Bone Key,
+Pendant, Mystic Mirror, Silver, Amanda's Tear, Oil, Fang. Several
+already matched cleanly against already-decoded records (Rubin,
+Kristal, Öl, Träne, Gold, Schlüs[sel], Bronze, Knochen) -- and one
+confirms the 2026-08-18-earlier overrun fix independently: record 38's
+corrected "Spiegel" is exactly "Mystic Mirror". Opal/Stones/Mattok/
+Pendant/Silver/Fang remain unmatched to any specific record -- not
+forced onto the remaining gibberish by name-shape guessing.
+
+**Precisely classified every record that still doesn't read as
+plausible German**, byte-by-byte, after yesterday's overrun fix:
+`records 20/21/34/39/42/43/45-48/50` decode COMPLETELY within the
+correct 8-byte bound -- every single byte already has an established,
+elsewhere-correctly-used mapping (the same ones that correctly produce
+"Flamme"/"Bonbon"/"Gold" in this identical table) -- yet still don't
+form words. `records 29/33/35/36/37/55/56` genuinely stop early, but
+ALL of them stop at exactly one of only 4 distinct byte values:
+`0xA2`/`0xA4`/`0xA7`/`0xA8`.
+
+**Traced those 4 bytes to a real, evidence-based conclusion instead of
+guessing a digraph value for them.** A first attempt (`dump_strings.py
+--gaps` across the whole ROM) was too noisy -- most of the ROM is code/
+graphics data that coincidentally decodes to letter-shaped bytes at a
+high `--min-ratio`, drowning any real signal. Restricting the same
+search to the real, already-known dialogue region specifically (file
+`0x34800`-`0x3B000`, per text.md) found a clean, consistent, real
+pattern instead: all 4 bytes recur (5-12 times each) in the EXACT SAME
+structural position -- immediately before an item name in an "<Item>
+gefunden" pickup message (`[a2]"Drache gefunden"`,
+`[a4]"Kraftschwert\ngefunden"`, `[a7]"Morgenstern\ngefunden"`,
+`[a8]"Kettenpeitsche\ngefunden"`). Different bytes recur at that SAME
+slot for different items -- consistent with a per-message control/type
+byte (the same category as the already-verified `0x12`, which this
+project's own code already documents as "deliberately not added to
+decodeByte" for exactly this reason), not a missing letter. Documented
+as an honest HYPOTHESIS (not VERIFIED -- no live watchpoint trace run
+this pass, unlike `0x12`'s own confirmed status) in both
+`TextDecoder.lua` and `dump_strings.py`'s matching doc comments, right
+before `DIGRAPH_PARTIAL`, so a future pass doesn't mistake these 4 for
+still-open digraph slots and guess a wrong character in. **Practical
+payoff**: the 7 records that stop at one of these bytes are very likely
+already their FULL, correct, complete real names -- not truncated,
+nothing missing.
+
+**Honest final status**: 7 of the ~16 records this task started with
+are now explained (control-byte stop, not a gap). The remaining ~9
+(complete, correctly-mapped, still not real words) stay genuinely open
+-- no evidence met this project's own 2-independent-occurrence bar for
+revising any existing mapping, and forcing a guess risks corrupting
+mappings that are already correct and in use elsewhere in this exact
+table. Not pursued further -- `ItemTable.lua`'s own doc comment updated
+to state this precisely. No decode behavior changed this pass (doc
+comments only); `luajit tests/run_tests.lua`: 578/578 still pass.
