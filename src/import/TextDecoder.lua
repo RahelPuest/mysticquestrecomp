@@ -486,8 +486,7 @@ TextDecoder.DIGRAPH_PARTIAL = {
   [0x65] = " h", -- "Sie[65]abe[25]das"="Sie haben das", "W[47]te[65]ier"="Warte hier" (space-inclusive, same shape as 0x3A/0x25)
   [0x6E] = "mm", -- "Willko[6E]en"="Willkommen" (x2), "entko[6E]en"="entkommen", "Ko[6E][65]ier[3F]r"="Komm hierher"
   [0x88] = "Da", -- "[88]rk Lord"="Dark Lord" (10+ identical occurrences) -- first confirmed CAPITALIZED 2-letter code, a proper noun/title
-  -- CONFIRMED 2026-08-11 ("na dann finde raus was die anderen bytes
-  -- bedeuten"): found while resolving 0x12 (see text.md's "0x12 is
+  -- CONFIRMED: found while resolving 0x12 (see text.md's "0x12 is
   -- VERIFIED" section) -- two DIFFERENT words each, same rigor bar as
   -- the rest of this table:
   [0x21] = "de", -- "gefun[21]n"="gefunden" (30+ item-pickup messages,
@@ -504,8 +503,7 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- real end-of-credits-adjacent lore text) -- promoted from HYPOTHESIS
   -- (see the old note further below, now resolved) to confirmed.
 
-  -- CONFIRMED 2026-08-12 ("versuche die text decoder digraphs komplett
-  -- zu schliessen"): a systematic pass, not opportunistic spot-checks --
+  -- CONFIRMED: a systematic pass, not opportunistic spot-checks --
   -- every byte below 0xB0 that appears in a "fill-in-the-blank" word
   -- (all OTHER bytes in that word already decode) was collected across
   -- the entire real dialogue region (file 0x34800-0x3B000, see text.md),
@@ -629,11 +627,11 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- adjective form, after "das" -- cross-checks 0x54's dative reading),
   -- "Der[83]emma"="Der Gemma (Ritter)" (matches the already-known
   -- recurring "Gemma Ritter" phrase).
-  [0x84] = "ac", -- found 2026-08-12 hunting secondRoom's own real
-  -- `characterA` NPC line offset ("Der Monsterein-\ngang führt n[84]h
-  -- \ndraußen." -- needs "ac" to complete "nach", German "to/toward").
-  -- Comfortably clears this project's own "2+ independent occurrences"
-  -- bar -- 0x84 recurs at LEAST 6 times in genuinely different real
+  [0x84] = "ac", -- found hunting secondRoom's `characterA` NPC line
+  -- offset ("Der Monsterein-\ngang führt n[84]h \ndraußen." -- needs
+  -- "ac" to complete "nach", German "to/toward"). Comfortably clears
+  -- this project's "2+ independent occurrences" bar -- 0x84 recurs at
+  -- least 6 times in genuinely different
   -- sentences, every one needing exactly "ac": "M[84]ht kann\nnur
   -- einer widerstehen"="Macht kann nur einer widerstehen" (power only
   -- one can resist), "Sensenmann bew[84]ht"="Sensenmann bewacht"
