@@ -204,8 +204,8 @@ TextDecoder.COLON_BYTE = 0xF5
 -- range/...) are also closed.
 TextDecoder.SPEAKER_COLON_BYTE = 0x2C
 
--- HYPOTHESIS-status control-byte family, bytes 0x10-0x1F (2026-08-15,
--- see docs/reverse-engineering/events.md's "the $38F6 table decoded"
+-- HYPOTHESIS-status control-byte family, bytes 0x10-0x1F -- see
+-- docs/reverse-engineering/events.md's "the $38F6 table decoded"
 -- section for the full disassembly trail). Found from the OPPOSITE
 -- direction of every other constant in this file: not from a real text-
 -- corpus scan, but from disassembling the real ROM's own script-
@@ -469,20 +469,20 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- read as "Julius" instead.
   [0x5B] = "us", -- "Juli[5B]"="Julius" (a real character name, 25+
   -- identical occurrences)
-  -- RESOLVED, 2026-08-17 (was: "NEWLY FOUND CONTRADICTION", 2026-08-15,
-  -- checked while hunting secondRoom's real "Amanda" dialogue -- direct
-  -- user report "es muss ja ganz klar ausrüstung heißen"): this byte
-  -- ALREADY wanted "us" (not "a") in every one of 5 independent real
-  -- words that pass found -- "A[5B]rüstung"="Ausrüstung" (equipment),
-  -- "Da[8E][5B]"="Daraus" (from that), "[8E][5B]!"="raus!" (get out,
-  -- Amanda's own line), "gr[8E][5B]a[82]r"="grausamer" (crueler),
+  -- RESOLVED (was: "newly found contradiction", checked while hunting
+  -- secondRoom's "Amanda" dialogue -- direct user report that this
+  -- must clearly read "Ausrüstung"): this byte already wanted "us"
+  -- (not "a") in every one of 5 independent words that pass found --
+  -- "A[5B]rüstung"="Ausrüstung" (equipment), "Da[8E][5B]"="Daraus"
+  -- (from that), "[8E][5B]!"="raus!" (get out, Amanda's own line),
+  -- "gr[8E][5B]a[82]r"="grausamer" (crueler),
   -- "gr[8E][5B]am!"="grausam!" (terrible!) -- all clean, all real. At
   -- the time this was left as a genuinely-contradictory, not-force-
   -- picked open question against the "Julia" reading (same shape as
-  -- `0x82` below). The real ROM digraph table found 2026-08-17 (see
-  -- this table's own header note) settles it: "us" is correct --
-  -- these 5 words were right all along, and "Julia" was a mis-read
-  -- (really "Julius", see the revision above).
+  -- `0x82` below). The ROM digraph table found later (see this table's
+  -- header note) settles it: "us" is correct -- these 5 words were
+  -- right all along, and "Julia" was a mis-read (really "Julius", see
+  -- the revision above).
   [0x65] = " h", -- "Sie[65]abe[25]das"="Sie haben das", "W[47]te[65]ier"="Warte hier" (space-inclusive, same shape as 0x3A/0x25)
   [0x6E] = "mm", -- "Willko[6E]en"="Willkommen" (x2), "entko[6E]en"="entkommen", "Ko[6E][65]ier[3F]r"="Komm hierher"
   [0x88] = "Da", -- "[88]rk Lord"="Dark Lord" (10+ identical occurrences) -- first confirmed CAPITALIZED 2-letter code, a proper noun/title
@@ -691,7 +691,7 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- helfen"="wird ihr helfen" (will help her, x2, using 0x86 below).
   [0x80] = "rt", -- 2 words: "Sch[69][80]"="Schwert" (sword, x3, see
   -- 0x69 above) and "O[80] heute"="Ort heute" (place, today).
-  -- REVISED, 2026-08-17: was "ih" (from "wir[6A][86]r helfen"="wird
+  -- REVISED: was "ih" (from "wir[6A][86]r helfen"="wird
   -- ihr helfen", will help her, x2) -- a conflict against the ROM
   -- digraph table (`$3F3F`, see this table's header note), which reads
   -- this byte as "Di". Applying the same standard chosen for the
@@ -926,16 +926,15 @@ TextDecoder.DIGRAPH_PARTIAL = {
 --     wants "ute" for "Kraeuterlaeden"; "bekom[82]n" wants "me" for
 --     "bekommen") -- a single fixed byte can't be all three; recorded
 --     honestly as unresolved rather than picking the majority reading
---   0x63 = RESOLVED 2026-08-17 -- see DIGRAPH_PARTIAL's own entry
---     above: the real ROM digraph table decisively confirms "ng"
---     (eingesperrt, Angriff, eingefroren -- 3 clean, common words).
---     The "one real counter-example" this note used to describe
---     ("Watts verkauft\nih[0x86]"+[63]+"e aus Silber") depended on the
---     OLD 0x86="ih" reading, itself since revised to "Di" (see
---     DIGRAPH_PARTIAL's own 0x86 note) -- both the "ng" majority and
---     the apparent "r" counter-example trace back to the same table
---     now, so this was never a real conflict, just built on a since-
---     corrected neighboring byte.
+--   0x63 = RESOLVED -- see DIGRAPH_PARTIAL's entry above: the ROM
+--     digraph table decisively confirms "ng" (eingesperrt, Angriff,
+--     eingefroren -- 3 clean, common words). The "one counter-example"
+--     this note used to describe ("Watts verkauft\nih[0x86]"+[63]+"e
+--     aus Silber") depended on the old 0x86="ih" reading, itself since
+--     revised to "Di" (see DIGRAPH_PARTIAL's 0x86 note) -- both the
+--     "ng" majority and the apparent "r" counter-example trace back to
+--     the same table now, so this was never a real conflict, just
+--     built on a since-corrected neighboring byte.
 -- (0x52, 0x66, 0x40, and 0x6C used to be listed here too -- see the
 -- table above instead, all now resolved with real evidence.)
 -- Also: several messages show a MISSING space where grammar expects
@@ -960,8 +959,8 @@ TextDecoder.DIGRAPH_PARTIAL = {
 --     the table isn't uniformly 2-letter, plausible for a compression
 --     scheme built around a Japanese-heavy credits screen)
 --
--- Found 2026-08-11 while cross-referencing storyPages[1]'s real bytes
--- (same pass 0x21/0x43 came from) -- each fits ONE clean sentence but
+-- Found while cross-referencing storyPages[1]'s bytes (same pass
+-- 0x21/0x43 came from) -- each fits ONE clean sentence but
 -- lacks a second independent word yet, so stays a lead, not a claim:
 --   0x2D = "st", 0x42 = " e" (from "[14] i[2D][42]in\ntapferer
 --     Kämpfer." = "<Name> ist ein\ntapferer Kämpfer." -- a fully
