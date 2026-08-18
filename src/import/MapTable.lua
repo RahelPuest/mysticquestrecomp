@@ -273,47 +273,47 @@ function MapTable.recordDataFileOffset(romData, mapTable, recordIndex)
   return cpuToFile(mapTable.bankFileStart, dataAddr)
 end
 
---- Apply one Templated-mode record's real `(value, position)` diff list
--- on top of `baseIndices` (the shared base-room template's own flat
+--- Apply one Templated-mode record's `(value, position)` diff list on
+-- top of `baseIndices` (the shared base-room template's flat
 -- metatile-index array -- `#baseIndices` entries, row-major -- see
 -- `readTemplatedHeader` for how to decode that base array via
 -- `MapTable.rleDecode`/`RoomFloorLayout.decodeLayoutStream`).
--- `dataFileOffset` is the record's own real data pointer's file offset
--- (see `recordDataFileOffset`) -- this function reads directly from
+-- `dataFileOffset` is the record's data pointer's file offset (see
+-- `recordDataFileOffset`) -- this function reads directly from
 -- `romData` at that offset (like `RoomFloorLayout.decodeLayoutStream`
 -- does for RLE streams) rather than requiring a pre-sliced blob, since
 -- the format is self-terminating and needs no externally-supplied end.
 --
--- CRACKED format (2026-08-14, see rom-map.md "bank 7 Templated
--- revisited, CRACKED"): each record's raw data starts with a real
--- 4-byte per-record field (small values, `0x00-0x0d` observed --
--- plausibly per-room door/exit-flag data, see `readTemplatedHeader`'s
--- doc comment -- NOT decoded, deliberately skipped here) followed by
--- `(value, position)` byte pairs, `position` packing `(row << 4) |
--- col`, terminated by a position byte of `0xFF`. Found via an
--- exhaustive, automated search over all 4 plausible (prefix length x
--- pair order) combinations against every real record in this EU ROM's
--- own bank-7 table: this exact combination was the unique one scoring
--- 557/557 (100%) valid `row/col` pairs -- the next-best alternative
--- only reached 97.1%. VERIFIED end to end: 566/566 real diff positions
--- across all 64 real records decode to valid `0 <= row < gridRows`,
--- `0 <= col < gridCols` pairs (zero exceptions), and every one of the
--- 64 resulting reconstructed rooms (base template + that record's own
--- diff) renders as real, structurally coherent, VISUALLY DISTINCT
--- dungeon art (`tile_entropy()` 1.30-1.40 bits for all 64, squarely in
--- the same real-art band already established for bank 5/6 -- zero
--- outliers -- plus direct PNG eyeballing of 6 spot-checked records,
--- each showing genuinely different room content, e.g. a distinct
--- central statue/creature shape vs. a row of urn/skull decorations vs.
--- a triangular banner formation -- not the same room repeated).
+-- CRACKED format (see rom-map.md "bank 7 Templated revisited,
+-- CRACKED"): each record's raw data starts with a 4-byte per-record
+-- field (small values, `0x00-0x0d` observed -- plausibly per-room
+-- door/exit-flag data, see `readTemplatedHeader`'s doc comment -- not
+-- decoded, deliberately skipped here) followed by `(value, position)`
+-- byte pairs, `position` packing `(row << 4) | col`, terminated by a
+-- position byte of `0xFF`. Found via an exhaustive, automated search
+-- over all 4 plausible (prefix length x pair order) combinations
+-- against every record in this EU ROM's bank-7 table: this exact
+-- combination was the unique one scoring 557/557 (100%) valid
+-- `row/col` pairs -- the next-best alternative only reached 97.1%.
+-- VERIFIED end to end: 566/566 diff positions across all 64 records
+-- decode to valid `0 <= row < gridRows`, `0 <= col < gridCols` pairs
+-- (zero exceptions), and every one of the 64 resulting reconstructed
+-- rooms (base template + that record's diff) renders as structurally
+-- coherent, visually distinct dungeon art (`tile_entropy()` 1.30-1.40
+-- bits for all 64, squarely in the same real-art band already
+-- established for bank 5/6 -- zero outliers -- plus direct PNG
+-- eyeballing of 6 spot-checked records, each showing genuinely
+-- different room content, e.g. a distinct central statue/creature
+-- shape vs. a row of urn/skull decorations vs. a triangular banner
+-- formation -- not the same room repeated).
 --
--- Returns a NEW array (does not mutate `baseIndices`), same length,
+-- Returns a new array (does not mutate `baseIndices`), same length,
 -- same row-major layout (`index = row*gridCols + col + 1`, 1-based).
 -- Fails loudly (not silently) if a diff position decodes outside the
--- real `gridRows x gridCols` bounds, or if no `0xFF` terminator turns
--- up within a sane bound (one diff per grid cell at most, plus slack)
--- -- this project has never observed either in real data, so both
--- would be a genuine anomaly worth surfacing, not silently absorbed.
+-- `gridRows x gridCols` bounds, or if no `0xFF` terminator turns up
+-- within a sane bound (one diff per grid cell at most, plus slack) --
+-- this project has never observed either in real data, so both would
+-- be a genuine anomaly worth surfacing, not silently absorbed.
 function MapTable.applyTemplatedDiff(romData, dataFileOffset, baseIndices, gridRows, gridCols)
   assert(type(romData) == "string", "MapTable.applyTemplatedDiff expects a byte string")
   assert(type(baseIndices) == "table", "MapTable.applyTemplatedDiff expects a base indices array")
@@ -347,41 +347,39 @@ function MapTable.applyTemplatedDiff(romData, dataFileOffset, baseIndices, gridR
   return indices
 end
 
---- Try to extract a real `(group, action)` pair from a record's own
--- "header" bytes (2026-08-14, direct follow-up to "verfolge mal diese
--- eventscripte und schaue dir an was diese machen" -- see this
--- module's own "NAMING CORRECTED" doc comment above `MapTable.decode`
--- for why "header" is really a per-room event-script pointer).
+--- Try to extract a `(group, action)` pair from a record's "header"
+-- bytes (see this module's "NAMING CORRECTED" doc comment above
+-- `MapTable.decode` for why "header" is really a per-room event-script
+-- pointer).
 --
--- The first (or, if that byte resolves to the real, ROM-confirmed
--- no-op `ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS`, the second)
--- opcode byte is resolved through the real `scriptOpcodeTable` to its
--- own real ROM handler address. If that address holds the EXACT,
--- already-documented "ACTOR_ACTION" family instruction sequence
--- (`src/import/ScriptOpcodeTable.lua`'s own `ACTOR_ACTION_HANDLER_
+-- The first (or, if that byte resolves to the ROM-confirmed no-op
+-- `ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS`, the second) opcode byte
+-- is resolved through the `scriptOpcodeTable` to its ROM handler
+-- address. If that address holds the exact, already-documented
+-- "ACTOR_ACTION" family instruction sequence
+-- (`src/import/ScriptOpcodeTable.lua`'s `ACTOR_ACTION_HANDLER_
 -- ADDRESS_*` constants, events.md's "Back to the primary table"
--- section: `CALL $28C2 / ADD A,<group> / LD C,A / LD A,<action> /
--- CALL $2879 / RET`), the real, baked-in `group`/`action` constants
--- are read directly out of the handler's own bytes -- not inferred,
--- not guessed, the literal immediate operands of that specific real
--- routine. Returns `nil` if neither byte matches (a real, honest
--- "not this family" result, not a fabricated default).
+-- section: `CALL $28C2 / ADD A,<group> / LD C,A / LD A,<action> / CALL
+-- $2879 / RET`), the baked-in `group`/`action` constants are read
+-- directly out of the handler's bytes -- not inferred, not guessed,
+-- the literal immediate operands of that specific routine. Returns
+-- `nil` if neither byte matches (an honest "not this family" result,
+-- not a fabricated default).
 --
--- HONEST SCOPE: this identifies WHICH real actor-action command a
--- room's own entry script enqueues (see `ScriptOpcodeTable.lua`'s own
--- corrected note: a real actor-COMMAND-QUEUE mechanism, `$C4E0`/
--- `$C5A0`, NOT room-selection or spawn-coordinate data) -- it does
--- NOT reveal which TILES a room uses (a separate, still-open
--- question, see rom_profiles.lua's own `genericCatalogMetatileTable
--- FileOffset` doc comment) and does NOT explain the exact real-world
--- GAMEPLAY MEANING of a given `action` value (open per events.md).
+-- HONEST SCOPE: this identifies which actor-action command a room's
+-- entry script enqueues (see `ScriptOpcodeTable.lua`'s corrected note:
+-- an actor-command-queue mechanism, `$C4E0`/`$C5A0`, not room-selection
+-- or spawn-coordinate data) -- it does not reveal which tiles a room
+-- uses (a separate, still-open question, see rom_profiles.lua's
+-- `genericCatalogMetatileTableFileOffset` doc comment) and does not
+-- explain the exact real-world gameplay meaning of a given `action`
+-- value (open per events.md).
 --
 -- All handler addresses seen for this family so far are `< 0x4000`
--- (fixed bank 0, file offset == CPU address directly, same
--- convention already established for `ScriptOpcodeTable.DEFAULT_
--- HANDLER_ADDRESS` elsewhere) -- a handler `>= 0x4000` is honestly
--- reported as "not resolvable this way" (`nil`) rather than guessing
--- a bank.
+-- (fixed bank 0, file offset == CPU address directly, same convention
+-- already established for `ScriptOpcodeTable.DEFAULT_HANDLER_ADDRESS`
+-- elsewhere) -- a handler `>= 0x4000` is honestly reported as "not
+-- resolvable this way" (`nil`) rather than guessing a bank.
 local ACTOR_ACTION_PATTERN_PREFIX = string.char(0xCD, 0xC2, 0x28) -- CALL $28C2
 local ACTOR_ACTION_PATTERN_MID = string.char(0x4F, 0x3E) -- LD C,A / LD A,n
 local ACTOR_ACTION_PATTERN_SUFFIX = string.char(0xCD, 0x79, 0x28) -- CALL $2879
