@@ -552,41 +552,34 @@ for name, room in pairs(profile.graphics) do
       -- Real, structured world-map catalog cross-reference (currently
       -- startRoom/fourthRoom, 2026-08-17, direct user report) -- see
       -- rom_profiles.lua's own `worldMapCatalogRecord` doc comment: this
-      -- room is directly present in the bank6 (8x8) world-map catalog at
-      -- the given grid position, live-verified via a real cell-by-cell
-      -- ROM file-offset comparison, not a guess.
+      -- room's presence in the bank6 (8x8) world-map catalog at the
+      -- given grid position, live-verified cell-by-cell against the
+      -- ROM file offsets.
       worldMapCatalogRecord = room.worldMapCatalogRecord,
-      -- Real, structured dispute flag (currently seventhRoom/eighthRoom/
-      -- ninthRoom) -- see rom_profiles.lua's own `tilesetDisputed`/
-      -- `tilesetDisputedNote` doc comment: a direct, credible user
-      -- report (real first-hand ROM knowledge) that this room's own
-      -- catalog-derived tileset is wrong, thoroughly re-investigated
-      -- but not resolved -- not the same thing as the general
-      -- "IMPLEMENTATION CHOICE, not independently confirmed" status
-      -- every catalog room already carries; this is a specific,
-      -- credible dispute on TOP of that.
+      -- Structured dispute flag (currently seventhRoom/eighthRoom/
+      -- ninthRoom) -- see rom_profiles.lua's `tilesetDisputed`/
+      -- `tilesetDisputedNote` doc comment: a credible user report that
+      -- this room's catalog-derived tileset is wrong, investigated but
+      -- unresolved -- distinct from the general "IMPLEMENTATION
+      -- CHOICE, not independently confirmed" status every catalog room
+      -- carries.
       tilesetDisputed = room.tilesetDisputed,
       tilesetDisputedNote = room.tilesetDisputedNote,
     }
   end
 end
--- Real, decoded, VERIFIED rooms that exist as genuine ROM screens but
--- have no live-traced `exits` field of their own AND are never any
--- other room's real `targetRoom` either -- the exits-only loop above
--- would otherwise silently omit them from the graph entirely, even
--- though they're just as real as every other room here. `startRoom`
--- is the one current case (2026-08-17, direct user question "wo ist
--- denn der boss raum in dem graf? der existiert ja definitiv"): it's
--- the actual room `Field.lua`/`BattleIntro.lua` use for the real,
--- live FIRST boss fight (the real "Kaempfe!" battle-intro sequence,
--- with its own real gate/entranceSeal tile-patch mechanics) -- a
--- genuinely VERIFIED room, real tile grid + ROM tile offsets, not a
--- guess. Its connection onward into the willyRoom -> ... -> ninthRoom
--- exit chain (itself only reachable via the separate VictorySequence/
--- RoomExplorer debug room-graph walker, not the normal Field.lua play
--- flow -- see main.lua's own state wiring) was simply never live-
--- traced, so it has no `exits` entry to read. Exported here as its
--- own real, honestly DISCONNECTED node (empty `exits`, a `note`
+-- VERIFIED rooms that exist as genuine ROM screens but have no
+-- live-traced `exits` field of their own and are never any other
+-- room's `targetRoom` -- the exits-only loop above would otherwise
+-- silently omit them from the graph. `startRoom` is the current case:
+-- it's the room `Field.lua`/`BattleIntro.lua` use for the live FIRST
+-- boss fight ("Kaempfe!" sequence, own gate/entranceSeal tile-patch
+-- mechanics) -- a verified room, real tile grid + ROM offsets. Its
+-- onward connection into the willyRoom -> ... -> ninthRoom exit chain
+-- (reachable only via the separate VictorySequence/RoomExplorer debug
+-- walker, not normal Field.lua play -- see main.lua's state wiring)
+-- was never live-traced, so it has no `exits` entry. Exported here as
+-- its own honestly DISCONNECTED node (empty `exits`, a `note`
 -- explaining why) instead of being silently left off the map.
 local ISOLATED_BUT_REAL_ROOMS = { "startRoom" }
 local roomNamesSoFar = {}
@@ -613,17 +606,15 @@ for _, name in ipairs(ISOLATED_BUT_REAL_ROOMS) do
     }
   end
 end
--- Attach real per-room cross-reference/dispute flags (currently
--- `sameRomIdentityAs`/`sameRomIdentityNote`, see rom_profiles.lua's
--- own doc comment -- `fifthRoom`; `tilesetDisputed`/
--- `tilesetDisputedNote` -- `seventhRoom`/`eighthRoom`/`ninthRoom`; and
--- `worldMapCatalogRecord` -- `startRoom`/`fourthRoom`) to their room's
--- own ROOMS[] entry -- generic over any room that carries any of these
--- fields, not a hardcoded name list. Handles LEAF rooms too (like
--- `fifthRoom`/`ninthRoom`, which have no `exits` of their own and so
--- never went through the main loop above): a real flag must not
--- silently disappear just because the room it's attached to happens to
--- have no outgoing exit yet.
+-- Attach per-room cross-reference/dispute flags (`sameRomIdentityAs`/
+-- `sameRomIdentityNote` -- fifthRoom; `tilesetDisputed`/
+-- `tilesetDisputedNote` -- seventhRoom/eighthRoom/ninthRoom;
+-- `worldMapCatalogRecord` -- startRoom/fourthRoom; see rom_profiles.lua's
+-- own doc comments) to their room's ROOMS[] entry -- generic over any
+-- room carrying these fields, not a hardcoded name list. Also handles
+-- LEAF rooms (fifthRoom/ninthRoom, no `exits` of their own, so never
+-- went through the main loop above) so a flag doesn't disappear just
+-- because its room has no outgoing exit.
 for name, room in pairs(profile.graphics) do
   if type(room) == "table" and (room.sameRomIdentityAs or room.tilesetDisputed or room.worldMapCatalogRecord) then
     local found = nil
@@ -655,15 +646,14 @@ for name, room in pairs(profile.graphics) do
 end
 table.sort(rooms, function(a, b) return a.name < b.name end)
 writeJs("rooms.js", "ROOMS", rooms,
-  "Every room with real, decoded exits -- read directly from rom_profiles.lua's own graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A small number of real, VERIFIED rooms with no live-traced exits (currently: startRoom, the real first-boss-fight room) are still included as their own honestly-disconnected node, via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a real, live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom) carry that field regardless of whether they have their own exits. Rooms with a real, live-confirmed worldMapCatalogRecord (currently: startRoom at (7,4), fourthRoom at (7,5) -- see rom_profiles.lua's own doc comment, 2026-08-17 direct user report) carry the bank6 8x8 world-map grid position they were found at, independent of whether they're isolated in this play-flow graph.")
+  "Every room with decoded exits -- read from rom_profiles.lua's graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A few VERIFIED rooms with no live-traced exits (currently: startRoom, the first-boss-fight room) are still included as their own honestly-disconnected node via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom) carry that field regardless of their own exits. Rooms with a live-confirmed worldMapCatalogRecord (currently: startRoom at (7,4), fourthRoom at (7,5) -- see rom_profiles.lua's doc comment) carry the bank6 8x8 world-map grid position they were found at, independent of whether they're isolated in this play-flow graph.")
 
 ----------------------------------------------------------------------
 -- 6b. Room MAPS (grid + tileOffsets) -- for the Tile/Map viewers. Only
---     the real tile IDS/offsets/grid are exported here; the actual
---     16-byte tile PIXEL data is never embedded -- the viewer decodes
---     it live from a ROM file the user supplies locally in their own
---     browser (this project never ships ROM bytes, same convention as
---     RomLocator.lua elsewhere in the main codebase).
+--     tile IDs/offsets/grid are exported; the 16-byte tile PIXEL data
+--     is never embedded -- the viewer decodes it live from a ROM file
+--     the user supplies locally in their own browser (this project
+--     never ships ROM bytes, same convention as RomLocator.lua).
 ----------------------------------------------------------------------
 local roomMaps = {}
 for name, room in pairs(profile.graphics) do
@@ -671,12 +661,11 @@ for name, room in pairs(profile.graphics) do
     local tileOffsets = {}
     for tileId, off in pairs(room.tileOffsets) do
       if type(off) == "string" then
-        -- A handful of real tiles are stored as a literal 16-byte
-        -- pattern rather than a ROM file offset (e.g. fourthRoom/
-        -- sixthRoom's own tile 128, a real known-solid tile with no
-        -- single canonical ROM address) -- exported as the raw byte
-        -- VALUES so the viewer can render it without needing a ROM
-        -- offset to dereference.
+        -- A handful of tiles are stored as a literal 16-byte pattern
+        -- rather than a ROM file offset (e.g. fourthRoom/sixthRoom's
+        -- tile 128, a known-solid tile with no single canonical ROM
+        -- address) -- exported as raw byte VALUES so the viewer can
+        -- render it without a ROM offset to dereference.
         assert(#off == 16, "export_data.lua: literal tile pattern must be exactly 16 bytes")
         local bytes = {}
         for i = 1, 16 do bytes[i] = off:byte(i) end
@@ -697,51 +686,40 @@ for name, room in pairs(profile.graphics) do
 end
 table.sort(roomMaps, function(a, b) return a.name < b.name end)
 writeJs("room-maps.js", "ROOM_MAPS", roomMaps,
-  "Every real, decoded room/screen tilemap (grid of tile IDs + tile ID -> ROM file offset lookup) -- read directly from rom_profiles.lua's own graphics.<name>.grid/tileOffsets. No tile PIXEL data is embedded -- the Tile/Map viewer pages decode it live from a user-supplied ROM file, entirely client-side.")
+  "Every decoded room/screen tilemap (grid of tile IDs + tile ID -> ROM file offset lookup) -- read from rom_profiles.lua's graphics.<name>.grid/tileOffsets. No tile PIXEL data is embedded -- the Tile/Map viewer pages decode it live from a user-supplied ROM file, entirely client-side.")
 
 ----------------------------------------------------------------------
--- 6c. Room CATALOG -- ALL 320 real, individually-decodable bank-5/
---     bank-6 map-table records (2026-08-14, "andere räume, so viele
---     wie möglich, raumdaten reicht"), not just the 8 rooms real
---     gameplay actually reaches. Reuses the EXACT SAME already-tested
---     pipeline `src/app/states/RoomExplorer.lua`'s dev-only F8 browser
---     already drives live in the LÖVE app
+-- 6c. Room CATALOG -- all 320 individually-decodable bank-5/bank-6
+--     map-table records, not just the 8 rooms real gameplay reaches.
+--     Reuses the same pipeline `src/app/states/RoomExplorer.lua`'s
+--     dev-only F8 browser already drives live in the LÖVE app
 --     (`RoomFloorLayout.buildRoomFromMapTableRecord` +
 --     `toTileGridBackgroundData`) -- no new discovery here, just
 --     exporting an already-verified capability as static site data so
 --     it's browsable without a live LÖVE session.
 --
---     HONEST SCOPE, UPGRADED 2026-08-14 ("gehe dem map header hinweis
---     nach"): all 320 records now render through `genericCatalogMeta
---     tileTableFileOffset` -- a real, structurally-justified DEFAULT
---     table, not the `unknownRoomACandidates`-borrowed placeholder
---     this export used before. Derivation: `roomSelectorTable`'s own
---     record 0/1 (bank5's and bank6's own "map", VERIFIED via
+--     HONEST SCOPE: all 320 records render through
+--     `genericCatalogMetatileTableFileOffset` -- a structurally-
+--     justified default, not the earlier `unknownRoomACandidates`-
+--     borrowed placeholder. Derivation: `roomSelectorTable`'s record
+--     0/1 (bank5's and bank6's "map", verified via
 --     `RoomSelectorTable.resolveMapRoomPointersFileOffset`'s exact
---     byte match to each table's real header) share one real
---     `tileSourcePointer`, cross-checked against the external
---     FFA-Disassembly project's own documented "one tileset per map,
---     no per-room override" US-ROM architecture. Real, but NOT
---     independently ground-truth-verified -- no live gameplay reaches
---     any of these 320 rooms. See rom_profiles.lua's own dated
---     "UPGRADED" doc comments and rom-map.md's "World scope" sections
---     for the full evidence chain, including 2 negative methods tried
---     and ruled out before this one was found.
+--     byte match to each table's header) share one `tileSourcePointer`,
+--     cross-checked against the external FFA-Disassembly project's
+--     documented "one tileset per map, no per-room override" US-ROM
+--     architecture. Real, but not independently ground-truth-verified
+--     -- no live gameplay reaches these 320 rooms. See rom_profiles.lua's
+--     doc comments and rom-map.md's "World scope" sections for the
+--     full evidence chain.
 --
---     `actorAction` field ADDED 2026-08-14 ("verfolge mal diese
---     eventscripte und schaue dir an was diese machen"): each
---     record's own real "header" bytes are now understood to be a
---     genuine per-room EVENT SCRIPT (see MapTable.lua's own "NAMING
---     CORRECTED" doc comment) -- `MapTable.tryDecodeActorAction`
---     extracts the real, already-documented `(group, action)` pair
---     when a record's script matches the ALREADY-KNOWN "ACTOR_ACTION"
---     opcode family (`ScriptOpcodeTable.lua`'s own `ACTOR_ACTION_
---     HANDLER_ADDRESS_*` constants -- a real actor-command-queue
---     mechanism, `$C4E0`/`$C5A0`, per that module's own corrected
---     note -- NOT room-selection, spawn-coordinate, or TILE data).
---     `nil` for the majority of records whose own script doesn't
---     match this specific family (a real, honest "not this family"
---     result, not every room necessarily using it).
+--     `actorAction` field: each record's "header" bytes are a per-room
+--     EVENT SCRIPT (see MapTable.lua's "NAMING CORRECTED" doc comment)
+--     -- `MapTable.tryDecodeActorAction` extracts the `(group, action)`
+--     pair when a record's script matches the known "ACTOR_ACTION"
+--     opcode family (`ScriptOpcodeTable.lua`'s `ACTOR_ACTION_HANDLER_
+--     ADDRESS_*` constants -- an actor-command-queue mechanism,
+--     `$C4E0`/`$C5A0` -- NOT room-selection, spawn-coordinate, or TILE
+--     data). `nil` for records whose script doesn't match this family.
 ----------------------------------------------------------------------
 local roomCatalog = {}
 local catalogMetatileTableFileOffset =
@@ -778,17 +756,17 @@ local function exportCatalogSource(mapTable, sourceLabel)
 end
 exportCatalogSource(profile.mapTable, "bank5")
 exportCatalogSource(profile.mapTableBank6, "bank6")
--- bank7 ADDED 2026-08-14 ("weiter bohren bis es fertig ist"): the
--- Templated (mode 1) encoding is now CRACKED end to end (base-room RLE
--- template + per-record (value,position) diff, see MapTable.lua's own
--- `readTemplatedHeader`/`applyTemplatedDiff` and rom-map.md's "bank 7
--- Templated revisited, CRACKED"). Exercised through the EXACT SAME
--- `exportCatalogSource` helper as bank5/6 -- `RoomFloorLayout.build
--- RoomFromMapTableRecord` dispatches on the map's own real header
--- `encodingMode` internally, so this call site needed no changes.
+-- bank7: the Templated (mode 1) encoding is CRACKED end to end
+-- (base-room RLE template + per-record (value,position) diff, see
+-- MapTable.lua's `readTemplatedHeader`/`applyTemplatedDiff` and
+-- rom-map.md's "bank 7 Templated revisited, CRACKED"). Exercised
+-- through the same `exportCatalogSource` helper as bank5/6 --
+-- `RoomFloorLayout.buildRoomFromMapTableRecord` dispatches on the
+-- map's header `encodingMode` internally, so this call site needed no
+-- changes.
 exportCatalogSource(profile.mapTableBank7, "bank7")
 writeJs("room-catalog.js", "ROOM_CATALOG", roomCatalog,
-  "ALL 384 real, individually-decodable bank-5 (256 RLE records) + bank-6 (64 RLE records) + bank-7 (64 Templated records, CRACKED 2026-08-14) map-table entries -- the same general pipeline RoomExplorer.lua's dev-only F8 browser already drives live in the LÖVE app, exported here as static data. UPGRADED 2026-08-14: every entry now renders through genericCatalogMetatileTableFileOffset, a real, structurally-derived default (roomSelectorTable's own record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still NOT independently ground-truth-verified (no live gameplay reaches these 384 rooms). bank7's own real per-record diff format (base template + (value,position) overrides) is separately VERIFIED against all 64 records (566/566 valid diff positions, tile_entropy 1.30-1.40 bits for all 64, zero outliers) -- see rom_profiles.lua's own `mapTableBank7` doc comment. `actorAction` (added 2026-08-14): the real (group,action) pair a record's own per-room event script enqueues, when it matches the already-documented ACTOR_ACTION opcode family -- a real actor-command-queue mechanism, NOT tile/graphics data. See rom_profiles.lua's own dated doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
+  "All 384 individually-decodable bank-5 (256 RLE records) + bank-6 (64 RLE records) + bank-7 (64 Templated records, CRACKED) map-table entries -- the same pipeline RoomExplorer.lua's dev-only F8 browser drives live in the LÖVE app, exported here as static data. Every entry renders through genericCatalogMetatileTableFileOffset, a structurally-derived default (roomSelectorTable's record 0/1, cross-checked against the external FFA-Disassembly project's documented 'one tileset per map' architecture) -- not the unverified unknownRoomA-borrowed placeholder used before. Still not independently ground-truth-verified (no live gameplay reaches these 384 rooms). bank7's per-record diff format (base template + (value,position) overrides) is separately VERIFIED against all 64 records (566/566 valid diff positions, tile_entropy 1.30-1.40 bits, zero outliers) -- see rom_profiles.lua's `mapTableBank7` doc comment. `actorAction`: the (group,action) pair a record's per-room event script enqueues, when it matches the documented ACTOR_ACTION opcode family -- an actor-command-queue mechanism, NOT tile/graphics data. See rom_profiles.lua's doc comments and rom-map.md's 'World scope' sections for the full evidence chain.")
 
 writeJs("font-tileset.js", "FONT_TILESET", {
   fileOffset = profile.graphics.font.fileOffset,
