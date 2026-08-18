@@ -9,21 +9,21 @@ const ENTITY_STRUCT = {
       "accessorGet": 3225,
       "accessorSet": 3238,
       "name": "ALIVE",
-      "note": "0xFF = dead/empty sentinel. Setter ($0CA6) is GUARDED: once dead, a write attempt is immediately forced back to 0xFF -- no revival through this path.",
+      "note": "0xFF = dead/empty sentinel. Setter ($0CA6) is guarded: once dead, a write attempt is immediately forced back to 0xFF -- no revival through this path.",
       "offset": 0
     },
     {
       "accessorGet": 3151,
       "accessorSet": 3165,
       "name": "TYPE",
-      "note": "RETRACTED (2026-08-14): looked attack-related from static disassembly (3 real callers write slot 4 with small integers alongside PARAM2). Live mGBA-tested across a real attack: zero value changes, and the whole code region is NEVER REACHED. The 3 static call sites are real: what they're actually for is still open.",
+      "note": "RETRACTED: looked attack-related from static disassembly (3 callers write slot 4 with small integers alongside PARAM2). Live mGBA-tested across a real attack: zero value changes, and the whole code region is never reached. The 3 static call sites are real: what they're actually for is still open.",
       "offset": 1
     },
     {
       "accessorGet": 3181,
       "accessorSet": 3206,
       "name": "PARAM2",
-      "note": "The most heavily-used accessor found: 24 real getter + 17 real setter callers, spread across every ROM bank. The $C4E0 actor-command array's own slot-scan code ($4BE0, $278F) reads this field for each active $C4E0 slot's own ID byte (used as the $C200 index) and classifies its high nibble against 0x90/0xB0/0x10.",
+      "note": "The most heavily-used accessor found: 24 getter + 17 setter callers, spread across every ROM bank. The $C4E0 actor-command array's own slot-scan code ($4BE0, $278F) reads this field for each active $C4E0 slot's own ID byte (used as the $C200 index) and classifies its high nibble against 0x90/0xB0/0x10.",
       "offset": 2
     },
     {
@@ -41,7 +41,7 @@ const ENTITY_STRUCT = {
     },
     {
       "name": "PARAM6",
-      "note": "No standalone accessor found -- $0CBA treats offsets +6/+7 as ONE paired 16-bit value (guarded the same way as ALIVE's setter), not two independent bytes.",
+      "note": "No standalone accessor found -- $0CBA treats offsets +6/+7 as one paired 16-bit value (guarded the same way as ALIVE's setter), not two independent bytes.",
       "offset": 6
     },
     {
@@ -56,14 +56,14 @@ const ENTITY_STRUCT = {
       "accessorGet": 3283,
       "accessorSet": 3300,
       "name": "UNKNOWN_10",
-      "note": "Field beyond the previously-documented 0-8 range, found 2026-08-14. Cross-confirmed via $404A (this project's own $C4E0 per-record tick handler), which reads it using the $C4E0 record's own ID byte as the $C200 slot index -- independent confirmation of that indexing convention.",
+      "note": "Field beyond the previously-documented 0-8 range. Cross-confirmed via $404A (this project's own $C4E0 per-record tick handler), which reads it using the $C4E0 record's own ID byte as the $C200 slot index -- independent confirmation of that indexing convention.",
       "offset": 10
     },
     {
       "accessorGet": 3319,
       "accessorSet": 3336,
       "name": "UNKNOWN_11",
-      "note": "Field beyond the previously-documented 0-8 range, found 2026-08-14. Only 1 real setter call site found (bank 0); no getter callers found in the same block.",
+      "note": "Field beyond the previously-documented 0-8 range. Only 1 setter call site found (bank 0); no getter callers found in the same block.",
       "offset": 11
     }
   ],

@@ -124,7 +124,19 @@ CutTransitionTable.FAMILY_BY_ROOM_SELECTOR = {
   [11] = "unknownRoomA",
   [12] = "unknownRoomA",
   [13] = "unknownRoomA",
-  [14] = "unbekannt (kein bereits bekannter Raum)",
+  -- CLOSED, 2026-08-18 (cross-referencing this project's own EARLIER,
+  -- unrelated `roomSelectorTable` investigation -- see rom-map.md's own
+  -- "roomSelectorTable's own DE field" section): roomSelector 14 was
+  -- flagged here as "a real, second, entirely new open mystery" when
+  -- this table was first built (events.md's own 2026-08-16 entry), but
+  -- roomSelectorTable's own byte-3-4 DE field (independently, already
+  -- live-traced against the real $026DC/$01AF3 routines) shows 14 AND
+  -- 15 both resolve to the exact same metatile table address ($43B0 ->
+  -- file 0x203B0) -- unknownRoomB's own, already fully-resolved
+  -- black-wipe backdrop. The two selector slots were simply never
+  -- cross-checked against each other before now: this is not a new
+  -- room, it's a second index into the same already-understood one.
+  [14] = "unknownRoomB (schwarzer Wipe-Hintergrund)",
   [15] = "unknownRoomB (schwarzer Wipe-Hintergrund)",
 }
 

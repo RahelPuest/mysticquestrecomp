@@ -11334,3 +11334,68 @@ tests/run_tests.lua` still green (see this session's own dated roadmap
 entry for the exact count) -- this was a pure investigation using
 already-shipped modules, plus one new, permanent, reusable
 `scripts/` tool.
+
+## 2026-08-18, same day ("überlege neue Strategien für die größten Blocker") -- two blockers closed by cross-referencing this project's OWN already-existing, disconnected findings, not new investigation
+
+Direct follow-up to the unknownRoomA session above. Rather than opening
+new live-tracing work immediately, first read across this project's own
+existing documents for dots nobody had connected yet -- found two real
+ones.
+
+**1. `CutTransitionTable`'s own "roomSelector 14: a real, second,
+entirely new open mystery" (flagged 2026-08-16) was already solved by a
+COMPLETELY DIFFERENT, earlier investigation thread and never
+cross-checked.** `rom-map.md`'s own "roomSelectorTable's own DE field"
+section (live-traced against the real `$026DC`/`$01AF3` routines,
+independent of `CutTransitionTable`'s own byte-pattern search) already
+states plainly: `roomSelector 14-15: DE field = $43B0 -> 0x203B0 --
+unknownRoomB`. Selectors 14 and 15 point at the exact same real metatile
+table -- `unknownRoomB`'s own, already fully-resolved black-wipe
+backdrop. `CutTransitionTable.FAMILY_BY_ROOM_SELECTOR[14]` corrected
+from `"unbekannt (kein bereits bekannter Raum)"` to
+`"unknownRoomB (schwarzer Wipe-Hintergrund)"` (matching `[15]` exactly),
+with the reasoning captured inline. This is not a new room, just a
+second selector index into an already-understood one -- the "second
+open mystery" from the 2026-08-16 entry is closed, no new tracing
+needed. Website regenerated (`rom-inspector/tools/export_data.lua`) --
+`transitions.js` diff shows exactly the expected 9 records (matching
+the 9 raw `roomSelector=14` records already catalogued) flip label,
+nothing else changes. `luajit tests/run_tests.lua`: 575/575 still pass
+(no test hardcoded the old "unbekannt" label).
+
+**2. The 2026-08-16 "Level/XP genuinely blocked" conclusion and the
+2026-08-17 `EnemyStatTable.lua` discovery (a SEPARATE session, found via
+an external FFA-Disassembly cross-check for an unrelated boss/room-story
+question) were never connected, and connecting them resolves most of the
+open uncertainty.** `EnemyStatTable`'s own `xp` field (byte offset `+2`,
+"real, cross-checked value-for-value" against 21 real bosses' documented
+values from the external US disassembly) was dumped for all 21 rows:
+**15 of 21 have real, non-zero `xp` values (range 10-210)**; the other 6
+(rows 13,14,15,16,17,20) are exactly 0. Row 16 -- already independently,
+separately confirmed (via `Enemy.lua`'s own earlier live CPU trace,
+`hpBase=2` matching `speciesByte=2`) to be the ONE currently-reachable
+"gate creature" courtyard fight -- has `xp=0` AND `gold=0`. This
+decisively CONFIRMS the 2026-08-16 entry's own hypothesis (a) ("the one
+currently-reachable fight is a tutorial encounter that genuinely grants
+no reward") as ROM fact, not a live-tracing gap: the earlier live
+WRAM-diff search never found an XP-write because there genuinely isn't
+one for THIS specific fight -- the table itself says so. **More
+importantly**: the XP *reward* side of the Level/XP system is
+essentially already decoded for 15 of the other 20 species/bosses --
+real, non-zero, cross-verified values sitting ready and unused. What
+remains genuinely open, narrowed from "no known WRAM address, no known
+formula, is there even a reward at all" down to two concrete questions:
+(a) which real WRAM cell accumulates player XP on a kill (the already-
+exhausted live-diff and static sibling-opcode searches only ever had the
+zero-reward fight available to test against -- worth re-running the
+SAME already-proven method, `courtyard_enemy_engaged()` ->
+`courtyard_boss_defeated()` style diff, against any OTHER species once
+Bestiary/room work makes one reachable, since that fight will actually
+write a non-zero value); (b) the level-up/stat-growth formula itself,
+untouched by this pass. **Bestiary and Level/XP turn out to share the
+exact same root blocker** (reach/spawn any enemy other than row 16) --
+solving Bestiary's own "need a second spawn trigger" also unblocks
+Level/XP's own reward-value side for free. No code changed for this
+finding (a documentation/roadmap correction, not a decode) --
+`docs/roadmap.md`'s own Level/XP and Bestiary entries updated to state
+this connection.

@@ -58,7 +58,7 @@ const ROM_TABLES = [
     "bank": 5,
     "name": "mapTable",
     "recordCount": 256,
-    "status": "VERIFIED (encoding + room-composition); tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset (real, structurally-derived default, see the UPGRADED note above, 2026-08-14) -- not independently ground-truth-verified"
+    "status": "VERIFIED (encoding + room-composition); tile ASSIGNMENT now uses genericCatalogMetatileTableFileOffset (structurally-derived default, see the UPGRADED note above) -- not independently ground-truth-verified"
   },
   {
     "bank": 8,
