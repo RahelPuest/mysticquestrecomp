@@ -1,84 +1,78 @@
--- DEV-ONLY content browser for ALL 384 real, individually-confirmed
--- rooms this project can decode (256 bank-5 records + 64 bank-6
--- records + 64 bank-7 records, see docs/reverse-engineering/rom-map.md
--- "World scope, round 5" and "bank 7 Templated revisited, CRACKED" and
--- `RoomFloorLayout.buildRoomFromMapTableRecord`) -- REWRITTEN 2026-08-12
--- ("1 dann 2 dann 3 dann 4", quick win #1) from an earlier version that
--- only knew the original 6 `unknownRoomA` rooms as hand-baked
--- `rom_profiles.lua` data. Every room here is now decoded LIVE,
--- straight from the ROM, via the same general, tested, ROM-static
--- function this project's own test suite already exercises
+-- DEV-ONLY content browser for all 384 individually-confirmed rooms
+-- this project can decode (256 bank-5 records + 64 bank-6 records + 64
+-- bank-7 records, see docs/reverse-engineering/rom-map.md "World scope,
+-- round 5" and "bank 7 Templated revisited, CRACKED" and
+-- `RoomFloorLayout.buildRoomFromMapTableRecord`) -- REWRITTEN from an
+-- earlier version that only knew the original 6 `unknownRoomA` rooms as
+-- hand-baked `rom_profiles.lua` data. Every room here is now decoded
+-- live, straight from the ROM, via the same general, tested, ROM-static
+-- function this project's test suite already exercises
 -- (`tests/import/room_floor_layout_test.lua`) -- no per-room profile
 -- entries to maintain, no risk of the browser and the decoder drifting
 -- apart.
 --
 -- WHY a separate dev-only state instead of wiring these into the real
--- room chain: this project's own engineering rule is "don't fabricate
--- ROM behavior" -- no live gameplay trigger into any of these rooms
--- (beyond the original 8 already in the real chain) was ever found (a
--- real, bounded search, see rom-map.md's "World scope, round 4"). The
--- room CONTENT is real, ROM-verified data; reaching it here is an
--- explicit, clearly-labeled developer shortcut (F8 from Field.lua),
--- the same spirit as the existing F2 TileViewer / F3-F7 shortcuts.
+-- room chain: this project's engineering rule is "don't fabricate ROM
+-- behavior" -- no live gameplay trigger into any of these rooms (beyond
+-- the original 8 already in the real chain) was ever found (a bounded
+-- search, see rom-map.md's "World scope, round 4"). The room content is
+-- ROM-verified data; reaching it here is an explicit, clearly-labeled
+-- developer shortcut (F8 from Field.lua), the same spirit as the
+-- existing F2 TileViewer / F3-F7 shortcuts.
 --
--- HONEST SCOPE, sharpened 2026-08-12 (round 6, a parity check against
--- willyRoom's own real captured data): "384 real, individually-
--- confirmed rooms" means all 384 decode as real, coherent ROM ART
--- (`tile_entropy()` + visual spot-checks) -- it does NOT mean all 384
--- are confirmed to be a SPECIFIC real in-game room. That stronger
--- claim only holds for the original 6 (`unknownRoomA`, roomSelectors
--- 8-13) -- willyRoom's own real roomSelector (live-traced: index 4)
--- was checked against bank-5 record 4 and every other low-index bank-
--- 5/6 record, and none matched (best: 124/320 real tiles, nowhere near
--- a real identification) -- see rom-map.md's "World scope, round 6"
--- for the full trace. This browser still shows real ROM art either
+-- HONEST SCOPE, sharpened by a parity check against willyRoom's
+-- captured data: "384 individually-confirmed rooms" means all 384
+-- decode as coherent ROM art (`tile_entropy()` + visual spot-checks) --
+-- it does not mean all 384 are confirmed to be a specific in-game room.
+-- That stronger claim only holds for the original 6 (`unknownRoomA`,
+-- roomSelectors 8-13) -- willyRoom's own roomSelector (live-traced:
+-- index 4) was checked against bank-5 record 4 and every other
+-- low-index bank-5/6 record, and none matched (best: 124/320 tiles,
+-- nowhere near an identification) -- see rom-map.md's "World scope,
+-- round 6" for the full trace. This browser still shows ROM art either
 -- way; just don't read "room N here" as "this is definitely some
--- specific real dungeon room" for anything past the original 6.
+-- specific dungeon room" for anything past the original 6.
 --
--- TILESET UPGRADED 2026-08-14 ("gehe dem map header hinweis nach"):
--- now uses `genericCatalogMetatileTableFileOffset` (`roomSelector`
--- 0/1's own real `tileSourcePointer`, `0x200B0`) instead of the old,
--- unknownRoomA-borrowed placeholder -- a real, structurally-derived
--- default (bank5/bank6 are each ONE literal 16x16/8x8 room-grid
--- "map," per the external FFA-Disassembly project's own documented
--- format, and its "one tileset per map, no per-room override" rule),
--- visually re-checked (a consistent recurring vocabulary -- same
--- door-arch, same floor pattern -- across widely-spread records,
--- which the old placeholder never produced). Still honestly NOT
--- gameplay-ground-truth-verified -- see rom-map.md's own dated write-
--- up for the full evidence chain and its honest limits.
+-- TILESET UPGRADED: now uses `genericCatalogMetatileTableFileOffset`
+-- (`roomSelector` 0/1's `tileSourcePointer`, `0x200B0`) instead of the
+-- old, unknownRoomA-borrowed placeholder -- a structurally-derived
+-- default (bank5/bank6 are each one literal 16x16/8x8 room-grid "map,"
+-- per the external FFA-Disassembly project's documented format, and
+-- its "one tileset per map, no per-room override" rule), visually
+-- re-checked (a consistent recurring vocabulary -- same door-arch, same
+-- floor pattern -- across widely-spread records, which the old
+-- placeholder never produced). Still honestly not gameplay-ground-
+-- truth-verified -- see rom-map.md's write-up for the full evidence
+-- chain and its honest limits.
 --
--- BANK 7 ADDED 2026-08-14 (same day, "ok weiter mit tür und
--- kollision"): the "Templated" (mode 1) encoding is now cracked for
--- both tile content AND collision (`MapTable.applyTemplatedDiff`,
+-- BANK 7 ADDED: the "Templated" (mode 1) encoding is now cracked for
+-- both tile content and collision (`MapTable.applyTemplatedDiff`,
 -- `RoomFloorLayout.buildRoomFromTemplatedMapTableRecord`/
 -- `buildCollisionGridFromTemplatedMapTableRecord`) -- `resolveSource`
--- below simply routes into it as a third range, no other change
--- needed here since `buildRoomFromMapTableRecord`/`buildCollisionGrid
+-- below simply routes into it as a third range, no other change needed
+-- here since `buildRoomFromMapTableRecord`/`buildCollisionGrid
 -- FromMapTableRecord` both already dispatch on `encodingMode`
 -- internally.
 --
--- HONEST SCOPE (quick win #2, 2026-08-12, "1 dann 2 dann 3 dann 4"):
--- movement now uses REAL per-metatile-instance collision data via
--- `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
--- (+ `TileWalkability.buildFromCollisionGrid`), replacing quick win
--- #1's original flat permissive-bounds placeholder. This is NOT the
--- same thing as "verified ROM collision," though -- the underlying
--- "upper collision-byte nibble non-zero = wall" rule this leans on
--- (`RoomFloorLayout.COLLISION_WALL_MASK`) is CONFIRMED true for
--- fourthRoom's own real metatile table (a live movement test) but
--- DEMONSTRABLY FALSE for willyRoom's (the same rule misreads willyRoom's
--- own live-verified checkerboard floor as wall in some cells). No
--- gameplay has ever reached ANY of these rooms (that's the whole
--- reason this ROM-static decode pipeline exists), so there is no live
--- movement test possible here -- applying the rule to bank 5/6/7 is a
--- real, honestly-labeled EXTRAPOLATION, not confirmed ROM behavior.
--- The on-screen footer says so explicitly.
+-- HONEST SCOPE (quick win #2): movement now uses per-metatile-instance
+-- collision data via `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
+-- (+ `TileWalkability.buildFromCollisionGrid`), replacing quick win #1's
+-- original flat permissive-bounds placeholder. This is not the same
+-- thing as "verified ROM collision," though -- the underlying "upper
+-- collision-byte nibble non-zero = wall" rule this leans on
+-- (`RoomFloorLayout.COLLISION_WALL_MASK`) is confirmed true for
+-- fourthRoom's metatile table (a live movement test) but demonstrably
+-- false for willyRoom's (the same rule misreads willyRoom's live-
+-- verified checkerboard floor as wall in some cells). No gameplay has
+-- ever reached any of these rooms (that's the whole reason this
+-- ROM-static decode pipeline exists), so there is no live movement test
+-- possible here -- applying the rule to bank 5/6/7 is an honestly-
+-- labeled extrapolation, not confirmed ROM behavior. The on-screen
+-- footer says so explicitly.
 --
--- Controls: arrows move (real per-room collision, caveat above), A =
--- next room, B = previous room, START = jump forward 10 rooms (384
--- rooms is a lot to page through one at a time), SELECT or F8 = back
--- to Field.
+-- Controls: arrows move (per-room collision, caveat above), A = next
+-- room, B = previous room, START = jump forward 10 rooms (384 rooms is
+-- a lot to page through one at a time), SELECT or F8 = back to Field.
 
 local Player = require("src.entities.Player")
 local PlayerSprite = require("src.rendering.PlayerSprite")
@@ -90,27 +84,27 @@ local TileWalkability = require("src.entities.TileWalkability")
 local RoomExplorer = { opaque = true }
 RoomExplorer.__index = RoomExplorer
 
--- Real room pixel size (see TileGridBackground.lua / rom-map.md's "real
--- rooms are exactly one non-scrolling 20x16-tile screen" finding) --
--- same as every other room in this project.
+-- Room pixel size (see TileGridBackground.lua / rom-map.md's "rooms are
+-- exactly one non-scrolling 20x16-tile screen" finding) -- same as
+-- every other room in this project.
 local ROOM_W, ROOM_H = 160, 128
-local FOOTER_H = 16 -- dev-info bar below the room, same idea as Field's own HUD strip
+local FOOTER_H = 16 -- dev-info bar below the room, same idea as Field's HUD strip
 
--- Real, shared metatile pool + tileset base -- the SAME two constants
--- every room this project has ever decoded via this pipeline uses
--- (see rom_profiles.lua's own `roomFloorLayoutPipeline
--- .unknownRoomACandidates` doc comment for the full evidence this
--- pool is genuinely shared, not a per-room coincidence).
+-- Shared metatile pool + tileset base -- the same two constants every
+-- room this project has ever decoded via this pipeline uses (see
+-- rom_profiles.lua's `roomFloorLayoutPipeline.unknownRoomACandidates`
+-- doc comment for the full evidence this pool is genuinely shared, not
+-- a per-room coincidence).
 local METATILE_GRID_ROWS = 8
 local METATILE_GRID_COLS = 10
 
---- Flat room index (1..384) -> which real map table + which record.
--- Bank 5 (256 records) first, then bank 6 (64 records), then bank 7
--- (64 Templated records, added 2026-08-14 once `buildRoomFromMapTable
--- Record`/`buildCollisionGridFromMapTableRecord` both dispatch
--- transparently on encodingMode -- this function needed no special
--- bank-7 tile/collision logic, only one more range check) -- matches
--- the order all three tables were found in, nothing deeper than that.
+--- Flat room index (1..384) -> which map table + which record. Bank 5
+-- (256 records) first, then bank 6 (64 records), then bank 7 (64
+-- Templated records, added once `buildRoomFromMapTableRecord`/
+-- `buildCollisionGridFromMapTableRecord` both dispatch transparently on
+-- encodingMode -- this function needed no special bank-7 tile/collision
+-- logic, only one more range check) -- matches the order all three
+-- tables were found in, nothing deeper than that.
 local function resolveSource(profile, flatIndex)
   if flatIndex <= profile.mapTable.recordCount then
     return profile.mapTable, flatIndex - 1, "bank5"
@@ -163,9 +157,9 @@ function RoomExplorer:_loadRoom(index)
 
   self.background = TileGridBackground.new(self.romData, room)
 
-  -- Quick win #2 -- real per-metatile-instance collision, see this
-  -- module's own doc comment for the honest "extrapolated, not
-  -- verified" caveat on the underlying bitmask rule.
+  -- Quick win #2 -- per-metatile-instance collision, see this module's
+  -- doc comment for the honest "extrapolated, not verified" caveat on
+  -- the underlying bitmask rule.
   local collisionGrid = RoomFloorLayout.buildCollisionGridFromMapTableRecord(
     self.romData, mapTable, recordIndex, opts)
   local collisionCheck = TileWalkability.buildFromCollisionGrid(
@@ -178,17 +172,17 @@ function RoomExplorer:_loadRoom(index)
   end
 
   -- Spawning at a fixed (0,0) turned out to strand the player inside
-  -- solid wall/decoration on several real rooms once quick win #2's
-  -- real collision replaced quick win #1's permissive floor (found via
-  -- live smoke test: room 1/320's own real collision grid is ~90% wall,
-  -- including its whole top-left corner -- a SECOND real, independent
-  -- confirmation, after willyRoom, that `COLLISION_WALL_MASK` is a
-  -- noisy heuristic here, not verified ROM truth -- see this module's
-  -- own doc comment). Scanning for the first walkable spot is a
-  -- dev-tool UX choice ONLY -- it does not claim to be this room's real
-  -- ROM spawn point (no such thing is known or reachable for these
-  -- catalog rooms); it just keeps the browser usable under an imperfect
-  -- heuristic instead of silently leaving the player stuck.
+  -- solid wall/decoration on several rooms once quick win #2's
+  -- collision replaced quick win #1's permissive floor (found via live
+  -- smoke test: room 1/320's collision grid is ~90% wall, including its
+  -- whole top-left corner -- a second, independent confirmation, after
+  -- willyRoom, that `COLLISION_WALL_MASK` is a noisy heuristic here, not
+  -- verified ROM truth -- see this module's doc comment). Scanning for
+  -- the first walkable spot is a dev-tool UX choice only -- it does not
+  -- claim to be this room's ROM spawn point (no such thing is known or
+  -- reachable for these catalog rooms); it just keeps the browser
+  -- usable under an imperfect heuristic instead of silently leaving the
+  -- player stuck.
   self.player.x, self.player.y = 0, 0
   for row = 0, (METATILE_GRID_ROWS * 2) - 1 do
     local found = false
