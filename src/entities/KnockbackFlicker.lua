@@ -1,38 +1,37 @@
--- Real player contact-hit reaction: knockback + invincibility flicker
--- (task #12, discovered but not implemented until this pass -- see
+-- Player contact-hit reaction: knockback + invincibility flicker (see
 -- docs/reverse-engineering/combat.md "Real contact-hit reaction").
 --
--- VERIFIED (2026-08-09, precise live re-capture this pass -- upgrades
--- the earlier "~6 frames"/"~8 frames" estimates to exact numbers):
--- walked the player into the real starting-room creature under mGBA and
--- watched, frame by frame, from the exact instant WRAM `$D7B2` (current
--- LP) drops: (1) the player's own OAM Y coordinate, and (2) whether the
--- player's OAM tile *content* (not just its index -- the real hardware
--- bug this project already learned the hard way once, see
--- `rom_profiles.lua`'s player-sprite doc comment: OAM/sprite tiles
--- ALWAYS use unsigned `$8000` addressing regardless of `LCDC` bit 4,
--- unlike BG/window tiles -- an earlier attempt this pass wrongly applied
--- the BG addressing rule to sprite tiles and got "always blank" as a
--- false reading until this was caught and fixed) matches its own real,
--- known-good ROM bytes (visible) or reads all-zero (invisible).
+-- VERIFIED (precise live capture -- upgrades earlier "~6 frames"/"~8
+-- frames" estimates to exact numbers): walked the player into the
+-- starting-room creature under mGBA and watched, frame by frame, from
+-- the exact instant WRAM `$D7B2` (current LP) drops: (1) the player's
+-- OAM Y coordinate, and (2) whether the player's OAM tile *content*
+-- (not just its index -- a hardware bug this project already learned
+-- the hard way once, see `rom_profiles.lua`'s player-sprite doc
+-- comment: OAM/sprite tiles always use unsigned `$8000` addressing
+-- regardless of `LCDC` bit 4, unlike BG/window tiles -- an earlier
+-- attempt wrongly applied the BG addressing rule to sprite tiles and
+-- got "always blank" as a false reading until this was caught and
+-- fixed) matches its known-good ROM bytes (visible) or reads all-zero
+-- (invisible).
 --
--- Real captured schedule, frame offset from the hit (frame 0 = the
--- frame `$D7B2` visibly changed):
+-- Captured schedule, frame offset from the hit (frame 0 = the frame
+-- `$D7B2` visibly changed):
 --   0-1    visible   (still settling -- the hit has registered but
 --                      neither effect has visibly started yet)
---   2-9    INVISIBLE, and this is exactly when the real knockback
---          motion happens: OAM Y moved by a clean, constant 4px every
---          real frame for these 8 frames (32px total), always AWAY from
---          the enemy along the approach axis (only a straight-on
---          approach was tested -- see `knockbackDirection` below for
---          how this generalizes to the untested axis).
+--   2-9    invisible, and this is exactly when the knockback motion
+--          happens: OAM Y moved by a clean, constant 4px every frame
+--          for these 8 frames (32px total), always away from the
+--          enemy along the approach axis (only a straight-on approach
+--          was tested -- see `knockbackDirection` below for how this
+--          generalizes to the untested axis).
 --   10-14  visible (5 frames)
 --   15-22  invisible (8 frames)
 --   23-30  visible (8 frames)
 --   31-38  invisible (8 frames)
 --   39-46  visible (8 frames)
 --   47-54  invisible (8 frames)
---   55+    back to normal -- visible, and (matches this project's own
+--   55+    back to normal -- visible, and (matches this project's
 --          already-VERIFIED `Enemy.CONTACT_TICK_SECONDS = 1.0` = 60
 --          frames) contact damage can fire again almost immediately
 --          after invincibility ends, not a long safe window.
@@ -42,10 +41,10 @@
 --
 -- NOT independently ROM-code-traced (no WRAM knockback-timer/velocity
 -- field or ROM routine address is known for this effect) -- this is
--- real, precise, live-captured behavior, reproduced faithfully, the
--- same evidentiary standing as `Enemy.MOVEMENT_CYCLE`'s own real
--- captured-not-decoded data. A genuine ROM-code trace (the project's
--- normal preference) is a reasonable future upgrade, not done this pass.
+-- precise, live-captured behavior, reproduced faithfully, the same
+-- evidentiary standing as `Enemy.MOVEMENT_CYCLE`'s captured-not-decoded
+-- data. A genuine ROM-code trace (the project's normal preference) is a
+-- reasonable future upgrade, not done yet.
 --
 -- Pure Lua, no love.* calls, so it's headlessly testable like Enemy.lua.
 
@@ -92,27 +91,26 @@ function KnockbackFlicker.new()
   }, KnockbackFlicker)
 end
 
---- Start a real contact-hit reaction. `enemyX/enemyY`/`playerX/playerY`
--- are box centers -- direction is the dominant (larger-magnitude) axis
--- from enemy to player, snapped to a single cardinal direction (matches
--- this being a simple top-down grid game with no diagonal knockback
+--- Start a contact-hit reaction. `enemyX/enemyY`/`playerX/playerY` are
+-- box centers -- direction is the dominant (larger-magnitude) axis from
+-- enemy to player, snapped to a single cardinal direction (matches this
+-- being a simple top-down grid game with no diagonal knockback
 -- observed) -- see module doc comment: only the straight-on approach
--- axis was directly captured, so a perpendicular hit's real direction
--- is this module's own reasonable extrapolation, not independently
--- verified.
+-- axis was directly captured, so a perpendicular hit's direction is
+-- this module's reasonable extrapolation, not independently verified.
 --
--- KNOWN EDGE CASE (found during this pass's own screenshot testing,
--- not fixed -- the real enemy patrols, see Enemy.MOVEMENT_CYCLE): since
--- direction is computed from box CENTERS at the exact contact instant,
--- an approach that overlaps the enemy from an unusual angle (e.g. the
--- player still holding a direction that has carried it past the
--- enemy's current patrol position) can compute an "away" vector that
--- points back toward the room's wall/gate rather than into open floor.
--- The one real, directly-tested scenario (a clean approach from the
--- south, the only approach direction the actual room's layout allows)
--- always knocks the player south into open space, matching the live
--- capture exactly -- this edge case needs an unusually aggressive/held
--- approach to reach and was not observed in ordinary play.
+-- KNOWN EDGE CASE (found during screenshot testing, not fixed -- the
+-- enemy patrols, see Enemy.MOVEMENT_CYCLE): since direction is computed
+-- from box centers at the exact contact instant, an approach that
+-- overlaps the enemy from an unusual angle (e.g. the player still
+-- holding a direction that has carried it past the enemy's current
+-- patrol position) can compute an "away" vector that points back toward
+-- the room's wall/gate rather than into open floor. The one directly-
+-- tested scenario (a clean approach from the south, the only approach
+-- direction the actual room's layout allows) always knocks the player
+-- south into open space, matching the live capture exactly -- this edge
+-- case needs an unusually aggressive/held approach to reach and was not
+-- observed in ordinary play.
 function KnockbackFlicker:trigger(enemyX, enemyY, playerX, playerY)
   local dx, dy = playerX - enemyX, playerY - enemyY
   if math.abs(dx) >= math.abs(dy) then
