@@ -171,18 +171,18 @@ writeJs("rom-tables.js", "ROM_TABLES", romTables,
 ----------------------------------------------------------------------
 -- 3. Entity struct layout
 ----------------------------------------------------------------------
--- Curated (not code-derived, same convention this file's own header
+-- Curated (not code-derived, same convention this file's header
 -- comment already flags): one short, honest summary per field, drawn
--- from EntityStructLayout.lua's own dated doc comments -- so the
--- website shows the real story (including retractions), not just raw
--- offsets. Fields with no entry here simply show no note.
+-- from EntityStructLayout.lua's own doc comments -- so the website
+-- shows the real story (including retractions), not just raw offsets.
+-- Fields with no entry here simply show no note.
 local FIELD_NOTES = {
-  ALIVE = "0xFF = dead/empty sentinel. Setter ($0CA6) is GUARDED: once dead, a write attempt is immediately forced back to 0xFF -- no revival through this path.",
-  TYPE = "RETRACTED (2026-08-14): looked attack-related from static disassembly (3 real callers write slot 4 with small integers alongside PARAM2). Live mGBA-tested across a real attack: zero value changes, and the whole code region is NEVER REACHED. The 3 static call sites are real: what they're actually for is still open.",
-  PARAM2 = "The most heavily-used accessor found: 24 real getter + 17 real setter callers, spread across every ROM bank. The $C4E0 actor-command array's own slot-scan code ($4BE0, $278F) reads this field for each active $C4E0 slot's own ID byte (used as the $C200 index) and classifies its high nibble against 0x90/0xB0/0x10.",
-  PARAM6 = "No standalone accessor found -- $0CBA treats offsets +6/+7 as ONE paired 16-bit value (guarded the same way as ALIVE's setter), not two independent bytes.",
-  UNKNOWN_10 = "Field beyond the previously-documented 0-8 range, found 2026-08-14. Cross-confirmed via $404A (this project's own $C4E0 per-record tick handler), which reads it using the $C4E0 record's own ID byte as the $C200 slot index -- independent confirmation of that indexing convention.",
-  UNKNOWN_11 = "Field beyond the previously-documented 0-8 range, found 2026-08-14. Only 1 real setter call site found (bank 0); no getter callers found in the same block.",
+  ALIVE = "0xFF = dead/empty sentinel. Setter ($0CA6) is guarded: once dead, a write attempt is immediately forced back to 0xFF -- no revival through this path.",
+  TYPE = "RETRACTED: looked attack-related from static disassembly (3 callers write slot 4 with small integers alongside PARAM2). Live mGBA-tested across a real attack: zero value changes, and the whole code region is never reached. The 3 static call sites are real: what they're actually for is still open.",
+  PARAM2 = "The most heavily-used accessor found: 24 getter + 17 setter callers, spread across every ROM bank. The $C4E0 actor-command array's own slot-scan code ($4BE0, $278F) reads this field for each active $C4E0 slot's own ID byte (used as the $C200 index) and classifies its high nibble against 0x90/0xB0/0x10.",
+  PARAM6 = "No standalone accessor found -- $0CBA treats offsets +6/+7 as one paired 16-bit value (guarded the same way as ALIVE's setter), not two independent bytes.",
+  UNKNOWN_10 = "Field beyond the previously-documented 0-8 range. Cross-confirmed via $404A (this project's own $C4E0 per-record tick handler), which reads it using the $C4E0 record's own ID byte as the $C200 slot index -- independent confirmation of that indexing convention.",
+  UNKNOWN_11 = "Field beyond the previously-documented 0-8 range. Only 1 setter call site found (bank 0); no getter callers found in the same block.",
 }
 local fieldList = {}
 for name, offset in pairs(EntityStructLayout.FIELD) do
@@ -215,20 +215,18 @@ writeJs("entity-struct.js", "ENTITY_STRUCT", {
 ----------------------------------------------------------------------
 local opcodeEntries = ScriptOpcodeTable.decode(romData, profile.scriptOpcodeTable)
 
--- FIXED (2026-08-15, "beende jetzt mal den full corpus scan" -- see
+-- FIXED (direct follow-up to finish the full corpus scan -- see
 -- scripts/scan_all_scripts.lua's own doc comment for the full
--- rationale, duplicated here verbatim since this stub was itself an
--- independent copy carrying the exact same bug): the blanket `__index`
--- fallback below (a function always returning `true`) is only a safe
--- default for gate/predicate-shaped ctx fields. Several real fields
--- have a "return value IS the next cursor" contract instead
--- (`onFlagListExhausted`/`onTimerListExhausted09`/`0A`/
--- `onRunListExhausted0B`/`0C`, opcodes 0x08-0x0C) or a "return value is
--- an extra-byte COUNT" contract (`onControlCode`, opcode 0x04) -- the
--- generic `true` stub leaked through as a bogus non-number in both
--- cases, producing confusing "cursor true out of stream bounds" /
--- "attempt to perform arithmetic on a boolean value" errors that were
--- really scan-tool stub artifacts, not real ROM decoding gaps.
+-- rationale, duplicated here since this stub was an independent copy
+-- carrying the exact same bug): the blanket __index fallback below (a
+-- function always returning true) is only a safe default for gate/
+-- predicate-shaped ctx fields. Several fields have a "return value is
+-- the next cursor" contract instead (onFlagListExhausted/
+-- onTimerListExhausted09/0A/onRunListExhausted0B/0C, opcodes 0x08-0x0C)
+-- or a "return value is an extra-byte count" contract (onControlCode,
+-- opcode 0x04) -- the generic true stub leaked through as a bogus
+-- non-number in both cases, producing confusing errors that were
+-- really scan-tool stub artifacts, not ROM decoding gaps.
 local function exhaustedListStub(opcodeLabel)
   return function(cursorAfterTerminator)
     error(string.format(
