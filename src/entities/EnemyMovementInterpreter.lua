@@ -1,85 +1,82 @@
--- A real, ROM-data-driven interpreter for the courtyard gate
--- creature's own movement AI (2026-08-13, direct user instruction:
--- "der boss kampf an sich... der ist hard coded. der soll aus den
--- romdaten raus interpretiert werden"). Replaces `Enemy.MOVEMENT_CYCLE`
--- -- a hand-captured, 33-step REPLAY of one specific live observation
--- -- with a real interpreter over the actual ROM data structure this
--- session found by tracing real writes to the creature's own live
+-- A ROM-data-driven interpreter for the courtyard gate creature's
+-- movement AI (direct user instruction that the boss combat is
+-- hardcoded and should be interpreted from ROM data). Replaces
+-- `Enemy.MOVEMENT_CYCLE` -- a hand-captured, 33-step replay of one
+-- specific live observation -- with an interpreter over the actual ROM
+-- data structure found by tracing writes to the creature's live
 -- position (WRAM `$C200+7*16+4/+5`, the entity struct already known
--- from `EntityStructLayout.lua`) back to their real source, bank 4:
+-- from `EntityStructLayout.lua`) back to their source, bank 4:
 --
 -- **Level 1 ("top"), 10-byte rows** at a per-creature base pointer
--- (`$D43A/$D43B` live), indexed by WRAM `$D3EC`. Each row holds 4 real
+-- (`$D43A/$D43B` live), indexed by WRAM `$D3EC`. Each row holds 4
 -- 16-bit pointers (`row[0..1]`, `row[2..3]`, `row[4..5]`, `row[6..7]`
 -- -- "choices" 0-3) plus 2 more bytes (`row[8]`, `row[9]`) fed into an
 -- unmodeled leaf (`$4188`, transforms them via `(byte+1)*8`/`(byte+2)*8`
 -- and stores into a per-slot WRAM cache `$D3F6` -- almost certainly a
--- real sound/animation cue, NOT position -- HONEST SCOPE, not
--- reproduced here). A row whose first TWO bytes are BOTH `0xFF` is a
--- real "wrap" marker (`$102C5`/`$102D8`): re-loads the top-level base
--- from a per-creature "anchor" pointer (`$D438/$D439`, the SAME real
--- per-creature record this project's own rom-map.md "P1 resolved"
--- section already found for enemy ATK -- record file offset `0x108B9`
--- for this creature) plus a fixed `+0x12` byte field, and resets to
--- row 0. Otherwise (`$425F`'s own real body): draws a REAL PRNG value
--- (`$2B1E`, this project's own already-ported `CombatNoise` -- see
--- that module's own doc comment for the exact ported algorithm), takes
--- it mod 4, and picks ONE of the row's 4 pointers as the new level-2
--- base -- a real, genuinely NON-DETERMINISTIC choice, not a fixed
--- sequence baked into the ROM.
+-- sound/animation cue, not position -- HONEST SCOPE, not reproduced
+-- here). A row whose first two bytes are both `0xFF` is a "wrap" marker
+-- (`$102C5`/`$102D8`): re-loads the top-level base from a per-creature
+-- "anchor" pointer (`$D438/$D439`, the same per-creature record this
+-- project's rom-map.md "P1 resolved" section already found for enemy
+-- ATK -- record file offset `0x108B9` for this creature) plus a fixed
+-- `+0x12` byte field, and resets to row 0. Otherwise (`$425F`'s body):
+-- draws a PRNG value (`$2B1E`, this project's already-ported
+-- `CombatNoise` -- see that module's doc comment for the exact ported
+-- algorithm), takes it mod 4, and picks one of the row's 4 pointers as
+-- the new level-2 base -- a genuinely non-deterministic choice, not a
+-- fixed sequence baked into the ROM.
 --
 -- **Level 2 ("mid"), 5-byte rows** at the level-2 base, indexed by an
 -- index that resets to 0 on every level-1 pick (`$4222`/`$42B0`). Each
 -- row is `{countdown, moveTablePtr(2 bytes), secondPtr(2 bytes)}` --
--- `secondPtr`'s own real purpose is unmodeled (HONEST SCOPE, not
--- chased this pass). A row whose first byte is `0xFF` means this
--- level-2 table is exhausted (`$4222`'s own `CALL Z,$425F`) -- go back
--- to level 1 for a fresh PRNG-driven pick. Otherwise: read the real
--- delta at `moveTablePtr` (level 3, below), and apply it once per real
--- TICK (see `TICK_FRAMES` below) for exactly `countdown` real ticks
--- before advancing to the next level-2 row -- confirmed by directly
--- disassembling `$100A4`'s own real per-tick body, which unconditionally
--- re-applies whatever `moveTablePtr` currently holds every tick it
--- runs, decrementing `countdown` (WRAM `$D3F0`) once per tick via
--- `$4209` until it reaches 0.
+-- `secondPtr`'s purpose is unmodeled (HONEST SCOPE, not chased this
+-- pass). A row whose first byte is `0xFF` means this level-2 table is
+-- exhausted (`$4222`'s own `CALL Z,$425F`) -- go back to level 1 for a
+-- fresh PRNG-driven pick. Otherwise: read the delta at `moveTablePtr`
+-- (level 3, below), and apply it once per tick (see `TICK_FRAMES`
+-- below) for exactly `countdown` ticks before advancing to the next
+-- level-2 row -- confirmed by directly disassembling `$100A4`'s
+-- per-tick body, which unconditionally re-applies whatever
+-- `moveTablePtr` currently holds every tick it runs, decrementing
+-- `countdown` (WRAM `$D3F0`) once per tick via `$4209` until it
+-- reaches 0.
 --
 -- **Level 3 ("delta"), 2 bytes** at `moveTablePtr`. Byte 0 is an
--- unmodeled leaf argument (`$419E`, decodes into a real sound/facing
+-- unmodeled leaf argument (`$419E`, decodes into a sound/facing
 -- selector via bitfield extraction -- HONEST SCOPE, not reproduced).
--- Byte 1 packs two SIGNED 4-bit nibbles: high nibble = dx, low nibble
--- = dy (real range -8..+7, matching two's-complement 4-bit values).
+-- Byte 1 packs two signed 4-bit nibbles: high nibble = dx, low nibble
+-- = dy (range -8..+7, matching two's-complement 4-bit values).
 --
--- **Decisive cross-check**: the first 7 real (dx,dy) deltas this
+-- **Decisive cross-check**: the first 7 (dx,dy) deltas this
 -- interpreter decodes straight from the live ROM --
 -- `(4,7),(6,7),(7,5),(7,0),(7,-5),(6,-8),(4,-8)` -- match
--- `Enemy.MOVEMENT_CYCLE`'s own first 7 entries BYTE-FOR-BYTE (that
--- table was captured completely independently, via 6000 real frames
--- of live OAM/pixel tracing, months before this ROM-data trace found
--- the actual mechanism) -- decisive proof this is the real mechanism,
--- not a coincidental pattern match.
+-- `Enemy.MOVEMENT_CYCLE`'s first 7 entries byte-for-byte (that table
+-- was captured completely independently, via 6000 frames of live
+-- OAM/pixel tracing, months before this ROM-data trace found the
+-- actual mechanism) -- decisive proof this is the real mechanism, not
+-- a coincidental pattern match.
 --
--- **HONEST SCOPE, IMPORTANT**: real hardware's own exact PRNG state at
--- the moment any specific real encounter begins depends on the ENTIRE
--- preceding real execution history since power-on -- this project has
--- no way to reproduce that exactly (the same documented limitation
--- `CombatNoise` itself already carries). This interpreter is faithful
--- to the real ALGORITHM and real DATA TABLES, not to one specific
--- captured playthrough's own exact move sequence -- the creature's real
--- patrol is genuinely non-deterministic (a real ROM fact only found by
--- tracing this deep), so this is a MORE faithful port than a fixed
--- replay, not a less faithful one. The exact spawn-time algorithm that
--- first populates `$D43A/$D43B`/`$D3EC` was not traced (this project
--- observed its real, live OUTPUT -- `topBase=$4E00` -- but not the
--- code that computes it); `START_TOP_BASE` below is that real,
--- empirically-read value, used as a verified starting constant, same
--- precedent as `BossSequenceInterpreter`'s own `START_BANK`/
--- `START_CPU_ADDRESS`.
+-- **HONEST SCOPE, IMPORTANT**: real hardware's exact PRNG state at the
+-- moment any specific encounter begins depends on the entire preceding
+-- execution history since power-on -- this project has no way to
+-- reproduce that exactly (the same documented limitation `CombatNoise`
+-- itself already carries). This interpreter is faithful to the
+-- algorithm and data tables, not to one specific captured playthrough's
+-- exact move sequence -- the creature's patrol is genuinely non-
+-- deterministic (a ROM fact only found by tracing this deep), so this
+-- is a more faithful port than a fixed replay, not a less faithful one.
+-- The exact spawn-time algorithm that first populates
+-- `$D43A/$D43B`/`$D3EC` was not traced (this project observed its live
+-- output -- `topBase=$4E00` -- but not the code that computes it);
+-- `START_TOP_BASE` below is that empirically-read value, used as a
+-- verified starting constant, same precedent as
+-- `BossSequenceInterpreter`'s `START_BANK`/`START_CPU_ADDRESS`.
 --
--- Real ROM code for ALL of this (levels 1-3, the wrap mechanism) lives
--- in bank 4's own switchable window for this creature -- confirmed by
--- every single live read/write this session captured. `BANK` below is
--- a real, but creature-specific, verified fact -- not claimed to
--- generalize to every other ROM creature without re-verification.
+-- ROM code for all of this (levels 1-3, the wrap mechanism) lives in
+-- bank 4's switchable window for this creature -- confirmed by every
+-- single live read/write this project captured. `BANK` below is a
+-- creature-specific, verified fact -- not claimed to generalize to
+-- every other ROM creature without re-verification.
 --
 -- Pure Lua, no love.* calls -- headlessly testable, same convention as
 -- `BossSequenceInterpreter`/`ScriptRuntime`.
