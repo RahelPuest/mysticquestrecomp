@@ -1,43 +1,43 @@
 -- Decodes the bank-5 map/room-block pointer table found in the Mystic
--- Quest (EU) ROM -- see docs/reverse-engineering/rom-map.md "Maps" for the
--- full evidence writeup.
+-- Quest (EU) ROM -- see docs/reverse-engineering/rom-map.md "Maps" for
+-- the full evidence writeup.
 --
--- BREAKTHROUGH (2026-08-09): the table's real per-map header AND its
--- room-data compression scheme are now VERIFIED, not just hypothesized.
--- The 4 bytes immediately before the pointer table (`mapTable
--- .bankFileStart`, i.e. CPU `$4000-$4003` in bank 5) match the format
--- the external FFA-Disassembly project documented for the US cartridge's
--- own per-map header exactly: `[encodingMode, rleLength, gridHeight,
--- gridWidth]`. In this EU ROM that's `[0x00, 0x03, 0x10, 0x10]` --
--- encodingMode 0 (RLE), rleLength 3, and a 16x16 grid whose 256 cells
--- match this project's own already-VERIFIED 256-record count exactly
--- (not a coincidence -- see the record-count field itself, independently
+-- BREAKTHROUGH: the table's per-map header and its room-data
+-- compression scheme are VERIFIED, not just hypothesized. The 4 bytes
+-- immediately before the pointer table (`mapTable.bankFileStart`, i.e.
+-- CPU `$4000-$4003` in bank 5) match the format the external
+-- FFA-Disassembly project documented for the US cartridge's per-map
+-- header exactly: `[encodingMode, rleLength, gridHeight, gridWidth]`.
+-- In this EU ROM that's `[0x00, 0x03, 0x10, 0x10]` -- encodingMode 0
+-- (RLE), rleLength 3, and a 16x16 grid whose 256 cells match this
+-- project's already-VERIFIED 256-record count exactly (not a
+-- coincidence -- see the record-count field itself, independently
 -- discovered by a totally different method, a pointer-density scan).
 -- Applying the documented RLE rule (a blob byte with its high bit set
 -- means "repeat `byte & 0x7F`, `rleLength` times"; otherwise it's one
--- literal tile index) with this real, header-derived `rleLength=3`
--- decodes **all 255 data blobs to an exact, uniform 80 tiles (20x4)** --
--- tested against every other plausible rleLength (1-11) for comparison,
--- every one of which decodes 0/255 blobs to a clean length, so this is
--- not an artifact of blob-length parity. Rendered against the confirmed
+-- literal tile index) with this header-derived `rleLength=3` decodes
+-- all 255 data blobs to an exact, uniform 80 tiles (20x4) -- tested
+-- against every other plausible rleLength (1-11) for comparison, every
+-- one of which decodes 0/255 blobs to a clean length, so this is not an
+-- artifact of blob-length parity. Rendered against the confirmed
 -- environment tileset (see docs/progress.md; the original renderer,
--- `RoomBackground.lua`, was removed 2026-08-12 as dead code once
--- Milestone 3's own real room-table composition breakthrough
--- superseded it -- see rom-map.md), the decoded tiles are clearly
--- coherent dungeon-wall art (hedge borders,
--- brick trim, torches), not noise. See rom-map.md "Maps" for the full
--- writeup, including what's still open (how multiple records compose
--- into an on-screen room -- naive 4-record vertical stacking did NOT
--- produce a unified box, so that part remains unverified).
+-- `RoomBackground.lua`, was removed as dead code once Milestone 3's
+-- room-table composition breakthrough superseded it -- see rom-map.md),
+-- the decoded tiles are clearly coherent dungeon-wall art (hedge
+-- borders, brick trim, torches), not noise. See rom-map.md "Maps" for
+-- the full writeup, including what's still open (how multiple records
+-- compose into an on-screen room -- naive 4-record vertical stacking
+-- did not produce a unified box, so that part remains unverified).
 --
 -- This module only knows the *table shape* (word-aligned pointer pairs,
--- header terminated by 0xFF, data blob bounded by the next pointer) plus
--- the now-VERIFIED per-map header/RLE format -- every actual offset comes
--- from a profile (src/import/rom_profiles.lua's `mapTable` field), per
--- the project rule that ROM-version-specific knowledge stays centralized
--- there; only the *parsing logic* (byte meanings, RLE rule), not any
--- literal offset or ROM value, lives in this file. Pure Lua, no love.*
--- calls, so it's headlessly testable like GBTile/RomIdentity.
+-- header terminated by 0xFF, data blob bounded by the next pointer)
+-- plus the now-VERIFIED per-map header/RLE format -- every actual
+-- offset comes from a profile (src/import/rom_profiles.lua's
+-- `mapTable` field), per the project rule that ROM-version-specific
+-- knowledge stays centralized there; only the *parsing logic* (byte
+-- meanings, RLE rule), not any literal offset or ROM value, lives in
+-- this file. Pure Lua, no love.* calls, so it's headlessly testable
+-- like GBTile/RomIdentity.
 
 local MapTable = {}
 
@@ -63,27 +63,25 @@ end
 --   `mapTable.recordCount`'s implied end -- there is no known explicit
 --   terminator inside a blob itself, see rom-map.md).
 --
--- NAMING CORRECTED (2026-08-14, direct user question "welche tiles
--- gehören zu den räumen"): "header" is a MISNOMER kept only for
--- backward compatibility (the field/param names below are unchanged,
--- a rename would be a wider, separate refactor). The external
--- FFA-Disassembly project's own docs name this SAME pointer-pair
--- position "script" (not "header"), and testing it directly against
--- this project's own already-built `ScriptInterpreter`/
--- `ScriptOpcodeTable` confirms that: these bytes decode as REAL,
--- valid opcodes resolving to already-catalogued ROM handler addresses
--- (e.g. bank-5 record 0's own first byte, `0x76`, resolves to the
--- real, ALREADY-DOCUMENTED `$28C2`/`$2879` "~70-opcode actor action"
--- family, see events.md's "Back to the primary table" section -- a
--- WRAM `$C200` actor-struct command, NOT a graphics/tileset selector).
--- So: every one of the 320 room-catalog records carries its own real,
--- tiny per-room EVENT SCRIPT (likely room-entry NPC/actor setup),
+-- NAMING CORRECTED: "header" is a misnomer kept only for backward
+-- compatibility (the field/param names below are unchanged, a rename
+-- would be a wider, separate refactor). The external FFA-Disassembly
+-- project's docs name this same pointer-pair position "script" (not
+-- "header"), and testing it directly against this project's
+-- already-built `ScriptInterpreter`/`ScriptOpcodeTable` confirms that:
+-- these bytes decode as valid opcodes resolving to already-catalogued
+-- ROM handler addresses (e.g. bank-5 record 0's first byte, `0x76`,
+-- resolves to the already-documented `$28C2`/`$2879` "~70-opcode actor
+-- action" family, see events.md's "Back to the primary table" section
+-- -- a WRAM `$C200` actor-struct command, not a graphics/tileset
+-- selector). So: every one of the 320 room-catalog records carries its
+-- own tiny per-room event script (likely room-entry NPC/actor setup),
 -- structurally consistent with the external doc's "script, tiles"
--- pointer-pair naming -- but this does NOT resolve the separate,
+-- pointer-pair naming -- but this does not resolve the separate,
 -- still-open "which metatile table" question (see rom_profiles.lua's
--- own `genericCatalogMetatileTableFileOffset` doc comment) -- a real,
--- different kind of per-room data, honestly reported as a negative
--- result for THAT specific question.
+-- `genericCatalogMetatileTableFileOffset` doc comment) -- a different
+-- kind of per-room data, honestly reported as a negative result for
+-- that specific question.
 function MapTable.decode(romData, mapTable)
   assert(type(romData) == "string", "MapTable.decode expects a byte string")
   assert(mapTable and mapTable.pointerTableFileOffset,
@@ -162,7 +160,7 @@ function MapTable.readMapHeader(romData, mapTable)
   local base = mapTable.bankFileStart
   local b0, b1, b2, b3 = romData:byte(base + 1, base + 4)
   return {
-    encodingMode = b0, -- 0 = RLE (VERIFIED); 1 = Templated (CRACKED 2026-08-14, see
+    encodingMode = b0, -- 0 = RLE (VERIFIED); 1 = Templated (CRACKED, see
     -- `readTemplatedHeader`/`applyTemplatedDiff` below -- `MapTable.decodeRoomTiles`
     -- itself still only implements mode 0, the Templated path lives in
     -- `RoomFloorLayout.buildRoomFromMapTableRecord`, which dispatches on this field)
@@ -222,34 +220,31 @@ function MapTable.decodeRoomTiles(romData, mapTable, recordIndex)
   return MapTable.rleDecode(record.blob, header.rleLength), header
 end
 
---- Read the Templated-mode (encodingMode 1) header EXTENSION -- the real
--- base-room template pointer and 24-byte directional door-data block the
--- external FFA-Disassembly project's own docs describe as sitting
--- between the map's own 4-byte `[encodingMode,...]` header (see
+--- Read the Templated-mode (encodingMode 1) header extension -- the
+-- base-room template pointer and 24-byte directional door-data block
+-- the external FFA-Disassembly project's docs describe as sitting
+-- between the map's 4-byte `[encodingMode,...]` header (see
 -- `readMapHeader`) and its `(headerPtr,dataPtr)` record-pointer list.
 --
--- CRACKED (2026-08-14, direct user instruction "weiter bohren bis es
--- fertig ist" -- see rom-map.md's own "bank 7 Templated revisited,
--- CRACKED" section for the full evidence). VERIFIED against this EU
--- ROM's real bank-7 table: the template pointer's own file offset
--- lands EXACTLY where `mapTable.pointerTableFileOffset`'s own real
--- record-pointer list ends (zero slack bytes), and RLE-decoding from
--- it with the map's own header `rleLength` produces exactly
--- `gridRows*gridCols` tiles, consuming exactly enough bytes to land
--- precisely on the FIRST record's own header pointer -- an airtight
--- structural fit across two independently-derived boundaries, not a
--- coincidence or a guess.
+-- CRACKED (see rom-map.md's "bank 7 Templated revisited, CRACKED"
+-- section for the full evidence). VERIFIED against this EU ROM's
+-- bank-7 table: the template pointer's file offset lands exactly where
+-- `mapTable.pointerTableFileOffset`'s record-pointer list ends (zero
+-- slack bytes), and RLE-decoding from it with the map's header
+-- `rleLength` produces exactly `gridRows*gridCols` tiles, consuming
+-- exactly enough bytes to land precisely on the first record's header
+-- pointer -- an airtight structural fit across two independently-
+-- derived boundaries, not a coincidence or a guess.
 --
--- `doorData`'s own 24 raw bytes are returned as-is -- their real
--- per-bit meaning (the external doc's own claimed "bits 0-1 =
--- open/closed/wall, bits 2-7 = map-exit flag" layout) has NOT been
--- tested against this ROM's real data and is NOT decoded here --
--- honestly left as raw bytes, not silently assumed. A real, separate,
--- per-RECORD 4-byte field with similar small values also exists at the
--- START of every record's own data blob (see `applyTemplatedDiff`'s
--- doc comment) -- structurally distinct from this map-level 24-byte
--- block, likely per-room door state rather than a per-map default, but
--- also not decoded here.
+-- `doorData`'s 24 raw bytes are returned as-is -- their per-bit meaning
+-- (the external doc's claimed "bits 0-1 = open/closed/wall, bits 2-7 =
+-- map-exit flag" layout) has not been tested against this ROM's real
+-- data and is not decoded here -- honestly left as raw bytes, not
+-- silently assumed. A separate, per-record 4-byte field with similar
+-- small values also exists at the start of every record's own data
+-- blob (see `applyTemplatedDiff`'s doc comment) -- structurally
+-- distinct from this map-level 24-byte block, likely per-room door
+-- state rather than a per-map default, but also not decoded here.
 function MapTable.readTemplatedHeader(romData, mapTable)
   assert(type(romData) == "string", "MapTable.readTemplatedHeader expects a byte string")
   assert(mapTable and mapTable.bankFileStart,
