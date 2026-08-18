@@ -692,14 +692,14 @@ TextDecoder.DIGRAPH_PARTIAL = {
   [0x80] = "rt", -- 2 words: "Sch[69][80]"="Schwert" (sword, x3, see
   -- 0x69 above) and "O[80] heute"="Ort heute" (place, today).
   -- REVISED, 2026-08-17: was "ih" (from "wir[6A][86]r helfen"="wird
-  -- ihr helfen", will help her, x2) -- a real conflict against the real
-  -- ROM digraph table (`$3F3F`, see this table's own header note),
-  -- which reads this byte as "Di". Applying the same standard the user
-  -- explicitly chose for the 0x5B/"Julia"->"Julius" conflict above (the
-  -- table is a proven, structural source, not per-byte word-count
-  -- dependent): "wir[6A]Dir helfen"="wird Dir helfen" (will help YOU,
-  -- capitalized formal "Dir") is equally natural German and now the
-  -- one this table uses.
+  -- ihr helfen", will help her, x2) -- a conflict against the ROM
+  -- digraph table (`$3F3F`, see this table's header note), which reads
+  -- this byte as "Di". Applying the same standard chosen for the
+  -- 0x5B/"Julia"->"Julius" conflict above (the table is a proven,
+  -- structural source, not per-byte word-count dependent):
+  -- "wir[6A]Dir helfen"="wird Dir helfen" (will help YOU, capitalized
+  -- formal "Dir") is equally natural German and now the one this table
+  -- uses.
   [0x86] = "Di", -- "wir[6A][86]r helfen"="wird Dir helfen" (will help
   -- you, formal, x2, see 0x6A above).
   [0x8D] = "Ic", -- capitalized, 3-letter, paired with 0x38 above
@@ -719,26 +719,23 @@ TextDecoder.DIGRAPH_PARTIAL = {
   -- x2, a different grammatical form), "[6C]ch"="sich" (itself,
   -- reflexive pronoun), "be[6C]tzt"="besitzt" (possesses), "kennt
   -- [6C]e"="kennt sie" (knows her), "pas[6C]eren"="passieren" (to
-  -- pass). HONEST CONFLICT, not hidden: the credits screen has ONE
-  -- real counter-example, "Yo[6C]nori Kitase" (file 0x3b6a6), which
-  -- only works if 0x6C="shi" (a second, 3-letter spelling of
-  -- "Yoshinori" alongside the already-known "Yosh[in][or]i" spelling
-  -- elsewhere) -- see this table's own "still open" notes further
-  -- below. Given 7+ consistent, unambiguous dialogue-region words
-  -- against 1 credits-region outlier, "si" is used as this table's
-  -- real value (the credits screen possibly uses its own, separate
-  -- local table for that one special screen -- not confirmed, flagged
-  -- honestly rather than assumed).
+  -- pass). Honest conflict, not hidden: the credits screen has one
+  -- counter-example, "Yo[6C]nori Kitase" (file 0x3b6a6), which only
+  -- works if 0x6C="shi" (a second, 3-letter spelling of "Yoshinori"
+  -- alongside the already-known "Yosh[in][or]i" spelling elsewhere) --
+  -- see this table's "still open" notes further below. Given 7+
+  -- consistent, unambiguous dialogue-region words against 1
+  -- credits-region outlier, "si" is used as this table's value (the
+  -- credits screen possibly uses its own, separate local table for
+  -- that one special screen -- not confirmed, flagged honestly rather
+  -- than assumed).
 
-  -- THIRD round, same overall pass, direct follow-up to a user
-  -- instruction to keep going and resolve what's still open
-  -- ("na dann loese was noch offen ist" / "versuche ... den kompletten
-  -- text ... zu dekodieren und fuege die fehlenden dann anhand des
-  -- kontextes hinzu"). Re-ran the same "fill-in-the-blank word"
-  -- extractor -- resolving the bytes above unlocked a large new batch
-  -- of previously multi-gap words down to single-gap. Each entry
-  -- below has 2+ real, independent word confirmations (compact
-  -- citations this round, same rigor, less prose):
+  -- Third round, same overall pass, resolving what's still open. Re-ran
+  -- the same "fill-in-the-blank word" extractor -- resolving the bytes
+  -- above unlocked a large new batch of previously multi-gap words
+  -- down to single-gap. Each entry below has 2+ independent word
+  -- confirmations (compact citations this round, same rigor, less
+  -- prose):
   [0x32] = "nd", -- "eindeutig", "Tausendfuessler", "Amanda" (name,
   -- 5x), "verwende", "Waende", "irgendjemand", "irgendwo", "endlich",
   -- "legendaere", "sind" (x2), "Haenden".
