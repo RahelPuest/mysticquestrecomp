@@ -1,67 +1,64 @@
--- The real intro sequence: title screen -> "Neues Spiel" continues
--- straight into a continuous upward scroll that carries the story text
--- into view, exactly as described live (direct user reference,
--- 2026-08-09, matching independent mGBA verification): "die aktuelle
--- Ansicht beginnt nach oben zu scrollen... der Intro-Text scrollt in
--- den Bildschirm."
+-- The intro sequence: title screen -> "Neues Spiel" continues straight
+-- into a continuous upward scroll that carries the story text into
+-- view, exactly as described live (matching independent mGBA
+-- verification): "the current view begins scrolling upward... the
+-- intro text scrolls onto the screen."
 --
--- Real, VERIFIED mechanics (see rom_profiles.lua's `introText` doc
--- comment for the full capture): `SCY` increases continuously (~1 unit
--- every ~5.2 real GB frames, confirmed live).
+-- VERIFIED mechanics (see rom_profiles.lua's `introText` doc comment
+-- for the full capture): `SCY` increases continuously (~1 unit every
+-- ~5.2 GB frames, confirmed live).
 --
--- CORRECTED (2026-08-10, direct user instruction to re-verify against
--- real ROM code -- "das ganze ist nicht 100% rom korrekt"): the
--- previous doc comment here claimed BGP "shifts to a lighter palette
--- ($40) for the duration, reverting to normal ($E4) once the scroll
--- ends" -- re-traced live, per-frame, and that's not what the real
--- hardware does. Real `BGP` timeline (bank2 `$1D74`-adjacent sync
--- routine, WRAM shadow `$C0AA`): `0x00` for ~76 frames, `0x40` for
--- ~5 frames, repeating on an ~81-frame cycle for the ENTIRE scroll (not
--- a static shifted value), only settling on `0xE4` once the closing
--- transition completes. Screenshotted both states directly (frame+10,
--- BGP=$00 vs frame+37, BGP=$40) -- both show the ordinary title-screen/
--- story-text content at normal, clearly readable contrast; whatever
--- this oscillation is for, it does not visibly affect background
--- readability the way a `BGP=$00` reading would naively suggest (that
--- would map every tile-pixel index to white). Left unmodeled here
--- (the translucent white wash approximation is kept -- it does not
--- misrepresent the real *visible* result, only the previous doc
--- comment's claimed *mechanism* was wrong) rather than chasing an
--- effect that doesn't appear to change what's on screen.
+-- CORRECTED (direct user instruction to re-verify against real ROM
+-- code): the previous doc comment here claimed BGP "shifts to a
+-- lighter palette ($40) for the duration, reverting to normal ($E4)
+-- once the scroll ends" -- re-traced live, per-frame, and that's not
+-- what the real hardware does. Real `BGP` timeline (bank2
+-- `$1D74`-adjacent sync routine, WRAM shadow `$C0AA`): `0x00` for ~76
+-- frames, `0x40` for ~5 frames, repeating on an ~81-frame cycle for the
+-- entire scroll (not a static shifted value), only settling on `0xE4`
+-- once the closing transition completes. Screenshotted both states
+-- directly (frame+10, BGP=$00 vs frame+37, BGP=$40) -- both show the
+-- ordinary title-screen/story-text content at normal, clearly readable
+-- contrast; whatever this oscillation is for, it does not visibly
+-- affect background readability the way a `BGP=$00` reading would
+-- naively suggest (that would map every tile-pixel index to white).
+-- Left unmodeled here (the translucent white wash approximation is
+-- kept -- it does not misrepresent the real *visible* result, only the
+-- previous doc comment's claimed *mechanism* was wrong) rather than
+-- chasing an effect that doesn't appear to change what's on screen.
 --
--- Also re-verified (same pass): **no real fade-out/fade-in exists at
--- the scroll-to-NameEntry transition.** Per-frame register trace shows
+-- Also re-verified: no fade-out/fade-in exists at the
+-- scroll-to-NameEntry transition. Per-frame register trace shows
 -- `LCDC`/`BGP` snapping from their mid-scroll values directly to their
--- final ones (`$E5`/`$E4`) in exactly ONE frame, both on natural
--- completion and on the real A-skip (see below) -- no intermediate
--- palette values observed either way. The one real animated element at
--- this transition is the incoming NameEntry box's window layer: `WY`
--- moves from `255` (hidden) to `0` (fully shown) over a handful of
--- frames, i.e. a brief real slide-in of the dialogue box, not a screen
--- fade. Not modeled here (this project's `stack:replace()` is an
--- instant cut) -- a real, if minor, remaining gap.
+-- final ones (`$E5`/`$E4`) in exactly one frame, both on natural
+-- completion and on the A-skip (see below) -- no intermediate palette
+-- values observed either way. The one animated element at this
+-- transition is the incoming NameEntry box's window layer: `WY` moves
+-- from `255` (hidden) to `0` (fully shown) over a handful of frames,
+-- i.e. a brief slide-in of the dialogue box, not a screen fade. Not
+-- modeled here (this project's `stack:replace()` is an instant cut) --
+-- a minor remaining gap.
 --
--- **Real scroll-skip mechanic found and implemented (2026-08-10)**:
--- contrary to this file's previous assumption that no such button
--- exists in the ROM, live A/B/START comparison plus a direct code
--- trace found a real one. Bank 2, file offset `0xbca1`
--- (`CALL $1ED1` to read input into `C`, then `BIT 4,C` / `JR NZ`):
--- bit 4 of the debounced input byte is the ONLY one of the three
--- tested that does anything -- pressing **A** during the scroll jumps
--- straight into the closing sequence (clears part of the tilemap,
--- pins the scroll shadow `$C0A7`/`$D888` to 0, and proceeds to
--- NameEntry within ~16-20 real frames); B and START are provably
--- inert (confirmed: identical SCY/LCDC/BGP trajectory as pressing
--- nothing, sampled at 10 points across the whole scroll). Implemented
--- below using the real button (A), not a fake dev-only shortcut.
+-- SCROLL-SKIP MECHANIC found and implemented: contrary to this file's
+-- previous assumption that no such button exists in the ROM, live
+-- A/B/START comparison plus a direct code trace found a real one. Bank
+-- 2, file offset `0xbca1` (`CALL $1ED1` to read input into `C`, then
+-- `BIT 4,C` / `JR NZ`): bit 4 of the debounced input byte is the only
+-- one of the three tested that does anything -- pressing A during the
+-- scroll jumps straight into the closing sequence (clears part of the
+-- tilemap, pins the scroll shadow `$C0A7`/`$D888` to 0, and proceeds to
+-- NameEntry within ~16-20 frames); B and START are provably inert
+-- (confirmed: identical SCY/LCDC/BGP trajectory as pressing nothing,
+-- sampled at 10 points across the whole scroll). Implemented below
+-- using the real button (A), not a fake dev-only shortcut.
 --
 -- The text itself is real: `TextDecoder.decodeString` against the
--- ACTUAL literal ROM bytes at file offset 0xBED8 (found by decoding the
+-- actual literal ROM bytes at file offset 0xBED8 (found by decoding the
 -- live tilemap scroll first, then confirming byte-for-byte in the ROM
 -- file) -- not a hardcoded Lua string.
 --
--- Continues to NameEntry.lua at the end (real hero/heroine name-entry
--- screens, 2026-08-09).
+-- Continues to NameEntry.lua at the end (hero/heroine name-entry
+-- screens).
 
 local TitleScreenBackground = require("src.rendering.TitleScreenBackground")
 local Font = require("src.rendering.Font")
