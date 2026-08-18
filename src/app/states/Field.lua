@@ -415,14 +415,14 @@ function Field:keypressed(key)
   elseif key == "f6" then
     -- Debug-only instant kill (a stand-in "encounter/enemy spawner"-
     -- adjacent shortcut for this project's single enemy -- clears it
-    -- immediately without needing real combat, useful for testing what
-    -- comes after: the real event system, docs/progress.md).
+    -- immediately without needing combat, useful for testing what comes
+    -- after: the event system, docs/progress.md).
     if self.enemy:isAlive() then
       self.enemy.stats:damage(self.enemy.stats.curLP)
-      -- Real death "explosion" (2026-08-12) -- same real animation a
-      -- landed attack triggers (see the `Enemy:hit()` call site above),
-      -- not an instant cut, so this dev shortcut shows real ROM
-      -- behavior too instead of skipping past it.
+      -- Death "explosion" -- same animation a landed attack triggers
+      -- (see the `Enemy:hit()` call site above), not an instant cut, so
+      -- this dev shortcut shows real ROM behavior too instead of
+      -- skipping past it.
       self.enemy:startDeath(self.profile)
     end
   elseif key == "f7" then
@@ -434,53 +434,45 @@ function Field:keypressed(key)
     local RoomExplorer = require("src.app.states.RoomExplorer")
     self.stack:push(RoomExplorer.new(self.romData, self.profile, self.input, self.overlay, self.stack))
   elseif key == "f9" and self.romData and self.stack then
-    -- Task #151 (2026-08-16, "port the decoded music format into src/
-    -- audio/ + love.audio playback"): a dev-only jukebox for all 30
-    -- real songs, same "real content, no fabricated trigger" precedent
-    -- as F8's RoomExplorer -- see MusicJukebox.lua's own doc comment.
-    -- Stop the real field background music first (added same day,
-    -- direct continuation) -- Field:update stops running the instant
-    -- Jukebox is pushed on top (StateStack:update only drives the top
-    -- state), but the already-queued love.audio buffers would otherwise
-    -- keep playing underneath/overlapping the Jukebox's own playback
-    -- for up to ~1.2s (BUFFER_COUNT*BUFFER_SECONDS) until they drain.
+    -- A dev-only jukebox for all 30 songs, same "real content, no
+    -- fabricated trigger" precedent as F8's RoomExplorer -- see
+    -- MusicJukebox.lua's doc comment. Stop the field background music
+    -- first -- Field:update stops running the instant Jukebox is
+    -- pushed on top (StateStack:update only drives the top state), but
+    -- the already-queued love.audio buffers would otherwise keep
+    -- playing underneath/overlapping the Jukebox's own playback for up
+    -- to ~1.2s (BUFFER_COUNT*BUFFER_SECONDS) until they drain.
     if self.musicPlayer then self.musicPlayer:stop() end
     local MusicJukebox = require("src.app.states.MusicJukebox")
     self.stack:push(MusicJukebox.new(self.romData, self.input, self.overlay, self.stack))
   elseif key == "f10" and self.romData and self.stack then
-    -- 2026-08-16, task "komplett autark interpretiert"/blocker
-    -- resolution: a dev-only browser for the real, general cut-
-    -- transition landing table (CutTransitionTable.lua) -- same "real
-    -- content, no fabricated trigger" precedent as F8/F9 above: 82
-    -- genuinely distinct real transitions are fully decoded, but only
-    -- 2 have a known real in-game trigger (see TransitionExplorer.lua's
-    -- own doc comment).
+    -- A dev-only browser for the general cut-transition landing table
+    -- (CutTransitionTable.lua) -- same "real content, no fabricated
+    -- trigger" precedent as F8/F9 above: 82 genuinely distinct
+    -- transitions are fully decoded, but only 2 have a known in-game
+    -- trigger (see TransitionExplorer.lua's doc comment).
     local TransitionExplorer = require("src.app.states.TransitionExplorer")
     self.stack:push(TransitionExplorer.new(self.romData, self.input, self.overlay, self.stack))
   elseif key == "f11" and self.romData and self.stack then
-    -- 2026-08-16, direct continuation, "Tabelle voll ausmessen" ->
-    -- "alles konsolidieren dokumentieren und in app und website
-    -- einbauen": a dev-only browser for the real, RNG-gated actor-
-    -- definition table (ActorDefinitionTable.lua) -- same "real
-    -- content, no fabricated trigger" precedent as F8-F10 above: 218
-    -- real records are fully decoded, but only 2 have a confirmed
-    -- live spawn (see ActorExplorer.lua's own doc comment).
+    -- A dev-only browser for the RNG-gated actor-definition table
+    -- (ActorDefinitionTable.lua) -- same "real content, no fabricated
+    -- trigger" precedent as F8-F10 above: 218 records are fully
+    -- decoded, but only 2 have a confirmed live spawn (see
+    -- ActorExplorer.lua's doc comment).
     local ActorExplorer = require("src.app.states.ActorExplorer")
     self.stack:push(ActorExplorer.new(self.romData, self.input, self.overlay, self.stack))
   elseif key == "f12" and self.inventory then
-    -- 2026-08-16, task "Item/Ausrüstung nutzbar machen" (direct user
-    -- selection): a dev-only shortcut granting a few real catalog
-    -- items/weapons -- exists ONLY to make the new real Dinge/Waffe
-    -- interactivity (Menu.lua) reachable and testable. NOT a claimed
-    -- ROM trigger: the real ROM's own item-granting condition (shop?
-    -- chest?) is honestly still unknown (see combat.md's own "Real
-    -- equip-swap test attempted, blocked" entry) -- same "dev-only
-    -- browser, no fabricated gameplay trigger" precedent as F8-F11
-    -- above, just for inventory state instead of a new screen. Grants
-    -- real, named catalog entries (not guessed placeholders); repeated
-    -- presses keep granting items (a real pickup would too) but the
-    -- weapon grant is a real no-op once already held (Inventory
-    -- .addWeapon's own duplicate guard).
+    -- A dev-only shortcut granting a few catalog items/weapons --
+    -- exists only to make the Dinge/Waffe interactivity (Menu.lua)
+    -- reachable and testable. Not a claimed ROM trigger: the ROM's
+    -- item-granting condition (shop? chest?) is honestly still unknown
+    -- (see combat.md's "equip-swap test attempted, blocked" entry) --
+    -- same "dev-only browser, no fabricated gameplay trigger"
+    -- precedent as F8-F11 above, just for inventory state instead of a
+    -- new screen. Grants named catalog entries (not guessed
+    -- placeholders); repeated presses keep granting items (a real
+    -- pickup would too) but the weapon grant is a no-op once already
+    -- held (Inventory.addWeapon's duplicate guard).
     local inv = self.inventory
     if inv.itemCatalog[1] then inv:addItem(inv.itemCatalog[1].name) end
     if inv.spellCatalog[2] then inv:addItem(inv.spellCatalog[2].name) end
@@ -494,59 +486,59 @@ function Field:keypressed(key)
 end
 
 function Field:update(dt)
-  -- Real background music: feeds the next few love.audio buffers every
-  -- real frame (see MusicPlayer.lua's own doc comment) -- unconditional,
-  -- same "always advance regardless of other branches" pattern
-  -- self.knockback:update below already uses. A no-op when never
-  -- started (headless construction, or love.audio unavailable).
+  -- Background music: feeds the next few love.audio buffers every frame
+  -- (see MusicPlayer.lua's doc comment) -- unconditional, same "always
+  -- advance regardless of other branches" pattern self.knockback:update
+  -- below already uses. A no-op when never started (headless
+  -- construction, or love.audio unavailable).
   if self.musicPlayer then self.musicPlayer:update(dt) end
   if self.stack and self.input:pressed("select") then
     self.stack:pop()
     return
   end
   -- VERIFIED live (docs/reverse-engineering/rom-map.md "The in-game
-  -- menu system"): START opens a real menu during field control.
+  -- menu system"): START opens a menu during field control.
   if self.stack and self.input:pressed("start") then
     local Menu = require("src.app.states.Menu")
     self.stack:push(Menu.new(self.romData, self.profile, self.input, self.stack, self.inventory))
     return
   end
 
-  -- Real, live-captured movement cycle (VERIFIED 2026-08-09 -- see
+  -- Live-captured movement cycle (VERIFIED -- see
   -- Enemy.MOVEMENT_CYCLE's doc comment) -- the creature was frozen in
-  -- place before this pass, which real play does not match.
+  -- place before this, which real play does not match.
   self.enemy:updateMovement(dt)
   if self.enemyFlashTimer > 0 then
     self.enemyFlashTimer = self.enemyFlashTimer - 1
   end
 
-  -- Real contact-hit reaction (task #12, KnockbackFlicker.lua): advance
-  -- it every frame regardless of whether a hit is currently active (a
-  -- no-op returning (0,0) when it isn't).
+  -- Contact-hit reaction (KnockbackFlicker.lua): advance it every frame
+  -- regardless of whether a hit is currently active (a no-op returning
+  -- (0,0) when it isn't).
   local kdx, kdy = self.knockback:update(dt)
 
   if self.knockback:isKnockbackActive() then
-    -- Real knockback motion frames: forced movement, no player input
-    -- (see KnockbackFlicker.lua's doc comment -- a reasonable
-    -- implementation choice, not itself independently verified).
+    -- Knockback motion frames: forced movement, no player input (see
+    -- KnockbackFlicker.lua's doc comment -- a reasonable implementation
+    -- choice, not itself independently verified).
     --
-    -- CORRECTED (2026-08-10, direct user report: "der pushback pusht
-    -- den player in Waende (keine Kollision) und der pushback wirkt
-    -- auch sehr weit"): this used to add kdx/kdy unconditionally,
-    -- clamped only against the room's OUTER bounds (self.playerBounds)
-    -- -- unlike every other real movement in this state, which checks
-    -- the real per-tile wall collision (self.canMoveTo, same predicate
-    -- Player:update uses) before committing a move. A knockback aimed
-    -- at a wall therefore shoved the player straight through it instead
-    -- of stopping there like normal walking does -- almost certainly
-    -- also the real cause of "wirkt sehr weit" (32px, the real VERIFIED
-    -- distance from KnockbackFlicker.lua's own live capture, looks/feels
-    -- much larger than intended once it carries the player through a
-    -- wall into space that should have been unreachable). Now checked
-    -- per-axis against canMoveTo, same as Player:update, so knockback
-    -- can't cross a wall the player couldn't otherwise walk through --
-    -- the 32px distance/speed itself is untouched (still the real,
-    -- live-captured value), only wall-crossing is fixed.
+    -- CORRECTED (direct user report that the pushback shoved the
+    -- player into walls with no collision, and reached too far): this
+    -- used to add kdx/kdy unconditionally, clamped only against the
+    -- room's outer bounds (self.playerBounds) -- unlike every other
+    -- movement in this state, which checks the per-tile wall collision
+    -- (self.canMoveTo, same predicate Player:update uses) before
+    -- committing a move. A knockback aimed at a wall therefore shoved
+    -- the player straight through it instead of stopping there like
+    -- normal walking does -- almost certainly also the real cause of
+    -- "reaches too far" (32px, the VERIFIED distance from
+    -- KnockbackFlicker.lua's own live capture, looks/feels much larger
+    -- than intended once it carries the player through a wall into
+    -- space that should have been unreachable). Now checked per-axis
+    -- against canMoveTo, same as Player:update, so knockback can't
+    -- cross a wall the player couldn't otherwise walk through -- the
+    -- 32px distance/speed itself is untouched (still the live-captured
+    -- value), only wall-crossing is fixed.
     local newX = self.player.x + kdx
     local newY = self.player.y + kdy
     if kdx ~= 0 and (not self.canMoveTo or self.canMoveTo(newX, self.player.y)) then
@@ -575,19 +567,19 @@ function Field:update(dt)
 
   -- Contact damage while blocked against a living enemy. F4
   -- (self.debugInvulnerable) is a dev-only shortcut, not real ROM
-  -- behavior -- see Field:keypressed's doc comment. Real invincibility
+  -- behavior -- see Field:keypressed's doc comment. Invincibility
   -- (KnockbackFlicker:isInvincible) additionally blocks re-triggering
   -- while the previous hit's reaction is still playing out -- the
-  -- actual real mechanic, not just the enemy's own cooldown timer.
+  -- actual mechanic, not just the enemy's own cooldown timer.
   --
-  -- WIRED (2026-08-10): the real, fully-decoded ROM damage formula
-  -- ($50AC, see CombatFormulas.lua) with the real enemy ATK (Enemy.ATK
-  -- = 8, code- and live-confirmed, see Enemy.lua) and the real player
-  -- DEF (self.stats.defense, live-captured $D6C3, see Stats.lua) --
-  -- not the old fixed Enemy.CONTACT_DAMAGE constant. `self.combatNoise`
-  -- is absent when no ROM is loaded (dev/test fallback, see Field.new)
-  -- -- falls back to the old constant rather than erroring, since a
-  -- love-free/no-ROM context still needs SOME contact damage to work.
+  -- The fully-decoded ROM damage formula ($50AC, see CombatFormulas
+  -- .lua) with the enemy ATK (Enemy.ATK = 8, code- and live-confirmed,
+  -- see Enemy.lua) and the player DEF (self.stats.defense, live-
+  -- captured $D6C3, see Stats.lua) -- not the old fixed Enemy
+  -- .CONTACT_DAMAGE constant. `self.combatNoise` is absent when no ROM
+  -- is loaded (dev/test fallback, see Field.new) -- falls back to the
+  -- old constant rather than erroring, since a love-free/no-ROM context
+  -- still needs some contact damage to work.
   if self.enemy:isAlive() and
       self.enemy:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
     if self.enemy:tickContactCooldown(dt) and not self.debugInvulnerable
@@ -605,24 +597,24 @@ function Field:update(dt)
     end
   end
 
-  -- Attack: A (VERIFIED, corrected 2026-08-09 -- see docs/progress.md)
-  -- while within reach of a living enemy. This project's own rom-map.md
-  -- "Breakthrough" entry already documented "A, not B" clears the
-  -- creature; this pass re-verified it directly (fought the real boss
-  -- live under mGBA with the corrected room -- see progress.md) and
-  -- finally wired the engine to match, rather than leaving a known,
-  -- already-documented discrepancy in place.
+  -- Attack: A (VERIFIED, see docs/progress.md) while within reach of a
+  -- living enemy. This project's rom-map.md "Breakthrough" entry
+  -- already documented "A, not B" clears the creature; this pass
+  -- re-verified it directly (fought the boss live under mGBA with the
+  -- corrected room -- see progress.md) and finally wired the engine to
+  -- match, rather than leaving a known, already-documented discrepancy
+  -- in place.
   --
-  -- VERIFIED (2026-08-09): the real attack plays on EVERY A press,
-  -- standalone, whether or not an enemy is anywhere nearby (confirmed
-  -- live -- see rom_profiles.lua's `attackSwing` doc comment) -- so the
-  -- visual trigger below is unconditional.
+  -- VERIFIED: the attack plays on every A press, standalone, whether or
+  -- not an enemy is anywhere nearby (confirmed live -- see
+  -- rom_profiles.lua's `attackSwing` doc comment) -- so the visual
+  -- trigger below is unconditional.
   --
-  -- VERIFIED (2026-08-09, same investigation round): which real attack
-  -- plays depends on whether the player is moving at the instant A is
-  -- pressed -- `self.player.moving` is already real, per-frame state
-  -- (Player.lua), so this is a direct read, not new tracking. Standing
-  -- still -> the swing (arc); moving -> the thrust (see AttackThrust.lua).
+  -- VERIFIED (same investigation round): which attack plays depends on
+  -- whether the player is moving at the instant A is pressed --
+  -- `self.player.moving` is already real, per-frame state (Player.lua),
+  -- so this is a direct read, not new tracking. Standing still -> the
+  -- swing (arc); moving -> the thrust (see AttackThrust.lua).
   if self.input:pressed("a") then
     local attack = self.player.moving and self.attackThrust or self.attackSwing
     if attack then
@@ -633,15 +625,14 @@ function Field:update(dt)
   if self.attackSwing then self.attackSwing:update(dt) end
   if self.attackThrust then self.attackThrust:update(dt) end
 
-  -- CORRECTED (2026-08-09, same day): hit detection used to be a single
-  -- static distance check at the instant A was pressed (ATTACK_REACH,
-  -- below) -- direct user report that the enemy "seems to take no
-  -- damage" traced to exactly that: the real swing animates outward
-  -- over the following 16 real frames, so a press that visually swings
-  -- into the enemy a few frames later never actually registered. Now
-  -- checked every frame either real attack is active, against its own
-  -- real per-phase hitboxes (`getHitboxes`) -- one hit per attack
-  -- (`attackHasHit`, reset on each new trigger), same real
+  -- CORRECTED: hit detection used to be a single static distance check
+  -- at the instant A was pressed (ATTACK_REACH, below) -- direct user
+  -- report that the enemy "seems to take no damage" traced to exactly
+  -- that: the swing animates outward over the following 16 frames, so a
+  -- press that visually swings into the enemy a few frames later never
+  -- actually registered. Now checked every frame either attack is
+  -- active, against its own per-phase hitboxes (`getHitboxes`) -- one
+  -- hit per attack (`attackHasHit`, reset on each new trigger), same
   -- `Enemy:overlaps` AABB test already used for contact damage above.
   local activeAttack = (self.attackSwing and self.attackSwing:isActive() and self.attackSwing)
     or (self.attackThrust and self.attackThrust:isActive() and self.attackThrust)
@@ -653,15 +644,15 @@ function Field:update(dt)
           self.enemyFlashTimer = self.enemyFlashFrames
         end
         if self.enemy:hit() then
-          -- Real death "explosion" (2026-08-12, direct user correction
-          -- -- see rom_profiles.lua's own `enemyDeath` doc comment for
-          -- the full live-traced evidence): the real creature's own
-          -- six body-part tiles scatter apart for a real ~86 frames
-          -- before vanishing -- `enemyDefeated` (which fires the real
+          -- Death "explosion" (direct user correction -- see
+          -- rom_profiles.lua's `enemyDeath` doc comment for the full
+          -- live-traced evidence): the creature's six body-part tiles
+          -- scatter apart for ~86 frames before vanishing --
+          -- `enemyDefeated` (which fires the
           -- `victory_sequence_on_boss_defeat` event, replacing this
-          -- whole screen) is deliberately NOT set yet here; it's set
+          -- whole screen) is deliberately not set yet here; it's set
           -- once `Enemy:deathComplete()` below, so the player actually
-          -- sees the real scatter instead of an instant cut.
+          -- sees the scatter instead of an instant cut.
           self.enemy:startDeath(self.profile)
         end
         break
