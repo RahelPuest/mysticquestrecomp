@@ -9,6 +9,18 @@ function render_items(main) {
       Namen dekodieren an keinem der beiden bekannten Offsets &mdash; ehrlich als
       unaufgelöste Lücke gezeigt, nicht geraten.
     </p>
+    <p class="page-lede" style="margin-top:8px;">
+      <strong>Preis</strong> (gefunden 2026-08-18): Bytes 13-14 jedes
+      Datensatzes (16-Bit little-endian) -- 8 von 8 gegen einen echten,
+      extern gefundenen Preis-Guide exakt abgeglichen (Lebe=40G, S-Lebe=160G,
+      Magi=320G, S-Magi=640G, Salbe=30G, Auge=60G, Bewege=90G, Spruch=120G --
+      die letzten vier zusaetzlich eine saubere +30G-Reihe, unabhaengig vom
+      externen Fund). "(nicht verkauft)" bei den ersten 8 Wurf-/Kampfitems
+      ist ein echter Nullwert, keine Luecke. Die eigentlichen 8 wirkbaren
+      MP-Zauber (Feuer/Eis/Blitz/Nuke/Heilung/...) sind eine ANDERE, noch
+      nicht gefundene ROM-Struktur -- diese Tabelle ist der Shop-Katalog fuer
+      Erholungs-/Statusheilitems, trotz des Namens "Item/Zauber-Tabelle".
+    </p>
     <div class="toolbar">
       <div class="pill-tabs" id="itemTabs">
         <div class="pill-tab active" data-tab="items">Items &amp; Zauber</div>
@@ -113,7 +125,7 @@ function render_items(main) {
     if (state.tab === "items") {
       host.innerHTML = `
         <table class="data-table">
-          <thead><tr><th>#</th><th>Name</th><th>Kategorie</th><th>ID</th><th>Typ</th></tr></thead>
+          <thead><tr><th>#</th><th>Name</th><th>Kategorie</th><th>ID</th><th>Typ</th><th>Preis</th></tr></thead>
           <tbody>
             ${filteredRecords().map(r => `
               <tr>
@@ -122,6 +134,7 @@ function render_items(main) {
                 <td class="num">${r.categoryByte}</td>
                 <td class="num">${r.id}</td>
                 <td>${r.isSpell ? "Zauber" : "Item"}</td>
+                <td class="num">${r.price ? r.price + " G" : '<span class="desc">(nicht verkauft)</span>'}</td>
               </tr>
             `).join("")}
           </tbody>

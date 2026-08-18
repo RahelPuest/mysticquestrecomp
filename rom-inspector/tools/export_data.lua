@@ -1121,6 +1121,7 @@ do
       name = r.name,
       categoryByte = r.categoryByte,
       id = r.id,
+      price = r.price,
       namePrefixByte = r.namePrefixByte,
       isSpell = r.index >= profile.itemTable.categoryBoundaryRecord,
     }
@@ -1195,7 +1196,10 @@ do
   }, "Item/spell table (ItemTable.lua) and weapon/armor table (WeaponTable.lua). Names decode " ..
      "cleanly for most records (spell records need a 2nd name offset, see ItemTable.lua's doc " ..
      "comment) -- records with name=\"\" genuinely don't decode at either known offset, shown " ..
-     "honestly rather than guessed. Stat bytes beyond the name are real but NOT interpreted (raw " ..
+     "honestly rather than guessed. `items[].price` (found 2026-08-18, ItemTable.lua's own doc " ..
+     "comment) is bytes 13-14 (LE u16), VERIFIED 8/8 against a real external gold-cost list -- " ..
+     "0 for records never sold in a shop (the found/thrown combat items), not a missing value. " ..
+     "Stat bytes beyond name/price are real but NOT interpreted (raw " ..
      "only). itemCategories/weaponCategories (catalog plan Phase 2) group the records by their " ..
      "categoryByte -- sizeClass is a plain size threshold (>=5 records), NOT a claimed slot name " ..
      "(e.g. weapon/armor/helm) -- see WeaponTable.lua's doc comment for why that's still " ..
