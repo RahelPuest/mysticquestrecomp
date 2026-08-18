@@ -34,65 +34,61 @@ EntityStructLayout.SLOT_COUNT = 20
 
 -- Real per-slot field offsets (0-based, within one 16-byte record).
 EntityStructLayout.FIELD = {
-  ALIVE = 0,     -- alive/state byte: 0xFF = dead/empty sentinel; 0x08 on real allocate
-  TYPE = 1,      -- caller-supplied "type" param (real ROM meaning not decoded further)
-  -- REFINED (2026-08-14, "Bank-3-Funktionstabelle weiter verfolgen"
-  -- follow-up, chasing the $C4E0 actor-command array's own "+0x12
-  -- pointer field" writer): still just a "caller-supplied param" by
-  -- direct meaning, but now known to be a real, GENERAL, heavily-used
-  -- field, not incidental scratch data -- a dedicated getter/setter
-  -- pair (`$0C6D` read, `$0C86` swap; both `HL = $C200 + slotIndex*16
-  -- + 2`, `$0C6D` additionally guards on FIELD.ALIVE==0xFF returning 0)
-  -- has 24 + 17 real callers respectively, spread across EVERY ROM
-  -- bank (0/1/2/3 all confirmed), the widest caller spread of any
-  -- EntityStructLayout accessor found so far. The $C4E0 array's own
-  -- slot-scan code (bank-3 `$4BE0`, already known as the "$C5AF actor
-  -- count refresh" routine, and a bank-0 sibling at `$278F`) reads this
-  -- field via `$0C6D` for each active $C4E0 slot's own ID byte (used
-  -- AS the $C200 slot index) and classifies its HIGH NIBBLE against a
-  -- real, recurring value set (`0x90`/`0xB0`/`0x10` at `$4BE0`; only
-  -- `0x90`/`0x10` at `$278F` -- an honest, unresolved discrepancy, not
-  -- forced into one story). A concrete, well-scoped next step for
-  -- whoever continues: `$0C6D`/`$0C86`'s OTHER ~35 call sites (bank 1/
-  -- 2, i.e. outside the map/actor-command machinery this project has
-  -- mostly focused on) are far more likely to reveal PARAM2's real
-  -- overall meaning quickly than more $C4E0-side tracing.
+  ALIVE = 0,     -- alive/state byte: 0xFF = dead/empty sentinel; 0x08 on allocate
+  TYPE = 1,      -- caller-supplied "type" param (ROM meaning not decoded further)
+  -- REFINED (chasing the $C4E0 actor-command array's "+0x12 pointer
+  -- field" writer): still just a "caller-supplied param" by direct
+  -- meaning, but now known to be a general, heavily-used field, not
+  -- incidental scratch data -- a dedicated getter/setter pair (`$0C6D`
+  -- read, `$0C86` swap; both `HL = $C200 + slotIndex*16 + 2`, `$0C6D`
+  -- additionally guards on FIELD.ALIVE==0xFF returning 0) has 24 + 17
+  -- callers respectively, spread across every ROM bank (0/1/2/3 all
+  -- confirmed), the widest caller spread of any EntityStructLayout
+  -- accessor found so far. The $C4E0 array's slot-scan code (bank-3
+  -- `$4BE0`, already known as the "$C5AF actor count refresh" routine,
+  -- and a bank-0 sibling at `$278F`) reads this field via `$0C6D` for
+  -- each active $C4E0 slot's ID byte (used as the $C200 slot index) and
+  -- classifies its high nibble against a recurring value set
+  -- (`0x90`/`0xB0`/`0x10` at `$4BE0`; only `0x90`/`0x10` at `$278F` --
+  -- an honest, unresolved discrepancy, not forced into one story). A
+  -- concrete, well-scoped next step for whoever continues:
+  -- `$0C6D`/`$0C86`'s other ~35 call sites (bank 1/2, i.e. outside the
+  -- map/actor-command machinery this project has mostly focused on) are
+  -- far more likely to reveal PARAM2's overall meaning quickly than
+  -- more $C4E0-side tracing.
   PARAM2 = 2,    -- caller-supplied param
-  PARAM3 = 3,    -- real 0 at allocate time
-  POSITION_Y = 4,   -- real Y position, pixel space
-  POSITION_X = 5,   -- real X position, pixel space
+  PARAM3 = 3,    -- 0 at allocate time
+  POSITION_Y = 4,   -- Y position, pixel space
+  POSITION_X = 5,   -- X position, pixel space
   PARAM6 = 6,    -- caller-supplied param
   PARAM7 = 7,    -- caller-supplied param
-  OAM_SHADOW_PTR = 8, -- real 16-bit LE pointer to this slot's own 8-byte OAM shadow-copy block
-  -- NEW (2026-08-14, direct follow-up, "ja mach mal" -- tracing
-  -- $0C6D/$0C86's ~35 other real callers per the PARAM2 note above):
-  -- found the WHOLE accessor family these two belong to, one real
+  OAM_SHADOW_PTR = 8, -- 16-bit LE pointer to this slot's 8-byte OAM shadow-copy block
+  -- Tracing $0C6D/$0C86's ~35 other callers per the PARAM2 note above
+  -- found the whole accessor family these two belong to, one
   -- getter/setter pair per field, all sharing the exact same `HL =
   -- $C200 + slotIndex*16 [+ offset]` shape -- see
-  -- `EntityStructLayout.FIELD_ACCESSOR_ADDRESS` below for the full,
-  -- real address table. Two fields beyond the previously-documented
-  -- 0-8 range have real, dedicated accessors too:
-  UNKNOWN_10 = 10, -- real getter $0CD3/setter $0CE4; 6+3 real callers (bank 0/1/3)
-  UNKNOWN_11 = 11, -- real getter $0CF7/setter $0D08; 0+1 real callers (setter only reached once, bank 0)
+  -- `EntityStructLayout.FIELD_ACCESSOR_ADDRESS` below for the full
+  -- address table. Two fields beyond the previously-documented 0-8
+  -- range have dedicated accessors too:
+  UNKNOWN_10 = 10, -- getter $0CD3/setter $0CE4; 6+3 callers (bank 0/1/3)
+  UNKNOWN_11 = 11, -- getter $0CF7/setter $0D08; 0+1 callers (setter only reached once, bank 0)
 }
 
--- Real ROM addresses of the two known routines that operate on this
--- struct -- kept here (not just in a doc comment) so future
--- investigation/tests have one real, centralized reference point,
--- matching this project's own "ROM-version-specific data lives in one
--- place" convention.
+-- ROM addresses of the two known routines that operate on this struct
+-- -- kept here (not just in a doc comment) so future investigation/
+-- tests have one centralized reference point, matching this project's
+-- "ROM-version-specific data lives in one place" convention.
 EntityStructLayout.DESPAWN_ROUTINE_ADDRESS = 0x0AE3
 EntityStructLayout.ALLOCATE_ROUTINE_ADDRESS = 0x0A74
 
--- FOUND (2026-08-14, "ja mach mal"): a real, cohesive block of small
--- per-field getter/setter routines living together at `$0C41`-`$0D1B`
--- (bank 0), each one the exact same shape `HL = $C200 + C*16 [+
--- offset]` this project already knew piecemeal (`$02AB`'s own `$0C99`,
--- `PARAM2`'s `$0C6D`/`$0C86`). Disassembled the whole block directly
--- against the real ROM bytes -- every entry below is VERIFIED, not
--- inferred from naming alone. `nil` means no accessor for that
--- direction was found in this contiguous block (may still exist
--- elsewhere, not searched for further).
+-- A cohesive block of small per-field getter/setter routines living
+-- together at `$0C41`-`$0D1B` (bank 0), each one the exact same shape
+-- `HL = $C200 + C*16 [+ offset]` this project already knew piecemeal
+-- (`$02AB`'s `$0C99`, `PARAM2`'s `$0C6D`/`$0C86`). Disassembled the
+-- whole block directly against the ROM bytes -- every entry below is
+-- VERIFIED, not inferred from naming alone. `nil` means no accessor
+-- for that direction was found in this contiguous block (may still
+-- exist elsewhere, not searched for further).
 EntityStructLayout.FIELD_ACCESSOR_ADDRESS = {
   [EntityStructLayout.FIELD.ALIVE] = { get = 0x0C99, set = 0x0CA6 },
   -- $0CA6's own setter is GUARDED: if the slot's OLD value was already
