@@ -1567,108 +1567,98 @@ ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC = 0x10DC
 ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BD = 0x1046
 ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BE = 0x10A7
 
--- `0x7A`/`0x7B` ($1570/$157C, added 2026-08-14, whole-corpus scan's
--- own next real untouched blocker after the `$0E73` neighborhood): a
--- real "actor action, readiness-as-parameter" family -- see
--- `StandardScriptHandlers.actorActionWithReadinessParam`'s own doc
--- comment for the full disassembly and the real reasoning for why this
--- is tractable (needs only the SAME boolean `ctx.isActorReady` already
--- models) despite superficially resembling the known-hard dynamic-
--- group family. `0x0E`/`0x0F` are the real fixed groups; `0x06` is the
--- real fixed readiness-to-parameter offset (both opcodes).
--- CORRECTED same day (see that same doc comment): this is BYTE-FOR-
--- BYTE the exact same real shape as the already-established Family-A
--- `actorAction` opcodes (`0x10`/`0x30`/`0x70`/... above) -- initially
--- mis-described here as "genuinely different" from that family; both
--- are the SAME mechanism, now modeled consistently (same approximate
--- `isActorReady` gate), with this family additionally exposing the
--- real `$28C2`-derived parameter Family-A's own model discards.
+-- 0x7A/0x7B ($1570/$157C, whole-corpus scan's next untouched blocker
+-- after the $0E73 neighborhood): an "actor action, readiness-as-
+-- parameter" family -- see StandardScriptHandlers
+-- .actorActionWithReadinessParam's own doc comment for the full
+-- disassembly and the reasoning for why this is tractable (needs only
+-- the same boolean ctx.isActorReady already models) despite
+-- superficially resembling the known-hard dynamic-group family.
+-- 0x0E/0x0F are the fixed groups; 0x06 is the fixed readiness-to-
+-- parameter offset (both opcodes). CORRECTED same day (see that same
+-- doc comment): this is byte-for-byte the exact same shape as the
+-- already-established Family-A actorAction opcodes (0x10/0x30/0x70/
+-- ... above) -- initially mis-described here as "genuinely different"
+-- from that family; both are the same mechanism, now modeled
+-- consistently (same approximate isActorReady gate), with this family
+-- additionally exposing the $28C2-derived parameter Family-A's own
+-- model discards.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_7A = 0x1570 -- group 0x0E, offset 0x06
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_7B = 0x157C -- group 0x0F, offset 0x06
 
--- `0xCC` ($3AA3, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0x7A`/`0x7B`): `DEC HL / CALL $3727 / RET`
--- -- a real, ZERO-real-operand-byte "re-mirror my own opcode byte"
--- primitive. See `StandardScriptHandlers.opcodeByteMirror`'s own doc
--- comment for the full real disassembly and why the `DEC HL` /
--- `$3727`-fetch pair cancels to a net-zero cursor effect.
+-- 0xCC ($3AA3, whole-corpus scan's next untouched blocker after
+-- 0x7A/0x7B): DEC HL / CALL $3727 / RET -- a zero-operand-byte
+-- "re-mirror my own opcode byte" primitive. See StandardScriptHandlers
+-- .opcodeByteMirror's own doc comment for the full disassembly and why
+-- the DEC HL / $3727-fetch pair cancels to a net-zero cursor effect.
 ScriptOpcodeTable.OPCODE_BYTE_MIRROR_HANDLER_ADDRESS_CC = 0x3AA3
 
--- `0xC8` ($3BA9, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xBE`): `JP $0150` -- a byte-for-byte,
--- DECISIVELY confirmed match against the real ROM's own cartridge
--- entry vector (`$0100: NOP / JP $0150`, same 3 target bytes
--- `C3 50 01`). A genuine real "SOFT RESET the whole game" script
--- command -- see `StandardScriptHandlers.softReset`'s own doc comment
--- for the complete real chain (`$0150` -> `$1FCA`, a real cold-boot
--- sequence) and the honest modeling limit this requires.
+-- 0xC8 ($3BA9, whole-corpus scan's next untouched blocker after 0xBE):
+-- JP $0150 -- a byte-for-byte, decisively confirmed match against the
+-- ROM's own cartridge entry vector ($0100: NOP / JP $0150, same 3
+-- target bytes C3 50 01). A "soft reset the whole game" script command
+-- -- see StandardScriptHandlers.softReset's own doc comment for the
+-- complete chain ($0150 -> $1FCA, a cold-boot sequence) and the honest
+-- modeling limit this requires.
 ScriptOpcodeTable.SOFT_RESET_HANDLER_ADDRESS_C8 = 0x3BA9
 
--- `0xD1` ($3A72, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xE7`): a real "budget countdown, SET/
--- CLEAR flag bit 6" command. Resolving this ALSO fully decoded the
--- previously-untraced `$3BEF`/`$3BF9` leaf pair (see
--- `StandardScriptHandlers.budgetFlagCommand`'s own doc comment for
--- the complete real disassembly, including the `$3602` bit-index
--- resolver and the `$1F06` selector-`0x26` tail).
+-- 0xD1 ($3A72, whole-corpus scan's next untouched blocker after 0xE7):
+-- a "budget countdown, SET/CLEAR flag bit 6" command. Resolving this
+-- also fully decoded the previously-untraced $3BEF/$3BF9 leaf pair
+-- (see StandardScriptHandlers.budgetFlagCommand's own doc comment for
+-- the complete disassembly, including the $3602 bit-index resolver and
+-- the $1F06 selector-0x26 tail).
 ScriptOpcodeTable.BUDGET_FLAG_COMMAND_HANDLER_ADDRESS_D1 = 0x3A72
 
--- `0x9C`/`0x9D` ($0F0A/$0F14, added 2026-08-14, whole-corpus scan's
--- own next real untouched blocker after `0xD1`): a real "raw single-
--- byte leaf command" family, sharing the SAME real leaf (`$2895`) --
--- see `StandardScriptHandlers.rawByteLeafCommand`'s own doc comment
--- for the complete real disassembly and why this is a genuinely
--- different real shape from `.byteLeafCommand` (no `INC A`).
+-- 0x9C/0x9D ($0F0A/$0F14, whole-corpus scan's next untouched blocker
+-- after 0xD1): a "raw single-byte leaf command" family, sharing the
+-- same leaf ($2895) -- see StandardScriptHandlers.rawByteLeafCommand's
+-- own doc comment for the complete disassembly and why this is a
+-- genuinely different shape from .byteLeafCommand (no INC A).
 ScriptOpcodeTable.RAW_BYTE_LEAF_COMMAND_HANDLER_ADDRESS_9C = 0x0F0A
 ScriptOpcodeTable.RAW_BYTE_LEAF_COMMAND_HANDLER_ADDRESS_9D = 0x0F14
 
--- `0xC6` ($39CF, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0x9D`): a real "scene/textbox init"
--- command -- writes the SAME 5 real WRAM cells (`$D862`/`$D86C`/
--- `$D853`/`$D84A`/`$C0A0`) opcode `0xF6`'s own doc comment already
--- hypothesized as a "start a new textbox/scene" initializer -- see
--- `StandardScriptHandlers.sceneInitCommand`'s own doc comment for the
--- complete real disassembly.
+-- 0xC6 ($39CF, whole-corpus scan's next untouched blocker after 0x9D):
+-- a "scene/textbox init" command -- writes the same 5 WRAM cells
+-- ($D862/$D86C/$D853/$D84A/$C0A0) opcode 0xF6's own doc comment
+-- already hypothesized as a "start a new textbox/scene" initializer --
+-- see StandardScriptHandlers.sceneInitCommand's own doc comment for
+-- the complete disassembly.
 ScriptOpcodeTable.SCENE_INIT_COMMAND_HANDLER_ADDRESS_C6 = 0x39CF
 
--- `0xC7` ($39BA, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xC6`): a real "2-bit WRAM field write"
--- command -- see `StandardScriptHandlers.twoBitFieldCommand`'s own
--- doc comment for the complete real disassembly (including the real,
--- self-contained `$2B1E` wrapping-counter leaf this resolves, left
--- HYPOTHESIS on its exact return value only -- the opcode's own
--- stream behavior doesn't depend on it).
+-- 0xC7 ($39BA, whole-corpus scan's next untouched blocker after 0xC6):
+-- a "2-bit WRAM field write" command -- see StandardScriptHandlers
+-- .twoBitFieldCommand's own doc comment for the complete disassembly
+-- (including the self-contained $2B1E wrapping-counter leaf this
+-- resolves, left HYPOTHESIS on its exact return value only -- the
+-- opcode's stream behavior doesn't depend on it).
 ScriptOpcodeTable.TWO_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C7 = 0x39BA
 
--- `0xDA`/`0xDB` ($3BDB/$3BE5, added 2026-08-14, whole-corpus scan's
--- own next real untouched blocker after `0xC7`): a real "dynamic-
--- index flag-bit SET/CLEAR" family, reusing the SAME `$3BEF`/`$3BF9`
--- primitives `0xD1` already resolved -- see
--- `StandardScriptHandlers.dynamicFlagBitCommand`'s own doc comment
--- for the complete real disassembly.
+-- 0xDA/0xDB ($3BDB/$3BE5, whole-corpus scan's next untouched blocker
+-- after 0xC7): a "dynamic-index flag-bit SET/CLEAR" family, reusing
+-- the same $3BEF/$3BF9 primitives 0xD1 already resolved -- see
+-- StandardScriptHandlers.dynamicFlagBitCommand's own doc comment for
+-- the complete disassembly.
 ScriptOpcodeTable.DYNAMIC_FLAG_BIT_COMMAND_HANDLER_ADDRESS_DA = 0x3BDB -- SET
 ScriptOpcodeTable.DYNAMIC_FLAG_BIT_COMMAND_HANDLER_ADDRESS_DB = 0x3BE5 -- CLEAR
 
--- `0xC2` ($3981, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xDA`/`0xDB`): a real "bitmask dispatch"
--- command -- the low 5 bits of one real operand byte each
--- independently gate a call to their own fixed real leaf -- see
--- `StandardScriptHandlers.bitmaskDispatchCommand`'s own doc comment
--- for the complete real disassembly.
+-- 0xC2 ($3981, whole-corpus scan's next untouched blocker after
+-- 0xDA/0xDB): a "bitmask dispatch" command -- the low 5 bits of one
+-- operand byte each independently gate a call to their own fixed leaf
+-- -- see StandardScriptHandlers.bitmaskDispatchCommand's own doc
+-- comment for the complete disassembly.
 ScriptOpcodeTable.BITMASK_DISPATCH_COMMAND_HANDLER_ADDRESS_C2 = 0x3981
 
--- `0xAF` ($2CE7, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xC2`): a real "chained opaque effect"
--- command -- 4 sequential opaque leaf calls, zero explicit script-
--- stream operand bytes -- see `StandardScriptHandlers
--- .chainedOpaqueEffectCommand`'s own doc comment for the complete
--- real disassembly.
+-- 0xAF ($2CE7, whole-corpus scan's next untouched blocker after 0xC2):
+-- a "chained opaque effect" command -- 4 sequential opaque leaf calls,
+-- zero explicit script-stream operand bytes -- see
+-- StandardScriptHandlers.chainedOpaqueEffectCommand's own doc comment
+-- for the complete disassembly.
 ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AF = 0x2CE7
 
--- `0xC5` ($3B71, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xAF`): a real "6-bit WRAM field write"
--- command -- see `StandardScriptHandlers.sixBitFieldCommand`'s own
--- doc comment for the complete real disassembly.
+-- 0xC5 ($3B71, whole-corpus scan's next untouched blocker after 0xAF):
+-- a "6-bit WRAM field write" command -- see StandardScriptHandlers
+-- .sixBitFieldCommand's own doc comment for the complete disassembly.
 ScriptOpcodeTable.SIX_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C5 = 0x3B71
 
 -- `0xB7` ($0D9B, added 2026-08-14, whole-corpus scan's own next real
