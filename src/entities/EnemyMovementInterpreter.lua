@@ -230,32 +230,30 @@ function EnemyMovementInterpreter:tick()
   return dx, dy
 end
 
---- Advance `n` real ticks WITHOUT returning/applying their deltas --
--- for a caller that needs to fast-forward through real ticks a
--- DIFFERENT system has already visibly played (see the real, decisive
--- reason this exists below), while still advancing this interpreter's
--- own real internal state exactly as if each tick had happened
--- normally.
+--- Advance `n` ticks without returning/applying their deltas -- for a
+-- caller that needs to fast-forward through ticks a different system
+-- has already visibly played (see the decisive reason this exists
+-- below), while still advancing this interpreter's internal state
+-- exactly as if each tick had happened normally.
 --
--- WHY THIS EXISTS (2026-08-13, direct user report: "die interpretierte
--- [Bewegung] hat die [Einlaufbewegung] aber auch drin, so das er sich
--- 2 mal süden bewegt"): this interpreter's own first 4 real ticks
--- decode to `(0,7),(0,7),(0,7),(0,7)` -- and `rom_profiles.lua`'s own
--- `enemyDescent.path` (found completely independently, months earlier,
--- via live OAM tracing of the creature's real gate-entry walk) is
--- FOUR steps of `y+7`, 5 real frames each -- an EXACT, decisive
--- byte-for-byte match (`TICK_FRAMES=5` too). These are NOT two
--- different real mechanics that happen to look similar -- they are the
--- SAME real event, found independently by two different investigations
--- at two different times. `BattleIntro.lua`'s own `updateDescent`
--- already plays this real motion visibly (via its own separate,
--- hardcoded path) BEFORE `Field.lua` ever exists -- a fresh
+-- WHY THIS EXISTS (direct user report that the interpreted movement
+-- doubles up the gate-entry walk, so the creature moves south twice):
+-- this interpreter's first 4 ticks decode to `(0,7),(0,7),(0,7),(0,7)`
+-- -- and `rom_profiles.lua`'s `enemyDescent.path` (found completely
+-- independently, months earlier, via live OAM tracing of the
+-- creature's gate-entry walk) is four steps of `y+7`, 5 frames each --
+-- an exact, decisive byte-for-byte match (`TICK_FRAMES=5` too). These
+-- are not two different mechanics that happen to look similar -- they
+-- are the same event, found independently by two different
+-- investigations at two different times. `BattleIntro.lua`'s
+-- `updateDescent` already plays this motion visibly (via its own
+-- separate, hardcoded path) before `Field.lua` ever exists -- a fresh
 -- interpreter, with no knowledge of that, would visibly re-play the
--- exact same 4 ticks a second time. The real fix: skip exactly
--- `#enemyDescent.path` real ticks (silently, matching how real
--- hardware's own AI state would already have advanced this far by the
--- time the descent animation finishes) before `Field.lua` starts
--- applying this interpreter's own ticks to the visible sprite.
+-- exact same 4 ticks a second time. The fix: skip exactly
+-- `#enemyDescent.path` ticks (silently, matching how real hardware's
+-- AI state would already have advanced this far by the time the
+-- descent animation finishes) before `Field.lua` starts applying this
+-- interpreter's ticks to the visible sprite.
 function EnemyMovementInterpreter:skipTicks(n)
   for _ = 1, n do
     self:tick()
