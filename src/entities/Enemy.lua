@@ -214,63 +214,61 @@ Enemy.HP_INIT_TRACE_NOTE = "Real WRAM $D3F4/$D3F5 spawn-time write, " ..
 -- reasoning as Player.DEFAULT_WIDTH/HEIGHT (see that doc comment): real
 -- gameplay code always derives the actual size from `profile.graphics
 -- .enemySprite.cols/rows * GBTile.TILE_W/TILE_H`, not a second,
--- independently-hardcoded number (direct user correction, 2026-08-09:
--- "bitte hardcode die sprite sizes nicht, nimm sie aus dem rom").
+-- independently-hardcoded number (direct user correction to not
+-- hardcode sprite sizes and take them from the ROM).
 Enemy.DEFAULT_WIDTH = GBTile.TILE_W
 Enemy.DEFAULT_HEIGHT = GBTile.TILE_H
 
 -- VERIFIED (rom-map.md "Player stats struct and combat"): contact
--- damage was traced at exactly 3 points per tick, from an EARLIER pass
+-- damage was traced at exactly 3 points per tick, from an earlier pass
 -- before the full `$50AC` formula was decoded.
 --
--- WIRED (2026-08-10): `Field.lua`'s real contact-damage now calls
--- `CombatFormulas.rollDamage(Enemy.ATK, playerDefense, noise:draw())`
--- directly instead of this constant -- the actual ROM formula, not a
--- fixed number. Kept here (not deleted) as a real, live cross-check:
--- `rollDamage(8, Stats.DEFAULT_DEFENSE=6, anyNoiseByte)` == `3` for
--- EVERY possible noise byte (base=3 keeps the PRNG term's contribution
--- below the formula's own /1024 rounding threshold for this specific
--- ATK/DEF pairing -- real, not a bug: the formula genuinely has no
--- visible variance for this particular starting encounter, only for
--- larger ATK/DEF gaps). Still used by `boss_encounter_test.lua`'s own
--- minimal, love-free simulation, which doesn't need noise-level
--- precision.
+-- WIRED: `Field.lua`'s contact-damage now calls `CombatFormulas
+-- .rollDamage(Enemy.ATK, playerDefense, noise:draw())` directly instead
+-- of this constant -- the actual ROM formula, not a fixed number. Kept
+-- here (not deleted) as a live cross-check: `rollDamage(8, Stats
+-- .DEFAULT_DEFENSE=6, anyNoiseByte)` == `3` for every possible noise
+-- byte (base=3 keeps the PRNG term's contribution below the formula's
+-- /1024 rounding threshold for this specific ATK/DEF pairing -- real,
+-- not a bug: the formula genuinely has no visible variance for this
+-- particular starting encounter, only for larger ATK/DEF gaps). Still
+-- used by `boss_encounter_test.lua`'s minimal, love-free simulation,
+-- which doesn't need noise-level precision.
 Enemy.CONTACT_DAMAGE = 3
 -- VERIFIED: roughly one contact tick per second in the original trace.
 Enemy.CONTACT_TICK_SECONDS = 1.0
--- VERIFIED (2026-08-09, direct ROM code trace; RE-CONFIRMED 2026-08-11
--- with a deeper call chain): real per-hit damage, read directly off the
--- CPU's own `HL`/`DE` registers at the exact instant it entered the
--- real damage-subtract routine (bank 4, ROM `$470B`, see combat.md's
--- "Enemy HP" entry) during real landed swings -- exactly `-4` every
--- time, across 8 consecutive real hits in a fresh 2026-08-11 trace
--- (HP sequence `31,27,23,19,15,11,7,3,dead`, every step exactly 4).
+-- VERIFIED (direct ROM code trace; re-confirmed with a deeper call
+-- chain): per-hit damage, read directly off the CPU's `HL`/`DE`
+-- registers at the exact instant it entered the damage-subtract
+-- routine (bank 4, ROM `$470B`, see combat.md's "Enemy HP" entry)
+-- during landed swings -- exactly `-4` every time, across 8 consecutive
+-- hits in a fresh trace (HP sequence `31,27,23,19,15,11,7,3,dead`,
+-- every step exactly 4).
 --
--- MAJOR CORRECTION (2026-08-16, combat.md's own dated "MAJOR
--- CORRECTION" entry has the full disassembly): the earlier "flat
--- per-weapon damage, no live DEF subtraction" framing UNDERSOLD this.
--- The real chain (`$4495`->`$466E`[real bank-4 table lookup, file
--- `0x10d31`]->`$469B`[reads WRAM `$CF63`]->`$46F6`) genuinely calls
--- **`$2B1E`, the SAME real combat PRNG `CombatFormulas.lua` already
--- uses for the enemy-attacks-player direction**, through the SAME
--- `floor(noise*base/1024)+base` formula shape as `$50AC`. `4` really
--- is the live, real base value for the only currently-equippable
--- weapon ("Breit") -- but the reason every observed hit looks flat is
--- that `255*4=1020 < 1024`, so the noise term mathematically floors
--- to 0 for every possible real PRNG byte at this base -- the EXACT
--- same floor-rounding coincidence already documented for the enemy
--- formula's own base=3 case, not evidence of "no formula." Genuinely
--- still open: whether this base is really weapon-power (would need a
--- second weapon to test -- blocked, see combat.md) or a fixed
--- per-attack-type constant. `4` stays numerically correct either way.
+-- MAJOR CORRECTION (combat.md's own "MAJOR CORRECTION" entry has the
+-- full disassembly): the earlier "flat per-weapon damage, no live DEF
+-- subtraction" framing undersold this. The chain
+-- (`$4495`->`$466E`[bank-4 table lookup, file `0x10d31`]->`$469B`[reads
+-- WRAM `$CF63`]->`$46F6`) genuinely calls `$2B1E`, the same combat
+-- PRNG `CombatFormulas.lua` already uses for the enemy-attacks-player
+-- direction, through the same `floor(noise*base/1024)+base` formula
+-- shape as `$50AC`. `4` really is the live base value for the only
+-- currently-equippable weapon ("Breit") -- but the reason every
+-- observed hit looks flat is that `255*4=1020 < 1024`, so the noise
+-- term mathematically floors to 0 for every possible PRNG byte at this
+-- base -- the exact same floor-rounding coincidence already documented
+-- for the enemy formula's base=3 case, not evidence of "no formula."
+-- Genuinely still open: whether this base is really weapon-power
+-- (would need a second weapon to test -- blocked, see combat.md) or a
+-- fixed per-attack-type constant. `4` stays numerically correct either
+-- way.
 Enemy.PLAYER_ATTACK_DAMAGE = 4
--- VERIFIED (see HP_INIT_TRACE_NOTE above): the real starting enemy's
--- own initial HP, found by direct ROM code trace, not reproduced by
--- button-mash counting. The real ROM value has a small random
--- component (31 with probability 8/16, 30 with 7/16, see
--- HP_INIT_TRACE_NOTE) -- 31 is the single most common real draw, not
--- an average; this project does not yet reproduce the randomness
--- itself, only the modal value.
+-- VERIFIED (see HP_INIT_TRACE_NOTE above): the starting enemy's initial
+-- HP, found by direct ROM code trace, not reproduced by button-mash
+-- counting. The ROM value has a small random component (31 with
+-- probability 8/16, 30 with 7/16, see HP_INIT_TRACE_NOTE) -- 31 is the
+-- single most common draw, not an average; this project does not yet
+-- reproduce the randomness itself, only the modal value.
 Enemy.HP_TO_CLEAR = 31
 
 --- `width`/`height`: real sprite pixel size (see DEFAULT_WIDTH/HEIGHT's
@@ -283,51 +281,49 @@ function Enemy.new(x, y, width, height)
     height = height or Enemy.DEFAULT_HEIGHT,
     stats = Stats.new({ curLP = Enemy.HP_TO_CLEAR, maxLP = Enemy.HP_TO_CLEAR }),
     contactCooldown = 0,
-    -- Real captured movement cycle state (see MOVEMENT_CYCLE above).
-    -- `x, y` at construction time is real, VERIFIED-live waypoint 0
+    -- Captured movement cycle state (see MOVEMENT_CYCLE above). `x, y`
+    -- at construction time is VERIFIED-live waypoint 0
     -- (rom_profiles.lua's enemySprite.screenX/screenY) -- movement is
-    -- applied as real relative deltas from there, not an absolute path.
-    -- Just loops forward through the real 33-step cycle repeatedly (see
-    -- MOVEMENT_CYCLE's own doc comment -- it closes on its own now, no
+    -- applied as relative deltas from there, not an absolute path. Just
+    -- loops forward through the 33-step cycle repeatedly (see
+    -- MOVEMENT_CYCLE's doc comment -- it closes on its own now, no
     -- forward/backward direction flag needed).
     movementIndex = 1,
     movementTimer = 0,
     -- Separate accumulator for the cosmetic X-flip cadence (see
-    -- `updateMovement`'s own doc comment) -- decoupled from the real
-    -- interpreter's own finer `TICK_FRAMES` cadence.
+    -- `updateMovement`'s doc comment) -- decoupled from the
+    -- interpreter's finer `TICK_FRAMES` cadence.
     flipTimer = 0,
-    -- Real, ROM-data-driven interpreter (see `EnemyMovementInterpreter`
-    -- own doc comment) -- attached by `Field.lua` when a real ROM +
-    -- `CombatNoise` instance are available; nil falls back to
-    -- `MOVEMENT_CYCLE`'s own replay (see `updateMovement`).
+    -- ROM-data-driven interpreter (see `EnemyMovementInterpreter`'s doc
+    -- comment) -- attached by `Field.lua` when a ROM + `CombatNoise`
+    -- instance are available; nil falls back to `MOVEMENT_CYCLE`'s
+    -- replay (see `updateMovement`).
     movementInterpreter = nil,
   }, Enemy)
 end
 
---- Advance the real captured movement cycle (see MOVEMENT_CYCLE's own
--- doc comment for the 2026-08-12 re-verification). No-op once defeated
--- -- matches the real creature disappearing on death rather than
--- continuing to animate.
+--- Advance the captured movement cycle (see MOVEMENT_CYCLE's doc
+-- comment for the re-verification). No-op once defeated -- matches the
+-- creature disappearing on death rather than continuing to animate.
 --
--- SIMPLIFIED (2026-08-12, same re-verification pass): the real cycle
--- now genuinely closes on its own (sums to (0,0) over its real 33
--- steps), so this just loops forward through it repeatedly -- the old
--- forward-then-mirrored-negated-return-leg logic (and the ~5-frame
--- "correction hop" it needed to justify) is gone, not because it was
--- bad code, but because the real data it was built to reconcile no
--- longer needs reconciling.
--- WIRED (2026-08-13, direct user instruction: "der boss kampf an
--- sich... der ist hard coded. der soll aus den romdaten raus
--- interpretiert werden"): when a real `EnemyMovementInterpreter` is
--- attached (`self.movementInterpreter`, set by `Field.lua` once a real
--- ROM + `CombatNoise` instance are available), `updateMovement` drives
--- REAL per-tick ROM interpretation (real 3-level behavior tables, real
--- PRNG-driven choice -- see that module's own doc comment for the full
--- decoded mechanism) instead of replaying the captured `MOVEMENT_CYCLE`
--- table. `MOVEMENT_CYCLE`/`MOVEMENT_STEP_SECONDS` stay as the fallback
--- for callers with no ROM available (e.g. headless tests) -- see this
--- project's own "no ROM, no real data" convention elsewhere
--- (Player/Enemy defaults).
+-- SIMPLIFIED (same re-verification pass): the cycle now genuinely
+-- closes on its own (sums to (0,0) over its 33 steps), so this just
+-- loops forward through it repeatedly -- the old forward-then-
+-- mirrored-negated-return-leg logic (and the ~5-frame "correction hop"
+-- it needed to justify) is gone, not because it was bad code, but
+-- because the data it was built to reconcile no longer needs
+-- reconciling.
+-- WIRED (direct user instruction that the boss combat is hardcoded and
+-- should be interpreted from ROM data): when an
+-- `EnemyMovementInterpreter` is attached (`self.movementInterpreter`,
+-- set by `Field.lua` once a ROM + `CombatNoise` instance are
+-- available), `updateMovement` drives per-tick ROM interpretation
+-- (3-level behavior tables, PRNG-driven choice -- see that module's doc
+-- comment for the full decoded mechanism) instead of replaying the
+-- captured `MOVEMENT_CYCLE` table. `MOVEMENT_CYCLE`/
+-- `MOVEMENT_STEP_SECONDS` stay as the fallback for callers with no ROM
+-- available (e.g. headless tests) -- see this project's "no ROM, no
+-- real data" convention elsewhere (Player/Enemy defaults).
 function Enemy:updateMovement(dt)
   if not self:isAlive() then return end
   self.movementTimer = self.movementTimer + dt
@@ -339,17 +335,16 @@ function Enemy:updateMovement(dt)
       self.x = self.x + dx
       self.y = self.y + dy
     end
-    -- CORRECTED (2026-08-13, direct user report: "die animation des
-    -- sprites ist zu schnell"): `movementIndex`'s own real cadence
-    -- (driving `isFlipped`'s own parity toggle) was independently
-    -- verified against the OLD, coarser `MOVEMENT_CYCLE` model at
-    -- `MOVEMENT_STEP_SECONDS` (25 real frames/step) -- incrementing it
-    -- once per the interpreter's own finer `TICK_FRAMES` (5 real
-    -- frames) made the real flip toggle 5x too fast, a genuine bug, not
-    -- a re-verified faster real cadence. Kept on its own, separate
+    -- CORRECTED (direct user report that the sprite animation is too
+    -- fast): `movementIndex`'s cadence (driving `isFlipped`'s parity
+    -- toggle) was independently verified against the old, coarser
+    -- `MOVEMENT_CYCLE` model at `MOVEMENT_STEP_SECONDS` (25 frames/step)
+    -- -- incrementing it once per the interpreter's finer `TICK_FRAMES`
+    -- (5 frames) made the flip toggle 5x too fast, a genuine bug, not a
+    -- re-verified faster cadence. Kept on its own, separate
     -- `MOVEMENT_STEP_SECONDS` accumulator so the cosmetic flip stays at
-    -- its own independently-verified real rate regardless of how finely
-    -- the interpreter itself ticks.
+    -- its independently-verified rate regardless of how finely the
+    -- interpreter itself ticks.
     self.flipTimer = (self.flipTimer or 0) + dt
     while self.flipTimer >= Enemy.MOVEMENT_STEP_SECONDS do
       self.flipTimer = self.flipTimer - Enemy.MOVEMENT_STEP_SECONDS
