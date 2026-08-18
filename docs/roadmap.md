@@ -2769,6 +2769,29 @@ die tabelle und priorisiere"). Reasoning per tier below the table.
   while in there. Purely additive, no behavior change to shipped code.
   `luajit tests/run_tests.lua`: 535/535 pass.
 
+**2026-08-18** ("dann unknownRoomA", direct follow-up to a milestone-
+status review): the one static angle the 2026-08-16 entries above named
+but never ran -- whole-corpus reachability of the 36 `unknownRoomA`
+landing-record byte sequences through the now-complete interpreter --
+was built and run for real (new `scripts/scan_unknown_room_a_trigger.lua`).
+**Decisive structural negative, sharper than "not found"**: every one of
+the 1357 known scripts starts in bank 8 or 9; the furthest any script's
+cursor is ever observed to reach, corpus-wide, is **bank 12** (15 real
+cross-bank `CHAIN`s, all landing in bank 11/12, none further) -- `unknownRoomA`'s
+own records all live in **bank 14**, two banks past reach. All 15
+bank-11/12 arrivals are accounted for: 1 halts on known-hard opcode
+`0xEC`, 5 halt on an already-honestly-flagged synthetic-only stub
+limitation (opcode `0x0C`'s data-dependent resume cursor), the other 9
+hit a real, deterministic loop within 4-33 steps (not a budget limit --
+confirmed via new per-script loop detection, which also surfaced a
+side finding: `scan_all_scripts.lua`'s own `clean` bucket likely
+conflates genuine completion with these same undetected idle loops).
+**Narrows, not closes**: those 9 scripts' own real loop-exit conditions
+are now the concrete next static target -- a short, specific list,
+not the whole corpus. See `events.md`'s own 2026-08-18 entry for the
+full trail. No production code changed; `luajit tests/run_tests.lua`:
+575/575 pass.
+
 ## Superseded by this file
 
 `gen1recomp-analysis.md`, `architecture.md`'s own "What's deliberately

@@ -11235,3 +11235,102 @@ comment) actually selects, for which room/moment, stays an honestly
 open question this project has no current live trigger to answer. No
 code changes this pass -- a pure investigation, reported honestly
 rather than forced into a "found more" narrative that isn't there.
+
+## 2026-08-18, "dann unknownRoomA" (direct user follow-up to a milestone-status review) -- the one static angle not yet tried, run for real: a decisive, structural negative
+
+The 2026-08-16 "unknownRoomA-Trigger erneut suchen" entry above closed
+off every static dispatch-table hypothesis and landed on the one real
+remaining candidate it explicitly named but never actually ran: "some
+specific real script (among the 1357-entry corpus...) contains one of
+the 36 already-catalogued `unknownRoomA` landing-record byte sequences
+directly in its own body." This session built and ran that check for
+real.
+
+**New tool**: `scripts/scan_unknown_room_a_trigger.lua`, checked in
+alongside `scan_all_scripts.lua` (same conventions: same ROM-locator
+fallback list, same generic stub `ctx`, same cross-bank `CHAIN`
+following via `stubCtx.onChainTarget`). It reuses that tool's exact
+per-script interpretation loop but instruments the cursor check
+directly: before every `runtime:step`, the about-to-be-dispatched
+`(bank, cursor)` is converted back to a ROM file offset and checked
+against a precomputed set covering every byte of all 36
+`unknownRoomA`-family (`roomSelector` 8-13)
+`CutTransitionTable.scanLandingRecords` bodies (the full 9-byte span,
+not just the leading `0x00`, since it isn't known whether a caller's
+control flow lands on the record's first byte or jumps straight to the
+`0xF4` opcode partway through it).
+
+**First run (36 targets, whole 1357-script corpus, 20 000-step budget
+per script)**: zero hits. Real, honest methodological addition along
+the way: per-script **loop detection** (a `(bank,cursor)` repeat within
+one run is a genuine deterministic cycle under this stub's own
+generous, always-consistent gate answers -- once a state repeats, no
+further step can ever differ, so continuing is pure waste). This makes
+the budget effectively exhaustive rather than a guess: a script that
+doesn't halt and doesn't loop within 20 000 steps essentially isn't
+going to. Side finding, reported honestly rather than buried: this
+means `scan_all_scripts.lua`'s own existing 500-step, no-cycle-check
+`clean` bucket (885/1357 as of the 2026-08-16 refresh) is **not**
+"finished successfully" so much as "didn't error or halt within 500
+steps" -- some real fraction of it is almost certainly the same
+deterministic idle/wait loops this session's cycle detector now
+catches explicitly. Not fixed here (out of this task's own scope, and
+`scan_all_scripts.lua`'s own numbers are still real and directionally
+correct for opcode-coverage purposes, which is what it measures) --
+flagged for whoever next revisits that tool's own accounting.
+
+**Why zero, decisively, not just "not found yet"**: a follow-up pass
+tracked which ROM bank every script's cursor ever actually occupied,
+corpus-wide. Every one of the 1357 scripts starts in bank 8 (706
+scripts) or bank 9 (651 scripts) -- confirmed by a direct
+`ScriptPointerTable.resolve` sweep, zero exceptions. Exactly 15 real
+cross-bank `CHAIN` jumps occur anywhere in the whole corpus (up from
+the 2026-08-16 entry's own "7", because this session's much larger step
+budget lets more scripts reach a second or third real `CHAIN` that a
+500-step budget cut off before) -- **every single one lands in bank 11
+or bank 12, none further**. The furthest any script's cursor is ever
+observed to reach, corpus-wide, is **bank 12**. `unknownRoomA`'s own 36
+target records all live in **bank 14** -- two whole banks past the
+furthest point this project's own interpreter (with its current,
+now-complete 256/256 opcode classification) can currently drive any
+known script to.
+
+A targeted deep-dive on the 15 bank-11/12 arrivals accounts for all of
+them: 1 (script #530) halts immediately on real opcode `0xEC`, one of
+the 6 known-hard, deliberately-unwired opcodes (the already-documented
+`$C3F0` cross-actor staging family); 5 (scripts #790-#794) halt on
+opcode `0x0C`'s own already-honestly-flagged "list exhausted" stub
+limitation (a genuine, data-dependent live-WRAM resume cursor this
+synthetic scan has no way to fabricate, per `scan_all_scripts.lua`'s
+own `exhaustedListStub` doc comment); the remaining 9 all hit a real,
+deterministic loop within 4-33 steps of arriving in bank 12 -- not a
+budget limit, a genuine fixed point under this stub's own always-
+generous gate answers. **None of the 15 ever fires a second `CHAIN`**,
+so none of them is a candidate for reaching bank 14 through a chained
+double-jump either.
+
+**Honest conclusion**: this is a real, structural, ROM-and-interpreter-
+verified negative, sharper than "not found by search" -- with the
+current, complete opcode coverage and this synthetic stub's own
+generous-but-fixed gate answers, **no path from any of the 1357 known
+scripts can reach bank 14 at all**, let alone one of the 36
+`unknownRoomA` records specifically. This does not mean no such path
+exists in the real game: 9 of the 15 furthest-reaching scripts stop at
+a genuine branch point (a loop) whose real exit condition depends on
+live flag/WRAM state this stub answers the same way every time by
+construction -- exactly the kind of story/quest-progression gate the
+2026-08-16 entry already suspected ("likely gated behind story/quest
+progression past this project's own current checkpoint chain"). This
+session narrows that suspicion from a guess to a specific, actionable
+list: those same 9 scripts' own real loop-exit conditions (which real
+flag/WRAM cell each one is actually spinning on) are now the concrete
+next static target, rather than the whole 1357-script corpus
+undifferentiated. Closing opcode `0xEC` (script #530's own blocker) is
+a second, independent, already-scoped candidate (see the Milestone 7
+detail entry's own "6 known-hard" characterization for why that one
+specifically needs a bigger "puppeteering" driver, not more
+disassembly). No production `src/` code changed this pass; `luajit
+tests/run_tests.lua` still green (see this session's own dated roadmap
+entry for the exact count) -- this was a pure investigation using
+already-shipped modules, plus one new, permanent, reusable
+`scripts/` tool.
