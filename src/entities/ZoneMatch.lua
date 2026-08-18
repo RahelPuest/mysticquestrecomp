@@ -1,13 +1,12 @@
--- Pure, general rectangular trigger-zone matching -- extracted
--- 2026-08-10 from VictorySequence.lua's own inline `matchedExit` (see
--- docs/progress.md's "tooling improvements" entry: the secondRoom
--- east-exit regressions this same day -- first a missing `xMin` letting
--- ANY x through, then a wrong `xMin` sitting inside a real wall -- both
--- lived in exactly this logic, and BOTH shipped undetected because
--- VictorySequence.lua needs `love.graphics` to even `require()`, so the
--- 170-test headless suite never touched it. Pulling the pure
--- decision logic out here (no love.* calls) makes it directly unit-
--- testable -- see tests/unit/zone_match_test.lua.
+-- Pure, general rectangular trigger-zone matching -- extracted from
+-- VictorySequence.lua's inline `matchedExit` (see docs/progress.md's
+-- "tooling improvements" entry: the secondRoom east-exit regressions --
+-- first a missing `xMin` letting any x through, then a wrong `xMin`
+-- sitting inside a wall -- both lived in exactly this logic, and both
+-- shipped undetected because VictorySequence.lua needs `love.graphics`
+-- to even `require()`, so the headless suite never touched it. Pulling
+-- the pure decision logic out here (no love.* calls) makes it directly
+-- unit-testable -- see tests/unit/zone_match_test.lua.
 
 local ZoneMatch = {}
 
