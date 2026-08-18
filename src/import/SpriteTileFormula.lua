@@ -130,55 +130,53 @@ function SpriteTileFormula.resolveTileOffsets(romData, outerRecord, tableBank)
   return offsets, spriteBank, rawBytes
 end
 
--- REAL ON-SCREEN POSE ARRANGEMENT, found 2026-08-17, direct follow-up
--- to the pixel-source formula above (direct user instruction "du
--- sollst mehr npcs suchen"): `ActorDefinitionTable`'s own 218 NPC
--- records are NOT all one-off -- 190 of them share the EXACT SAME
--- `innerPtr` (0x7B5A, same bank), meaning they all read raw GFX-tile
--- indices from the identical shared list, just through a different
--- `kindByte` (a different real pixel pool -- a different visual
--- design). Of those 190, 172 have an even `count` (their raw tiles
--- divide cleanly into 4-tile pose groups -- see the reordering logic
--- below); the other 18 have `count=1` (a single 2-tile icon, no pose
--- structure to speak of) and are left out of the family. Across the
--- 172, there are 91 DISTINCT `kindByte` values -- i.e. 91 real,
--- individually different NPC sprite designs, not just 91 placements of
--- the same 2 already-known ones.
+-- ON-SCREEN POSE ARRANGEMENT, found as a direct follow-up to the
+-- pixel-source formula above (direct user instruction to search for
+-- more NPCs): `ActorDefinitionTable`'s 218 NPC records are not all
+-- one-off -- 190 of them share the exact same `innerPtr` (0x7B5A, same
+-- bank), meaning they all read raw GFX-tile indices from the identical
+-- shared list, just through a different `kindByte` (a different pixel
+-- pool -- a different visual design). Of those 190, 172 have an even
+-- `count` (their raw tiles divide cleanly into 4-tile pose groups --
+-- see the reordering logic below); the other 18 have `count=1` (a
+-- single 2-tile icon, no pose structure to speak of) and are left out
+-- of the family. Across the 172, there are 91 distinct `kindByte`
+-- values -- 91 individually different NPC sprite designs, not just 91
+-- placements of the same 2 already-known ones.
 --
 -- The shared list itself reads `0,2,1,3, 4,6,5,7, 8,10,9,11, ...` --
--- NOT plain sequential order -- a real, live-confirmed "swapped middle
--- pair" pattern PER 4-TILE GROUP. Comparing this raw order against
--- characterA's/characterB's own already-independently-known real
--- on-screen pose grouping (`rom_profiles.lua`'s own `down`/`up`/`left`
--- animation table, each a real 4-tile pose) found the exact
--- correspondence: raw-order position [a,b,c,d] within each group of 4
--- is on-screen position [a,c,b,d] -- i.e. swap the middle two. Applying
--- this SAME swap to a sample of brand-new `kindByte` values (never
--- independently live-captured) rendered coherent, clearly humanoid,
--- individually DISTINCT sprite sheets (4 real poses: down/up/left-
--- frame1/left-frame2) -- see events.md's own dated entry for the
--- rendered examples -- confirming the reconstruction generalizes across
--- the whole shared-`innerPtr` family, not just the 2 already-known
--- members.
+-- not plain sequential order -- a live-confirmed "swapped middle pair"
+-- pattern per 4-tile group. Comparing this raw order against
+-- characterA's/characterB's already-independently-known on-screen pose
+-- grouping (`rom_profiles.lua`'s `down`/`up`/`left` animation table,
+-- each a 4-tile pose) found the exact correspondence: raw-order
+-- position [a,b,c,d] within each group of 4 is on-screen position
+-- [a,c,b,d] -- i.e. swap the middle two. Applying this same swap to a
+-- sample of brand-new `kindByte` values (never independently live-
+-- captured) rendered coherent, clearly humanoid, individually distinct
+-- sprite sheets (4 poses: down/up/left-frame1/left-frame2) -- see
+-- events.md's dated entry for the rendered examples -- confirming the
+-- reconstruction generalizes across the whole shared-`innerPtr` family,
+-- not just the 2 already-known members.
 --
--- HONEST CONFIDENCE TIER: this is FAMILY-level evidence (2 independent
+-- HONEST CONFIDENCE TIER: this is family-level evidence (2 independent
 -- live ground truths + a consistent, coherent visual result across a
--- sample of the other 89), NOT an individual live OAM capture for each
+-- sample of the other 89), not an individual live OAM capture for each
 -- of the 91 -- kept as a clearly separate, weaker confidence tier from
 -- `arrangementConfirmed` (characterA/characterB only) wherever this
--- project's own data distinguishes the two (see `ActorDefinitionTable
--- .lua`'s own `spriteSource.arrangementFamily` field and rom-inspector's
--- own "Anordnung bestätigt" vs. "Anordnung wahrscheinlich (Familie)"
--- badges). Only applies to records whose own `count` is even (so raw
--- tiles divide evenly into groups of 4) -- 18 of the 190 have
--- `count=1` (a single 2-tile icon, no pose structure to reorder) and
--- are left in raw order, honestly unclassified.
+-- project's data distinguishes the two (see `ActorDefinitionTable
+-- .lua`'s `spriteSource.arrangementFamily` field and rom-inspector's
+-- "Anordnung bestätigt" vs. "Anordnung wahrscheinlich (Familie)"
+-- badges). Only applies to records whose `count` is even (so raw tiles
+-- divide evenly into groups of 4) -- 18 of the 190 have `count=1` (a
+-- single 2-tile icon, no pose structure to reorder) and are left in raw
+-- order, honestly unclassified.
 SpriteTileFormula.HUMANOID_4POSE_INNER_PTR = 0x7B5A
 
 --- Reorders a flat, raw-DMA-order tile-offset list (see
--- `resolveTileOffsets`) into the real on-screen pose order -- swaps the
+-- `resolveTileOffsets`) into the on-screen pose order -- swaps the
 -- middle two entries of every 4-tile group, a no-op for any trailing
--- group smaller than 4. See this module's own doc comment above for the
+-- group smaller than 4. See this module's doc comment above for the
 -- live evidence this reordering is correct.
 function SpriteTileFormula.reconstructPoseOrder(offsets)
   local reordered = {}
@@ -199,53 +197,50 @@ function SpriteTileFormula.reconstructPoseOrder(offsets)
   return reordered
 end
 
--- REAL MONSTER/BOSS POSE ARRANGEMENT, found 2026-08-17, direct follow-up
--- (direct user instruction: "versuche daraus die tatsächlichen monster
--- mit den animationsphasen zu rekonstruieren wie du es bei spezies 4
--- gemacht hast" -- reconstruct the actual monsters with their
--- animation phases from the tilesets, the way species 4 already was).
+-- MONSTER/BOSS POSE ARRANGEMENT, found as a direct follow-up (direct
+-- user instruction to reconstruct the actual monsters with their
+-- animation phases, the way species 4 already was).
 --
--- Species 4 (`MonsterDefinitionTable` row 16, the real first-boss/gate-
--- creature) is the ONE monster this project has independently live-
--- verified, both its real pixel source AND its real on-screen 4x4
--- arrangement (`rom_profiles.lua`'s own `enemySprite`/`enemyDescent`,
--- found via live OAM tracing well before this session). Deriving the
--- exact raw-DMA-order -> real-4x4-position permutation from that ONE
--- ground truth (comparing `resolveSpriteTileOffsets`'s own raw-order
--- output against `enemySprite.tileOffsets`/`enemyDescent.tileOffsets`'s
--- own already-known real order, `derive_creature_perm.lua`, scratchpad)
--- found a clean, regular 16-tile permutation:
---   raw position ->  real on-screen position (1-based, within one
---   16-tile pose):
+-- Species 4 (`MonsterDefinitionTable` row 16, the first-boss/gate-
+-- creature) is the one monster this project has independently
+-- live-verified, both its pixel source and its on-screen 4x4
+-- arrangement (`rom_profiles.lua`'s `enemySprite`/`enemyDescent`, found
+-- via live OAM tracing well before this session). Deriving the exact
+-- raw-DMA-order -> 4x4-position permutation from that one ground truth
+-- (comparing `resolveSpriteTileOffsets`'s raw-order output against
+-- `enemySprite.tileOffsets`/`enemyDescent.tileOffsets`'s already-known
+-- order, `derive_creature_perm.lua`, scratchpad) found a clean, regular
+-- 16-tile permutation:
+--   raw position -> on-screen position (1-based, within one 16-tile
+--   pose):
 --     1->1, 3->2, 9->3, 11->4, 2->5, 4->6, 10->7, 12->8,
 --     5->9, 7->10, 13->11, 15->12, 6->13, 8->14, 14->15, 16->16
 -- (equivalently: real position i is fed by raw position
--- CREATURE_4X4_POSE_PERMUTATION[i]). This is a DIFFERENT, more complex
--- permutation than the NPC family's own simple "swap the middle two"
--- rule -- consistent with `rom_profiles.lua`'s own doc comment on
--- `enemySprite`, which describes a genuinely more complex 4-column,
--- 2-OAM-row hardware layout for this creature than the NPCs' simple
--- 16x16 2-column block.
+-- CREATURE_4X4_POSE_PERMUTATION[i]). This is a more complex permutation
+-- than the NPC family's simple "swap the middle two" rule -- consistent
+-- with `rom_profiles.lua`'s doc comment on `enemySprite`, which
+-- describes a more complex 4-column, 2-OAM-row hardware layout for this
+-- creature than the NPCs' simple 16x16 2-column block.
 --
--- HONEST CONFIDENCE, WEAKER than the NPC family tier: this rests on
--- exactly ONE independently live-verified ground truth (not two), so
--- it is applied ONLY where a 16-raw-tile CHUNK's own relative byte
--- pattern (`0,2,1,3,4,6,5,7,8,10,9,11,12,14,13,15` relative to its own
--- first byte) is a byte-for-byte match to species 4's own real chunks
--- -- a real, checkable structural fact, not a guess -- and left in raw
--- DMA order for any chunk (or trailing remainder shorter than 16) that
--- doesn't match. A per-record scan (`detect_eligible_chunks.lua`,
--- scratchpad) found most of the 21 monster/boss records have AT LEAST
--- one matching chunk; several (rows 2, 3, 5, 7, 12, 16, 19) have EVERY
--- chunk matching -- those are the strongest candidates. Rendered a
--- sample of newly-reconstructed rows and confirmed coherent, distinct,
--- creature-shaped sprites (not scrambled blobs) -- see events.md's own
--- dated entry for the rendered examples.
+-- HONEST CONFIDENCE, weaker than the NPC family tier: this rests on
+-- exactly one independently live-verified ground truth (not two), so it
+-- is applied only where a 16-raw-tile chunk's relative byte pattern
+-- (`0,2,1,3,4,6,5,7,8,10,9,11,12,14,13,15` relative to its own first
+-- byte) is a byte-for-byte match to species 4's chunks -- a checkable
+-- structural fact, not a guess -- and left in raw DMA order for any
+-- chunk (or trailing remainder shorter than 16) that doesn't match. A
+-- per-record scan (`detect_eligible_chunks.lua`, scratchpad) found most
+-- of the 21 monster/boss records have at least one matching chunk;
+-- several (rows 2, 3, 5, 7, 12, 16, 19) have every chunk matching --
+-- those are the strongest candidates. Rendered a sample of newly-
+-- reconstructed rows and confirmed coherent, distinct, creature-shaped
+-- sprites (not scrambled blobs) -- see events.md's dated entry for the
+-- rendered examples.
 SpriteTileFormula.CREATURE_4X4_POSE_PERMUTATION = { 1, 3, 9, 11, 2, 4, 10, 12, 5, 7, 13, 15, 6, 8, 14, 16 }
 
 --- True when `rawByteChunk` (a 16-entry array of raw GFX-tile index
--- bytes) matches species 4's own real relative byte pattern -- i.e. is
--- a real "4x4 creature pose" chunk, safe to reorder with
+-- bytes) matches species 4's relative byte pattern -- i.e. is a "4x4
+-- creature pose" chunk, safe to reorder with
 -- `CREATURE_4X4_POSE_PERMUTATION`.
 local CREATURE_4X4_REF_SHAPE = { 0, 2, 1, 3, 4, 6, 5, 7, 8, 10, 9, 11, 12, 14, 13, 15 }
 function SpriteTileFormula.matchesCreature4x4Shape(rawByteChunk)
