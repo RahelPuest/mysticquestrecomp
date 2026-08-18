@@ -1,31 +1,29 @@
--- A real, per-real-frame driver for the boss-defeat post-fight
--- sequence -- the concrete next step after `VictorySequence.lua`'s
--- own one-shot "shadow run" (which only ever explored control flow at
--- construction time, never drove anything visible) and task #86's
--- own live-tracing work (2026-08-13, direct user instruction: "ich
--- will das die interpretierte boss sequenz mit allen grafik effekten
--- usw funktioniert").
+-- A per-frame driver for the boss-defeat post-fight sequence -- the
+-- concrete next step after `VictorySequence.lua`'s one-shot "shadow
+-- run" (which only ever explored control flow at construction time,
+-- never drove anything visible) and an earlier live-tracing pass
+-- (direct user instruction that the interpreted boss sequence should
+-- work with all its graphics effects).
 --
 -- WHY A DEDICATED MODULE, not just more code in VictorySequence.lua:
--- this needed its OWN real state (which bank/stream is currently
--- live, the persistent cursor, whether a real bank-switch just
--- happened) that has to survive across many real `love.update` calls
--- -- pure Lua, no `love.*` calls, so it stays headlessly testable like
--- every other `src/scripting/*` module.
+-- this needed its own state (which bank/stream is currently live, the
+-- persistent cursor, whether a bank-switch just happened) that has to
+-- survive across many `love.update` calls -- pure Lua, no `love.*`
+-- calls, so it stays headlessly testable like every other
+-- `src/scripting/*` module.
 --
--- THE REAL, EMPIRICAL BANK FACT this module is built on (see
--- events.md's own "task #86" section for the full live-tracing trail):
--- the real ROM's own script dispatch does NOT switch to a fixed bank
--- per script -- it reads the persistent cursor against whatever bank
--- is AMBIENTLY already selected (set by unrelated systems, not
--- derivable from any formula on the script's own bytes or the
--- `scriptPointerTable`'s own bank). For THIS one specific, real,
--- live-traced scene, the ambient bank is verified to be **13** at the
--- real start (`$470F`, matching the boss-defeat script's own already-
--- VERIFIED index-232 identification) and **14** after the FIRST real
--- CHAIN (an empirical fact, not a general rule -- a different real
--- scene could need a different real bank pair; this module does NOT
--- claim to generalize past this one scene).
+-- THE EMPIRICAL BANK FACT this module is built on (see events.md's
+-- "task #86" section for the full live-tracing trail): the ROM's
+-- script dispatch does not switch to a fixed bank per script -- it
+-- reads the persistent cursor against whatever bank is ambiently
+-- already selected (set by unrelated systems, not derivable from any
+-- formula on the script's own bytes or the `scriptPointerTable`'s
+-- bank). For this one specific, live-traced scene, the ambient bank is
+-- verified to be 13 at the start (`$470F`, matching the boss-defeat
+-- script's already-VERIFIED index-232 identification) and 14 after the
+-- first CHAIN (an empirical fact, not a general rule -- a different
+-- scene could need a different bank pair; this module does not claim
+-- to generalize past this one scene).
 local ScriptRuntime = require("src.scripting.ScriptRuntime")
 local ScriptOpcodeTable = require("src.import.ScriptOpcodeTable")
 local RomScriptStream = require("src.scripting.RomScriptStream")
@@ -33,67 +31,64 @@ local RomScriptStream = require("src.scripting.RomScriptStream")
 local BossSequenceInterpreter = {}
 BossSequenceInterpreter.__index = BossSequenceInterpreter
 
--- Real, live-traced starting point (see this module's own doc comment
--- above): bank 13, CPU `$470F` -- NOT `scriptPointerTable`'s own
--- assumed bank 8, which is real, verified STATIC data for a DIFFERENT
--- real reading of the same CPU-address range, not what the live ROM
--- actually executes for this real trigger context.
+-- Live-traced starting point (see this module's doc comment above):
+-- bank 13, CPU `$470F` -- not `scriptPointerTable`'s assumed bank 8,
+-- which is verified static data for a different reading of the same
+-- CPU-address range, not what the live ROM actually executes for this
+-- trigger context.
 local START_BANK = 13
 local START_CPU_ADDRESS = 0x470F
 
--- Real, live-traced post-CHAIN bank (see events.md's own "task #86"
--- section: all 3 real CHAIN dispatches observed in a 500-dispatch
--- live trace either land in, or already stay in, bank 14 -- an
--- empirical fact about this one scene, wired via `ctx.onChainTarget`
--- rather than any general formula, since none was found to exist).
+-- Live-traced post-CHAIN bank (see events.md's "task #86" section: all
+-- 3 CHAIN dispatches observed in a 500-dispatch live trace either land
+-- in, or already stay in, bank 14 -- an empirical fact about this one
+-- scene, wired via `ctx.onChainTarget` rather than any general formula,
+-- since none was found to exist).
 local POST_CHAIN_BANK = 14
 
--- Real, live-traced SECOND cross-actor `$31AD`-style redirect (task
--- #149, 2026-08-16, "generalize the one-shot trigger into a re-
--- armable one" -- see events.md's own dated entry for the full live
--- trace). After the FIRST script's own genuine, permanent halt
--- (`bank=14 cursor=$4798`, task #147, CLOSED), a live `$D8B6`/`$D8B7`
--- write watchpoint across `checkpoints.courtyard_boss_defeated()`
--- found a real, concrete SECOND write -- PC `$31f2`/`$31f6` (executing
--- from bank-6 context), ~200,000 real steps (a few real seconds)
--- after the first halt -- committing the exact SAME real entry point,
--- bank 13 / `$470F`, this module's own `START_BANK`/`START_CPU_ADDRESS`
--- already use for the FIRST invocation. Re-running from there reaches
--- the ALREADY-known `"13:0x4712" -> 0x472a` `FLAG_LIST_EXHAUSTED_TARGETS`
--- checkpoint again (a real, decisive, live cross-check that this
--- table's own value holds for a genuinely SEPARATE real invocation,
--- not just the original one it was traced from), then a real CHAIN at
--- `$472b` (operand `0x61 0xb2`, the SAME real target the first
--- invocation's own CHAIN used) -- HONEST SCOPE: this project's own
--- live trace observed the real ROM stop re-invoking `$3727` right
--- there (matching `post_black_wipe()`'s own doc comment: the first
--- real courtyard-story textbox is showing, waiting for real player
--- input) -- plausibly ordinary per-character/per-page pacing, NOT a
--- new undecoded-opcode gap, but NOT independently confirmed by
--- sending real button input either. `:rearm()` callers should expect
--- this Lua model to behave differently here: it has no per-frame
--- textbox-pacing throttle of its own, so it will likely DISPATCH this
--- real CHAIN immediately rather than pausing the way the real,
--- per-frame-gated ROM did in this one live trace -- an honest,
--- already-established limitation (see `:tick()`'s own doc comment
--- below), not new.
+-- Live-traced second cross-actor `$31AD`-style redirect (generalizing
+-- the one-shot trigger into a re-armable one -- see events.md's
+-- matching entry for the full live trace). After the first script's
+-- genuine, permanent halt (`bank=14 cursor=$4798`, closed), a live
+-- `$D8B6`/`$D8B7` write watchpoint across
+-- `checkpoints.courtyard_boss_defeated()` found a concrete second write
+-- -- PC `$31f2`/`$31f6` (executing from bank-6 context), ~200,000
+-- steps (a few seconds) after the first halt -- committing the exact
+-- same entry point, bank 13 / `$470F`, this module's
+-- `START_BANK`/`START_CPU_ADDRESS` already use for the first
+-- invocation. Re-running from there reaches the already-known
+-- `"13:0x4712" -> 0x472a` `FLAG_LIST_EXHAUSTED_TARGETS` checkpoint
+-- again (a decisive, live cross-check that this table's value holds
+-- for a genuinely separate invocation, not just the original one it
+-- was traced from), then a CHAIN at `$472b` (operand `0x61 0xb2`, the
+-- same target the first invocation's CHAIN used) -- HONEST SCOPE: this
+-- project's live trace observed the ROM stop re-invoking `$3727` right
+-- there (matching `post_black_wipe()`'s doc comment: the first
+-- courtyard-story textbox is showing, waiting for player input) --
+-- plausibly ordinary per-character/per-page pacing, not a new
+-- undecoded-opcode gap, but not independently confirmed by sending
+-- real button input either. `:rearm()` callers should expect this Lua
+-- model to behave differently here: it has no per-frame textbox-pacing
+-- throttle of its own, so it will likely dispatch this CHAIN
+-- immediately rather than pausing the way the real, per-frame-gated
+-- ROM did in this one live trace -- an honest, already-established
+-- limitation (see `:tick()`'s doc comment below), not new.
 local REARM_BANK = 13
 local REARM_CPU_ADDRESS = 0x470F
 
--- Real, empirically-traced continuations for opcode `0x08`'s own "list
+-- Empirically-traced continuations for opcode `0x08`'s "list
 -- exhausted" leaf effect (see `StandardScriptHandlers
--- .zeroTerminatedFlagList`'s own doc comment for the full disassembly
--- and the corrected "NOT a WRAM block-clear" finding) -- keyed by
--- `bank..":"..cursorAfterTerminator` (the cursor RIGHT AFTER the real
--- zero terminator byte, matching `onExhausted`'s own parameter). Real
--- guessing here is KNOWN to be wrong (see that doc comment's own
--- decisive `$32F3` mismatch), so this table only ever contains
--- values this project has actually live-traced for THIS one scene --
--- an unknown key fails loudly (below) rather than silently guessing.
---   `13:0x4712 -> 0x472a` -- the boss-defeat script's own FIRST real
---   `0x08` dispatch (cursor `$470f`, loop-test byte `0x08` itself,
---   confirmed NZ), live-traced via `trace_08_singlestep.py`
---   (2026-08-13, task #86).
+-- .zeroTerminatedFlagList`'s doc comment for the full disassembly and
+-- the corrected "not a WRAM block-clear" finding) -- keyed by
+-- `bank..":"..cursorAfterTerminator` (the cursor right after the zero
+-- terminator byte, matching `onExhausted`'s parameter). Guessing here
+-- is known to be wrong (see that doc comment's decisive `$32F3`
+-- mismatch), so this table only ever contains values this project has
+-- actually live-traced for this one scene -- an unknown key fails
+-- loudly (below) rather than silently guessing.
+--   `13:0x4712 -> 0x472a` -- the boss-defeat script's first `0x08`
+--   dispatch (cursor `$470f`, loop-test byte `0x08` itself, confirmed
+--   NZ), live-traced via `trace_08_singlestep.py`.
 local FLAG_LIST_EXHAUSTED_TARGETS = {
   ["13:0x4712"] = 0x472a,
 }
@@ -102,22 +97,20 @@ local function flagListExhaustedKey(bank, cursorAfterTerminator)
   return string.format("%d:0x%x", bank, cursorAfterTerminator)
 end
 
--- Real, empirically-traced Z/NZ results for opcode `0x08`'s own
--- per-item `$35EF` leaf test (see `StandardScriptHandlers
--- .zeroTerminatedFlagList`'s own doc comment) -- keyed by the real
--- loop-test BYTE VALUE, not by bank/cursor: `$35EF`'s own real effect
--- is a WRAM flag test keyed by this byte (see `$3602`'s own real
--- `$D7C6`-table-offset formula), so for one short, deterministic real
--- scene replayed from a fixed save state, the same byte value
--- observed twice should produce the same real Z/NZ result regardless
--- of where in the script it's read from. Confirmed DECISIVELY wrong to
--- default uniformly (see `trace_08_second.py`, 2026-08-13, task #86):
--- byte `0x08` -> NZ (the boss-defeat script's own FIRST real `0x08`
--- dispatch); byte `0x88` -> Z (its SECOND, right after the real CHAIN
--- into bank 14) -- these two real, live-traced values genuinely
--- differ, so a single blanket default would have been wrong for one
--- of them. An unknown byte value fails loudly (below), matching this
--- project's own "no silent fallbacks" rule.
+-- Empirically-traced Z/NZ results for opcode `0x08`'s per-item `$35EF`
+-- leaf test (see `StandardScriptHandlers.zeroTerminatedFlagList`'s doc
+-- comment) -- keyed by the loop-test byte value, not by bank/cursor:
+-- `$35EF`'s effect is a WRAM flag test keyed by this byte (see
+-- `$3602`'s `$D7C6`-table-offset formula), so for one short,
+-- deterministic scene replayed from a fixed save state, the same byte
+-- value observed twice should produce the same Z/NZ result regardless
+-- of where in the script it's read from. Confirmed decisively wrong to
+-- default uniformly (see `trace_08_second.py`): byte `0x08` -> NZ (the
+-- boss-defeat script's first `0x08` dispatch); byte `0x88` -> Z (its
+-- second, right after the CHAIN into bank 14) -- these two live-traced
+-- values genuinely differ, so a single blanket default would have been
+-- wrong for one of them. An unknown byte value fails loudly (below),
+-- matching this project's "no silent fallbacks" rule.
 local FLAG_TEST_RESULTS = {
   [0x08] = false, -- NZ (confirmed via the real $32F3-mismatch trace)
   [0x88] = true,  -- Z (confirmed via the real subsequent-byte trace)
