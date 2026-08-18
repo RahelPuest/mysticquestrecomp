@@ -299,6 +299,14 @@ function render_rooms(main) {
     // connection AND is a real catalog entry -- both true at once, not
     // contradictory).
     const worldMapRec = roomEntry && roomEntry.worldMapCatalogRecord;
+    // A room whose own exits BOTH terminate back inside already-known
+    // territory (currently: fourthRoom -- see rom_profiles.lua's own
+    // `bridgeNote` doc comment, 2026-08-18 direct user framing "das ist
+    // quasi der Rückweg"). Additive, same convention as `worldMapRec`
+    // above (co-occurs with any border-priority flag, not exclusive) --
+    // this is a real, separate finding about the room's own ROLE in the
+    // map graph, not about its identity or tileset.
+    const bridgeNote = roomEntry && roomEntry.bridgeNote;
     nodesHtml += `
       <div class="room-node-card${isLeaf ? " leaf" : ""}" data-room="${escapeHtml(n)}"
            ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}
@@ -314,6 +322,7 @@ function render_rooms(main) {
         ${isIsolated ? `<div style="font-size:9px; color:#e0a030; margin-top:2px;" title="${escapeHtml(roomEntry.note)}">&#9888; isoliert &mdash; 1. Bosskampf</div>` : ""}
         ${sameAs ? `<div style="font-size:9px; color:#9d6fe0; margin-top:2px;" title="${escapeHtml(roomEntry.sameRomIdentityNote)}">&equiv; ${escapeHtml(sameAs.join("/"))}</div>` : ""}
         ${worldMapRec ? `<div style="font-size:9px; color:#5ac0a0; margin-top:2px;" title="Echter Eintrag im 8x8-Weltkarten-Katalog (${escapeHtml(worldMapRec.table)}, Record ${worldMapRec.recordIndex}) -- live per Zell-fuer-Zell-Vergleich bestaetigt.">&#128506; Weltkarte (${worldMapRec.row},${worldMapRec.col})</div>` : ""}
+        ${bridgeNote ? `<div style="font-size:9px; color:#e0c05a; margin-top:2px;" title="${escapeHtml(bridgeNote)}">&#128279; Brücke &mdash; führt zurück in bekanntes Gebiet</div>` : ""}
       </div>`;
   }
   nodesHost.innerHTML = nodesHtml;

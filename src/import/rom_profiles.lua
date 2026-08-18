@@ -1227,6 +1227,40 @@ RomProfiles.PROFILES = {
         -- (`mapTableBank6`) -- same underlying table, kept distinct so
         -- export can string-match the already-exported catalog.
         worldMapCatalogRecord = { table = "bank6", recordIndex = 61, row = 7, col = 5 },
+        -- OBSERVED (2026-08-18, direct user framing "das ist quasi der
+        -- Rückweg"): fourthRoom's own two exits both terminate back
+        -- inside already-known territory, not new content -- a pure
+        -- bridge/junction node between the two real map clusters this
+        -- project has found so far. North exit -> fifthRoom, which
+        -- carries sameRomIdentityAs={willyRoom,secondRoom,thirdRoom}
+        -- (the dungeon cluster); west exit -> sixthRoom, which carries
+        -- sameRomIdentityAs={startRoom} (the castle/world-map cluster,
+        -- see startRoom's own worldMapCatalogRecord (7,4) and
+        -- fourthRoom's own (7,5) above -- directly adjacent). Concrete
+        -- corroborating detail for the north/dungeon exit specifically:
+        -- fifthRoom's own real landing (136,32) falls inside thirdRoom's
+        -- own real exit-zone X-range (128-143) and right at its Y-range
+        -- boundary (16-31) -- consistent with, though not decisive proof
+        -- of, landing back at/near the same staircase the player left
+        -- from (fifthRoom's own captured tiles are honestly only a 17.5%
+        -- grid match against thirdRoom's own capture -- a DIFFERENT
+        -- scroll excerpt of the identical ROM room, not literally the
+        -- same rendered screen -- see fifthRoom's own sameRomIdentityNote
+        -- for that already-measured number, not restated as a stronger
+        -- claim here). Practical consequence for "World scope": neither
+        -- of fourthRoom's own exits is a lead toward new content --
+        -- the real remaining frontier is the castle cluster's own
+        -- further neighbors (see events.md's 2026-08-18 grid-adjacency
+        -- entry) and any still-untested wall of the dungeon cluster
+        -- itself.
+        bridgeNote = "fourthRoom ist eine reine Brücke zwischen den zwei bekannten Clustern -- " ..
+          "beide Exits führen zurück in bereits bekanntes Gebiet, nicht zu neuem Inhalt. " ..
+          "Norden -> fifthRoom (= willyRoom/secondRoom/thirdRoom, Dungeon-Cluster; die reale " ..
+          "Landeposition (136,32) liegt innerhalb thirdRooms eigener Exit-Zone X=128-143 und " ..
+          "direkt an deren Y-Grenze 16-31 -- unterstützend, nicht beweisend, da nur 17.5% " ..
+          "Kachel-Übereinstimmung, ein anderer Scroll-Ausschnitt desselben ROM-Raums). " ..
+          "Westen -> sixthRoom (= startRoom, Burg-/Weltkarten-Cluster, direkt östlich von " ..
+          "fourthRooms eigener Weltkarten-Position (7,5)). Siehe events.md 2026-08-18.",
         cols = 20,
         rows = 16,
         tileOffsets = {
@@ -1517,7 +1551,12 @@ RomProfiles.PROFILES = {
           "Cut erreichter Scroll-Ausschnitt derselben Leinwand, kein unabhaengiger Raum. Nur " ..
           "17.5% Grid-Zellen-Uebereinstimmung mit thirdRoom (vs. 82-89% zwischen je zwei der " ..
           "willyRoom/secondRoom/thirdRoom-Trias) -- nicht dasselbe bereits erfasste Bild, aber " ..
-          "dieselbe ROM-Rauminstanz. Siehe events.md 2026-08-17.",
+          "dieselbe ROM-Rauminstanz. Siehe events.md 2026-08-17. UNTERSTUETZENDES DETAIL " ..
+          "(2026-08-18, \"das ist quasi der Rueckweg\"): die reale Landeposition hier (136,32) " ..
+          "liegt innerhalb thirdRooms eigener Exit-Zone nach fourthRoom (X=128-143, Y=16-31) -- " ..
+          "konsistent mit einer Landung nahe der ursprünglichen Treppe, aber NICHT die staerkere " ..
+          "17.5%-Aussage ueberschreibend (andere Kamera-Position, gleicher ROM-Raum). Siehe " ..
+          "fourthRooms eigenes bridgeNote fuer die volle Einordnung.",
         cols = 20,
         rows = 16,
         tileOffsets = {
