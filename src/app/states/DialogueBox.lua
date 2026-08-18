@@ -19,14 +19,13 @@ DialogueBox.__index = DialogueBox
 
 local BOX_X, BOX_Y = 4, 4
 local BOX_W, BOX_H = 152, 40
--- CORRECTED (2026-08-14, direct user report: "der Zeilenabstand in den
--- Textboxen ist falsch"): was 8 (one native GB tile row) -- live-
--- captured the real BG tilemap for a real, multi-line ROM textbox
--- (mgba, courtyard_boss_defeated -> post_black_wipe) and found real
--- text glyph rows sit TWO tile-rows apart, confirmed a second,
--- independent time on the next real box in the same sequence. Same
--- real "double spacing" bug already found and fixed for `Intro.lua`'s
--- own scrolling story text (docs/progress.md, 2026-08-10) -- this
+-- CORRECTED (direct user report that the textbox line spacing is
+-- wrong): was 8 (one native GB tile row) -- live-captured the BG
+-- tilemap for a multi-line ROM textbox (mgba, courtyard_boss_defeated
+-- -> post_black_wipe) and found text glyph rows sit two tile-rows
+-- apart, confirmed a second, independent time on the next box in the
+-- same sequence. Same "double spacing" bug already found and fixed for
+-- `Intro.lua`'s scrolling story text (docs/progress.md) -- this
 -- component had the identical bug, never cross-checked against it.
 local LINE_H = 16
 
@@ -57,12 +56,12 @@ end
 
 function DialogueBox:draw()
   local text = self.lines[self.index]
-  -- Real line-height fix, continued: BOX_H (40px) was sized for the
-  -- OLD, wrong 8px spacing (exactly 4 lines with 4px top/bottom
-  -- padding) -- at the corrected 16px spacing that only fits 2 lines,
-  -- which would clip a longer real message. Grow the box to fit the
-  -- CURRENT text's own real line count instead of guessing a fixed
-  -- worst case; never shrinks below the original BOX_H for a short one.
+  -- Line-height fix, continued: BOX_H (40px) was sized for the old,
+  -- wrong 8px spacing (exactly 4 lines with 4px top/bottom padding) --
+  -- at the corrected 16px spacing that only fits 2 lines, which would
+  -- clip a longer message. Grow the box to fit the current text's line
+  -- count instead of guessing a fixed worst case; never shrinks below
+  -- the original BOX_H for a short one.
   local lineCount = 1
   if text then
     for _ in (text .. "\n"):gmatch("(.-)\n") do lineCount = lineCount + 1 end
