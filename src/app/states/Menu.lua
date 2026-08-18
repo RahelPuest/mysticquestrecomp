@@ -1,61 +1,59 @@
--- The real in-game menu -- VERIFIED live this project (see
+-- The in-game menu -- VERIFIED live this project (see
 -- docs/reverse-engineering/rom-map.md "The in-game menu system"):
--- pressing START during field control opens a real menu with four
--- options, `Dinge`/`Magie`/`Waffe`/`Frage` (Items/Magic/Weapon/Ask), and
--- a status readout next to it. The `Waffe` line is shown alongside the
+-- pressing START during field control opens a menu with four options,
+-- `Dinge`/`Magie`/`Waffe`/`Frage` (Items/Magic/Weapon/Ask), and a
+-- status readout next to it. The `Waffe` line is shown alongside the
 -- player's actual equipped weapon name -- this project found that name
 -- ("Breit") live in the ROM by cross-checking this exact HUD readout
 -- against `src/import/WeaponTable.lua`'s decoded table (see rom-map.md).
 --
--- FIXED (2026-08-09): the equipped-weapon name used to be a second,
--- independently-hardcoded Lua string ("Breit") sitting next to the real
--- decoder that already knows how to read it -- a real deviation from
--- this project's own master brief ("data should come from normalized
--- imported tables wherever possible"), and the same class of bug this
--- session already found and fixed once for sprite sizes (a value that
--- *happens* to match the ROM today but isn't structurally tied to it).
+-- FIXED: the equipped-weapon name used to be a second, independently-
+-- hardcoded Lua string ("Breit") sitting next to the decoder that
+-- already knows how to read it -- a deviation from this project's
+-- master brief ("data should come from normalized imported tables
+-- wherever possible"), and the same class of bug this project already
+-- found and fixed once for sprite sizes (a value that *happens* to
+-- match the ROM today but isn't structurally tied to it).
 --
--- REWORKED (2026-08-09, task P5): Menu.lua used to call
--- `WeaponTable.decode` itself just to find that one name, with nowhere
--- real for a granted item/spell to go once milestone-7 event data
--- exists. Now uses `src.entities.Inventory` -- a real data model over
--- the decoded ItemTable/WeaponTable catalogs, shared with (and
--- constructed once by) Field.lua, not re-decoded here -- see
--- Inventory.lua's own doc comment for what it does and doesn't solve
--- yet. What's still NOT solved: *which* WRAM field names the currently-
+-- REWORKED: Menu.lua used to call `WeaponTable.decode` itself just to
+-- find that one name, with nowhere for a granted item/spell to go once
+-- milestone-7 event data exists. Now uses `src.entities.Inventory` -- a
+-- data model over the decoded ItemTable/WeaponTable catalogs, shared
+-- with (and constructed once by) Field.lua, not re-decoded here -- see
+-- Inventory.lua's doc comment for what it does and doesn't solve yet.
+-- What's still not solved: *which* WRAM field names the currently-
 -- equipped weapon (no equipment-slot address is verified yet -- rom-
 -- map.md), so the "Breit" anchor Inventory.lua uses remains the known
 -- anchor rather than a generally-read-from-save-state fact.
 --
 -- What IS real here: the four option strings, their order, the "Gut"
--- status word, and the equipped-weapon name -- all live-verified this
--- session. What's NOT verified: the exact on-screen pixel layout/box
--- style (this project only has a low-res reference screenshot, not
--- decoded VRAM tilemap coordinates for this specific screen) -- the
--- box position/size below is a reasonable approximation, not a
--- rom-map.md VERIFIED fact, and says so.
+-- status word, and the equipped-weapon name -- all live-verified. What's
+-- not verified: the exact on-screen pixel layout/box style (this
+-- project only has a low-res reference screenshot, not decoded VRAM
+-- tilemap coordinates for this specific screen) -- the box position/
+-- size below is a reasonable approximation, not a rom-map.md VERIFIED
+-- fact, and says so.
 --
--- REWORKED AGAIN (2026-08-16, task "Item/Ausrüstung nutzbar machen",
--- direct user selection): `Dinge`/`Waffe` now actually DO something
--- when the (real, VERIFIED-empty-by-default) inventory isn't empty --
--- previously every option was an unconditional no-op close, matching
--- ONLY the fresh-character state. That VERIFIED behavior is still
--- exactly reproduced whenever the lists really are empty (no ROM
--- trigger for granting items has ever been found -- see combat.md's
--- own "Real equip-swap test attempted, blocked" entry -- so a fresh
--- game still behaves identically to before); Field.lua's own F12
--- dev-only shortcut is what makes these lists non-empty for testing.
--- `Dinge`: selecting a held item consumes it (`Inventory:useItem`) --
--- HONEST SCOPE: no numeric effect is applied (no real heal-amount
--- formula is decoded, see `Inventory.lua`'s own `useItem` doc
--- comment) -- this is real inventory management, not a claimed combat
--- effect. `Waffe`: selecting a held weapon equips it
--- (`Inventory:equip`) -- whether this changes real combat damage is
--- honestly still open (see combat.md's own "MAJOR CORRECTION" and its
--- own follow-up entry). `Magie`/`Frage` are UNCHANGED (still close
--- immediately) -- no MP-cost/casting formula and no follower/NPC
--- system exist yet, so building interactivity there would be
--- fabricated, not real.
+-- REWORKED AGAIN (direct user selection to make items/equipment
+-- usable): `Dinge`/`Waffe` now actually do something when the (real,
+-- VERIFIED-empty-by-default) inventory isn't empty -- previously every
+-- option was an unconditional no-op close, matching only the fresh-
+-- character state. That VERIFIED behavior is still exactly reproduced
+-- whenever the lists really are empty (no ROM trigger for granting
+-- items has ever been found -- see combat.md's "equip-swap test
+-- attempted, blocked" entry -- so a fresh game still behaves
+-- identically to before); Field.lua's F12 dev-only shortcut is what
+-- makes these lists non-empty for testing. `Dinge`: selecting a held
+-- item consumes it (`Inventory:useItem`) -- HONEST SCOPE: no numeric
+-- effect is applied (no heal-amount formula is decoded, see
+-- `Inventory.lua`'s `useItem` doc comment) -- this is inventory
+-- management, not a claimed combat effect. `Waffe`: selecting a held
+-- weapon equips it (`Inventory:equip`) -- whether this changes real
+-- combat damage is honestly still open (see combat.md's "MAJOR
+-- CORRECTION" and its follow-up entry). `Magie`/`Frage` are unchanged
+-- (still close immediately) -- no MP-cost/casting formula and no
+-- follower/NPC system exist yet, so building interactivity there would
+-- be fabricated, not real.
 
 local Font = require("src.rendering.Font")
 local Inventory = require("src.entities.Inventory")
@@ -66,8 +64,8 @@ Menu.__index = Menu
 Menu.OPTIONS = { "Dinge", "Magie", "Waffe", "Frage" }
 Menu.STATUS_WORD = "Gut"
 
---- `inventory`: an optional already-constructed Inventory (Field.lua's
--- own, so equip/item state persists across opening/closing the menu) --
+--- `inventory`: an optional already-constructed Inventory (Field.lua's,
+-- so equip/item state persists across opening/closing the menu) --
 -- built fresh here only when a caller doesn't have one yet (e.g. a
 -- standalone test/screenshot harness).
 function Menu.new(romData, profile, input, stack, inventory)
@@ -88,7 +86,7 @@ function Menu.new(romData, profile, input, stack, inventory)
   return self
 end
 
---- The real list backing the current sub-mode, or nil in "options" mode.
+--- The list backing the current sub-mode, or nil in "options" mode.
 function Menu:_currentSubList()
   if self.mode == "items" then return self.inventory.items end
   if self.mode == "weapons" then return self.inventory.heldWeapons end
@@ -127,7 +125,7 @@ function Menu:update(dt)
     else
       -- VERIFIED (module doc comment): every option is a no-op for a
       -- fresh character with no items/spells/follower -- close either
-      -- way, matching this project's own live-tested behavior exactly
+      -- way, matching this project's live-tested behavior exactly
       -- rather than opening a placeholder submenu that doesn't exist.
       self.stack:pop()
     end
@@ -178,15 +176,15 @@ function Menu:_drawOptions()
   end
 end
 
---- Shared draw for both real sub-lists (items/weapons) -- same box,
--- same cursor convention as the main options list, just a different
--- backing array and label. FIXED (2026-08-16, caught via an actual
--- `love .` screenshot, not guessed -- the same "no invisible/off-
--- screen text" discipline this project's other dev browsers already
--- learned the hard way): the label used to draw ABOVE the box
--- (`BOX_Y - LINE_H - 2`), which runs off the top of the native 144px
--- canvas given `BOX_Y=8` -- now a real header ROW inside the box,
--- with the list itself starting one row lower.
+--- Shared draw for both sub-lists (items/weapons) -- same box, same
+-- cursor convention as the main options list, just a different backing
+-- array and label. FIXED (caught via an actual `love .` screenshot, not
+-- guessed -- the same "no invisible/off-screen text" discipline this
+-- project's other dev browsers already learned the hard way): the
+-- label used to draw above the box (`BOX_Y - LINE_H - 2`), which runs
+-- off the top of the native 144px canvas given `BOX_Y=8` -- now a
+-- header row inside the box, with the list itself starting one row
+-- lower.
 function Menu:_drawSubMenu(list, label)
   self.font:print(label, BOX_X + 4, BOX_Y + 3, { 0, 0, 0, 1 })
   for i, record in ipairs(list) do
