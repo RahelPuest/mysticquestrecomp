@@ -11739,3 +11739,75 @@ structural/statistical correlation. None of (a)-(c) executed yet this
 pass -- reported back for a decision on which to pursue. No code/test
 changes this pass (pure investigation); screenshots saved to
 `/tmp/room_neighbors/` (scratch, not committed).
+
+## 2026-08-18, same day -- Room-System website: real merge/grouping fix, then a real regression (infinite loop) found and fixed
+
+Direct, repeated, frustrated user report after the badge-only pass
+above: "DER FITH ROOM IST DOCH IMMERNOCH IM RAUMSYSTEM UND DER
+STARTRAUM IST IMMERNOCH NOICHT IDENTISCH MIT DEM 6. ROOM" -- the violet
+`sameRomIdentityAs` badge only ever decorated the node, it never
+actually removed the duplicate box (any exit whose `targetRoom` named
+`fifthRoom`/`sixthRoom` still created a separate graph node for it).
+
+**Real fix**: new `mergeInto` field (`rom_profiles.lua`:
+`fifthRoom.mergeInto="thirdRoom"`, `sixthRoom.mergeInto="startRoom"`)
+redirects any edge targeting a mergeable room to its real canonical room
+instead. Honest, explicit caveat documented in both files: the
+underlying FACT (same ROM room, live WRAM-register match) is real
+ROM-verified data; WHICH of several equally-real aliases becomes "the"
+canonical display name is a hardcoded editorial choice this project
+made for the graph UI, not something the ROM itself dictates (asked and
+answered directly this same session: "heisst das das die räume da
+quasi hardcoded sind und sich nicht aus dem rom ergeben?"). Canonical
+nodes gained a "≡ auch: <aliases>" badge so the identity info stays
+visible.
+
+**Second, direct follow-up** ("wenn es die selbe fortlaufende leinwand
+ist dann sollte es auch so dargestellt werden"): `willyRoom`/
+`secondRoom`/`thirdRoom` are connected exclusively by real
+`transitionType==="scroll"` edges (an empirically-measured SCX/SCY
+hardware scroll, not a cut) -- these now render inside one shared,
+labeled dashed background ("eine durchgehende Leinwand"), computed
+generically from any scroll-only-connected chain of nodes, not
+hardcoded to these 3 names.
+
+**Real regression found immediately after, direct user report "die
+website hängt beim laden"**: the `mergeInto` redirect turned
+`fourthRoom`'s own real north exit (originally `->fifthRoom`) into
+`fourthRoom->thirdRoom` -- the EXACT REVERSE of the already-real
+`thirdRoom->fourthRoom` edge, a direct 2-cycle. The page's existing BFS
+leveling loop has no cycle guard (`level[e.to] < l + 1` stays true
+forever around a cycle -- both directions keep pushing each other's
+level higher without bound) -- a genuine infinite loop, not just a slow
+render, exactly matching the reported symptom. **Playwright live-browser
+verification was attempted before this shipped and failed to catch it**:
+chromium would not launch in this sandbox (hung at browser launch even
+headless, even with `--no-sandbox`, across several attempts) -- the fix
+was verified with a pure-JS re-implementation of the page's own node/
+edge-building logic run directly in Node against the real exported data
+instead, which is exactly why this specific bug (a runtime infinite
+loop, not a data or syntax error) slipped through: `node --check` and a
+hand-written logic re-implementation both look correct in isolation,
+neither one actually RUNS the real page's BFS loop to notice it never
+terminates. Lesson for next time: a Node-based re-simulation of a graph
+algorithm should include an iteration cap that fails loudly, exactly
+like the one written for the actual fix-verification pass below --
+should have been present from the FIRST verification pass, not added
+only after the bug was already shipped and reported.
+
+**Fix**: for any reverse-direction edge pair, keep the one that was NOT
+itself a merge redirect (the real, original transition) and drop the
+redirected one -- its info isn't lost, it's already in the source
+room's own `bridgeNote` tooltip. Deterministic tie-break if both/neither
+side of a pair was redirected. Re-verified with a Node re-simulation
+INCLUDING an explicit iteration cap this time: BFS now terminates after
+8 iterations (was: unbounded); `fourthRoom->thirdRoom` correctly
+dropped, `fourthRoom->startRoom` (the OTHER merge redirect, sixthRoom's
+own) correctly kept since it has no conflicting reverse edge.
+
+`luajit tests/run_tests.lua`: 578/578 pass throughout (Lua-side
+unaffected by any of this -- purely a rom-inspector JS bug). Still
+honestly unverified: actual in-browser pixel rendering (CSS layout
+positioning of the new group background, the exact visual result) --
+Playwright remains unavailable in this sandbox; ask the user to check
+in their own browser if anything still looks wrong visually.
