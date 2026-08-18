@@ -1,23 +1,21 @@
--- Resolves a real script-opcode `0xFE` (MESSAGE_HANDLER_ADDRESS)
--- messageID into its real, decoded text -- the formula this project
--- already independently VERIFIED (see rom_profiles.lua's own
--- `messageTextPointer` doc comment and
--- docs/reverse-engineering/text.md's "SOLVED: the real message-
--- settings-table text pointer") but had only ever exercised inline,
--- once, in a single test (`tests/import/text_decoder_test.lua`) --
--- pulled out into its own small, reusable module so real callers (the
--- `ScriptInterpreter`'s own `ctx.onMessage`, first wired 2026-08-13 as
--- part of proving the interpreter->rendering pipeline for real, see
--- events.md) don't need to re-derive the record-stride arithmetic by
--- hand.
+-- Resolves a script-opcode `0xFE` (MESSAGE_HANDLER_ADDRESS) messageID
+-- into its decoded text -- the formula this project independently
+-- VERIFIED (see rom_profiles.lua's `messageTextPointer` doc comment and
+-- docs/reverse-engineering/text.md's "SOLVED: the message-settings-
+-- table text pointer") but had only ever exercised inline, once, in a
+-- single test (`tests/import/text_decoder_test.lua`) -- pulled out
+-- into its own small, reusable module so callers (the
+-- `ScriptInterpreter`'s `ctx.onMessage`, first wired as part of proving
+-- the interpreter->rendering pipeline for real, see events.md) don't
+-- need to re-derive the record-stride arithmetic by hand.
 --
--- HONEST SCOPE: the formula itself is VERIFIED (messageID 13 decodes
--- to the real "gefunden" text, independently cross-checked against
--- the record field bytes AND the decoded string). Most OTHER
--- messageIDs remain blocked by `TextDecoder`'s own incomplete digraph
--- coverage, not a formula problem -- this module surfaces that
--- honestly (`nil, err` from `TextDecoder.decodeString` itself, no
--- silent fallback) rather than hiding it.
+-- HONEST SCOPE: the formula itself is VERIFIED (messageID 13 decodes to
+-- the "gefunden" text, independently cross-checked against the record
+-- field bytes and the decoded string). Most other messageIDs remain
+-- blocked by `TextDecoder`'s incomplete digraph coverage, not a formula
+-- problem -- this module surfaces that honestly (`nil, err` from
+-- `TextDecoder.decodeString` itself, no silent fallback) rather than
+-- hiding it.
 
 local TextDecoder = require("src.import.TextDecoder")
 
