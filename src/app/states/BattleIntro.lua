@@ -257,8 +257,8 @@ function BattleIntro:enemyInDescentPhase()
 end
 
 --- A plain, `love.*`-free snapshot -- for automated scripted
--- verification (`MYSTICQUEST_WAIT_FOR`, see main.lua's own doc
--- comment), added 2026-08-12 alongside the real boss walk-in.
+-- verification (`MYSTICQUEST_WAIT_FOR`, see main.lua's doc comment),
+-- added alongside the boss walk-in.
 function BattleIntro:debugState()
   return {
     frame = self.frame,
@@ -273,15 +273,15 @@ function BattleIntro:advanceToField()
   if self.done then return end
   self.done = true
   local Field = require("src.app.states.Field")
-  -- Real seamless patrol handoff (see Field.new's own `enemyState` doc
-  -- comment) -- only when this cutscene actually built a real enemy
-  -- (i.e. a real ROM/profile was loaded).
+  -- Seamless patrol handoff (see Field.new's `enemyState` doc comment)
+  -- -- only when this cutscene actually built an enemy (i.e. a ROM/
+  -- profile was loaded).
   local enemyState = self.enemy and {
     x = self.enemy.x, y = self.enemy.y, movementIndex = self.enemy.movementIndex,
-    -- Real, continuously-advanced interpreter (see this state's own
-    -- construction site above) -- `Field.lua` reuses this SAME
-    -- instance rather than building a fresh one, so the real per-tick
-    -- AI state carries over seamlessly instead of restarting.
+    -- Continuously-advanced interpreter (see this state's construction
+    -- site above) -- `Field.lua` reuses this same instance rather than
+    -- building a fresh one, so the per-tick AI state carries over
+    -- seamlessly instead of restarting.
     movementInterpreter = self.enemy.movementInterpreter,
   }
   self.stack:replace(Field.new(self.romData, self.profile, self.input, self.overlay, self.stack,
@@ -306,18 +306,18 @@ function BattleIntro:draw()
   local hidden, walkEnd, settleEnd, typingStart, typingEnd, boxEnd = self:phaseBounds()
 
   if self.frame > hidden and self.playerSprite then
-    -- REVERTED (2026-08-15, same day, see Field.lua's own matching
-    -- revert note): this walk-in leads straight into `startRoom`'s own
-    -- courtyard fight, calibrated the same OLD (unshifted) way -- the
-    -- real OAM-vs-WRAM offset is real, but not safe to apply here.
+    -- REVERTED (see Field.lua's matching revert note): this walk-in
+    -- leads straight into `startRoom`'s courtyard fight, calibrated the
+    -- same old (unshifted) way -- the OAM-vs-WRAM offset is real, but
+    -- not safe to apply here.
     self.playerSprite:draw(self.player.x, self.player.y, false)
   end
 
-  -- Real boss walk-in (see rom_profiles.lua's `enemyDescent` doc
-  -- comment) -- descent uses its own real, separate tile block; once
-  -- handed off to the normal patrol, the SAME real X-flip toggle
-  -- Field.lua's own gameplay uses applies here too (`Enemy:isFlipped`,
-  -- CORRECTED same day: was wired into `flipY`, a real bits-5/6 mixup).
+  -- Boss walk-in (see rom_profiles.lua's `enemyDescent` doc comment) --
+  -- descent uses its own separate tile block; once handed off to the
+  -- normal patrol, the same X-flip toggle Field.lua's gameplay uses
+  -- applies here too (`Enemy:isFlipped`, CORRECTED: was wired into
+  -- `flipY`, a bits-5/6 mixup).
   if self.enemyStarted then
     if self:enemyInDescentPhase() then
       if self.enemyDescentSprite then
