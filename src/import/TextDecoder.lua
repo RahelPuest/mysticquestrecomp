@@ -91,64 +91,62 @@ TextDecoder.UMLAUT_PARTIAL = {
   [0x9B] = "\195\156", -- Ü (U+00DC)
 }
 
--- Confirmed the same way as the umlaut bytes above (2026-08-08, sixth
--- pass): 0xF0 appears exactly where a live dialogue sentence's
--- terminating period must be ("...Kaempfer[.]"). Outside
--- MAIN_BASE's contiguous run (0xB0-0xEF) so it needs its own case,
--- same treatment as SPACE_BYTE.
+-- Confirmed the same way as the umlaut bytes above: 0xF0 appears
+-- exactly where a live dialogue sentence's terminating period must be
+-- ("...Kaempfer[.]"). Outside MAIN_BASE's contiguous run (0xB0-0xEF)
+-- so it needs its own case, same treatment as SPACE_BYTE.
 TextDecoder.PERIOD_BYTE = 0xF0
 
--- VERIFIED (upgraded from a hypothesis 2026-08-09): originally flagged
--- from a single example ("Lebens- und Magiepunkte") with no second,
+-- VERIFIED (upgraded from a hypothesis): originally flagged from a
+-- single example ("Lebens- und Magiepunkte") with no second,
 -- independent confirmation. Now confirmed a second, unrelated way: the
--- real intro-text scroll (rom_profiles.lua's `introText`) uses this
--- exact byte at every real German word-wrap hyphenation point ("des-
--- sen", "brau-chen") when its own tile IDs (found via live tilemap
--- decode, a completely different discovery path from the original
--- dialogue-box read) are converted to this same dialogue-byte space
--- (tileId + 0x80 -- the project's own already-established relationship).
--- Two independent confirmations is this project's own bar for
--- "VERIFIED" elsewhere (see e.g. the umlaut bytes above) -- promoted
--- into the normal decode path accordingly, no longer opt-in.
+-- intro-text scroll (rom_profiles.lua's `introText`) uses this exact
+-- byte at every German word-wrap hyphenation point ("des-sen",
+-- "brau-chen") when its tile IDs (found via live tilemap decode, a
+-- completely different discovery path from the original dialogue-box
+-- read) are converted to this same dialogue-byte space (tileId + 0x80
+-- -- the project's already-established relationship). Two independent
+-- confirmations is this project's bar for "VERIFIED" elsewhere (see
+-- e.g. the umlaut bytes above) -- promoted into the normal decode path
+-- accordingly, no longer opt-in.
 TextDecoder.HYPHEN_BYTE = 0xF2
 
--- VERIFIED (2026-08-09): found decoding the real intro-text scroll's
--- literal ROM bytes (file offset 0xBED8, see rom_profiles.lua's
--- `introText` entry) -- a real line-break control byte, distinct from
--- TERMINATOR_BYTE (0x00 ends the whole block; 0x1A just starts the next
--- line). Confirmed by position: appears exactly at every real sentence/
--- line boundary the live-scrolled tilemap independently already showed
--- as a new tilemap row, decoding the full multi-paragraph text
--- perfectly on the first attempt once handled this way. This project's
--- existing hardcoded dialogue strings already used a literal "\n" for
--- the same purpose (e.g. Field.lua's WILLY_DIALOGUE) -- same convention,
--- now backed by a real ROM byte for text that comes from decoded data
--- instead.
+-- VERIFIED: found decoding the intro-text scroll's literal ROM bytes
+-- (file offset 0xBED8, see rom_profiles.lua's `introText` entry) -- a
+-- line-break control byte, distinct from TERMINATOR_BYTE (0x00 ends
+-- the whole block; 0x1A just starts the next line). Confirmed by
+-- position: appears exactly at every sentence/line boundary the
+-- live-scrolled tilemap independently already showed as a new tilemap
+-- row, decoding the full multi-paragraph text perfectly on the first
+-- attempt once handled this way. This project's existing hardcoded
+-- dialogue strings already used a literal "\n" for the same purpose
+-- (e.g. Field.lua's WILLY_DIALOGUE) -- same convention, now backed by
+-- a ROM byte for text that comes from decoded data instead.
 TextDecoder.NEWLINE_BYTE = 0x1A
 
--- VERIFIED (2026-08-09): found decoding the real "Kämpfe!" battle-intro
--- textbox (see rom_profiles.lua's `battleIntro` entry) -- the box's
--- real character-by-character reveal (one real letter every 5 real GB
--- frames) stops at this exact byte after "Kampfe", i.e. the real text
--- is "Kaempfe!" (German imperative "Fight!"), not just "Kampf" as
--- initially guessed from a low-resolution screenshot read.
+-- VERIFIED: found decoding the "Kämpfe!" battle-intro textbox (see
+-- rom_profiles.lua's `battleIntro` entry) -- the box's character-by-
+-- character reveal (one letter every 5 GB frames) stops at this exact
+-- byte after "Kampfe", i.e. the text is "Kaempfe!" (German imperative
+-- "Fight!"), not just "Kampf" as initially guessed from a low-
+-- resolution screenshot read.
 TextDecoder.EXCLAMATION_BYTE = 0xF3
 
--- VERIFIED (2026-08-10): a full-ROM static re-scan (`dump_strings.py`
--- superseded by an updated scan folding in the whole current decoder,
--- see tooling notes) turned up 3 independent real contexts: "Was soll
--- ich nun tun[F4]" ("What should I do now?"), "...helfen[F4]" ("...help
--- you?"), and "WILLY![F4]" (a shocked "WILLY!?"). Also sits in the
--- punctuation family's own on-screen ordering (found in the font/
--- keyboard dump: `',.` `[F1]` `-` `!` `[F4]` `[F5]` `[F6]`, i.e.
--- immediately after `!`/`EXCLAMATION_BYTE` and before the
--- now-also-confirmed `COLON_BYTE` below) -- the natural remaining
--- common punctuation mark to complete that set.
+-- VERIFIED: a full-ROM static re-scan (`dump_strings.py` superseded by
+-- an updated scan folding in the whole current decoder, see tooling
+-- notes) turned up 3 independent contexts: "Was soll ich nun tun[F4]"
+-- ("What should I do now?"), "...helfen[F4]" ("...help you?"), and
+-- "WILLY![F4]" (a shocked "WILLY!?"). Also sits in the punctuation
+-- family's on-screen ordering (found in the font/keyboard dump: `',.`
+-- `[F1]` `-` `!` `[F4]` `[F5]` `[F6]`, i.e. immediately after
+-- `!`/`EXCLAMATION_BYTE` and before the now-also-confirmed
+-- `COLON_BYTE` below) -- the natural remaining common punctuation mark
+-- to complete that set.
 TextDecoder.QUESTION_BYTE = 0xF4
 
--- VERIFIED (2026-08-10): the real end-of-credits screen (bank 2, ~file
--- 0xbec3 onward) has 9 independent "ROLE[0xF5]\nNAME" lines -- e.g.
--- "MUSIK - KOMPONIST[F5]\nKenji Ito", "GRAFIKEN[F5]\nKazuko Shibuya",
+-- VERIFIED: the end-of-credits screen (bank 2, ~file 0xbec3 onward)
+-- has 9 independent "ROLE[0xF5]\nNAME" lines -- e.g. "MUSIK -
+-- KOMPONIST[F5]\nKenji Ito", "GRAFIKEN[F5]\nKazuko Shibuya",
 -- "DIREKTOR[F5]\nKoichi Ishii", "REGIE[F5]\nYoshinori Kitase" (real,
 -- verifiable Seiken Densetsu 1 staff names/roles) -- every single
 -- credit line, same byte, same "role label followed by a colon before
@@ -156,58 +154,54 @@ TextDecoder.QUESTION_BYTE = 0xF4
 -- give-item template, colon before a following item-name insertion).
 TextDecoder.COLON_BYTE = 0xF5
 
--- VERIFIED (2026-08-15, task #150, "beende jetzt mal den full corpus
--- scan" -> "na dann entschluessel mal"): a DIFFERENT byte from
--- COLON_BYTE above, despite the same rendered glyph and the same
--- grammatical role. This project's own 2026-08-11 investigation
--- (see the `[0x12][0x1B]` control-byte note above) had already found
--- "18 confirmed instances of `[0x12][0x1B]<Name>[0x2C]` with 6
--- different real named speakers" and flagged "0x2C appears to be a
+-- VERIFIED: a different byte from COLON_BYTE above, despite the same
+-- rendered glyph and the same grammatical role. An earlier
+-- investigation (see the `[0x12][0x1B]` control-byte note above) had
+-- already found "18 confirmed instances of `[0x12][0x1B]<Name>[0x2C]`
+-- with 6 different named speakers" and flagged "0x2C appears to be a
 -- 'speaker name:' tag delimiter" -- a strong lead, never independently
--- re-confirmed or wired. This pass's own fresh `dump_strings.py --gaps`
--- run found the SAME pattern with 20 independent named speakers (all
--- real, already-known characters/nouns: Alter, Amanda, Bogard, Bowow,
--- Cibba, Davias, Glaive, Hasim, Julia, Koenig, Lester, Lord, Maedchen,
--- Mann, Marcie, Medaa, Mutter, Sarah, Watts, Willy) -- EVERY single
+-- re-confirmed or wired. A fresh `dump_strings.py --gaps` run found
+-- the same pattern with 20 independent named speakers (all
+-- already-known characters/nouns: Alter, Amanda, Bogard, Bowow, Cibba,
+-- Davias, Glaive, Hasim, Julia, Koenig, Lester, Lord, Maedchen, Mann,
+-- Marcie, Medaa, Mutter, Sarah, Watts, Willy) -- every single
 -- occurrence in the exact same structural position (immediately after
 -- a name, immediately before that speaker's own dialogue line begins),
 -- plus 6 further occurrences after `0x14`/`0x15` (the already-VERIFIED
 -- hero/heroine NAME-INSERTION control bytes above) instead of a
 -- literal name -- e.g. `[14][2C]Bogard!` = "<HeroName>: Bogard!" --
--- independently cross-validating BOTH this byte's own role AND the
+-- independently cross-validating both this byte's role and the
 -- pre-existing 0x14/0x15 finding at the same time. Far exceeds this
--- table's own 2-independent-occurrences bar.
--- NOT the same byte as COLON_BYTE (0xF5) -- that one's own real,
--- independently-confirmed contexts are credits-screen "ROLE:NAME" and
--- shop "Ware:" lines, structurally unrelated to a dialogue-box speaker
--- tag; the real ROM apparently uses two distinct byte values for the
--- same rendered punctuation mark in different string contexts (not
--- unprecedented -- SPACE_BYTE/PERIOD_BYTE/etc. are each single, fixed
--- values only because no second real "same glyph, different byte"
--- case had been found before this one). Rendering hypothesis (a
--- literal ":") is NOT independently live-VRAM-confirmed the way
--- COLON_BYTE's own 0xF6 sibling investigation was (no font-tile
--- cross-check possible without already knowing this byte's real
--- on-screen tile ID, which is exactly what's unconfirmed) -- but
--- structurally this is by far the most likely reading (this project's
--- own original 2026-08-11 note already reached the same conclusion
--- independently), and NOT wiring it at all would leave the interpreter
+-- table's 2-independent-occurrences bar.
+-- NOT the same byte as COLON_BYTE (0xF5) -- that one's independently-
+-- confirmed contexts are credits-screen "ROLE:NAME" and shop "Ware:"
+-- lines, structurally unrelated to a dialogue-box speaker tag; the ROM
+-- apparently uses two distinct byte values for the same rendered
+-- punctuation mark in different string contexts (not unprecedented --
+-- SPACE_BYTE/PERIOD_BYTE/etc. are each single, fixed values only
+-- because no second "same glyph, different byte" case had been found
+-- before this one). Rendering hypothesis (a literal ":") is not
+-- independently live-VRAM-confirmed the way COLON_BYTE's own 0xF6
+-- sibling investigation was (no font-tile cross-check possible without
+-- already knowing this byte's on-screen tile ID, which is exactly
+-- what's unconfirmed) -- but structurally this is by far the most
+-- likely reading, and not wiring it at all would leave the interpreter
 -- refusing to render otherwise-perfectly-readable dialogue over a
--- single, well-understood punctuation mark. HONEST NOTE on the whole-
--- corpus scan's own OWN measured impact (`scripts/scan_all_scripts
--- .lua`, task #150): wiring this byte did NOT move the scan's own
--- headline "clean" count (dozens of real scripts contain 0x2C in their
--- own text, but the scan only reports each script's FIRST blocking
--- byte, and most of those scripts already fail EARLIER on a different,
--- still-undecoded digraph before ever reaching their own 0x2C) --
--- confirmed via a real before/after diff of the scan's own per-byte
--- breakdown: the ONE script whose own first failure WAS 0x2C now
--- fails on 0x70 instead, net zero change to the aggregate numbers.
--- Real, verified, permanent progress regardless (four independently
--- decoded, grammatically perfect German sentences prove the byte value
--- itself is correct) -- it just won't show up in the scan's own
--- aggregate count until more of the higher-frequency blocking bytes
--- (0xFC/0xFE/0x05/0x07/the 0x70-0x7F range/...) are ALSO closed.
+-- single, well-understood punctuation mark. Honest note on the
+-- whole-corpus scan's measured impact (`scripts/scan_all_scripts
+-- .lua`): wiring this byte did not move the scan's headline "clean"
+-- count (dozens of scripts contain 0x2C in their text, but the scan
+-- only reports each script's first blocking byte, and most of those
+-- scripts already fail earlier on a different, still-undecoded
+-- digraph before ever reaching their own 0x2C) -- confirmed via a
+-- before/after diff of the scan's per-byte breakdown: the one script
+-- whose first failure was 0x2C now fails on 0x70 instead, net zero
+-- change to the aggregate numbers. Verified, permanent progress
+-- regardless (four independently decoded, grammatically perfect
+-- German sentences prove the byte value itself is correct) -- it just
+-- won't show up in the scan's aggregate count until more of the
+-- higher-frequency blocking bytes (0xFC/0xFE/0x05/0x07/the 0x70-0x7F
+-- range/...) are also closed.
 TextDecoder.SPEAKER_COLON_BYTE = 0x2C
 
 -- HYPOTHESIS-status control-byte family, bytes 0x10-0x1F (2026-08-15,
