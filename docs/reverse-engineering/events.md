@@ -11675,3 +11675,67 @@ mappings that are already correct and in use elsewhere in this exact
 table. Not pursued further -- `ItemTable.lua`'s own doc comment updated
 to state this precisely. No decode behavior changed this pass (doc
 comments only); `luajit tests/run_tests.lua`: 578/578 still pass.
+
+## 2026-08-18, same day, direct user framing ("es gibt grundsätzlich 2 arten von räumen... oberwelt räume... damit die zusammenhang bzw transition über die worldmap geregelt wird... es geht um alle räume") -- grid-adjacency around the known world-map cluster visually confirmed real, coherent castle-exterior content
+
+Direct follow-up after the `unknownRoomA` tileset re-investigation above
+(which re-confirmed, not overturned, the existing `genericCatalogMetatile
+TableFileOffset=0x200B0` derivation -- see that entry). The user's own
+2-category room model (overworld rooms whose connectivity is the world
+map itself vs. interior/dungeon rooms as a separate system) matches this
+project's own already-established split exactly: `willyRoom`'s family
+(roomSelector 2-6) has its own separate tileset (`0x206B0`) and is
+NOT on the world-map catalog; `startRoom`/`fourthRoom`/`seventhRoom`
+(roomSelector 0/1, plus `seventhRoom`'s own real bank-6 record) ARE
+confirmed catalog entries (bank 6, the real 8x8 world grid).
+
+**New, concrete application of that framing**: since bank-6 grid
+ADJACENCY was already statistically proven meaningful (2026-08-14, 5-31x
+tile-edge-match rate above random baseline, all 4 directions), the
+already-known real positions -- `startRoom` (row7,col4, record 60/317),
+`fourthRoom` (row7,col5, record 61/318), `seventhRoom` (row6,col3,
+record 51/308) -- predict concrete, high-confidence candidate rooms at
+their own grid neighbors. Captured live screenshots (`MYSTICQUEST_DEBUG_
+STATE=roomexplorer:N`, real `love .` renders, not a synthetic tool) for
+6 neighbor cells: (6,4)/rec309, (6,5)/rec310, (7,3)/rec316, (5,3)/rec300,
+(6,2)/rec307, (7,6)/rec319.
+
+**Result: a real, coherent, thematically consistent castle-exterior area
+around the known cluster**, not noise:
+- (6,4): a castle gate flanked by two round towers, same visual
+  construction style as `startRoom`'s own top portion (also a
+  portcullis between two round towers) -- directly north of `startRoom`.
+- (6,5): a tower + trees, a direct continuation of (6,4)'s own tower
+  rightward.
+- (7,3): trees (same style as `seventhRoom`'s own forest) plus the SAME
+  round rock-tower texture visible in `startRoom`'s own screenshot --
+  directly west of `startRoom`, directly south of `seventhRoom`.
+- (5,3): tower + forest, north of `seventhRoom`.
+- (6,2): water (the established wavy-tile convention) + forest, a
+  river/lake west of `seventhRoom`.
+- (7,6): a DIFFERENT theme -- a checkerboard floor with a bridge/railing,
+  bordered by a wavy (water/moat) texture -- east of `fourthRoom`, very
+  plausibly a distinct special/puzzle interior rather than more outdoor
+  terrain (honest, not yet identified further).
+
+**Why this matters for "World scope" (P0, the project's own top
+priority)**: this is a cheap, static, ALREADY-PROVEN-PIPELINE way to
+generate high-confidence next-room candidates directly from the grid
+position of rooms already live-confirmed -- no new reverse-engineering,
+no live-tracing needed to GENERATE the candidates (only to confirm a
+real in-game trigger reaches them, which stays a separate, open
+question). Concrete, actionable follow-up this opens up: (a) wire one of
+these (most likely (6,4), the clearest narrative bridge between
+`seventhRoom` and `startRoom`) as a new walkable room using the
+established pattern, if/once a real connecting exit can be justified;
+(b) extend this same neighbor-expansion pass outward from the new
+boundary to keep mapping the contiguous region: (c) a live mgba
+walk-test from `startRoom`/`seventhRoom` in the predicted directions,
+checking whether the screen genuinely scrolls (the same mechanism
+already found for `willyRoom`->`secondRoom`) rather than hitting a
+hard wall -- would be the first live confirmation that grid adjacency
+is really how the ROM drives overworld connectivity, not just a
+structural/statistical correlation. None of (a)-(c) executed yet this
+pass -- reported back for a decision on which to pursue. No code/test
+changes this pass (pure investigation); screenshots saved to
+`/tmp/room_neighbors/` (scratch, not committed).
