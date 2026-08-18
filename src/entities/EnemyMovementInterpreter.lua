@@ -105,46 +105,45 @@ local function signedNibble(n)
   return n
 end
 
--- Real, empirically-verified constants for the courtyard gate creature
--- (see this module's own doc comment for how each was captured live).
+-- Empirically-verified constants for the courtyard gate creature (see
+-- this module's doc comment for how each was captured live).
 EnemyMovementInterpreter.ANCHOR_CPU_ADDRESS = 0x48B9
 EnemyMovementInterpreter.ANCHOR_FIELD_OFFSET = 0x12
--- CORRECTED (2026-08-13, same pass): an earlier live capture of this
--- constant (`read_initial_state2.py`, scratchpad) raced its own two
--- separate byte-watchpoints ($D43A low, $D43B high -- real hardware
--- writes the high byte first, per `$42D8`'s own disassembly) and
--- stopped at the FIRST of the two writes, reading the still-stale low
--- byte alongside the freshly-written high byte -- a real, self-caught
--- tooling bug (Watcher-level race, not a ROM fact), not a second
--- possible real value. The corrected capture (watching $D3EC's own
--- reset instead, which fires strictly AFTER both bytes commit) gives
--- the real value below, independently cross-confirmed: `topBase +
--- 0x12` (the real "wrap" formula, `$42C5`) resolves to `$4F4D`,
--- matching a DIRECT static read of the per-creature record (file
--- `0x108CB`) exactly -- the corrected value is consistent both ways,
--- the earlier one was not.
+-- CORRECTED: an earlier live capture of this constant
+-- (`read_initial_state2.py`, scratchpad) raced its own two separate
+-- byte-watchpoints ($D43A low, $D43B high -- real hardware writes the
+-- high byte first, per `$42D8`'s disassembly) and stopped at the first
+-- of the two writes, reading the still-stale low byte alongside the
+-- freshly-written high byte -- a self-caught tooling bug (Watcher-level
+-- race, not a ROM fact), not a second possible value. The corrected
+-- capture (watching $D3EC's reset instead, which fires strictly after
+-- both bytes commit) gives the value below, independently
+-- cross-confirmed: `topBase + 0x12` (the "wrap" formula, `$42C5`)
+-- resolves to `$4F4D`, matching a direct static read of the
+-- per-creature record (file `0x108CB`) exactly -- the corrected value
+-- is consistent both ways, the earlier one was not.
 EnemyMovementInterpreter.START_TOP_BASE = 0x4E15
--- Real, live-measured tick rate: exactly 5 real GB frames between
--- consecutive real dispatches of this creature's own movement-apply
--- routine (`trace_ptr_writes.py`/`measure_tick_cadence.py`, scratchpad,
--- 2026-08-13) -- 29 consecutive real measurements, every single delta
--- exactly 5, no exceptions. A `countdown=1` real "move" row plus a
--- `countdown=4` real "pause" row (the two ALWAYS alternate in the real
--- data this project has decoded) together span exactly `5*(1+4)=25`
--- real frames -- matching `Enemy.MOVEMENT_STEP_SECONDS`'s own
--- independently-verified 25-frame/step figure exactly.
+-- Live-measured tick rate: exactly 5 GB frames between consecutive
+-- dispatches of this creature's movement-apply routine
+-- (`trace_ptr_writes.py`/`measure_tick_cadence.py`, scratchpad -- 29
+-- consecutive measurements, every single delta exactly 5, no
+-- exceptions. A `countdown=1` "move" row plus a `countdown=4` "pause"
+-- row (the two always alternate in the data this project has decoded)
+-- together span exactly `5*(1+4)=25` frames -- matching
+-- `Enemy.MOVEMENT_STEP_SECONDS`'s independently-verified 25-frame/step
+-- figure exactly.
 EnemyMovementInterpreter.TICK_FRAMES = 5
 
---- `romData`: the raw ROM byte string. `noise`: a real `CombatNoise`
--- instance (this project's own `$2B1E` port) -- REQUIRED, not
--- optional, since the real level-1 choice is genuinely PRNG-driven;
--- guessing a fixed choice here would misrepresent real, non-
--- deterministic ROM behavior as fixed. Share the SAME `CombatNoise`
--- instance combat damage already uses (`Field.lua`'s own
--- `self.combatNoise`) if you want this to draw from the real ROM's
--- single, shared PRNG stream rather than an independent one -- either
--- is a defensible choice (the real ROM's own `$C0B0`/`$C0B1` counters
--- ARE genuinely shared/global), but sharing is closer to real hardware.
+--- `romData`: the raw ROM byte string. `noise`: a `CombatNoise`
+-- instance (this project's `$2B1E` port) -- required, not optional,
+-- since the level-1 choice is genuinely PRNG-driven; guessing a fixed
+-- choice here would misrepresent non-deterministic ROM behavior as
+-- fixed. Share the same `CombatNoise` instance combat damage already
+-- uses (`Field.lua`'s `self.combatNoise`) if you want this to draw
+-- from the ROM's single, shared PRNG stream rather than an independent
+-- one -- either is a defensible choice (the ROM's `$C0B0`/`$C0B1`
+-- counters are genuinely shared/global), but sharing is closer to real
+-- hardware.
 function EnemyMovementInterpreter.new(romData, noise, ctx)
   assert(type(romData) == "string", "EnemyMovementInterpreter.new expects a byte string")
   assert(noise, "EnemyMovementInterpreter.new requires a real CombatNoise instance -- " ..
@@ -165,10 +164,10 @@ function EnemyMovementInterpreter.new(romData, noise, ctx)
   return self
 end
 
---- Real level-1 dispatch (`$425F`'s own body): follows real `0xFF,0xFF`
--- wrap markers (via the real per-creature anchor field) until landing
--- on a real, non-terminator row, then draws the real PRNG and commits
--- one of its 4 real pointers as the new level-2 (`midBase`).
+--- Level-1 dispatch (`$425F`'s body): follows `0xFF,0xFF` wrap markers
+-- (via the per-creature anchor field) until landing on a non-terminator
+-- row, then draws the PRNG and commits one of its 4 pointers as the new
+-- level-2 (`midBase`).
 function EnemyMovementInterpreter:pickTopLevel()
   while true do
     local rowBase = self.topBase + self.topIndex * 10
@@ -188,10 +187,10 @@ function EnemyMovementInterpreter:pickTopLevel()
   end
 end
 
---- Real level-2 row load (`$4222`'s own body): follows the real level-2
--- table forward, chasing back up to level 1 (`pickTopLevel`) the
--- instant a real `0xFF` terminator row is hit, then decodes the real
--- level-3 packed-nibble delta for the freshly-loaded row.
+--- Level-2 row load (`$4222`'s body): follows the level-2 table
+-- forward, chasing back up to level 1 (`pickTopLevel`) the instant an
+-- `0xFF` terminator row is hit, then decodes the level-3 packed-nibble
+-- delta for the freshly-loaded row.
 function EnemyMovementInterpreter:loadMidRow()
   while true do
     local rowBase = self.midBase + self.midIndex * 5
@@ -200,8 +199,8 @@ function EnemyMovementInterpreter:loadMidRow()
       self:pickTopLevel()
     else
       local movePtr = romWord(self.romData, rowBase + 1)
-      -- `movePtr`'s own byte 0 is an unmodeled leaf argument (real
-      -- sound/facing selector, `$419E`) -- HONEST SCOPE, not read here.
+      -- `movePtr`'s byte 0 is an unmodeled leaf argument (sound/facing
+      -- selector, `$419E`) -- HONEST SCOPE, not read here.
       local packed = romByte(self.romData, movePtr + 1)
       self.pendingDelta.dx = signedNibble(math.floor(packed / 16))
       self.pendingDelta.dy = signedNibble(packed % 16)
@@ -212,16 +211,16 @@ function EnemyMovementInterpreter:loadMidRow()
   end
 end
 
---- Advance exactly ONE real tick (`TICK_FRAMES` real GB frames -- the
--- caller is responsible for the real frame-accumulation, same
--- convention as `Enemy:updateMovement`'s own `MOVEMENT_STEP_SECONDS`
--- accumulator). Returns the real `(dx, dy)` to apply this tick --
--- confirmed live: `$100A4`'s own real body unconditionally re-applies
--- whatever the current level-2 row's delta is on EVERY tick it runs
--- (not just the row's first tick), so a real `countdown=4` "pause" row
--- (always real delta `(0,0)` in the data this project has decoded)
--- visually holds still for its own 4 real ticks, and a real
--- `countdown=1` "move" row applies its own nonzero delta exactly once.
+--- Advance exactly one tick (`TICK_FRAMES` GB frames -- the caller is
+-- responsible for the frame-accumulation, same convention as
+-- `Enemy:updateMovement`'s `MOVEMENT_STEP_SECONDS` accumulator).
+-- Returns the `(dx, dy)` to apply this tick -- confirmed live:
+-- `$100A4`'s body unconditionally re-applies whatever the current
+-- level-2 row's delta is on every tick it runs (not just the row's
+-- first tick), so a `countdown=4` "pause" row (always delta `(0,0)` in
+-- the data this project has decoded) visually holds still for its 4
+-- ticks, and a `countdown=1` "move" row applies its nonzero delta
+-- exactly once.
 function EnemyMovementInterpreter:tick()
   local dx, dy = self.pendingDelta.dx, self.pendingDelta.dy
   self.countdown = self.countdown - 1
