@@ -290,10 +290,9 @@ function CatalogExplorer:update(dt)
   end
 
   -- Advance whichever sprite is actually on screen this frame, real
-  -- timing (`NpcSprite`'s own `framesPerPhase`; the monster's fixed
-  -- dev-browser flip timer -- see this file's own top-of-file doc
-  -- comment for why the monster can't reuse a real per-step cadence
-  -- here).
+  -- timing (`NpcSprite`'s `framesPerPhase`; the monster's fixed
+  -- dev-browser flip timer -- see this file's top-of-file doc comment
+  -- for why the monster can't reuse a real per-step cadence here).
   if CATEGORIES[self.categoryIndex] == "npcs" then
     local sprite = self.npcSprites[self.entryIndex]
     if sprite and sprite.update and self.npcFacing[self.entryIndex] then
@@ -317,16 +316,16 @@ function CatalogExplorer:update(dt)
   end
 end
 
--- This state draws on the real, native 160x144 GB canvas (`main.lua`
--- calls `stack:draw()` INSIDE `renderer:renderTo(...)`, unlike the F1
--- debug overlay -- see `src/debug/Overlay.lua`'s own `lineH=12`
--- convention, which only works because IT draws AFTER the canvas is
--- already scaled up to real window size). LÖVE's default font is far
--- too large for that resolution at native scale (found live, 2026-08-15
--- -- a first version of this screen had overlapping/overflowing text,
--- caught by an actual `love .` screenshot, not just "should be fine"
--- code review) -- printed at a small explicit scale instead, matching
--- this project's own established GB-canvas-safe text sizing.
+-- This state draws on the native 160x144 GB canvas (`main.lua` calls
+-- `stack:draw()` inside `renderer:renderTo(...)`, unlike the F1 debug
+-- overlay -- see `src/debug/Overlay.lua`'s `lineH=12` convention, which
+-- only works because it draws after the canvas is already scaled up to
+-- real window size). LÖVE's default font is far too large for that
+-- resolution at native scale (found live -- a first version of this
+-- screen had overlapping/overflowing text, caught by an actual `love .`
+-- screenshot, not just "should be fine" code review) -- printed at a
+-- small explicit scale instead, matching this project's established
+-- GB-canvas-safe text sizing.
 local TEXT_SCALE = 0.45
 local LINE_DY = 6
 
@@ -365,15 +364,13 @@ function CatalogExplorer:_drawMonster()
     if isBossLinked and self.bossInterpreter then
       lines[#lines + 1] = string.format("[Interpreter] bank=%d cursor=%#06x",
         self.bossInterpreter.bank, self.bossInterpreter.cursor)
-      -- CLARIFIED 2026-08-15 (task #146/#147, direct follow-up "in die
-      -- app... einbauen"): "läuft..." used to cover BOTH "still making
-      -- real progress" and "reached a real, deliberate HALT and will
-      -- never move again" -- indistinguishable to anyone watching this
-      -- screen. Real tasks #141-146 made the interpreter run the
-      -- ENTIRE remaining real script and land on a genuine, understood
-      -- halt (opcode 0x00's own real queue-gate, `kind=="halted"`) --
-      -- worth surfacing honestly rather than papering over with a
-      -- generic "running" label.
+      -- CLARIFIED: "läuft..." used to cover both "still making
+      -- progress" and "reached a deliberate halt and will never move
+      -- again" -- indistinguishable to anyone watching this screen.
+      -- The interpreter now runs the entire remaining script and lands
+      -- on a genuine, understood halt (opcode 0x00's queue-gate,
+      -- `kind=="halted"`) -- worth surfacing honestly rather than
+      -- papering over with a generic "running" label.
       local runtime = self.bossInterpreter.runtime
       if runtime.stopped then
         lines[#lines + 1] = "gestoppt: " .. tostring(runtime.stopError):match("^[^\n]*")
@@ -389,18 +386,18 @@ function CatalogExplorer:_drawMonster()
   printLines(lines, 4, 78)
 end
 
---- `list` here is already the real, CURRENTLY FILTERED list (see
+--- `list` here is already the currently-filtered list (see
 -- `_currentList`/`_filteredList` -- catalog plan Phase 2); `filter`/
--- `categories` are passed separately just to render the real
--- "Kategorie X/Y (Filter: ...)" header line honestly.
+-- `categories` are passed separately just to render the "Kategorie
+-- X/Y (Filter: ...)" header line honestly.
 function CatalogExplorer:_drawItemLike(list, label, filter, categories)
   local r = list[self.entryIndex]
   local filterLabel = (filter == 0) and "Alle"
     or (categories[filter] and string.format("Byte %d (%s)", categories[filter].categoryByte, categories[filter].sizeClass) or "?")
   if not r then
-    -- Real, honest empty state -- can genuinely happen if a filtered
-    -- group's own real entryIndex desyncs (shouldn't, given B resets
-    -- it, but no fabricated placeholder either way).
+    -- Honest empty state -- can genuinely happen if a filtered group's
+    -- entryIndex desyncs (shouldn't, given B resets it, but no
+    -- fabricated placeholder either way).
     printLines({ string.format("%s: 0 Einträge (Filter: %s)", label, filterLabel) }, 4, 40)
     return
   end
