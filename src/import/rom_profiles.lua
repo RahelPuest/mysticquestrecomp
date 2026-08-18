@@ -1557,6 +1557,15 @@ RomProfiles.PROFILES = {
           "konsistent mit einer Landung nahe der ursprünglichen Treppe, aber NICHT die staerkere " ..
           "17.5%-Aussage ueberschreibend (andere Kamera-Position, gleicher ROM-Raum). Siehe " ..
           "fourthRooms eigenes bridgeNote fuer die volle Einordnung.",
+        -- FIX, 2026-08-18 (same direct, repeated, frustrated user report
+        -- as sixthRoom's own note -- see that field for the full
+        -- reasoning). "thirdRoom" specifically (not willyRoom/secondRoom,
+        -- the other two same-family members): fifthRoom is reached
+        -- EXCLUSIVELY via thirdRoom's own exit and lands back inside
+        -- thirdRoom's own exit-zone coordinates (see this note's own
+        -- "UNTERSTUETZENDES DETAIL" above) -- the most specific, best-
+        -- justified single merge target of the three.
+        mergeInto = "thirdRoom",
         cols = 20,
         rows = 16,
         tileOffsets = {
@@ -1681,6 +1690,20 @@ RomProfiles.PROFILES = {
           "arena'), ein anderer, per Scroll erreichter Ausschnitt derselben Leinwand, kein " ..
           "unabhaengiger Raum. Zusaetzlich bestaetigt: die reale ROM-eigene \"Kaempfe!\"-Textbox " ..
           "(dieselbe wie in startRoom) erscheint auch hier. Siehe events.md 2026-08-17.",
+        -- FIX, 2026-08-18 (direct, repeated, frustrated user report: "DER
+        -- FITH ROOM IST DOCH IMMERNOCH IM RAUMSYSTEM UND DER STARTRAUM
+        -- IST IMMERNOCH NOICHT IDENTISCH MIT DEM 6. ROOM" -- the violet
+        -- "same identity" BADGE alone was never enough; the room-system
+        -- graph still rendered this as its own separate box, because it
+        -- was still added as its own node whenever an exit's own
+        -- `targetRoom` referenced it by name). `mergeInto` tells the
+        -- graph renderer to redirect any incoming edge to the named
+        -- room instead of creating a separate node at all -- "startRoom"
+        -- specifically (not "fourthRoom", the OTHER same-family member),
+        -- since the visual/live-confirmed identity match is against
+        -- startRoom's own real capture (the "Kaempfe!" textbox proof
+        -- above), not fourthRoom's own, genuinely different capture.
+        mergeInto = "startRoom",
         cols = 20,
         rows = 16,
         -- 7 of 16 distinct real tile IDs (`128`-`134`) already had a

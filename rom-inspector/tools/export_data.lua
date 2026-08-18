@@ -615,7 +615,7 @@ end
 -- went through the main loop above) so a flag doesn't disappear just
 -- because its room has no outgoing exit.
 for name, room in pairs(profile.graphics) do
-  if type(room) == "table" and (room.sameRomIdentityAs or room.tilesetDisputed or room.worldMapCatalogRecord or room.bridgeNote) then
+  if type(room) == "table" and (room.sameRomIdentityAs or room.tilesetDisputed or room.worldMapCatalogRecord or room.bridgeNote or room.mergeInto) then
     local found = nil
     for _, r in ipairs(rooms) do
       if r.name == name then found = r end
@@ -627,6 +627,7 @@ for name, room in pairs(profile.graphics) do
       found.tilesetDisputedNote = room.tilesetDisputedNote
       found.worldMapCatalogRecord = found.worldMapCatalogRecord or room.worldMapCatalogRecord
       found.bridgeNote = room.bridgeNote
+      found.mergeInto = room.mergeInto
     else
       local widthTiles, heightTiles
       if room.grid then
@@ -641,13 +642,14 @@ for name, room in pairs(profile.graphics) do
         tilesetDisputedNote = room.tilesetDisputedNote,
         worldMapCatalogRecord = room.worldMapCatalogRecord,
         bridgeNote = room.bridgeNote,
+        mergeInto = room.mergeInto,
       }
     end
   end
 end
 table.sort(rooms, function(a, b) return a.name < b.name end)
 writeJs("rooms.js", "ROOMS", rooms,
-  "Every room with decoded exits -- read from rom_profiles.lua's graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A few VERIFIED rooms with no live-traced exits (currently: startRoom, the first-boss-fight room) are still included as their own honestly-disconnected node via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom, sixthRoom) carry that field regardless of their own exits. Rooms with a live-confirmed worldMapCatalogRecord (currently: startRoom at (7,4), fourthRoom at (7,5) -- see rom_profiles.lua's doc comment) carry the bank6 8x8 world-map grid position they were found at, independent of whether they're isolated in this play-flow graph. `bridgeNote` (currently: fourthRoom, 2026-08-18) flags a room whose own exits both terminate in already-known territory (via other rooms' sameRomIdentityAs) -- a junction, not a lead toward new content.")
+  "Every room with decoded exits -- read from rom_profiles.lua's graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A few VERIFIED rooms with no live-traced exits (currently: startRoom, the first-boss-fight room) are still included as their own honestly-disconnected node via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom, sixthRoom) carry that field regardless of their own exits. Rooms with a live-confirmed worldMapCatalogRecord (currently: startRoom at (7,4), fourthRoom at (7,5) -- see rom_profiles.lua's doc comment) carry the bank6 8x8 world-map grid position they were found at, independent of whether they're isolated in this play-flow graph. `bridgeNote` (currently: fourthRoom, 2026-08-18) flags a room whose own exits both terminate in already-known territory (via other rooms' sameRomIdentityAs) -- a junction, not a lead toward new content. `mergeInto` (currently: fifthRoom->thirdRoom, sixthRoom->startRoom, 2026-08-18, direct repeated user report the badge-only approach still showed them as separate boxes) tells the room-system graph renderer to redirect the room's own incoming edges to the named target and NOT render it as its own node at all -- a real merge, not just a visual flag.")
 
 ----------------------------------------------------------------------
 -- 6b. Room MAPS (grid + tileOffsets) -- for the Tile/Map viewers. Only

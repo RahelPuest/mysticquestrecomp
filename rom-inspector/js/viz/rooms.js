@@ -149,14 +149,54 @@ function render_rooms(main) {
   for (const m of ROOM_MAPS) mapByName[m.name] = m;
 
   // Build node/edge set.
+  //
+  // MERGE, 2026-08-18 (direct, repeated, frustrated user report: "DER
+  // FITH ROOM IST DOCH IMMERNOCH IM RAUMSYSTEM UND DER STARTRAUM IST
+  // IMMERNOCH NOICHT IDENTISCH MIT DEM 6. ROOM" -- the violet "same
+  // identity" badge alone never actually removed the duplicate box, it
+  // only decorated it; both `r.name` below and every `ex.targetRoom`
+  // reference still created/kept a genuinely separate node). `mergeInto`
+  // (rom_profiles.lua, see fifthRoom/sixthRoom's own doc comments) names
+  // the room a mergeable room's own real identity resolves to --
+  // `resolveMerge` follows it (a short bounded loop, not just one hop,
+  // in case a future merge target is itself later merged again) so a
+  // mergeable room NEVER becomes its own node and every edge that would
+  // have pointed at it points at its real canonical room instead.
+  const roomByNameRaw = {};
+  for (const r of ROOMS) roomByNameRaw[r.name] = r;
+  function resolveMerge(name) {
+    const seen = new Set();
+    while (roomByNameRaw[name] && roomByNameRaw[name].mergeInto && !seen.has(name)) {
+      seen.add(name);
+      name = roomByNameRaw[name].mergeInto;
+    }
+    return name;
+  }
+  // Collect, per canonical room, which mergeable rooms resolved into it
+  // -- shown on the canonical node itself so the real identity info
+  // isn't lost, just no longer a separate box.
+  const aliasesOf = {};
+  for (const r of ROOMS) {
+    if (r.mergeInto) {
+      const canonical = resolveMerge(r.name);
+      (aliasesOf[canonical] = aliasesOf[canonical] || []).push(r.name);
+    }
+  }
+
   const nodeNames = new Set();
   const roomByName = {};
-  for (const r of ROOMS) { nodeNames.add(r.name); roomByName[r.name] = r; }
+  for (const r of ROOMS) {
+    if (r.mergeInto) continue; // merged away -- never its own node, see resolveMerge above
+    nodeNames.add(r.name);
+    roomByName[r.name] = r;
+  }
   const edges = [];
   for (const r of ROOMS) {
+    if (r.mergeInto) continue; // a merged room's own listed exits (if any) are not rendered separately
     for (const ex of r.exits) {
-      nodeNames.add(ex.targetRoom);
-      edges.push({ from: r.name, to: ex.targetRoom, ...ex });
+      const target = resolveMerge(ex.targetRoom);
+      nodeNames.add(target);
+      edges.push({ from: r.name, to: target, ...ex });
     }
   }
   const incoming = new Set(edges.map(e => e.to));
@@ -223,6 +263,62 @@ function render_rooms(main) {
     contentHeight = Math.max(contentHeight, y);
   }
   const contentWidth = x;
+
+  // Scroll-chain grouping (2026-08-18, direct user request "wenn es die
+  // selbe fortlaufende leinwand ist dann sollte es auch so dargestellt
+  // werden" -- a plain arrow between two rooms connected by a real
+  // hardware SCROLL, not a cut, otherwise reads exactly like a discrete
+  // cut transition; the edge's own dashed/solid line style hints at the
+  // difference but doesn't make "these are ONE continuous space, not
+  // several separate rooms" immediately visible). Real ROM basis: only
+  // willyRoom<->secondRoom<->thirdRoom are connected exclusively by
+  // `transitionType==="scroll"` edges (see rom_profiles.lua's own
+  // exits data) -- a real, empirically-measured SCX/SCY hardware
+  // scroll, not a guess. Drawn as one shared, labeled background behind
+  // the group's own room cards (still individually shown, each with its
+  // own real captured content -- grouping is a visual framing, not a
+  // data merge like `mergeInto` above).
+  const scrollAdj = {};
+  for (const e of edges) {
+    if (e.transitionType !== "scroll") continue;
+    (scrollAdj[e.from] = scrollAdj[e.from] || new Set()).add(e.to);
+    (scrollAdj[e.to] = scrollAdj[e.to] || new Set()).add(e.from);
+  }
+  const groupVisited = new Set();
+  const scrollGroups = [];
+  for (const n of nodeNames) {
+    if (groupVisited.has(n) || !scrollAdj[n]) continue;
+    const group = [];
+    const queue = [n];
+    groupVisited.add(n);
+    while (queue.length) {
+      const cur = queue.shift();
+      group.push(cur);
+      for (const nb of scrollAdj[cur] || []) {
+        if (!groupVisited.has(nb)) { groupVisited.add(nb); queue.push(nb); }
+      }
+    }
+    if (group.length > 1) scrollGroups.push(group);
+  }
+  const GROUP_PAD = 14;
+  let groupsHtml = "";
+  for (const group of scrollGroups) {
+    const ps = group.map(g => pos[g]).filter(Boolean);
+    if (!ps.length) continue;
+    const minX = Math.min(...ps.map(p => p.x)) - GROUP_PAD;
+    const minY = Math.min(...ps.map(p => p.y)) - GROUP_PAD;
+    const maxX = Math.max(...ps.map(p => p.x + p.w)) + GROUP_PAD;
+    const maxY = Math.max(...ps.map(p => p.y + p.h)) + GROUP_PAD;
+    groupsHtml += `
+      <div style="position:absolute; left:${minX}px; top:${minY}px; width:${maxX - minX}px; height:${maxY - minY}px;
+                  border:2px dashed var(--accent2); border-radius:14px;
+                  background:rgba(80,200,180,0.08); box-sizing:border-box; pointer-events:none;"
+           title="${escapeHtml(group.join(" ↔ "))}: echte Hardware-Scroll-Kette (SCX/SCY-Bewegung, kein Cut) -- eine durchgehende Leinwand, keine separaten Räume.">
+        <div style="position:absolute; top:-11px; left:12px; background:var(--bg-page,#0d100a); padding:0 6px; font-size:10px; color:var(--accent2); font-weight:600; white-space:nowrap;">
+          &#8644; eine durchgehende Leinwand (Scroll, kein Cut)
+        </div>
+      </div>`;
+  }
 
   const svg = document.getElementById("roomGraphSvg");
   const nodesHost = document.getElementById("roomGraphNodes");
@@ -307,6 +403,10 @@ function render_rooms(main) {
     // this is a real, separate finding about the room's own ROLE in the
     // map graph, not about its identity or tileset.
     const bridgeNote = roomEntry && roomEntry.bridgeNote;
+    // Rooms that MERGED into this one (see resolveMerge above) -- shown
+    // right on the canonical node so the real identity match stays
+    // visible even though the alias itself no longer gets its own box.
+    const aliases = aliasesOf[n];
     nodesHtml += `
       <div class="room-node-card${isLeaf ? " leaf" : ""}" data-room="${escapeHtml(n)}"
            ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}
@@ -323,9 +423,10 @@ function render_rooms(main) {
         ${sameAs ? `<div style="font-size:9px; color:#9d6fe0; margin-top:2px;" title="${escapeHtml(roomEntry.sameRomIdentityNote)}">&equiv; ${escapeHtml(sameAs.join("/"))}</div>` : ""}
         ${worldMapRec ? `<div style="font-size:9px; color:#5ac0a0; margin-top:2px;" title="Echter Eintrag im 8x8-Weltkarten-Katalog (${escapeHtml(worldMapRec.table)}, Record ${worldMapRec.recordIndex}) -- live per Zell-fuer-Zell-Vergleich bestaetigt.">&#128506; Weltkarte (${worldMapRec.row},${worldMapRec.col})</div>` : ""}
         ${bridgeNote ? `<div style="font-size:9px; color:#e0c05a; margin-top:2px;" title="${escapeHtml(bridgeNote)}">&#128279; Brücke &mdash; führt zurück in bekanntes Gebiet</div>` : ""}
+        ${aliases ? `<div style="font-size:9px; color:#9d6fe0; margin-top:2px;" title="Diese Räume sind laut live bestätigten ROM-Identitätsregistern derselbe reale Raum wie ${escapeHtml(n)} -- als eigener Knoten zusammengeführt, nicht separat gezeigt.">&equiv; auch: ${escapeHtml(aliases.join(", "))}</div>` : ""}
       </div>`;
   }
-  nodesHost.innerHTML = nodesHtml;
+  nodesHost.innerHTML = groupsHtml + nodesHtml;
 
   // Real thumbnail-space anchor for an exit's own trigger `zone`
   // (center of the real bracketed rectangle, missing bounds treated
