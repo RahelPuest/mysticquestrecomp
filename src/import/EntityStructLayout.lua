@@ -1,30 +1,30 @@
--- The real, general WRAM entity-slot struct this ROM uses for the
--- player, enemies, and NPCs alike -- found 2026-08-13 while chasing
--- the "where is the player's real spawn/landing position encoded"
--- question (see docs/reverse-engineering/rom-map.md's own
--- "Consolidated reference: the general room/map system" section, and
--- events.md's "spawn position + trigger zones" investigation, for the
--- full disassembly trail this is distilled from).
+-- The general WRAM entity-slot struct this ROM uses for the player,
+-- enemies, and NPCs alike -- found while chasing the "where is the
+-- player's spawn/landing position encoded" question (see
+-- docs/reverse-engineering/rom-map.md's "Consolidated reference: the
+-- general room/map system" section, and events.md's "spawn position +
+-- trigger zones" investigation, for the full disassembly trail this is
+-- distilled from).
 --
--- Real, VERIFIED base/stride: `$C200 + slotIndex*16`, 20 real slots
--- (0-19) -- confirmed via TWO independent real routines that both
--- compute this exact address:
---   `$0AE3` (the real, general entity DESPAWN primitive, already
---   documented via the enemy-death-dispatch chain) -- receives a real
---   slot index in `C`, computes `HL = $C200 + C*16` via 4 real
---   `ADD HL,HL` doublings (`C*2*2*2*2 = C*16`), zeroes fields `+4`/
---   `+5`/`+8`/`+9`, and memsets that slot's own 8-byte OAM shadow-copy
---   block (pointed to by `+8`/`+9`).
---   `$0A74` (the real, general entity ALLOCATE primitive -- the exact
+-- VERIFIED base/stride: `$C200 + slotIndex*16`, 20 slots (0-19) --
+-- confirmed via two independent routines that both compute this exact
+-- address:
+--   `$0AE3` (the general entity despawn primitive, already documented
+--   via the enemy-death-dispatch chain) -- receives a slot index in
+--   `C`, computes `HL = $C200 + C*16` via 4 `ADD HL,HL` doublings
+--   (`C*2*2*2*2 = C*16`), zeroes fields `+4`/`+5`/`+8`/`+9`, and
+--   memsets that slot's 8-byte OAM shadow-copy block (pointed to by
+--   `+8`/`+9`).
+--   `$0A74` (the general entity allocate primitive -- the exact
 --   structural counterpart, found this same investigation): scans up
---   to 20 real slots (`LD B,0x14`) for the first with `+0 == 0xFF`
---   (the dead/empty sentinel), then initializes every field below.
+--   to 20 slots (`LD B,0x14`) for the first with `+0 == 0xFF` (the
+--   dead/empty sentinel), then initializes every field below.
 --
 -- Pure Lua, no love.* calls, no ROM bytes needed to define the layout
--- itself (it's a real WRAM/code CONVENTION, not something read from
--- ROM data at runtime) -- but see `tests/import/entity_struct_layout_
--- test.lua` for real byte-level cross-checks against the actual
--- disassembly this file documents.
+-- itself (it's a WRAM/code convention, not something read from ROM
+-- data at runtime) -- but see `tests/import/entity_struct_layout_
+-- test.lua` for byte-level cross-checks against the actual disassembly
+-- this file documents.
 
 local EntityStructLayout = {}
 
