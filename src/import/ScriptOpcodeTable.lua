@@ -1870,90 +1870,81 @@ ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_74 = 0x1544 
 -- actorActionWithReadinessParam member, offset 0x04, group 0x1E.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_54 = 0x145C -- group 0x1E, offset 0x04
 
--- `0xA9` ($0D5F, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0x74`): a real "3-way classified flag-bit
--- SET/CLEAR" command -- reuses the SAME `$3BEF`/`$3BF9` bit
--- primitives `0xD1`/`0xDA`/`0xDB` already resolved -- see
--- `StandardScriptHandlers.threeWayFlagBitCommand`'s own doc comment.
+-- 0xA9 ($0D5F, whole-corpus scan's next untouched blocker after
+-- 0x74): a "3-way classified flag-bit SET/CLEAR" command -- reuses the
+-- same $3BEF/$3BF9 bit primitives 0xD1/0xDA/0xDB already resolved --
+-- see StandardScriptHandlers.threeWayFlagBitCommand's own doc comment.
 ScriptOpcodeTable.THREE_WAY_FLAG_BIT_COMMAND_HANDLER_ADDRESS_A9 = 0x0D5F
 
--- `0x67` ($14C4, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xA9`): 1 more real
--- `actorActionWithReadinessParam` member, offset `0x05`, group
--- `0x1D`.
+-- 0x67 ($14C4, whole-corpus scan's next untouched blocker after
+-- 0xA9): 1 more actorActionWithReadinessParam member, offset 0x05,
+-- group 0x1D.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_67 = 0x14C4 -- group 0x1D, offset 0x05
 
--- `0x4A`/`0x66` ($1414/$14B8, added 2026-08-14, whole-corpus scan's
--- own next real untouched blockers after `0x67`): 2 more real
--- `actorActionWithReadinessParam` members.
+-- 0x4A/0x66 ($1414/$14B8, whole-corpus scan's next untouched blockers
+-- after 0x67): 2 more actorActionWithReadinessParam members.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_4A = 0x1414 -- group 0x0E, offset 0x03
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_66 = 0x14B8 -- group 0x1C, offset 0x05
 
--- `0x76` ($152C, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0x66`): 1 more real
--- `actorActionWithReadinessParam` member, offset `0x06`, group
--- `0x1C`.
+-- 0x76 ($152C, whole-corpus scan's next untouched blocker after
+-- 0x66): 1 more actorActionWithReadinessParam member, offset 0x06,
+-- group 0x1C.
 ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_76 = 0x152C -- group 0x1C, offset 0x06
 
--- `0xA3`/`0xA5`/`0xA6` ($01D0/$01DC/$01E8, added 2026-08-14, whole-
--- corpus scan's own next real untouched blockers after `0x76`): a
--- real "fixed WRAM bit SET, then skip 1 byte" family -- the simplest
--- real handler shape found this whole pass (no leaf, no branch, no
--- live predicate) -- see `StandardScriptHandlers
--- .fixedWramBitSetSkipCommand`'s own doc comment.
+-- 0xA3/0xA5/0xA6 ($01D0/$01DC/$01E8, whole-corpus scan's next
+-- untouched blockers after 0x76): a "fixed WRAM bit SET, then skip 1
+-- byte" family -- the simplest handler shape found this whole pass (no
+-- leaf, no branch, no live predicate) -- see StandardScriptHandlers
+-- .fixedWramBitSetSkipCommand's own doc comment.
 ScriptOpcodeTable.FIXED_WRAM_BIT_SET_SKIP_COMMAND_HANDLER_ADDRESS_A3 = 0x01D0 -- bit 4
 ScriptOpcodeTable.FIXED_WRAM_BIT_SET_SKIP_COMMAND_HANDLER_ADDRESS_A5 = 0x01DC -- bit 5
 ScriptOpcodeTable.FIXED_WRAM_BIT_SET_SKIP_COMMAND_HANDLER_ADDRESS_A6 = 0x01E8 -- bit 6
 
--- `0x69` ($14F2, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xA6`): 1 more real
--- `actorSlotPositionWithReadinessParam` member (the `$123E`-leaf
--- sibling of `actorActionWithReadinessParam`), offset `0x05`.
+-- 0x69 ($14F2, whole-corpus scan's next untouched blocker after
+-- 0xA6): 1 more actorSlotPositionWithReadinessParam member (the
+-- $123E-leaf sibling of actorActionWithReadinessParam), offset 0x05.
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_WITH_READINESS_PARAM_HANDLER_ADDRESS_69 = 0x14F2 -- offset 0x05
 
--- `0xB6` ($0D8C, TRACED, DEFERRED, 2026-08-14, whole-corpus scan): a
--- real `$1ED7` selector `0x16` trampoline (`$0D95` -> `PUSH AF / LD
--- A,0x16 / JP $1ED7`) -- UNLIKE `0xB7`'s own simple selector `0x17`,
--- case `0x16`'s real code (`$4059`) is a substantial, deep, multi-step
--- routine (loops, a real DMA-shaped transfer via `$386E`, several more
--- untraced leaves) -- not a quick structural win like `0xB7`. No halt
--- was found in the traced portion, so this MAY still be tractable as
--- an "always continues" opaque effect, but fully verifying that needs
--- more tracing time than this pass justifies given its own real
--- impact (a real, bounded, reusable further thread, not abandoned).
--- Left deliberately unwired, no constant assigned.
+-- 0xB6 ($0D8C, TRACED, DEFERRED, whole-corpus scan): a $1ED7 selector
+-- 0x16 trampoline ($0D95 -> PUSH AF / LD A,0x16 / JP $1ED7) -- unlike
+-- 0xB7's own simple selector 0x17, case 0x16's code ($4059) is a
+-- substantial, deep, multi-step routine (loops, a DMA-shaped transfer
+-- via $386E, several more untraced leaves) -- not a quick structural
+-- win like 0xB7. No halt was found in the traced portion, so this may
+-- still be tractable as an "always continues" opaque effect, but fully
+-- verifying that needs more tracing time than this pass justifies (a
+-- bounded, reusable further thread, not abandoned). Left deliberately
+-- unwired, no constant assigned.
 
--- `0xA1` ($01A3, TRACED, DELIBERATELY NOT WIRED, 2026-08-14, whole-
--- corpus scan): `PUSH HL / CALL $01AC / POP HL / CALL $3727 / RET`,
--- where `$01AC` is `PUSH AF / LD A,0x0A / JP $1ED7` -- a trampoline
--- into the already-fully-mapped `$1ED7` dispatcher's selector `0x0A`,
--- which is `$4B70` -- task #85's own decisively-understood "enqueue a
--- real `(group, actionCode)` pair into the shared actor-command
--- queue" mechanism (reads its own `actionCode` from `C`). A NEW,
--- QUALITATIVELY DIFFERENT kind of hard case: `C` is never set
--- anywhere in this opcode's own real code, NOR in `$1ED7`'s own real
+-- 0xA1 ($01A3, TRACED, DELIBERATELY NOT WIRED, whole-corpus scan):
+-- PUSH HL / CALL $01AC / POP HL / CALL $3727 / RET, where $01AC is
+-- PUSH AF / LD A,0x0A / JP $1ED7 -- a trampoline into the already-
+-- fully-mapped $1ED7 dispatcher's selector 0x0A, which is $4B70 --
+-- task #85's own decisively-understood "enqueue a (group, actionCode)
+-- pair into the shared actor-command queue" mechanism (reads its
+-- actionCode from C). A qualitatively different kind of hard case: C
+-- is never set anywhere in this opcode's own code, nor in $1ED7's own
 -- preamble (re-verified against its full disassembly) -- it's
 -- whatever leftover CPU register state happened to survive from
--- WHATEVER ran immediately before this opcode dispatched, not
+-- whatever ran immediately before this opcode dispatched, not
 -- something derivable from this opcode's own script bytes or a fixed
--- ROM constant. Unlike the `$02AB` family (an opaque, undecoded
--- LEAF), this needs live CPU REGISTER-STATE tracking across opcode
+-- ROM constant. Unlike the $02AB family (an opaque, undecoded leaf),
+-- this needs live CPU register-state tracking across opcode
 -- boundaries -- a kind of state this project has never modeled and
 -- has no honest way to approximate. Left deliberately unwired, no
 -- constant assigned.
 
--- `0x79` ($1566, added 2026-08-14, whole-corpus scan's own next real
--- untouched blocker after `0xC5`): a real "actor-slot-position,
--- readiness-as-parameter" command -- the `$123E`-leaf sibling of
--- `0x7A`/`0x7B`'s own already-resolved `actorActionWithReadinessParam`
--- family -- see `StandardScriptHandlers
--- .actorSlotPositionWithReadinessParam`'s own doc comment.
+-- 0x79 ($1566, whole-corpus scan's next untouched blocker after
+-- 0xC5): an "actor-slot-position, readiness-as-parameter" command --
+-- the $123E-leaf sibling of 0x7A/0x7B's own already-resolved
+-- actorActionWithReadinessParam family -- see StandardScriptHandlers
+-- .actorSlotPositionWithReadinessParam's own doc comment.
 ScriptOpcodeTable.ACTOR_SLOT_POSITION_WITH_READINESS_PARAM_HANDLER_ADDRESS_79 = 0x1566 -- offset 0x06
 
---- Decode the full 256-entry table from `romData` per `scriptOpcodeTable`
--- (`profile.scriptOpcodeTable`). Returns a plain 1-based array of 256
--- integers (real CPU handler addresses) -- `table[opcode + 1]` is the
--- real handler address for opcode byte `opcode` (0-255).
+--- Decode the full 256-entry table from romData per scriptOpcodeTable
+-- (profile.scriptOpcodeTable). Returns a plain 1-based array of 256
+-- integers (CPU handler addresses) -- table[opcode + 1] is the
+-- handler address for opcode byte opcode (0-255).
 function ScriptOpcodeTable.decode(romData, scriptOpcodeTable)
   assert(type(romData) == "string", "ScriptOpcodeTable.decode expects a byte string")
   assert(scriptOpcodeTable and scriptOpcodeTable.fileOffset and scriptOpcodeTable.recordCount,
