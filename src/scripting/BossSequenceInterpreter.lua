@@ -249,72 +249,67 @@ function BossSequenceInterpreter:rearm(bank, cpuAddress)
   self.runtime = ScriptRuntime.new(self.opcodeEntries, self.ctx)
 end
 
---- Advance exactly ONE real opcode dispatch per call.
+--- Advance exactly one opcode dispatch per call.
 --
--- CORRECTED (2026-08-15, direct follow-up to VictorySequence.lua's own
--- real, per-frame wiring -- "mach das" continuing the "crack the real
--- $1F35/$C5AF trigger timing" step): this doc comment used to claim
--- "meant to be called once per real game frame, matching how the
--- actual ROM's own interpreter is driven" -- a real, DECISIVE, live
--- `mgba` trace this pass (`trace_31ad_redirect.py`/`...2.py`,
--- scratchpad, not checked in) proved that claim WRONG for this exact
--- script, not just imprecise. Real evidence: watched WRAM `$D85A` (the
--- current-opcode byte) every single real frame from
--- `courtyard_boss_defeated()` onward. The real `$1F35`/`$C5AF` edge
--- DOES fire exactly once, and DOES land the persistent cursor at
--- `$4710` (opcode `0x08` fetched at `$470F`) -- confirming
--- `START_CPU_ADDRESS` above is exactly right, and closing that specific
--- mystery. But past the first real CHAIN (into bank 14, matching
--- `POST_CHAIN_BANK`), `$D85A` was observed to hold the SAME value for
--- long, real, MULTI-FRAME stretches (10, 158, even 314 consecutive real
--- frames) before changing -- i.e. the real ROM's own per-opcode
--- dispatch (`$3727`) is genuinely NOT re-invoked every single real
--- frame for this script, at least not past this point. Calling
--- `:tick()` unconditionally every real frame (what `VictorySequence
--- .lua` does) therefore races far ahead of the real ROM's own actual
--- cursor position once real opcodes with any per-frame pacing
--- involvement are reached (`0x04`/`0xFF`'s own textbox-typing family is
--- the prime suspect, though the exact real throttle mechanism is NOT
--- yet identified) -- this project's own software cursor silently
--- desyncs from the real byte stream, ending up reading unrelated bytes
--- as "opcodes" that happen to look valid for a while (see
--- `VictorySequence.lua`'s own doc comment for the concrete real
--- comparison: live software converges on cursor `0x4798`; the real ROM,
--- traced over the SAME real frame range, is actually at `0x6206` by
--- then, having ALSO genuinely dispatched the real, still-undecoded
--- `0xBC`/`0xBD` palette-fade opcodes along the way -- opcodes this
--- project's software would have stopped loudly on, had it stayed
--- synced). HONEST, NOW-OPEN QUESTION this correction surfaces (not
--- resolved this pass): what real condition actually gates re-
--- invocation of `$3727` for this script -- every real frame, only while
--- some other real per-frame counter/flag holds, or something else
--- entirely. Calling `:tick()` once per real frame remains this
--- project's own best current approximation (there is no evidence yet
+-- CORRECTED (direct follow-up to VictorySequence.lua's per-frame
+-- wiring, continuing the "crack the $1F35/$C5AF trigger timing" step):
+-- this doc comment used to claim "meant to be called once per game
+-- frame, matching how the actual ROM's interpreter is driven" -- a
+-- decisive, live `mgba` trace (`trace_31ad_redirect.py`/`...2.py`,
+-- scratchpad, not checked in) proved that claim wrong for this exact
+-- script, not just imprecise. Evidence: watched WRAM `$D85A` (the
+-- current-opcode byte) every single frame from
+-- `courtyard_boss_defeated()` onward. The `$1F35`/`$C5AF` edge does
+-- fire exactly once, and does land the persistent cursor at `$4710`
+-- (opcode `0x08` fetched at `$470F`) -- confirming `START_CPU_ADDRESS`
+-- above is exactly right, and closing that specific mystery. But past
+-- the first CHAIN (into bank 14, matching `POST_CHAIN_BANK`), `$D85A`
+-- was observed to hold the same value for long, multi-frame stretches
+-- (10, 158, even 314 consecutive frames) before changing -- i.e. the
+-- ROM's per-opcode dispatch (`$3727`) is genuinely not re-invoked every
+-- single frame for this script, at least not past this point. Calling
+-- `:tick()` unconditionally every frame (what `VictorySequence.lua`
+-- does) therefore races far ahead of the ROM's actual cursor position
+-- once opcodes with any per-frame pacing involvement are reached
+-- (`0x04`/`0xFF`'s textbox-typing family is the prime suspect, though
+-- the exact throttle mechanism is not yet identified) -- this project's
+-- software cursor silently desyncs from the real byte stream, ending up
+-- reading unrelated bytes as "opcodes" that happen to look valid for a
+-- while (see `VictorySequence.lua`'s doc comment for the concrete
+-- comparison: live software converges on cursor `0x4798`; the ROM,
+-- traced over the same frame range, is actually at `0x6206` by then,
+-- having also genuinely dispatched the still-undecoded `0xBC`/`0xBD`
+-- palette-fade opcodes along the way -- opcodes this project's software
+-- would have stopped loudly on, had it stayed synced). Honest, now-open
+-- question this correction surfaces (not resolved this pass): what
+-- condition actually gates re-invocation of `$3727` for this script --
+-- every frame, only while some other per-frame counter/flag holds, or
+-- something else entirely. Calling `:tick()` once per frame remains
+-- this project's best current approximation (there is no evidence yet
 -- for a better one), but is now honestly labeled as unverified/likely-
 -- wrong past the first CHAIN, not "matching how the ROM is driven".
 --
--- RESOLVED, same day, direct continuation ("ja mach das"): found the
--- REAL mechanism (see `StandardScriptHandlers.tick`'s own doc comment
--- for the full live watchpoint-trace evidence) -- opcode `0x04` shares
--- `0xFF`'s own already-known real 5-real-frame pacing gate, and BOTH
--- are gated by the SAME real "is the reveal finished" condition. That
--- Lua handler is now fixed to match. BUT this specific integration
--- (`ctx.isTextboxDone` here is hardcoded `function() return true end`,
--- an ALREADY-DELIBERATE, ALREADY-DOCUMENTED simplification going all
--- the way back to this shadow run's original 2026-08-13 design --
--- "no real display state to gate on in a shadow run") does NOT change
--- behavior from this fix alone: with `isDone()` unconditionally true,
--- `0x04` still releases on its very first dispatch every time, so this
--- run still races ahead of the real ROM exactly as before. The earlier
--- "desync" framing above is therefore better understood not as a
--- separate, crackable mystery, but as the DIRECT, expected consequence
--- of this shadow run's own honest, pre-existing "not real on-screen
--- pacing" limitation -- genuinely modeling it would require knowing the
--- real character COUNT being revealed at each real script position
--- (not currently threaded through anywhere in this project), which
--- this project will not guess at rather than fake a real value (its own
--- "no silent fallbacks" rule). Left as an honest, named limitation, not
--- pursued further this pass.
+-- RESOLVED, same session: found the real mechanism (see
+-- `StandardScriptHandlers.tick`'s doc comment for the full live
+-- watchpoint-trace evidence) -- opcode `0x04` shares `0xFF`'s
+-- already-known 5-frame pacing gate, and both are gated by the same "is
+-- the reveal finished" condition. That Lua handler is now fixed to
+-- match. But this specific integration (`ctx.isTextboxDone` here is
+-- hardcoded `function() return true end`, an already-deliberate,
+-- already-documented simplification going all the way back to this
+-- shadow run's original design -- "no real display state to gate on in
+-- a shadow run") does not change behavior from this fix alone: with
+-- `isDone()` unconditionally true, `0x04` still releases on its very
+-- first dispatch every time, so this run still races ahead of the ROM
+-- exactly as before. The earlier "desync" framing above is therefore
+-- better understood not as a separate, crackable mystery, but as the
+-- direct, expected consequence of this shadow run's honest,
+-- pre-existing "not real on-screen pacing" limitation -- genuinely
+-- modeling it would require knowing the character count being revealed
+-- at each script position (not currently threaded through anywhere in
+-- this project), which this project will not guess at rather than fake
+-- a real value (its "no silent fallbacks" rule). Left as an honest,
+-- named limitation, not pursued further.
 function BossSequenceInterpreter:tick()
   if self.done then
     return
