@@ -11495,3 +11495,67 @@ progression or the 6-known-hard-opcode puppeteering work opens a
 genuinely new angle. `luajit tests/run_tests.lua`: 575/575 pass, no
 production `src/` behavior changed (the fix is scoped entirely to the
 scan script's own synthetic stub).
+
+## 2026-08-18, same day ("ja mach das magiesystem") -- real item-price field found and wired (external-reference method, 8/8 matches); the actual castable Magic system stays genuinely unfound
+
+Direct continuation, targeting the Magic/spell system milestone (🔴 not
+started). Oriented via `docs/reverse-engineering/rom-map.md`'s own
+"Item/spell table" section (2026-08-08) -- a real, PARTIALLY VERIFIED
+16-byte-record table at file `0x9DE5` (bank 2, `src/import/ItemTable.lua`)
+already had names, a category byte, and a per-category ID decoded; bytes
+9-14 stayed open.
+
+**Same external-reference method that already closed `EnemyStatTable`/
+`WeaponStatTable`, applied here for real**: fetched the one walkthrough
+`docs/references.md` already flagged as reachable
+(gamesurge.com's Final Fantasy Adventure guide) via `WebFetch`. Got a
+real "8 magic spells with MP cost" list (Cure 2/Heal 1/Sleep 1/Mute
+1/Fire 1/Ice 2/Lit 2/Nuke 3) AND a real consumable/status-cure item
+price list (Cure 40g/X-Cure 160g/Ether 320g/X-Ether 640g/Pure 30g/
+Eyedrop 60g/Soft 90g/Moogle 120g).
+
+**Direct byte search for the 8-value MP-cost sequence** (both a literal
+contiguous run and every stride from 2-32 bytes, whole 256KB ROM):
+genuinely negative, zero hits anywhere. Honest conclusion: this
+project's already-decoded item/spell table (bytes 8-19, German names
+Lebe/S-Lebe/Magi/S-Magi/Elixier/Salbe/Auge/Bewege/Spruch/Allheil/
+Stille/Schlaf) is the shop-purchasable RECOVERY/status-cure item
+catalog, not the player's MP-costed Magic-menu spell list -- despite
+this project's own older docs calling it "item/spell." The real
+castable spells (Fire/Ice/Lightning/Nuke/Cure/Heal/Sleep/Mute, cast
+against the already-known `$D7B6`/`$D7B8` curMP/maxMP WRAM cells) are
+evidently a separate ROM structure this pass did not locate.
+
+**Real, decisive win instead**: cross-checking the SAME item table's
+bytes 13-14 (0-based, LE u16) against the fetched item PRICE list found
+**8 of 8 exact matches** -- record 8 "Lebe" 40g, 9 "S-Lebe" 160g, 10
+"Magi" 320g (the LE high byte genuinely exercised, not just a
+single-byte coincidence), 11 "S-Magi" 640g, 13 "Salbe" 30g, 14 "Auge"
+60g, 15 "Bewege" 90g, 16 "Spruch" 120g -- the latter 4 also forming a
+clean, self-evident +30g arithmetic progression, independent
+corroboration beyond the external source. Records 0-7 (found/thrown
+combat items, never sold) all read price=0, consistent rather than
+contradicting. Wired into `ItemTable.decode` as a real `price` field
+(`src/import/ItemTable.lua`, `rom_profiles.lua`'s own `itemTable` status
+updated), 2 new tests (a synthetic little-endian-parsing check, and a
+real-ROM test locking in all 8 external matches plus the 8 zero-price
+combat items). Website re-exported. `luajit tests/run_tests.lua`:
+577/577 pass (575 -> 577).
+
+**Honest status of the actual task**: the Magic/spell system milestone
+itself is NOT closed by this pass -- a real, adjacent, previously-open
+question (item shop pricing) got closed instead, using the same
+methodology that was supposed to find the spell system. The real
+castable-spell table remains genuinely unfound. Concrete, un-tried next
+angles for whoever continues: (a) search `ScriptOpcodeTable`/
+`StandardScriptHandlers` for any handler that reads or writes
+`$D7B6`/`$D7B8` (curMP/maxMP) directly -- no such reference exists yet
+in this codebase, meaning the MP-consuming opcode itself hasn't been
+identified at all; (b) the Magic Ring-menu UI state (if this port has
+found it at all) would be the natural place to look for a spell-select
+list referencing a stat table; (c) the fetched walkthrough's MP-cost
+numbers might not byte-match because they're for the US cartridge
+specifically (like `EnemyStatTable`'s own bank-number caveat) -- worth
+re-deriving candidate values from a live mgba MP-consumption trace
+(cast any spell if one is ever reachable, diff `$D7B6` before/after)
+rather than assuming the external numbers transfer unchanged.

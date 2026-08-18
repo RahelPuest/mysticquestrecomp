@@ -22,6 +22,20 @@ Harness.test("ItemTable.decode: parses a synthetic 2-record table", function()
   Harness.assertEqual(records[2].id, 2)
 end)
 
+Harness.test("ItemTable.decode: price is bytes 13-14 (0-based), little-endian u16", function()
+  -- byte13=0x28, byte14=0x00 -> 40 (record 8's real "Cure" price).
+  local rec0 = "\197\216\213\216\0\0\0\0" .. "\128\160\16\0\0\40\0\1"
+  -- byte13=0x40, byte14=0x01 -> 320 (record 10's real "Ether" price) --
+  -- exercises the little-endian high byte, not just a single-byte value.
+  local rec1 = "\204\212\223\213\0\0\0\0" .. "\0\144\0\8\0\64\1\3"
+  local rom = rec0 .. rec1
+  local itemTable = { fileOffset = 0, recordLength = 16, nameLength = 8, recordCount = 2 }
+
+  local records = ItemTable.decode(rom, itemTable)
+  Harness.assertEqual(records[1].price, 40)
+  Harness.assertEqual(records[2].price, 320)
+end)
+
 -- --- ROM-dependent tests -------------------------------------------------
 local romData = DevRomLocator.find()
 
@@ -96,6 +110,45 @@ Harness.testIfAvailable(
     Harness.assertEqual(records[29].name, "Bonbon")
     Harness.assertEqual(records[52].name, "Rubin")
     Harness.assertEqual(records[55].name, "Diamant")
+  end
+)
+
+Harness.testIfAvailable(
+  "ItemTable.decode: real price field, 8 external gold-cost matches (found 2026-08-18)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local records = ItemTable.decode(romData, profile.itemTable)
+
+    -- Cross-checked against a real, fetched Final Fantasy Adventure
+    -- walkthrough (gamesurge.com, see docs/references.md and this
+    -- module's own top-of-file 2026-08-18 doc comment) -- 8 of 8
+    -- checkable records match exactly. Records 13-16 also form a clean
+    -- +30g arithmetic progression, independent corroboration beyond the
+    -- external source.
+    local expectedPrices = {
+      [9] = 40,   -- "Lebe" (Cure)
+      [10] = 160, -- "S-Lebe" (X-Cure)
+      [11] = 320, -- "Magi" (Ether) -- exercises the LE high byte
+      [12] = 640, -- "S-Magi" (X-Ether) -- exercises the LE high byte
+      [14] = 30,  -- "Salbe" (Pure)
+      [15] = 60,  -- "Auge" (Eyedrop)
+      [16] = 90,  -- "Bewege" (Soft)
+      [17] = 120, -- "Spruch" (Moogle)
+    }
+    for recordIndex1Based, price in pairs(expectedPrices) do
+      Harness.assertEqual(records[recordIndex1Based].price, price,
+        "record " .. (recordIndex1Based - 1) .. " (" .. records[recordIndex1Based].name .. ") price")
+    end
+
+    -- Records 0-7 (found/thrown combat items) are never sold -- price=0
+    -- is consistent with the field, not a contradiction.
+    for i = 1, 8 do
+      Harness.assertEqual(records[i].price, 0,
+        "record " .. (i - 1) .. " (" .. records[i].name .. ") should be unpriced")
+    end
   end
 )
 

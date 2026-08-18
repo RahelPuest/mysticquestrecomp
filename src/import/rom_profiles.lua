@@ -3680,9 +3680,11 @@ RomProfiles.PROFILES = {
 
     -- Item/spell name+stat table -- see docs/reverse-engineering/rom-map.md
     -- "Item/spell table" (PARTIALLY VERIFIED: names, the record's
-    -- 16-byte width, and the per-category ID byte are confirmed; the
-    -- remaining stat bytes are not decoded). src/import/ItemTable.lua
-    -- is the generic decoder.
+    -- 16-byte width, the per-category ID byte, AND the price field
+    -- (bytes 13-14, found 2026-08-18 -- see ItemTable.lua's own doc
+    -- comment, 8/8 external gold-cost matches) are confirmed; the
+    -- remaining stat bytes (10-12) are not decoded). src/import/
+    -- ItemTable.lua is the generic decoder.
     -- EXTENDED (monster/npc/item census): a fresh static scan (name-
     -- decode success/failure per record, same method already used to
     -- find enemySpeciesTable's boundary) found clean content well past

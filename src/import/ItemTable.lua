@@ -41,6 +41,31 @@
 -- meaning of the prefix byte itself (spell tier? icon ID?) is NOT
 -- decoded -- returned as `namePrefixByte` for a future pass, not
 -- guessed at.
+--
+-- FOUND, 2026-08-18 ("mach das magiesystem" -- same external-reference
+-- method that already closed enemyStatTable/weaponStatTable): bytes
+-- 13-14 (0-based, LE u16) are the real shop PRICE, closing part of this
+-- module's own long-standing "bytes 9-14 undecoded" gap. Cross-checked
+-- against a real, fetched Final Fantasy Adventure walkthrough
+-- (gamesurge.com, see docs/references.md) -- 8 of 8 checkable records
+-- match EXACTLY: record 8 "Lebe" 40g (Cure), 9 "S-Lebe" 160g (X-Cure),
+-- 10 "Magi" 320g (Ether), 11 "S-Magi" 640g (X-Ether), 13 "Salbe" 30g
+-- (Pure), 14 "Auge" 60g (Eyedrop), 15 "Bewege" 90g (Soft), 16 "Spruch"
+-- 120g (Moogle) -- the latter 4 also form a clean, self-evident +30g
+-- arithmetic progression even before the external cross-check. Records
+-- 0-7 (the found/thrown combat items -- Flam/Eis/Bliz/Bomb etc.) all
+-- price=0, consistent with "not sold in a shop" rather than
+-- contradicting the field. HONEST SCOPE, narrower than the task that
+-- prompted this search: this is the shop ITEM catalog (potions,
+-- status-cure items, thrown elemental items), not the player's
+-- MP-costed Magic-menu spell list (Cure/Heal/Sleep/Mute/Fire/Ice/Lit/
+-- Nuke per the same walkthrough) -- a direct AND strided (stride 2-32)
+-- search for that 8-value MP-cost byte sequence across the whole ROM
+-- came back genuinely negative. The real castable-spell system (Magic
+-- Ring menu, MP consumption against the already-known `$D7B6`/`$D7B8`
+-- curMP/maxMP cells) has NOT been located by this pass -- it is
+-- evidently a separate ROM structure from this item/price table, not
+-- yet found. See events.md's own 2026-08-18 entry for the full trail.
 
 local TextDecoder = require("src.import.TextDecoder")
 
@@ -49,13 +74,17 @@ local ItemTable = {}
 --- Decode all records from `itemTable` profile info against `romData`.
 -- Returns an array of:
 --   { index, name = <string>, categoryByte = <0-255>, id = <0-255>,
---     namePrefixByte = <0-255 or nil>, raw = <16-byte string> }
+--     price = <0-65535>, namePrefixByte = <0-255 or nil>,
+--     raw = <16-byte string> }
 -- 1-based like every other Lua array in this codebase. `categoryByte`
 -- is the record's byte 8 (0-based) -- HYPOTHESIS: a category/type flag,
 -- correlated with but not independently proven beyond the item/spell
 -- boundary match (see rom-map.md). `id` is byte 15 -- VERIFIED as a
 -- real per-category counter (resets to 0 exactly at
--- itemTable.categoryBoundaryRecord).
+-- itemTable.categoryBoundaryRecord). `price` is bytes 13-14 (LE u16) --
+-- VERIFIED, 8 of 8 external gold-cost matches, see this module's own
+-- top-of-file 2026-08-18 doc comment; 0 for records never sold in a
+-- shop (the found/thrown combat items).
 --
 -- `name` tries offset 0 first (the real consumable-item shape); if
 -- that decodes empty, retries at offset 1 (the real spell shape found
@@ -88,12 +117,19 @@ function ItemTable.decode(romData, itemTable)
     end
     local categoryByte = raw:byte(nameLength + 1)
     local id = raw:byte(recordLength)
+    -- Price: bytes 13-14 (0-based), i.e. raw:byte(14)/raw:byte(15) in
+    -- this 1-based string -- see this module's own 2026-08-18 doc
+    -- comment for the external cross-check. Fixed absolute positions
+    -- within the 16-byte record, independent of nameLength/prefix --
+    -- unlike `name`, this field's real position never shifts.
+    local price = raw:byte(14) + raw:byte(15) * 256
 
     records[i + 1] = {
       index = i,
       name = name,
       categoryByte = categoryByte,
       id = id,
+      price = price,
       namePrefixByte = namePrefixByte,
       raw = raw,
     }
