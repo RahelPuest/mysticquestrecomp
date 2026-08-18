@@ -1,12 +1,11 @@
--- The real hero/heroine name-entry screens, reached right after the
--- intro scroll finishes -- direct implementation of a detailed user-
--- supplied reference description, verified live under mGBA at every
--- step (see rom_profiles.lua's `nameEntry` entry for the full capture:
--- real window chrome, real on-screen keyboard grid, real cursor sprite
--- reused from the title screen, real name-accumulation display, real
--- START-confirm gating).
+-- The hero/heroine name-entry screens, reached right after the intro
+-- scroll finishes -- direct implementation of a detailed user-supplied
+-- reference description, verified live under mGBA at every step (see
+-- rom_profiles.lua's `nameEntry` entry for the full capture: window
+-- chrome, on-screen keyboard grid, cursor sprite reused from the title
+-- screen, name-accumulation display, START-confirm gating).
 --
--- Real, VERIFIED mechanics this state reproduces:
+-- VERIFIED mechanics this state reproduces:
 -- * A on a grid cell appends that glyph to the current name (max 4
 --   characters -- confirmed live: a 5th/6th selection is a silent
 --   no-op, not an overflow or a replace).
@@ -17,8 +16,8 @@
 --   nothing).
 -- * Hero confirmed -> heroine screen (box label switches "Held"->
 --   "Frau", cursor resets to the grid's first cell) -> confirmed ->
---   this state hands off to BattleIntro.lua (the real first-battle
---   intro sequence, 2026-08-09).
+--   this state hands off to BattleIntro.lua (the first-battle intro
+--   sequence).
 --
 -- HONEST LIMIT: B/backspace-to-delete-a-character was not tested this
 -- pass (not implemented here either -- no real behavior to match yet).
@@ -167,7 +166,7 @@ end
 function NameEntry:finish()
   if self.done then return end
   self.done = true
-  -- Real dialogue-byte encoding (see rom_profiles.lua's `nameEntry` doc
+  -- Dialogue-byte encoding (see rom_profiles.lua's `nameEntry` doc
   -- comment: WRAM name buffer bytes are `0xB0 + glyphIndex`, the same
   -- formula TextDecoder already implements) -- decoded back into a
   -- display string via the same decoder the rest of this project uses,
@@ -180,9 +179,9 @@ function NameEntry:finish()
   self.heroName = decode(self.heroTiles)
   self.heroineName = decode(self.heroineTiles)
 
-  -- Real flow (2026-08-09): heroine confirm -> the real first-battle
-  -- intro (walk-in + "Kaempfe!" textbox + enemy appears), not straight
-  -- to Field -- see BattleIntro.lua.
+  -- Flow: heroine confirm -> the first-battle intro (walk-in +
+  -- "Kaempfe!" textbox + enemy appears), not straight to Field -- see
+  -- BattleIntro.lua.
   local BattleIntro = require("src.app.states.BattleIntro")
   self.stack:replace(BattleIntro.new(self.romData, self.profile, self.input, self.overlay, self.stack,
     self.heroName))
