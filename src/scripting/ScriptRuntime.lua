@@ -1,29 +1,25 @@
--- A real, general-purpose driver tying `ScriptInterpreter` +
--- `StandardScriptHandlers` + `ScriptContinuationQueue` together against
--- a live gameplay context -- registers every REAL, currently-decoded
--- handler this project has (see StandardScriptHandlers.lua), so any
--- caller driving any of the real 1357 ROM scripts
--- (rom_profiles.lua's `scriptPointerTable`) gets the full, current real
--- opcode coverage without re-wiring the registration boilerplate
--- itself. Built 2026-08-13, direct instruction "bau den interpreter
--- ein... parallel zum bisherigen code... mit einem cmd switch
--- gewechselt werden" -- see VictorySequence.lua's own doc comment for
--- the actual gameplay wiring (a parallel, opt-in "shadow run" that
--- never controls real rendering/state -- the existing hand-authored
--- cutscene logic stays fully in charge either way).
+-- General-purpose driver tying `ScriptInterpreter` + `StandardScriptHandlers`
+-- + `ScriptContinuationQueue` together against a live gameplay context --
+-- registers every currently-decoded handler this project has (see
+-- StandardScriptHandlers.lua), so any caller driving any of the 1357 ROM
+-- scripts (rom_profiles.lua's `scriptPointerTable`) gets the full, current
+-- opcode coverage without re-wiring the registration boilerplate itself.
+-- See VictorySequence.lua's doc comment for the actual gameplay wiring
+-- (a parallel, opt-in "shadow run" that never controls real
+-- rendering/state -- the existing hand-authored cutscene logic stays
+-- fully in charge either way).
 --
--- HONEST SCOPE: only wires the opcodes this project has ACTUALLY
--- decoded a real Lua handler for (currently ~90/256 across the whole
--- opcode table, see ScriptOpcodeTable.lua's own running tally, though
--- ONE concrete real script -- the boss-defeat sequence -- is known to
--- use several NOT among them: opcodes `0x5A`, `0x08`, `0x88`, `0xBF`/
--- `0xBC`/`0xBD`/`0xF3`, see events.md's "boss-defeat script: every
--- opcode it actually uses, decoded" section). Any script that reaches a
--- still-undecoded opcode will genuinely, loudly fail the moment it's
--- reached (`ScriptInterpreter:step`'s own "no silent fallbacks" error)
--- -- `:step()` below catches that ONE failure per run and reports it as
--- real, inspectable state instead of throwing again on every subsequent
--- call, so a caller driving this once per real game tick (or once in a
+-- HONEST SCOPE: only wires the opcodes this project has actually decoded
+-- a Lua handler for (currently ~90/256, see ScriptOpcodeTable.lua's
+-- running tally, though one concrete script -- the boss-defeat sequence
+-- -- is known to use several not among them: opcodes `0x5A`, `0x08`,
+-- `0x88`, `0xBF`/`0xBC`/`0xBD`/`0xF3`, see events.md's "boss-defeat
+-- script: every opcode it actually uses, decoded" section). Any script
+-- that reaches a still-undecoded opcode genuinely, loudly fails the
+-- moment it's reached (`ScriptInterpreter:step`'s "no silent fallbacks"
+-- error) -- `:step()` below catches that one failure per run and reports
+-- it as inspectable state instead of throwing again on every subsequent
+-- call, so a caller driving this once per game tick (or once in a
 -- bounded burst, see `:run()`) doesn't need its own error-handling
 -- boilerplate -- but the failure itself is never hidden, only reported.
 --
@@ -38,448 +34,383 @@ local EntityStructLayout = require("src.import.EntityStructLayout")
 local ScriptRuntime = {}
 ScriptRuntime.__index = ScriptRuntime
 
---- `opcodeEntries`: the real, decoded 256-entry table (`ScriptOpcodeTable
+--- `opcodeEntries`: the decoded 256-entry table (`ScriptOpcodeTable
 -- .decode(romData, profile.scriptOpcodeTable)`).
 --
--- `ctx`: a plain table of real, live callbacks/state this runtime's
+-- `ctx`: a plain table of live callbacks/state this runtime's
 -- registered handlers read/write. Every field is OPTIONAL -- an absent
--- one just means that opcode family's own real side effect never fires
--- and its handler is never registered at all (so a script that actually
--- NEEDS it fails loudly at that opcode, same "no silent fallbacks" rule
--- as everywhere else in this project, rather than silently no-op-ing).
+-- one just means that opcode family's side effect never fires and its
+-- handler is never registered at all (so a script that actually needs
+-- it fails loudly at that opcode, same "no silent fallbacks" rule as
+-- everywhere else in this project, rather than silently no-op-ing).
 --   ctx.stats             -- a Stats-shaped table (curLP/maxLP/curMP/
---                             maxMP) for the real 0xC0/0x32 heal-to-max
+--                             maxMP) for the 0xC0/0x32 heal-to-max
 --                             opcodes.
---   ctx.flags              -- a `{ byte = <int> }` shadow of real WRAM
---                             `$D874`, for the real 0xDC/0xDD set/clear-
---                             bit-1 opcodes (bit 1 is fixed by the real
---                             ROM instruction itself, not a parameter).
---   ctx.wramBitFlags       -- a `{ byte = <int> }` shadow of a real,
---                             DIFFERENT WRAM cell (`$C3F1`), for the
---                             real 0xB8/0xB9 set/clear-bit-0 opcodes
---                             (added 2026-08-14, whole-corpus scan).
+--   ctx.flags              -- a `{ byte = <int> }` shadow of WRAM
+--                             `$D874`, for the 0xDC/0xDD set/clear-
+--                             bit-1 opcodes (bit 1 is fixed by the ROM
+--                             instruction itself, not a parameter).
+--   ctx.wramBitFlags       -- a `{ byte = <int> }` shadow of a
+--                             different WRAM cell (`$C3F1`), for the
+--                             0xB8/0xB9 set/clear-bit-0 opcodes.
 --   ctx.onWramBitCommandLeafB8/B9() -- opaque per-opcode leaf callbacks
---                             for those same 2 opcodes' own real,
---                             self-contained side effects (fixed
---                             sound-parameter WRAM writes this project
---                             doesn't otherwise model) -- see
+--                             for those same 2 opcodes' self-contained
+--                             side effects (fixed sound-parameter WRAM
+--                             writes this project doesn't otherwise
+--                             model) -- see
 --                             `StandardScriptHandlers.wramBitCommand`'s
---                             own doc comment.
---   ctx.actorStateFlags     -- a `{ byte = <int> }` shadow of a real,
---                             THIRD different WRAM cell (`$C4D4`), for
---                             the real `0xA3`/`0xA5`/`0xA6` bit-SET
---                             opcodes (bits 4/5/6 respectively, added
---                             2026-08-14, whole-corpus scan) -- see
+--                             doc comment.
+--   ctx.actorStateFlags     -- a `{ byte = <int> }` shadow of a third
+--                             different WRAM cell (`$C4D4`), for the
+--                             `0xA3`/`0xA5`/`0xA6` bit-SET opcodes
+--                             (bits 4/5/6 respectively) -- see
 --                             `StandardScriptHandlers
---                             .fixedWramBitSetSkipCommand`'s own doc
+--                             .fixedWramBitSetSkipCommand`'s doc
 --                             comment. Optional, same "only register
---                             if the caller wants to track this real
---                             cell" convention as `ctx.flags`/
+--                             if the caller wants to track this cell"
+--                             convention as `ctx.flags`/
 --                             `ctx.wramBitFlags` above.
---   ctx.queue               -- a real ScriptContinuationQueue (built
---                             fresh here if omitted) for CHAIN/
---                             typewriterCommand/queueGate's own real
---                             WRAM-FIFO side effects.
+--   ctx.queue               -- a ScriptContinuationQueue (built fresh
+--                             here if omitted) for CHAIN/
+--                             typewriterCommand/queueGate's WRAM-FIFO
+--                             side effects.
 --   ctx.onMessage(id)       -- opcode 0xFE.
---   ctx.onTick()            -- the real per-CHARACTER pacing callback,
---                             fired once per real 5-frame tick while
---                             opcode 0x04 reveals a real text byte, and
---                             also inside 0xF0/0xFF's own pacing.
---   ctx.onControlCode(byte) -- opcode 0x04's OWN real control-code
---                             family (2026-08-15, see StandardScriptHandlers
---                             .tick's own doc comment): fires with the
---                             real, raw control byte (0x10-0x1F) every
---                             real tick while the text-reveal classifier
---                             is sitting on one instead of a printable
---                             character. REVISED same day (live mgba
---                             trace of real WRAM $D853 bit 7): return a
---                             NUMBER (0 or more) once real processing is
---                             done -- "consume 1 real control byte plus
---                             this many EXTRA real bytes" (some real
---                             control codes bridge through the already-
---                             documented `$36D0` primitive, which
---                             advances the cursor ONE MORE byte beyond
---                             the control byte itself) -- or return
---                             `false`/`nil` to signal "still real-
---                             pacing, not done yet" (a real halt,
---                             re-dispatched next tick, exactly like the
---                             classifier's own text-character pacing).
---                             Optional -- a caller that doesn't supply
---                             this at all keeps the OLD, simpler
---                             "immediate single-byte consume" behavior,
---                             an honest default for any real control
---                             code this project hasn't live-traced the
---                             exact pacing/bridge behavior of yet -- see
---                             that handler's own "HONEST SCOPE" note for
---                             what's NOT modeled even for the traced
---                             ones (the deeper bank-2-delegated WRAM
---                             side effects).
---   ctx.isTextboxDone()     -- the real release condition for 0xF0/0xFF
---                             -- required in spirit if either is ever
+--   ctx.onTick()            -- the per-CHARACTER pacing callback, fired
+--                             once per 5-frame tick while opcode 0x04
+--                             reveals a text byte, and also inside
+--                             0xF0/0xFF's pacing.
+--   ctx.onControlCode(byte) -- opcode 0x04's own control-code family
+--                             (see StandardScriptHandlers.tick's doc
+--                             comment): fires with the raw control byte
+--                             (0x10-0x1F) every tick while the
+--                             text-reveal classifier is sitting on one
+--                             instead of a printable character. Return
+--                             a NUMBER (0 or more) once processing is
+--                             done -- "consume 1 control byte plus this
+--                             many extra bytes" (some control codes
+--                             bridge through the already-documented
+--                             `$36D0` primitive, which advances the
+--                             cursor one more byte beyond the control
+--                             byte itself) -- or return `false`/`nil`
+--                             to signal "still pacing, not done yet"
+--                             (a halt, re-dispatched next tick, exactly
+--                             like the classifier's own text-character
+--                             pacing). Optional -- a caller that
+--                             doesn't supply this keeps the old,
+--                             simpler "immediate single-byte consume"
+--                             behavior, an honest default for any
+--                             control code this project hasn't
+--                             live-traced the exact pacing/bridge
+--                             behavior of yet -- see that handler's
+--                             "HONEST SCOPE" note for what's not
+--                             modeled even for the traced ones (the
+--                             deeper bank-2-delegated WRAM side
+--                             effects).
+--   ctx.isTextboxDone()     -- the release condition for 0xF0/0xFF --
+--                             required in spirit if either is ever
 --                             reached; defaults to an always-true stub
---                             (releases immediately, i.e. never actually
---                             halts) when omitted -- a clearly-flagged
---                             stand-in for "no real display state wired
---                             up," not a guess about real ROM behavior.
---   ctx.onTriggerEvent()    -- the whole real TRIGGER_EVENT family
---                             (opcode 0xE0 and every real `_XX` variant,
---                             e.g. 0xE1/0xE2/0xE4/0xE5/0xA0/0xB9/0xC3/
---                             0xDE), registered generically -- see
---                             `:registerStandardHandlers`'s own doc
---                             comment below.
---   ctx.onSoundParam(v)     -- the whole real SOUND_PARAM family
---                             (opcodes 0xF8/0xF9/0xC4), registered
---                             generically, same shape as
---                             `onTriggerEvent`.
---   ctx.onWordCommand(v)    -- the real WORD_COMMAND family (opcode
---                             0xD0 and its `_EF` variant), registered
+--                             (releases immediately, i.e. never
+--                             actually halts) when omitted -- a
+--                             clearly-flagged stand-in for "no display
+--                             state wired up," not a guess about ROM
+--                             behavior.
+--   ctx.onTriggerEvent()    -- the whole TRIGGER_EVENT family (opcode
+--                             0xE0 and every `_XX` variant, e.g.
+--                             0xE1/0xE2/0xE4/0xE5/0xA0/0xB9/0xC3/0xDE),
+--                             registered generically -- see
+--                             `:registerStandardHandlers`'s doc comment
+--                             below.
+--   ctx.onSoundParam(v)     -- the whole SOUND_PARAM family (opcodes
+--                             0xF8/0xF9/0xC4), registered generically,
+--                             same shape as `onTriggerEvent`.
+--   ctx.onWordCommand(v)    -- the WORD_COMMAND family (opcode 0xD0
+--                             and its `_EF` variant), registered
 --                             generically.
 --   ctx.onByteWordCommand(byteValue, wordValue) -- opcode 0xB0.
 --   ctx.onTwoByteCommand(byte1, byte2)          -- opcode 0xF6.
---   ctx.onActorAction(group) -- the whole real ACTOR_ACTION family
---                             (14 real opcodes across this project's own
---                             running tally, e.g. 0x10/0x11/0x14/...),
+--   ctx.onActorAction(group) -- the whole ACTOR_ACTION family (14
+--                             opcodes across this project's running
+--                             tally, e.g. 0x10/0x11/0x14/...),
 --                             registered generically -- `group` is
 --                             always `nil` here (see
---                             `:registerStandardHandlers`'s own "HONEST
---                             LIMIT" note: the real per-opcode group
---                             value isn't machine-readable yet).
---   ctx.onQueuedAction()     -- the real QUEUED_ACTION family (opcodes
+--                             `:registerStandardHandlers`'s "HONEST
+--                             LIMIT" note: the per-opcode group value
+--                             isn't machine-readable yet).
+--   ctx.onQueuedAction()     -- the QUEUED_ACTION family (opcodes
 --                             0x18/0x28/0x38/0x48/0x58/0x78).
---   ctx.onActorActionOrSkip(group) -- the `$1606` cluster's own
+--   ctx.onActorActionOrSkip(group) -- the `$1606` cluster's
 --                             actor-action-shaped members (opcodes
---                             `0x90`/`0x91`/`0x94`-`0x97`, added
---                             2026-08-14) -- a real, DIFFERENT
---                             not-ready behavior from `onActorAction`
---                             above (soft skip, not halt -- see
---                             `StandardScriptHandlers
---                             .actorActionOrSkip`'s own doc comment).
---                             `group` is the REAL per-opcode value
---                             here (explicit registration, not the
---                             generic loop's own `nil`-group limit).
---   ctx.onQueuedActionOrSkip() -- the `$1606` cluster's own
+--                             `0x90`/`0x91`/`0x94`-`0x97`) -- a
+--                             different not-ready behavior from
+--                             `onActorAction` above (soft skip, not
+--                             halt -- see `StandardScriptHandlers
+--                             .actorActionOrSkip`'s doc comment).
+--                             `group` is the per-opcode value here
+--                             (explicit registration, not the generic
+--                             loop's `nil`-group limit).
+--   ctx.onQueuedActionOrSkip() -- the `$1606` cluster's
 --                             queued-action-shaped member (opcode
---                             `0x98`, added 2026-08-14) -- see
---                             `StandardScriptHandlers
---                             .queuedActionOrSkip`'s own doc comment.
---   ctx.isActorReady()       -- the real halt condition shared by the
---                             actor-action, queued-action, AND opcode
---                             0x49's own real gate (SAME underlying
---                             `$289B` WRAM-$C5A0 check as queued-action)
---                             -- no live WRAM actor-record state
---                             modeled, defaults to "always ready."
---   ctx.getPlayerFacing()    -- opcode `0x80` (updated 2026-08-14, task
---                             10, "$02AB wirklich lösen") -- the real
---                             PLAYER's own current facing direction
---                             (`"up"`/`"down"`/`"left"`/`"right"`,
---                             matching `Player.lua`'s own `self.facing`
---                             representation directly) -- feeds `0x80`'s
---                             own real dynamic group computation (see
---                             `EntityStructLayout.PLAYER_FACING_BIT`'s
---                             own doc comment for the live-trace
---                             evidence this is built on). Optional,
---                             defaults to `"up"` (matching this
---                             project's own already-independently-
---                             verified `Player.DEFAULT_FACING`). ALSO
---                             feeds opcode `0x81` (CRACKED 2026-08-14,
---                             same session, direct continuation) --
---                             SAME callback, combined through
---                             `EntityStructLayout.OPPOSITE_FACING`
---                             first (0x81's own real formula reads the
---                             OPPOSITE of the player's current facing,
---                             see `ScriptOpcodeTable
+--                             `0x98`) -- see `StandardScriptHandlers
+--                             .queuedActionOrSkip`'s doc comment.
+--   ctx.isActorReady()       -- the halt condition shared by the
+--                             actor-action, queued-action, and opcode
+--                             0x49's gate (same underlying `$289B`
+--                             WRAM-$C5A0 check as queued-action) -- no
+--                             live WRAM actor-record state modeled,
+--                             defaults to "always ready."
+--   ctx.getPlayerFacing()    -- opcode `0x80` -- the player's current
+--                             facing direction (`"up"`/`"down"`/
+--                             `"left"`/`"right"`, matching `Player.lua`'s
+--                             `self.facing` representation directly) --
+--                             feeds `0x80`'s dynamic group computation
+--                             (see `EntityStructLayout.PLAYER_FACING_BIT`'s
+--                             doc comment for the live-trace evidence
+--                             this is built on). Optional, defaults to
+--                             `"up"` (matching this project's already-
+--                             independently-verified
+--                             `Player.DEFAULT_FACING`). Also feeds
+--                             opcode `0x81` -- same callback, combined
+--                             through `EntityStructLayout.OPPOSITE_FACING`
+--                             first (0x81's formula reads the opposite
+--                             of the player's current facing, see
+--                             `ScriptOpcodeTable
 --                             .ACTOR_ACTION_HANDLER_ADDRESS_81`'s doc
 --                             comment for the full disassembly).
---   ctx.onSetActorSlotPosition(byte1, byte2) -- opcodes 0x49 AND 0x19
---                             (the real `$123E`-family members that
---                             consume operand bytes -- same handler
---                             reused for both, since neither's actor-
---                             slot index is threaded through to `ctx`
---                             yet) -- see
+--   ctx.onSetActorSlotPosition(byte1, byte2) -- opcodes 0x49 and 0x19
+--                             (the `$123E`-family members that consume
+--                             operand bytes -- same handler reused for
+--                             both, since neither's actor-slot index is
+--                             threaded through to `ctx` yet) -- see
 --                             StandardScriptHandlers.actorSlotPosition's
---                             own doc comment for why these are the RAW
---                             real bytes, not the real `*8`-transformed
---                             values.
---   ctx.onTwoByteCommandCB(byte1, byte2) -- opcode 0xCB (added
---                             2026-08-13, task #82) -- structurally the
---                             SAME "2 operand bytes, opaque leaf
+--                             doc comment for why these are the raw
+--                             bytes, not the `*8`-transformed values.
+--   ctx.onTwoByteCommandCB(byte1, byte2) -- opcode 0xCB -- structurally
+--                             the same "2 operand bytes, opaque leaf
 --                             callback, always continues" shape as
 --                             `ctx.onTwoByteCommand` above, but a
---                             genuinely different real ROM target
---                             ($392C vs $3CA2) -- kept as its own,
---                             separate callback rather than conflated.
+--                             genuinely different ROM target ($392C vs
+--                             $3CA2) -- kept as its own, separate
+--                             callback rather than conflated.
 --   ctx.onTriggerEvent(operand, selectorGroup) -- opcodes `0xFC`/`0xFD`
---                             (added 2026-08-13, task #86) -- fires
---                             once per real activation with the real
---                             operand byte and the real `$1F35`
---                             selector group (5 for `0xFC`, 4 for
---                             `0xFD`) -- see
+--                             -- fires once per activation with the
+--                             operand byte and the `$1F35` selector
+--                             group (5 for `0xFC`, 4 for `0xFD`) -- see
 --                             `StandardScriptHandlers
---                             .oneShotTriggerGate`'s own doc comment.
+--                             .oneShotTriggerGate`'s doc comment.
 --   ctx.isTriggerEventGateClear() -- optional gate for the same two
---                             opcodes' own real dual-WRAM-cell check;
---                             defaults to "always clear" (matches the
---                             one real case this project has actually
---                             observed live). ALSO reused by `0xE8`/
---                             `0xE9` below (added 2026-08-14) -- the
---                             real WRAM cells are identical.
+--                             opcodes' dual-WRAM-cell check; defaults
+--                             to "always clear" (matches the one case
+--                             this project has actually observed live).
+--                             Also reused by `0xE8`/`0xE9` below -- the
+--                             WRAM cells are identical.
 --   ctx.onDualGateLeafE8/E9/EA/EB() -- opcodes `0xE8`/`0xE9`/`0xEA`/
---                             `0xEB` (E8/E9 added 2026-08-14, whole-
---                             corpus scan; EA/EB added the same day,
---                             the family's own remaining 2 directions)
---                             -- each fires its own real, distinct
+--                             `0xEB` -- each fires its own distinct
 --                             VRAM-tile-pattern-update leaf once the
 --                             shared dual gate above clears -- see
 --                             `StandardScriptHandlers
---                             .dualGateLeafCommand`'s own doc comment.
---   ctx.onWaveOffsetUpdate(value) -- opcode `0xFB` (added 2026-08-14,
---                             whole-corpus scan) -- optional observer
---                             for the real `$C0A6` wave-offset
---                             oscillator's running byte value -- see
+--                             .dualGateLeafCommand`'s doc comment.
+--   ctx.onWaveOffsetUpdate(value) -- opcode `0xFB` -- optional observer
+--                             for the `$C0A6` wave-offset oscillator's
+--                             running byte value -- see
 --                             `StandardScriptHandlers
---                             .waveOffsetEffect`'s own doc comment.
---   ctx.onColorPulseDim/Bright(r, g, b) -- opcode `0xBF` (added
---                             2026-08-14, whole-corpus scan) --
---                             optional observers for the real
---                             `$C0AA`-`$C0AC` dim/bright color-pulse
---                             triples -- see `StandardScriptHandlers
---                             .colorPulseEffect`'s own doc comment.
---   ctx.onPlayerEntityTypeWrite(fixedValue) -- opcodes `0x88`/`0x89`
---                             (added 2026-08-14, "konsolidiere unsere
---                             Entdeckungen") -- optional observer for
---                             the real player entity's own "TYPE"
---                             field write (real WRAM `$C241`) -- see
+--                             .waveOffsetEffect`'s doc comment.
+--   ctx.onColorPulseDim/Bright(r, g, b) -- opcode `0xBF` -- optional
+--                             observers for the `$C0AA`-`$C0AC`
+--                             dim/bright color-pulse triples -- see
 --                             `StandardScriptHandlers
---                             .playerEntityTypeWrite`'s own doc
---                             comment.
---   ctx.isActorCommandQueueEmpty() -- opcode `0x8F` (added 2026-08-14,
---                             whole-corpus scan rank-3 blocker) -- real
---                             conditional halt on the SAME `$C5A0`
---                             8-slot actor-command table opcode `0x00`
---                             reads (see `StandardScriptHandlers
---                             .actorCommandQueueEmptyGate`'s own doc
+--                             .colorPulseEffect`'s doc comment.
+--   ctx.onPlayerEntityTypeWrite(fixedValue) -- opcodes `0x88`/`0x89` --
+--                             optional observer for the player entity's
+--                             "TYPE" field write (WRAM `$C241`) -- see
+--                             `StandardScriptHandlers
+--                             .playerEntityTypeWrite`'s doc comment.
+--   ctx.isActorCommandQueueEmpty() -- opcode `0x8F` -- conditional halt
+--                             on the same `$C5A0` 8-slot actor-command
+--                             table opcode `0x00` reads (see
+--                             `StandardScriptHandlers
+--                             .actorCommandQueueEmptyGate`'s doc
 --                             comment) -- optional, defaults to
 --                             "always empty" (no live WRAM
 --                             actor-command simulation exists here).
---   ctx.onTileCursorSet(byte1, byte2) -- opcode `0xEF` (added 2026-08-14,
---                             whole-corpus scan, `$0E73` neighborhood) --
---                             fires on every real dispatch with the 2 raw
---                             operand bytes, BEFORE the real 3rd-byte
---                             `$3727` stream-skip -- the real leaf
---                             (`$0454`) is a plain, branchless store into
---                             WRAM `$C344`(byte1)/`$C345`(byte2), no
---                             computation -- see `StandardScriptHandlers
---                             .tileCursorSet`'s own doc comment. `0xEC`/
---                             `0xED`/`0xEE` (the SAME neighborhood's own
---                             siblings) are deliberately NOT registered --
---                             confirmed via real disassembly to be a
---                             THIRD sibling of the already-known-hard
+--   ctx.onTileCursorSet(byte1, byte2) -- opcode `0xEF` (`$0E73`
+--                             neighborhood) -- fires on every dispatch
+--                             with the 2 raw operand bytes, before the
+--                             3rd-byte `$3727` stream-skip -- the leaf
+--                             (`$0454`) is a plain, branchless store
+--                             into WRAM `$C344`(byte1)/`$C345`(byte2),
+--                             no computation -- see `StandardScriptHandlers
+--                             .tileCursorSet`'s doc comment. `0xEC`/
+--                             `0xED`/`0xEE` (the same neighborhood's
+--                             siblings) are deliberately NOT registered
+--                             -- confirmed via disassembly to be a
+--                             third sibling of the already-known-hard
 --                             `0x80`/`$15A4` family (shared `$02AB`
 --                             dependency) -- see `ScriptOpcodeTable.lua`'s
---                             own doc comment at that address.
+--                             doc comment at that address.
 --   ctx.onActorActionWithReadinessParam(group, param) -- opcodes `0x7A`/
---                             `0x7B`/`0x5A`/`0x5B`/`0x6A` (added
---                             2026-08-14, whole-corpus scan) -- the
---                             SAME real Family-A shape as
---                             `ctx.onActorAction` (byte-for-byte
---                             identical, no outer `JR NZ` for EITHER
---                             family -- see `StandardScriptHandlers
---                             .actorActionWithReadinessParam`'s own
---                             doc comment for the same-day self-caught
---                             correction), gated the SAME way via
---                             `ctx.isActorReady()` -- fires only on the
---                             real ready path, with the real fixed
---                             `group` and the real, computed `param`
---                             (always `offset+1` on the reachable
---                             path).
---   ctx.onOpcodeByteMirror(ownOpcodeByte) -- opcode `0xCC` (added
---                             2026-08-14, whole-corpus scan) -- fires
---                             on every real dispatch with the real
---                             byte value 0xCC itself (read back via a
---                             legitimate `stream[cursor-1]` lookback,
---                             not fabricated) -- see
+--                             `0x7B`/`0x5A`/`0x5B`/`0x6A` -- the same
+--                             Family-A shape as `ctx.onActorAction`
+--                             (byte-for-byte identical, no outer `JR NZ`
+--                             for either family -- see
 --                             `StandardScriptHandlers
---                             .opcodeByteMirror`'s own doc comment;
---                             purely observational, never affects the
---                             returned cursor (real, zero-operand-byte
---                             opcode).
---   ctx.onSoftReset() -- opcode `0xC8` (added 2026-08-14, whole-corpus
---                             scan) -- fires on EVERY real dispatch.
+--                             .actorActionWithReadinessParam`'s doc
+--                             comment for the self-caught correction),
+--                             gated the same way via `ctx.isActorReady()`
+--                             -- fires only on the ready path, with the
+--                             fixed `group` and computed `param` (always
+--                             `offset+1` on the reachable path).
+--   ctx.onOpcodeByteMirror(ownOpcodeByte) -- opcode `0xCC` -- fires on
+--                             every dispatch with the byte value 0xCC
+--                             itself (read back via a legitimate
+--                             `stream[cursor-1]` lookback, not
+--                             fabricated) -- see `StandardScriptHandlers
+--                             .opcodeByteMirror`'s doc comment; purely
+--                             observational, never affects the returned
+--                             cursor (zero-operand-byte opcode).
+--   ctx.onSoftReset() -- opcode `0xC8` -- fires on EVERY dispatch.
 --                             REQUIRED, not optional (no default) --
 --                             see `StandardScriptHandlers.softReset`'s
---                             own doc comment: the real ROM jumps to
---                             its own cartridge boot vector here
---                             (`$0100`/`$0150`/`$1FCA`, byte-for-byte
---                             confirmed), a genuine "restart the whole
---                             game" command this project's own
---                             interpreter model can't represent any
---                             other way. A real caller's own
---                             `onSoftReset` should trigger an ACTUAL
+--                             doc comment: the ROM jumps to its own
+--                             cartridge boot vector here (`$0100`/
+--                             `$0150`/`$1FCA`, byte-for-byte confirmed),
+--                             a genuine "restart the whole game" command
+--                             this project's interpreter model can't
+--                             represent any other way. A caller's
+--                             `onSoftReset` should trigger an actual
 --                             game restart (reload the title screen /
 --                             reset game state) -- the returned cursor
 --                             after this call is a scan-classification
 --                             convenience only, not a real continuation
 --                             point.
---   ctx.isAnyButtonPressed() -- opcode `0xAD` (added 2026-08-15, task
---                             #152) -- optional predicate for the real
---                             "wait for any button" gate -- defaults
+--   ctx.isAnyButtonPressed() -- opcode `0xAD` -- optional predicate for
+--                             the "wait for any button" gate -- defaults
 --                             to `true` (never blocks) when unset, same
---                             "unwired gate defaults open" convention
---                             as `ctx.isActorReady` -- see
---                             `StandardScriptHandlers
---                             .waitForAnyButtonCommand`'s own doc
---                             comment.
---   ctx.onWaitForAnyButtonIdleTick(elapsedFrames) -- optional observer
---                             for the SAME opcode `0xAD`'s own real
---                             idle-leaf calls (2 real, opaque leaves
---                             this project doesn't distinguish -- see
---                             that same handler's own doc comment).
---   ctx.advanceWaypointStep(operand, stepIndex) -- opcode `0x8B` (added
---                             2026-08-15, task #152, direct follow-up
---                             from `0xAD` above) -- optional real
---                             evaluator for the untraced real waypoint-
---                             table walk ($776F/$78EF/$08D4/$2889);
---                             returns `(done, nextStepIndex)`. Defaults
---                             to "always done immediately" (never
---                             blocks) when unset, same "unwired gate
---                             defaults open" convention as
+--                             "unwired gate defaults open" convention as
 --                             `ctx.isActorReady` -- see
 --                             `StandardScriptHandlers
---                             .waypointStepCommand`'s own doc comment.
---   ctx.isWipeMarkerConverged() -- opcodes `0xAC`/`0xAE` (added
---                             2026-08-15, task #152's own final pair)
---                             -- optional predicate for the real phase-2
---                             "have the 2 $D3A0/$D3A3 markers met/
---                             crossed yet" check; defaults to "always
---                             converged immediately" (never blocks) when
---                             unset, same "unwired gate defaults open"
+--                             .waitForAnyButtonCommand`'s doc comment.
+--   ctx.onWaitForAnyButtonIdleTick(elapsedFrames) -- optional observer
+--                             for the same opcode `0xAD`'s idle-leaf
+--                             calls (2 opaque leaves this project
+--                             doesn't distinguish -- see that same
+--                             handler's doc comment).
+--   ctx.advanceWaypointStep(operand, stepIndex) -- opcode `0x8B` --
+--                             optional evaluator for the untraced
+--                             waypoint-table walk ($776F/$78EF/$08D4/
+--                             $2889); returns `(done, nextStepIndex)`.
+--                             Defaults to "always done immediately"
+--                             (never blocks) when unset, same "unwired
+--                             gate defaults open" convention as
+--                             `ctx.isActorReady` -- see
+--                             `StandardScriptHandlers
+--                             .waypointStepCommand`'s doc comment.
+--   ctx.isWipeMarkerConverged() -- opcodes `0xAC`/`0xAE` -- optional
+--                             predicate for the phase-2 "have the 2
+--                             $D3A0/$D3A3 markers met/crossed yet"
+--                             check; defaults to "always converged
+--                             immediately" (never blocks) when unset,
+--                             same "unwired gate defaults open"
 --                             convention as `ctx.isActorReady` -- see
 --                             `StandardScriptHandlers
---                             .wipeCompletionGate`'s own doc comment.
+--                             .wipeCompletionGate`'s doc comment.
 --   ctx.onWipeCompletionPhaseAC(phase)/onWipeCompletionPhaseAE(phase) --
---                             optional observers for the SAME opcodes'
---                             own real 8-phase state machine (0-7) --
---                             separate per opcode since phases 3/5's
---                             own real side effects genuinely differ
---                             between `0xAC` and `0xAE` -- see that same
---                             handler's own doc comment.
---   ctx.hasSufficientBudget(amount) -- opcode `0xD1` (added 2026-08-14,
---                             whole-corpus scan) -- optional predicate
---                             for the real `$D7BE`/`$D7BF` 16-bit
---                             counter vs. the real operand `amount`;
---                             defaults to "always sufficient" (no live
---                             counter WRAM modeled) -- see
---                             `StandardScriptHandlers
---                             .budgetFlagCommand`'s own doc comment.
+--                             optional observers for the same opcodes'
+--                             8-phase state machine (0-7) -- separate
+--                             per opcode since phases 3/5's side effects
+--                             genuinely differ between `0xAC` and `0xAE`
+--                             -- see that same handler's doc comment.
+--   ctx.hasSufficientBudget(amount) -- opcode `0xD1` -- optional
+--                             predicate for the `$D7BE`/`$D7BF` 16-bit
+--                             counter vs. the operand `amount`; defaults
+--                             to "always sufficient" (no live counter
+--                             WRAM modeled) -- see `StandardScriptHandlers
+--                             .budgetFlagCommand`'s doc comment.
 --   ctx.onBudgetSufficient(amount)/onBudgetExhausted(amount) -- the 2
---                             real, mutually-exclusive branches of the
---                             same opcode -- fire the real SET/CLEAR
---                             of WRAM flag-array bit 6 respectively.
---   ctx.onRawByteLeaf(rawByte) -- opcodes `0x9C`/`0x9D` (added
---                             2026-08-14, whole-corpus scan) -- fires
---                             with the real, UNMODIFIED operand byte
---                             (no `+1`, unlike `ctx.onByteLeaf` for the
+--                             mutually-exclusive branches of the same
+--                             opcode -- fire the SET/CLEAR of WRAM
+--                             flag-array bit 6 respectively.
+--   ctx.onRawByteLeaf(rawByte) -- opcodes `0x9C`/`0x9D` -- fires with
+--                             the unmodified operand byte (no `+1`,
+--                             unlike `ctx.onByteLeaf` for the
 --                             `0xD5`/`0xD7`/`0xD9` family) -- see
 --                             `StandardScriptHandlers
---                             .rawByteLeafCommand`'s own doc comment.
---                             Both opcodes share this SAME callback
---                             (same real leaf, `$2895`, neither's own
---                             per-opcode distinction threaded through
---                             yet -- same honest limit as
---                             `ctx.onSetActorSlotPosition`'s own reuse
---                             across `0x49`/`0x19`).
---   ctx.onSceneInit(operandByte) -- opcode `0xC6` (added 2026-08-14,
---                             whole-corpus scan) -- fires with the
---                             real single operand byte on every real
---                             dispatch -- see `StandardScriptHandlers
---                             .sceneInitCommand`'s own doc comment;
---                             the many real WRAM writes this opcode
---                             performs are NOT individually modeled
---                             (HYPOTHESIS-scoped, same as `0xF6`'s own
---                             sibling initializer).
+--                             .rawByteLeafCommand`'s doc comment. Both
+--                             opcodes share this same callback (same
+--                             leaf, `$2895`, neither opcode's own
+--                             distinction threaded through yet -- same
+--                             honest limit as `ctx.onSetActorSlotPosition`'s
+--                             reuse across `0x49`/`0x19`).
+--   ctx.onSceneInit(operandByte) -- opcode `0xC6` -- fires with the
+--                             single operand byte on every dispatch --
+--                             see `StandardScriptHandlers
+--                             .sceneInitCommand`'s doc comment; the many
+--                             WRAM writes this opcode performs are NOT
+--                             individually modeled (HYPOTHESIS-scoped,
+--                             same as `0xF6`'s sibling initializer).
 --   ctx.getTwoBitFieldValue()/ctx.onTwoBitFieldWrite(value) -- opcode
---                             `0xC7` (added 2026-08-14, whole-corpus
---                             scan) -- `getTwoBitFieldValue` is an
---                             optional real-value provider (defaults
---                             to 0, no live `$C0B0`/`$C0B1` wrapping
---                             counter modeled); `onTwoBitFieldWrite`
---                             fires with the real, already-masked
---                             (`AND 0x03`) 2-bit value on every real
---                             dispatch -- see `StandardScriptHandlers
---                             .twoBitFieldCommand`'s own doc comment.
---   ctx.onDynamicFlagBit(bitIndex, setBit) -- opcodes `0xDA`/`0xDB`
---                             (added 2026-08-14, whole-corpus scan) --
---                             fires with the real, raw operand byte
---                             (the bit index) and whether this is the
---                             SET (`0xDA`, `setBit=true`) or CLEAR
---                             (`0xDB`, `setBit=false`) variant -- see
+--                             `0xC7` -- `getTwoBitFieldValue` is an
+--                             optional value provider (defaults to 0,
+--                             no live `$C0B0`/`$C0B1` wrapping counter
+--                             modeled); `onTwoBitFieldWrite` fires with
+--                             the already-masked (`AND 0x03`) 2-bit
+--                             value on every dispatch -- see
 --                             `StandardScriptHandlers
---                             .dynamicFlagBitCommand`'s own doc
---                             comment.
---   ctx.onBitmaskDispatch(bitIndex) -- opcode `0xC2` (added 2026-08-14,
---                             whole-corpus scan) -- fires once per
---                             real SET bit (0-4) of the real operand
---                             byte, in ascending order -- see
+--                             .twoBitFieldCommand`'s doc comment.
+--   ctx.onDynamicFlagBit(bitIndex, setBit) -- opcodes `0xDA`/`0xDB` --
+--                             fires with the raw operand byte (the bit
+--                             index) and whether this is the SET
+--                             (`0xDA`, `setBit=true`) or CLEAR (`0xDB`,
+--                             `setBit=false`) variant -- see
 --                             `StandardScriptHandlers
---                             .bitmaskDispatchCommand`'s own doc
---                             comment.
---   ctx.onChainedOpaqueEffect() -- opcode `0xAF` (added 2026-08-14,
---                             whole-corpus scan) -- fires with no
---                             parameters on every real dispatch (4
---                             chained opaque leaves, no single
---                             meaningful value to report) -- see
+--                             .dynamicFlagBitCommand`'s doc comment.
+--   ctx.onBitmaskDispatch(bitIndex) -- opcode `0xC2` -- fires once per
+--                             SET bit (0-4) of the operand byte, in
+--                             ascending order -- see
 --                             `StandardScriptHandlers
---                             .chainedOpaqueEffectCommand`'s own doc
---                             comment.
---   ctx.onSixBitFieldWrite(value) -- opcode `0xC5` (added 2026-08-14,
---                             whole-corpus scan) -- fires with the
---                             real, already-masked (`AND 0x3F`) 6-bit
---                             value on every real dispatch -- see
---                             `StandardScriptHandlers
---                             .sixBitFieldCommand`'s own doc comment.
+--                             .bitmaskDispatchCommand`'s doc comment.
+--   ctx.onChainedOpaqueEffect() -- opcode `0xAF` -- fires with no
+--                             parameters on every dispatch (4 chained
+--                             opaque leaves, no single meaningful value
+--                             to report) -- see `StandardScriptHandlers
+--                             .chainedOpaqueEffectCommand`'s doc comment.
+--   ctx.onSixBitFieldWrite(value) -- opcode `0xC5` -- fires with the
+--                             already-masked (`AND 0x3F`) 6-bit value on
+--                             every dispatch -- see `StandardScriptHandlers
+--                             .sixBitFieldCommand`'s doc comment.
 --   ctx.onActorSlotPositionWithReadinessParam(param, byte1, byte2) --
---                             opcode `0x79` (added 2026-08-14,
---                             whole-corpus scan) -- gated the SAME way
---                             as `ctx.onActorActionWithReadinessParam`
---                             above (`ctx.isActorReady()`, real halt
---                             WITHOUT consuming the 2 position bytes)
---                             -- fires only on the real ready path,
---                             with the real computed slot `param`
---                             (always `offset+1`) and the real, raw
---                             position operand bytes -- see
+--                             opcode `0x79` -- gated the same way as
+--                             `ctx.onActorActionWithReadinessParam`
+--                             above (`ctx.isActorReady()`, halt without
+--                             consuming the 2 position bytes) -- fires
+--                             only on the ready path, with the computed
+--                             slot `param` (always `offset+1`) and the
+--                             raw position operand bytes -- see
 --                             `StandardScriptHandlers
 --                             .actorSlotPositionWithReadinessParam`'s
---                             own doc comment.
---   ctx.onQueuedActionWithReadinessParam(param) -- opcode `0x68`
---                             (added 2026-08-14, whole-corpus scan) --
---                             the `$2859`-leaf sibling of
+--                             doc comment.
+--   ctx.onQueuedActionWithReadinessParam(param) -- opcode `0x68` -- the
+--                             `$2859`-leaf sibling of
 --                             `ctx.onActorActionWithReadinessParam`,
 --                             same gate/param convention -- see
 --                             `StandardScriptHandlers
---                             .queuedActionWithReadinessParam`'s own
---                             doc comment.
---   ctx.getFlagBitClassifyValue()/ctx.onFlagBitSet()/onFlagBitClear()
---                             -- opcode `0xA9` (added 2026-08-14,
---                             whole-corpus scan) -- optional real-
---                             value provider (defaults to 0, no live
---                             `$220A` leaf modeled) classified against
---                             3 real fixed constants; fires SET or
---                             CLEAR accordingly -- see
---                             `StandardScriptHandlers
---                             .threeWayFlagBitCommand`'s own doc
+--                             .queuedActionWithReadinessParam`'s doc
 --                             comment.
---   ctx.onChainTarget(newCursor, bankOffset) -- fires on EVERY real
---                             opcode `0x02` (CHAIN) dispatch, with the
---                             real computed jump target -- see
---                             `StandardScriptHandlers.chain`'s own doc
---                             comment (added 2026-08-13, task #86;
---                             `bankOffset` added 2026-08-16, task #81)
---                             for why: the real ROM's own cross-bank
---                             CHAIN targets aren't derivable from a
---                             formula with full confidence, only from
---                             empirically knowing the real ambient
---                             bank for a specific real scene (or, for
---                             the `bankOffset ~= 0` CANDIDATE case, a
+--   ctx.getFlagBitClassifyValue()/ctx.onFlagBitSet()/onFlagBitClear()
+--                             -- opcode `0xA9` -- optional value
+--                             provider (defaults to 0, no live `$220A`
+--                             leaf modeled) classified against 3 fixed
+--                             constants; fires SET or CLEAR accordingly
+--                             -- see `StandardScriptHandlers
+--                             .threeWayFlagBitCommand`'s doc comment.
+--   ctx.onChainTarget(newCursor, bankOffset) -- fires on every opcode
+--                             `0x02` (CHAIN) dispatch, with the computed
+--                             jump target -- see `StandardScriptHandlers
+--                             .chain`'s doc comment for why: the ROM's
+--                             cross-bank CHAIN targets aren't derivable
+--                             from a formula with full confidence, only
+--                             from empirically knowing the ambient bank
+--                             for a specific scene (or, for the
+--                             `bankOffset ~= 0` CANDIDATE case, a
 --                             plausible-but-unconfirmed relative-bank
 --                             hypothesis -- see that doc comment) --
 --                             this lets a caller swap which
