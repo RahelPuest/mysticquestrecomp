@@ -362,67 +362,63 @@ function Enemy:updateMovement(dt)
   end
 end
 
---- Real hardware X-flip toggle for the patrol/hover pose (2026-08-12,
--- direct user report: "die animationen der sprites nicht richtig, der
--- boss sollte zb animationen haben"). Live OAM trace found the real
--- creature's own attribute byte flips bit 5 (X-flip -- CORRECTED same
--- day, this function originally wired the finding into `flipY`,
--- transposing bits 5/6; see rom_profiles.lua's
+--- Hardware X-flip toggle for the patrol/hover pose (direct user
+-- report that the sprite animations aren't right, and the boss should
+-- have animations). Live OAM trace found the creature's attribute byte
+-- flips bit 5 (X-flip -- CORRECTED: this function originally wired the
+-- finding into `flipY`, transposing bits 5/6; see rom_profiles.lua's
 -- `enemySprite.flipXTogglesPerStep` doc comment for the full evidence
--- and the correction note) every single real movement step, using the
--- SAME `enemySprite.tileOffsets` art both ways. `movementIndex`
--- already advances exactly once per real step (see `updateMovement`
--- above), so its own parity is a direct, real proxy for "which of the
--- two real flip states this step is in" -- no separate timer needed.
--- The starting phase (whether index 1 is flipped or not) was not
--- independently pinned down to a specific real waypoint; an arbitrary
--- consistent choice here only shifts which half-step the flap starts
--- on, not whether the flap itself is real.
+-- and the correction note) every single movement step, using the same
+-- `enemySprite.tileOffsets` art both ways. `movementIndex` already
+-- advances exactly once per step (see `updateMovement` above), so its
+-- parity is a direct proxy for "which of the two flip states this step
+-- is in" -- no separate timer needed. The starting phase (whether
+-- index 1 is flipped or not) was not independently pinned down to a
+-- specific waypoint; an arbitrary consistent choice here only shifts
+-- which half-step the flap starts on, not whether the flap itself is
+-- real.
 function Enemy:isFlipped()
   return self.movementIndex % 2 == 0
 end
 
--- REMOVED (2026-08-13, direct user instruction: "mach die gesamte
--- startsequenz von anfang bis ende interpretiert"): this used to be a
--- real, but entirely HAND-CAPTURED, one-time "gate-to-patrol descent"
--- tween (`startDescent`/`updateDescent`/`descentComplete`, driven by
--- `rom_profiles.lua`'s own hardcoded `enemyDescent.path` table). Task
--- #86 (this same day) found, independently, that
--- `EnemyMovementInterpreter`'s own first 4 real ticks -- sourced live
--- from the actual ROM behavior-tree data, not captured/replayed -- are
--- BYTE-FOR-BYTE the same real deltas as `enemyDescent.path` (both:
--- 4 steps of `y+7`, 5 real frames each). This is not a coincidence --
--- it's the SAME real event, found independently by two different
--- investigations. The separate descent tween is now genuinely
--- redundant: `BattleIntro.lua` runs the real interpreter (via the
--- ordinary `updateMovement`) continuously from the moment the gate
--- opens, with no separate "descent phase" state at all -- see that
--- state's own doc comment for the real "which sprite to draw" boundary
--- this removal needed to replace.
+-- REMOVED (direct user instruction to interpret the whole start
+-- sequence from beginning to end): this used to be a real, but
+-- entirely hand-captured, one-time "gate-to-patrol descent" tween
+-- (`startDescent`/`updateDescent`/`descentComplete`, driven by
+-- `rom_profiles.lua`'s hardcoded `enemyDescent.path` table). A separate
+-- investigation found, independently, that
+-- `EnemyMovementInterpreter`'s first 4 ticks -- sourced live from the
+-- actual ROM behavior-tree data, not captured/replayed -- are
+-- byte-for-byte the same deltas as `enemyDescent.path` (both: 4 steps
+-- of `y+7`, 5 frames each). This is not a coincidence -- it's the same
+-- event, found independently by two different investigations. The
+-- separate descent tween is now genuinely redundant: `BattleIntro.lua`
+-- runs the interpreter (via the ordinary `updateMovement`) continuously
+-- from the moment the gate opens, with no separate "descent phase"
+-- state at all -- see that state's doc comment for the "which sprite
+-- to draw" boundary this removal needed to replace.
 
--- Real death "explosion" (2026-08-12, direct user correction: "es gibt
--- diese explosion ohne jeden zweifel" -- an earlier same-session pass
--- wrongly trusted a stale, incomplete negative result before re-
--- tracing and finding this). See rom_profiles.lua's own `enemyDeath`
--- doc comment for the full live evidence (the creature's own six real
--- body-part tile pairs scatter outward over `totalFrames` real frames,
--- then vanish). `Field.lua` starts this the instant `Enemy:hit()`
--- reports the kill and keeps drawing/advancing it (instead of the
--- normal enemy sprite) until `deathComplete()`.
+-- Death "explosion" (direct user correction that this explosion
+-- definitely exists -- an earlier pass wrongly trusted a stale,
+-- incomplete negative result before re-tracing and finding this). See
+-- rom_profiles.lua's `enemyDeath` doc comment for the full live
+-- evidence (the creature's six body-part tile pairs scatter outward
+-- over `totalFrames` frames, then vanish). `Field.lua` starts this the
+-- instant `Enemy:hit()` reports the kill and keeps drawing/advancing it
+-- (instead of the normal enemy sprite) until `deathComplete()`.
 --
--- CROSS-REFERENCE (2026-08-14, task #86, unrelated investigation that
--- independently arrived at the same real neighborhood): a separate,
--- WRAM-side live trace of the real boss-defeat SCRIPT (not this visual
--- scatter, a different ROM mechanism entirely) found the story script
--- itself waits for its own edge-triggered "has the defeated entity's
--- own actor slot finished despawning" signal before proceeding --
--- confirmed to take ~100 real GB frames in that trace, close to (not
--- identical to, and not claimed to be the exact same underlying timer
--- as) this `totalFrames = 86` scatter duration. Both are real,
--- independently live-verified delays in the same real "boss just
--- died" window -- corroborating, not requiring any code change here.
--- See `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s own doc comment
--- and events.md's dated task-#86 entries for the full WRAM-side trace.
+-- CROSS-REFERENCE (an unrelated investigation that independently
+-- arrived at the same neighborhood): a separate, WRAM-side live trace
+-- of the boss-defeat SCRIPT (not this visual scatter, a different ROM
+-- mechanism entirely) found the story script itself waits for its own
+-- edge-triggered "has the defeated entity's actor slot finished
+-- despawning" signal before proceeding -- confirmed to take ~100 GB
+-- frames in that trace, close to (not identical to, and not claimed to
+-- be the exact same underlying timer as) this `totalFrames = 86`
+-- scatter duration. Both are independently live-verified delays in the
+-- same "boss just died" window -- corroborating, not requiring any
+-- code change here. See `ScriptOpcodeTable.QUEUE_GATE_HANDLER_ADDRESS`'s
+-- doc comment and events.md's entries for the full WRAM-side trace.
 function Enemy:startDeath(profile)
   local d = profile.graphics.enemyDeath
   self.death = { profile = d, elapsedFrames = 0, doneFrames = d.totalFrames }
