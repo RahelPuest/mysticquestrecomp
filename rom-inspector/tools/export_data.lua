@@ -282,62 +282,53 @@ end
 -- ScriptOpcodeTable.lua's own doc comments at each address for the
 -- full disassembly this summarizes.
 local KNOWN_HARD = {
-  -- REMOVED 2026-08-14 (task #10/"consolidate the last few hours"):
-  -- 0x15A4 (opcode 0x80) used to live here ("group value is DATA-
-  -- DEPENDENT... no live WRAM simulation to supply") -- that's no
-  -- longer true. $02AB (the real leaf behind it) was cracked this same
-  -- session (see EntityStructLayout.lua's own PLAYER_FACING_BIT doc
-  -- comment and ScriptOpcodeTable.lua's ACTOR_ACTION_HANDLER_ADDRESS_80
-  -- entry): it's a plain read of the player's own real facing byte,
-  -- which this project DOES already track (Player.lua's `self.facing`)
-  -- -- 0x80 is now a real, registered handler and correctly falls out
-  -- as `status = "decoded"` below without needing this entry at all.
+  -- REMOVED (task #10, consolidation pass): 0x15A4 (opcode 0x80) used
+  -- to live here ("group value is data-dependent, no live WRAM
+  -- simulation to supply") -- no longer true. $02AB (the leaf behind
+  -- it) was cracked this session (see EntityStructLayout.lua's own
+  -- PLAYER_FACING_BIT doc comment and ScriptOpcodeTable.lua's
+  -- ACTOR_ACTION_HANDLER_ADDRESS_80 entry): it's a plain read of the
+  -- player's facing byte, which this project already tracks (Player
+  -- .lua's self.facing) -- 0x80 is now a registered handler and
+  -- correctly falls out as status = "decoded" below.
   --
-  -- REMOVED 2026-08-15 (task #126 consolidation, "konsolidieren,
-  -- dokumentieren und in die app/website einbauen"): 0x10DC (0xBC) and
-  -- 0x1046 (0xBD) used to live here ("Not yet decoded to an exact fade
-  -- curve" / "reads two real shared gradient lookup tables... then
-  -- calls a further untraced leaf") -- both stale. `0xBC`/`0xBD`/`0xBE`
-  -- (the whole palette-fade family, `$10DC`/`$1046`/`$10A7`) were fully
-  -- disassembled and WIRED 2026-08-15 (`StandardScriptHandlers
-  -- .paletteFadeCycle`, task #125) -- they now correctly fall out as
-  -- `status = "decoded"` below without needing an entry here. Leaving
-  -- the stale notes in would have been actively misleading: a
-  -- "decoded" opcode showing a note that says "not yet decoded" is a
-  -- real, visible self-contradiction on the website, not a harmless
-  -- leftover.
+  -- REMOVED (task #126 consolidation, request to consolidate, document,
+  -- and build into the app/website): 0x10DC (0xBC) and 0x1046 (0xBD)
+  -- used to live here with stale "not yet decoded" notes -- 0xBC/0xBD/
+  -- 0xBE (the whole palette-fade family) were fully disassembled and
+  -- wired (StandardScriptHandlers.paletteFadeCycle, task #125) -- they
+  -- now correctly fall out as status = "decoded" below. Leaving the
+  -- stale notes in would have been actively misleading: a "decoded"
+  -- opcode showing a "not yet decoded" note is a visible self-
+  -- contradiction on the website.
   --
-  -- ADDED 2026-08-15 (same consolidation pass): `0xEC`/`0xED`/`0xEE`
-  -- (`$0E73`/`$0E77`/`$0E7B`) and `0xBA` (`$0EB2`) were ALREADY fully
-  -- traced and deliberately left unwired back on 2026-08-14 (see
-  -- `ScriptOpcodeTable.lua`'s own doc comments at each address for the
-  -- complete disassembly this summarizes) but were NEVER added here --
-  -- so the website was showing them as plain "undecoded" (implying
-  -- genuinely open/unexplored) instead of "known-hard" (traced,
-  -- deliberately deferred, with a real reason). Found and fixed while
-  -- consolidating task #126 (the real `0xF3` 5-byte-release fix, which
-  -- made `BossSequenceInterpreter` progress far enough to land
-  -- EXACTLY on `0xED`/`$0E77` as its new honest stopping point --
-  -- direct, concrete confirmation this family is real and reachable,
-  -- not a hypothetical).
+  -- ADDED (same consolidation pass): 0xEC/0xED/0xEE ($0E73/$0E77/
+  -- $0E7B) and 0xBA ($0EB2) were already fully traced and deliberately
+  -- left unwired earlier (see ScriptOpcodeTable.lua's own doc comments
+  -- at each address for the complete disassembly this summarizes) but
+  -- were never added here -- so the website was showing them as plain
+  -- "undecoded" instead of "known-hard" (traced, deliberately
+  -- deferred, with a real reason). Found and fixed while consolidating
+  -- task #126 (the 0xF3 5-byte-release fix, which made
+  -- BossSequenceInterpreter progress far enough to land exactly on
+  -- 0xED/$0E77 as its new honest stopping point -- concrete
+  -- confirmation this family is real and reachable).
   [0x0E73] = "Third confirmed sibling of the known-hard $02AB family (with 0x80/0xEC/0xEE): dereferences the task-#85 cross-actor pointer ($C3FE/$C3FF) one further level (+0), then calls $02AB (a masked read of the player's own real facing byte -- itself fully understood). Left unwired because WHICH bank/pointer gets staged into $C3F0/$C3FE/$C3FF for a given real scene is genuinely DATA-DEPENDENT, and this project has no live player-entity WRAM simulation to compute it with -- expected to remain known-hard permanently, not a sign of unfinished work.",
   [0x0E77] = "Second confirmed sibling of the known-hard $02AB family (offset +1 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above. Directly confirmed reachable 2026-08-15: BossSequenceInterpreter's own real boss-defeat script lands here as its new, further, honest stopping point once the 0xF3 5-byte-release fix (task #126) is wired.",
   [0x0E7B] = "Fourth confirmed sibling of the known-hard $02AB family (offset +2 instead of 0xEC's +0) -- same real mechanism/blocker as 0x0E73 above.",
   [0x0EB2] = "A real, fully-traced $D499-driven 2-step entity-lifecycle state machine (step0 allocates a real entity slot via the already-known $0A74 primitive, calls $2F03; step1 calls $2ED3 -- real halt if not ready -- else despawns the slot via $0AE3). Both $2F03/$2ED3 resolve to real cases of the already-mapped $1ED7 bank-1 dispatcher. Genuinely known-hard NOT because the mechanism is opaque (it's real, traced, decodable ROM code) but because fully resolving \"ready\" needs the $52CD sub-table's own untraced targets AND a live entity/OAM lifecycle simulation this project doesn't have.",
 
-  -- ADDED 2026-08-15 (direct user request "ok dann mal die fehlenden
-  -- opcodes dekodieren"): 0xA4 ($01C1) was ALREADY fully traced and
-  -- deliberately left unwired back on 2026-08-14 (see
-  -- ScriptOpcodeTable.lua's own doc comment) but, like the entries
-  -- above before task #126's own consolidation pass, was NEVER added
-  -- here -- so it was showing as plain "undecoded" (genuinely
-  -- open/unexplored) instead of "known-hard" (traced, deliberately
-  -- deferred, with a real reason), and was in fact this whole
-  -- project's own SINGLE LARGEST undecoded blocker by real script
-  -- count (17/1357) once this session's other opcode-family fixes
-  -- cleared the earlier ones out of the way. 0x8A ($15FB) is a NEW
-  -- find this same pass -- a sixth confirmed sibling of the same
-  -- family, reached even more directly than 0xA4's own indirection.
+  -- ADDED (direct user request to decode the missing opcodes): 0xA4
+  -- ($01C1) was already fully traced and deliberately left unwired
+  -- earlier (see ScriptOpcodeTable.lua's own doc comment) but, like
+  -- the entries above before task #126's consolidation pass, was
+  -- never added here -- so it was showing as plain "undecoded"
+  -- instead of "known-hard," and was in fact this project's single
+  -- largest undecoded blocker by script count (17/1357) once this
+  -- session's other opcode-family fixes cleared the earlier ones out
+  -- of the way. 0x8A ($15FB) is a new find this same pass -- a sixth
+  -- confirmed sibling of the same family, reached even more directly
+  -- than 0xA4's own indirection.
   [0x01C1] = "Fifth confirmed sibling of the known-hard $02AB family (via a NEW indirection path: $01CA -> real $1ED7 selector 0x08 -> $50F9, which does PUSH DE / CALL $02AB / CALL $28F0 / POP DE / RET NZ -- a genuine real conditional halt gated on $02AB's own result). Same real mechanism/blocker as 0x0E73 above -- needs live player-entity WRAM simulation this project doesn't have.",
   [0x15FB] = "Sixth confirmed sibling of the known-hard $02AB family, reached MOST directly of all of them: $1588 is PUSH HL / CALL $02AB / POP HL / BIT 7,A / RET Z -- a real halt gated straight on $02AB's own bit 7, no further indirection. The outer opcode genuinely halts (never reaches $3727) for as long as that bit stays set. Same real mechanism/blocker as 0x0E73 above.",
 }
@@ -368,17 +359,16 @@ writeJs("opcodes.js", "OPCODES", opcodes,
   "Real per-opcode decode status for all 256 primary script opcodes -- 'decoded' means ScriptRuntime actually has a registered Lua handler for that real ROM address (checked by building a live ScriptRuntime, not hand-classified); 'default' is the real ROM-confirmed no-op; 'known-hard' is traced but deliberately unwired (see the 'note' field); 'undecoded' is genuinely open.")
 
 ----------------------------------------------------------------------
--- 4c. Opcode 0x04's own real control-code sub-system (2026-08-15,
--- tasks #141-147). These are NOT entries in the primary 256-opcode
--- table above -- they're real byte VALUES (0x10-0x1F) opcode 0x04's
--- own classifier (see StandardScriptHandlers.tick) reads directly from
--- the live script cursor while already dispatched, matching the real
--- ROM's own `$38F6` jump table (`SUB $10` before lookup). Curated, not
--- code-derived (this data doesn't live in a Lua table this project can
--- walk mechanically -- it's the direct product of live mgba tracing +
--- static disassembly, cited here exactly as found) -- see
--- docs/reverse-engineering/events.md's own dated task #141-147 entries
--- for the full real evidence trail behind every claim below.
+-- 4c. Opcode 0x04's own control-code sub-system (tasks #141-147).
+-- These are not entries in the primary 256-opcode table above --
+-- they're byte values (0x10-0x1F) opcode 0x04's own classifier (see
+-- StandardScriptHandlers.tick) reads directly from the live script
+-- cursor while already dispatched, matching the ROM's own $38F6 jump
+-- table (SUB $10 before lookup). Curated, not code-derived (this data
+-- doesn't live in a Lua table this project can walk mechanically --
+-- it's the direct product of live mgba tracing + static disassembly)
+-- -- see docs/reverse-engineering/events.md's own dated task #141-147
+-- entries for the full evidence trail behind every claim below.
 ----------------------------------------------------------------------
 do
   local CONTROL_CODES = {
@@ -420,22 +410,20 @@ do
     },
   }
   writeJs("control-codes.js", "CONTROL_CODES", CONTROL_CODES,
-    "Real control-code sub-system opcode 0x04's own classifier dispatches through (script byte values 0x10-0x1F, NOT separate top-level opcodes -- see StandardScriptHandlers.tick's own doc comment). Found and fixed 2026-08-15 (tasks #141-147) via live mgba tracing + static disassembly -- 'occurrence-specific' means this project only claims the real behavior for the ONE live-traced real cursor cited, NOT every occurrence of that byte value (two self-caught over-generalizations this session -- 0x10 and 0x11 -- both broke real, already-working dispatches when assumed universal). With all confirmed here wired, this project's own BossSequenceInterpreter now runs the ENTIRE remaining real boss-defeat script and reaches the real opcode 0x00 queue-gate (see docs/reverse-engineering/events.md) -- the same landmark this whole investigation started from.")
+    "Control-code sub-system opcode 0x04's own classifier dispatches through (script byte values 0x10-0x1F, not separate top-level opcodes -- see StandardScriptHandlers.tick's own doc comment). Found and fixed (tasks #141-147) via live mgba tracing + static disassembly -- 'occurrence-specific' means this project only claims the behavior for the one live-traced cursor cited, not every occurrence of that byte value (two self-caught over-generalizations this session -- 0x10 and 0x11 -- both broke already-working dispatches when assumed universal). With all confirmed here wired, BossSequenceInterpreter now runs the entire remaining boss-defeat script and reaches the opcode 0x00 queue-gate (see docs/reverse-engineering/events.md) -- the same landmark this investigation started from.")
 end
 
 ----------------------------------------------------------------------
--- 4b. Script-tracer EXAMPLES (2026-08-14, direct user request: "kannst
---     du mal den ganzen script mechanismus mal in app... intuitiver
---     darstellen. vielleicht mit einem beispielscript so das man
---     verfolgen kann was passiert"). Two real, already-decoded, SHORT
---     event scripts from the room catalog (`MapTable.tryDecodeActor
---     Action`'s own real examples this session) -- small enough to
---     walk through opcode-by-opcode without needing to port this
---     project's whole ScriptRuntime to JS. Only real FILE OFFSETS are
---     exported (never raw ROM bytes, same "never ship ROM content"
---     convention every other page here already follows) -- the
---     client reads and decodes live from the user's own locally
---     loaded ROM file.
+-- 4b. Script-tracer EXAMPLES (direct user request to show the whole
+--     script mechanism in the app more intuitively, maybe with an
+--     example script to follow along). Two already-decoded, short
+--     event scripts from the room catalog (MapTable
+--     .tryDecodeActorAction's own examples this session) -- small
+--     enough to walk through opcode-by-opcode without needing to port
+--     ScriptRuntime to JS. Only file offsets are exported (never raw
+--     ROM bytes, same "never ship ROM content" convention every other
+--     page here follows) -- the client reads and decodes live from
+--     the user's own locally loaded ROM file.
 ----------------------------------------------------------------------
 local function headerFileOffsetFor(mapTable, recordIndex)
   local records = MapTable.decode(romData, mapTable)
