@@ -595,19 +595,19 @@ function ScriptRuntime:registerStandardHandlers()
     end, isActorReady, ctx.onActorAction))
 
   -- `0x81` (CRACKED 2026-08-14, direct continuation of the same $02AB
-  -- investigation): SAME real leaf (`$02AB`, via `resolvePlayerFacing`
-  -- above) but combined through `$29E4`'s own real "opposite facing"
-  -- bit trick before the fixed `OR 0xB0` -- see `ScriptOpcodeTable
-  -- .ACTOR_ACTION_HANDLER_ADDRESS_81`'s own doc comment for the full
+  -- investigation): same leaf (`$02AB`, via `resolvePlayerFacing`
+  -- above) but combined through `$29E4`'s "opposite facing" bit trick
+  -- before the fixed `OR 0xB0` -- see `ScriptOpcodeTable
+  -- .ACTOR_ACTION_HANDLER_ADDRESS_81`'s doc comment for the full
   -- disassembly and truth table. `EntityStructLayout.OPPOSITE_FACING`
-  -- is this project's own Lua-side equivalent of `$29E4` (a plain
-  -- lookup, exactly as correct as the real bit trick since every real
-  -- input is one-hot). Falls back through the SAME `"up"`-default path
-  -- as 0x80 when facing is missing/unrecognized -- `OPPOSITE_FACING
-  -- .up = "down"`, so the honest default resolves to `PLAYER_FACING_BIT
-  -- .down | 0xB0` here, deliberately different from 0x80's own default
-  -- result (a real, correct consequence of the two opcodes' different
-  -- real formulas, not an inconsistency).
+  -- is this project's Lua-side equivalent of `$29E4` (a plain lookup,
+  -- exactly as correct as the real bit trick since every input is
+  -- one-hot). Falls back through the same `"up"`-default path as 0x80
+  -- when facing is missing/unrecognized -- `OPPOSITE_FACING.up =
+  -- "down"`, so the honest default resolves to `PLAYER_FACING_BIT
+  -- .down | 0xB0` here, deliberately different from 0x80's default
+  -- result (a correct consequence of the two opcodes' different
+  -- formulas, not an inconsistency).
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81,
     StandardScriptHandlers.actorAction(function()
       local opposite = EntityStructLayout.OPPOSITE_FACING[resolvePlayerFacing()]
@@ -627,23 +627,22 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.chain(self.queue, ctx.onChainTarget))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_FLAG_LIST_HANDLER_ADDRESS,
     StandardScriptHandlers.zeroTerminatedFlagList(ctx.onFlagTest, ctx.onFlagListExhausted))
-  -- `0x09`/`0x0A` (added 2026-08-14, whole-corpus scan): structurally
-  -- identical to `0x08` just above (same "REQUIRED, no guessing"
-  -- exhausted contract) -- but each targets a real, DIFFERENT WRAM
-  -- array, so each gets its own distinctly-named ctx callback triple
-  -- rather than sharing `0x08`'s own -- see `StandardScriptHandlers
-  -- .timerListSearch`'s own doc comment.
+  -- `0x09`/`0x0A`: structurally identical to `0x08` just above (same
+  -- "REQUIRED, no guessing" exhausted contract) -- but each targets a
+  -- different WRAM array, so each gets its own distinctly-named ctx
+  -- callback triple rather than sharing `0x08`'s -- see
+  -- `StandardScriptHandlers.timerListSearch`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_09,
     StandardScriptHandlers.timerListSearch(ctx.onAdjustTimers09, ctx.onTimerListTest09, ctx.onTimerListExhausted09))
   interp:registerHandler(ScriptOpcodeTable.TIMER_LIST_SEARCH_HANDLER_ADDRESS_0A,
     StandardScriptHandlers.timerListSearch(ctx.onAdjustTimers0A, ctx.onTimerListTest0A, ctx.onTimerListExhausted0A))
-  -- `0x0B`/`0x0C` (added 2026-08-14, whole-corpus scan): both real
-  -- opcodes read the SAME 2 real WRAM cells (`$D871`/`$D873` bit 7),
-  -- so `ctx.runListMatchByte`/`ctx.isRunListGateSet` are shared -- only
-  -- the real gate POLARITY (`searchWhenGateSet`) and each opcode's own
-  -- `onExhausted` differ -- see `StandardScriptHandlers.runListSearch`'s
-  -- own doc comment. Both are REQUIRED ctx fields (no safe default for
-  -- a real byte comparison) -- only registered if BOTH are supplied.
+  -- `0x0B`/`0x0C`: both opcodes read the same 2 WRAM cells (`$D871`/
+  -- `$D873` bit 7), so `ctx.runListMatchByte`/`ctx.isRunListGateSet`
+  -- are shared -- only the gate polarity (`searchWhenGateSet`) and
+  -- each opcode's own `onExhausted` differ -- see
+  -- `StandardScriptHandlers.runListSearch`'s doc comment. Both are
+  -- required ctx fields (no safe default for a byte comparison) --
+  -- only registered if both are supplied.
   if ctx.runListMatchByte and ctx.isRunListGateSet then
     interp:registerHandler(ScriptOpcodeTable.RUN_LIST_SEARCH_HANDLER_ADDRESS_0B,
       StandardScriptHandlers.runListSearch(false, ctx.runListMatchByte, ctx.isRunListGateSet, ctx.onRunListExhausted0B))
@@ -656,21 +655,20 @@ function ScriptRuntime:registerStandardHandlers()
     interp:registerHandler(ScriptOpcodeTable.FLAG_CLEAR_HANDLER_ADDRESS,
       StandardScriptHandlers.clearFlagBit(ctx.flags, 1))
   end
-  -- `0xB8`/`0xB9` (added 2026-08-14, whole-corpus scan): a real,
-  -- DIFFERENT WRAM cell ($C3F1) than `ctx.flags`'s own $D874, so a
-  -- separate `ctx.wramBitFlags` table -- same "only register if the
-  -- caller actually wants to track this real cell" convention.
+  -- `0xB8`/`0xB9`: a different WRAM cell ($C3F1) than `ctx.flags`'s
+  -- $D874, so a separate `ctx.wramBitFlags` table -- same "only
+  -- register if the caller actually wants to track this cell"
+  -- convention.
   if ctx.wramBitFlags then
     interp:registerHandler(ScriptOpcodeTable.WRAM_BIT_COMMAND_HANDLER_ADDRESS_B8,
       StandardScriptHandlers.wramBitCommand(ctx.wramBitFlags, 0, true, ctx.onWramBitCommandLeafB8))
     interp:registerHandler(ScriptOpcodeTable.WRAM_BIT_COMMAND_HANDLER_ADDRESS_B9,
       StandardScriptHandlers.wramBitCommand(ctx.wramBitFlags, 0, false, ctx.onWramBitCommandLeafB9))
   end
-  -- `0xA3`/`0xA5`/`0xA6` (added 2026-08-14, whole-corpus scan): a
-  -- real, THIRD different WRAM cell ($C4D4) -- yet another separate
-  -- `{byte=int}` proxy, same "only register if the caller actually
-  -- wants to track this real cell" convention as `ctx.flags`/
-  -- `ctx.wramBitFlags` above.
+  -- `0xA3`/`0xA5`/`0xA6`: a third different WRAM cell ($C4D4) -- yet
+  -- another separate `{byte=int}` proxy, same "only register if the
+  -- caller actually wants to track this cell" convention as
+  -- `ctx.flags`/`ctx.wramBitFlags` above.
   if ctx.actorStateFlags then
     interp:registerHandler(ScriptOpcodeTable.FIXED_WRAM_BIT_SET_SKIP_COMMAND_HANDLER_ADDRESS_A3,
       StandardScriptHandlers.fixedWramBitSetSkipCommand(ctx.actorStateFlags, 4))
@@ -679,13 +677,12 @@ function ScriptRuntime:registerStandardHandlers()
     interp:registerHandler(ScriptOpcodeTable.FIXED_WRAM_BIT_SET_SKIP_COMMAND_HANDLER_ADDRESS_A6,
       StandardScriptHandlers.fixedWramBitSetSkipCommand(ctx.actorStateFlags, 6))
   end
-  -- REWRITTEN 2026-08-15 (real disassembly of $333D, see
-  -- StandardScriptHandlers.tick's own doc comment for the full
-  -- evidence): `0x04` is a real per-byte text/control-code classifier,
-  -- not a simple tick -- `ctx.onControlCode(byte)` is this project's
-  -- own hook for the real 0x10-0x1F control-code family (see that
-  -- handler's own doc comment for what's modeled and what's an
-  -- honestly-named gap).
+  -- Per the disassembly of $333D (see StandardScriptHandlers.tick's
+  -- doc comment for the full evidence): `0x04` is a per-byte
+  -- text/control-code classifier, not a simple tick --
+  -- `ctx.onControlCode(byte)` is this project's hook for the 0x10-0x1F
+  -- control-code family (see that handler's doc comment for what's
+  -- modeled and what's an honestly-named gap).
   interp:registerHandler(ScriptOpcodeTable.TICK_HANDLER_ADDRESS,
     StandardScriptHandlers.tick(ctx.onTick, ctx.onControlCode))
   interp:registerHandler(ScriptOpcodeTable.START_TEXTBOX_WAIT_HANDLER_ADDRESS,
@@ -696,18 +693,17 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.typewriterCommand(ctx.onTypewriterCommand, self.queue))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_49,
     StandardScriptHandlers.actorSlotPosition(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0xFC`/`0xFD` (added 2026-08-13, task #86): both real handlers
-  -- share the SAME real WRAM latch (`$D499`) -- they're mutually-
-  -- exclusive alternatives of one real state machine, not independent
-  -- state, so this project's own Lua port shares ONE closure-local
-  -- latch between their two registrations (matching the real ROM's own
-  -- single shared byte) rather than exposing it via `ctx` -- no caller
-  -- outside this runtime instance has a legitimate reason to inspect
-  -- or override it. `ctx.isTriggerEventGateClear` (optional, defaults
-  -- to "always clear" -- see `StandardScriptHandlers
-  -- .oneShotTriggerGate`'s own doc comment for why that matches the
-  -- one real case this project has actually observed) models the real
-  -- `$C8E0`/`$CEE8` dual gate both opcodes also share.
+  -- `0xFC`/`0xFD`: both handlers share the same WRAM latch (`$D499`)
+  -- -- they're mutually-exclusive alternatives of one state machine,
+  -- not independent state, so this project's Lua port shares one
+  -- closure-local latch between their two registrations (matching the
+  -- ROM's single shared byte) rather than exposing it via `ctx` -- no
+  -- caller outside this runtime instance has a legitimate reason to
+  -- inspect or override it. `ctx.isTriggerEventGateClear` (optional,
+  -- defaults to "always clear" -- see `StandardScriptHandlers
+  -- .oneShotTriggerGate`'s doc comment for why that matches the one
+  -- case this project has actually observed) models the `$C8E0`/
+  -- `$CEE8` dual gate both opcodes also share.
   do
     local triggerLatch = { resumeCursor = false }
     local function getLatch() return triggerLatch.resumeCursor end
@@ -719,48 +715,43 @@ function ScriptRuntime:registerStandardHandlers()
       StandardScriptHandlers.oneShotTriggerGate(4, getLatch, setLatch,
         ctx.isTriggerEventGateClear, ctx.onTriggerEvent))
   end
-  -- `0xE8`/`0xE9` (added 2026-08-14, whole-corpus scan -- see
-  -- `StandardScriptHandlers.dualGateLeafCommand`'s own doc comment):
-  -- real, SAME `$C8E0`/`$CEE8` dual gate as `0xFC`/`0xFD` just above
-  -- (reuses the SAME `ctx.isTriggerEventGateClear`, the real WRAM
+  -- `0xE8`/`0xE9` (see `StandardScriptHandlers.dualGateLeafCommand`'s
+  -- doc comment): same `$C8E0`/`$CEE8` dual gate as `0xFC`/`0xFD` just
+  -- above (reuses the same `ctx.isTriggerEventGateClear`, the WRAM
   -- cells are identical), but no operand byte and no one-shot latch --
-  -- each fires its own real, distinct VRAM-tile-pattern-update leaf
-  -- every time it dispatches, not once per activation.
+  -- each fires its own distinct VRAM-tile-pattern-update leaf every
+  -- time it dispatches, not once per activation.
   interp:registerHandler(ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_E8,
     StandardScriptHandlers.dualGateLeafCommand(ctx.isTriggerEventGateClear, ctx.onDualGateLeafE8))
   interp:registerHandler(ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_E9,
     StandardScriptHandlers.dualGateLeafCommand(ctx.isTriggerEventGateClear, ctx.onDualGateLeafE9))
-  -- `0xEA`/`0xEB` (added 2026-08-14, whole-corpus scan rank-3 blocker):
-  -- completes the real 4-direction family alongside `0xE8`/`0xE9`
-  -- (North/South) above -- East/West, SAME shared gate, SAME factory,
-  -- no new Lua code.
+  -- `0xEA`/`0xEB`: completes the 4-direction family alongside
+  -- `0xE8`/`0xE9` (North/South) above -- East/West, same shared gate,
+  -- same factory, no new Lua code.
   interp:registerHandler(ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_EA,
     StandardScriptHandlers.dualGateLeafCommand(ctx.isTriggerEventGateClear, ctx.onDualGateLeafEA))
   interp:registerHandler(ScriptOpcodeTable.DUAL_GATE_LEAF_COMMAND_HANDLER_ADDRESS_EB,
     StandardScriptHandlers.dualGateLeafCommand(ctx.isTriggerEventGateClear, ctx.onDualGateLeafEB))
-  -- `0xFB`/`0xBF` (added 2026-08-14, whole-corpus scan): both real
-  -- "periodic cosmetic WRAM-effect" leaves with a fully self-contained
-  -- private phase counter (real WRAM `$D499` is shared/global in the
-  -- ROM, but nothing else in this project's model reads it back) --
-  -- unconditional, no `ctx` gating needed, since `onUpdate`/`onDim`/
-  -- `onBright` are all genuinely optional observers, not required
-  -- state -- see `StandardScriptHandlers.periodicWramEffect`'s own doc
-  -- comment.
+  -- `0xFB`/`0xBF`: both "periodic cosmetic WRAM-effect" leaves with a
+  -- fully self-contained private phase counter (WRAM `$D499` is
+  -- shared/global in the ROM, but nothing else in this project's model
+  -- reads it back) -- unconditional, no `ctx` gating needed, since
+  -- `onUpdate`/`onDim`/`onBright` are all genuinely optional observers,
+  -- not required state -- see `StandardScriptHandlers
+  -- .periodicWramEffect`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.WAVE_OFFSET_EFFECT_HANDLER_ADDRESS_FB,
     StandardScriptHandlers.waveOffsetEffect(ctx.onWaveOffsetUpdate))
   interp:registerHandler(ScriptOpcodeTable.COLOR_PULSE_EFFECT_HANDLER_ADDRESS_BF,
     StandardScriptHandlers.colorPulseEffect(ctx.onColorPulseDim, ctx.onColorPulseBright))
-  -- `0xBC`/`0xBD`/`0xBE` (WIRED 2026-08-15, reversing the 2026-08-14
-  -- "deliberately unwired" call -- see `ScriptOpcodeTable.lua`'s own
+  -- `0xBC`/`0xBD`/`0xBE` (see `ScriptOpcodeTable.lua`'s
   -- `PALETTE_FADE_HANDLER_ADDRESS_BC/BD/BE` doc comment for the full
-  -- disassembly of the shared real `$1142` pacing leaf this models).
-  -- Unlike `0xFB`/`0xBF` just above, this family GENUINELY HALTS (see
-  -- `StandardScriptHandlers.paletteFadeCycle`'s own doc comment) -- all
-  -- 3 real opcodes share ONE private `sharedPaletteFadeState` table
-  -- (the real WRAM `$D499`/`$D49A` cells they all read/write ARE
-  -- genuinely shared across these 3 specific handlers, unlike `0xFB`/
-  -- `0xBF`'s own unrelated, per-handler-private use of the same cell
-  -- number).
+  -- disassembly of the shared `$1142` pacing leaf this models). Unlike
+  -- `0xFB`/`0xBF` just above, this family genuinely halts (see
+  -- `StandardScriptHandlers.paletteFadeCycle`'s doc comment) -- all 3
+  -- opcodes share one private `sharedPaletteFadeState` table (the WRAM
+  -- `$D499`/`$D49A` cells they all read/write are genuinely shared
+  -- across these 3 specific handlers, unlike `0xFB`/`0xBF`'s unrelated,
+  -- per-handler-private use of the same cell number).
   local sharedPaletteFadeState = {}
   interp:registerHandler(ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BC,
     StandardScriptHandlers.paletteFadeCycle(sharedPaletteFadeState, ctx.onPaletteFadeStep))
@@ -768,42 +759,38 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.paletteFadeCycle(sharedPaletteFadeState, ctx.onPaletteFadeStep))
   interp:registerHandler(ScriptOpcodeTable.PALETTE_FADE_HANDLER_ADDRESS_BE,
     StandardScriptHandlers.paletteFadeCycle(sharedPaletteFadeState, ctx.onPaletteFadeStep))
-  -- `0x88`/`0x89` (added 2026-08-14, "konsolidiere unsere Entdeckungen"
-  -- -- both real, live-confirmed boss-defeat script opcodes): fixed
-  -- per-opcode constant, unconditional, `onWrite` is a genuinely
+  -- `0x88`/`0x89` (both live-confirmed boss-defeat script opcodes):
+  -- fixed per-opcode constant, unconditional, `onWrite` is a genuinely
   -- optional observer -- see `StandardScriptHandlers
-  -- .playerEntityTypeWrite`'s own doc comment. Both share ONE `ctx`
+  -- .playerEntityTypeWrite`'s doc comment. Both share one `ctx`
   -- callback (`ctx.onPlayerEntityTypeWrite`) since the fixed value
   -- itself already tells a caller which opcode fired.
   interp:registerHandler(ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_88,
     StandardScriptHandlers.playerEntityTypeWrite(2, ctx.onPlayerEntityTypeWrite))
   interp:registerHandler(ScriptOpcodeTable.PLAYER_ENTITY_TYPE_WRITE_HANDLER_ADDRESS_89,
     StandardScriptHandlers.playerEntityTypeWrite(1, ctx.onPlayerEntityTypeWrite))
-  -- `0x8F` (added 2026-08-14, whole-corpus scan rank-3 blocker): real
-  -- conditional halt on the SAME `$C5A0` actor-command table task #85's
-  -- own `$4B70` finding documents (own real read, independent of
-  -- opcode `0x00` -- task #86's later, same-day re-trace found opcode
-  -- `0x00`'s own bit-0 gate does NOT actually read `$C5A0` the way this
-  -- comment used to imply; `0x8F`'s own real `$C5A0` read stands on its
-  -- own and is unaffected by that retraction) -- unconditional
-  -- registration since `ctx.isActorCommandQueueEmpty` is optional
-  -- (defaults to "always empty," same honest gap as
-  -- `ctx.isActorReady`/`ctx.isQueueBlocked` -- no live WRAM
-  -- actor-command simulation exists in this project).
+  -- `0x8F`: conditional halt on the same `$C5A0` actor-command table
+  -- an earlier `$4B70` finding documents (its own read, independent of
+  -- opcode `0x00` -- a later re-trace found opcode `0x00`'s bit-0 gate
+  -- does NOT actually read `$C5A0` the way an earlier comment implied;
+  -- `0x8F`'s `$C5A0` read stands on its own, unaffected by that
+  -- retraction) -- unconditional registration since
+  -- `ctx.isActorCommandQueueEmpty` is optional (defaults to "always
+  -- empty," same honest gap as `ctx.isActorReady`/`ctx.isQueueBlocked`
+  -- -- no live WRAM actor-command simulation exists in this project).
   interp:registerHandler(ScriptOpcodeTable.ACTOR_COMMAND_QUEUE_EMPTY_GATE_HANDLER_ADDRESS_8F,
     StandardScriptHandlers.actorCommandQueueEmptyGate(ctx.isActorCommandQueueEmpty))
-  -- `0x90`/`0x91`/`0x94`-`0x99` (added 2026-08-14, whole-corpus scan
-  -- rank-3 blocker after `0x8F`'s own closure): the `$1606` cluster --
-  -- explicit registration (NOT the generic `ACTOR_ACTION_HANDLER_
-  -- ADDRESS_`/`QUEUED_ACTION_HANDLER_ADDRESS_` loop below, deliberately
-  -- excluded by this constant family's own different name prefix,
-  -- since these have a real, different not-ready behavior -- see
-  -- `StandardScriptHandlers.actorActionOrSkip`'s own doc comment).
-  -- Reuses the SAME `isActorReady` local (the real `$28C2` gate is
-  -- identical to the sibling family's own). Unlike the generic loop,
-  -- explicit registration lets each real opcode's own group value
-  -- reach `ctx.onActorActionOrSkip` for real -- not lost to `nil` the
-  -- way the generic family's own "HONEST LIMIT" note describes.
+  -- `0x90`/`0x91`/`0x94`-`0x99`: the `$1606` cluster -- explicit
+  -- registration (not the generic `ACTOR_ACTION_HANDLER_ADDRESS_`/
+  -- `QUEUED_ACTION_HANDLER_ADDRESS_` loop below, deliberately excluded
+  -- by this constant family's different name prefix, since these have
+  -- a different not-ready behavior -- see `StandardScriptHandlers
+  -- .actorActionOrSkip`'s doc comment). Reuses the same `isActorReady`
+  -- local (the `$28C2` gate is identical to the sibling family's).
+  -- Unlike the generic loop, explicit registration lets each opcode's
+  -- own group value reach `ctx.onActorActionOrSkip` for real -- not
+  -- lost to `nil` the way the generic family's "HONEST LIMIT" note
+  -- describes.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_OR_SKIP_HANDLER_ADDRESS_90,
     StandardScriptHandlers.actorActionOrSkip(0x04, isActorReady, ctx.onActorActionOrSkip))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_OR_SKIP_HANDLER_ADDRESS_91,
