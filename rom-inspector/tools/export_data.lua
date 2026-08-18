@@ -773,7 +773,7 @@ writeJs("font-tileset.js", "FONT_TILESET", {
   bank = profile.graphics.font.bank,
   tileCount = profile.graphics.font.tileCount,
   rowGlyphs = profile.graphics.font.rowGlyphs,
-}, "The real, VERIFIED font tileset location -- rom_profiles.lua's own graphics.font.")
+}, "The VERIFIED font tileset location -- rom_profiles.lua's graphics.font.")
 
 ----------------------------------------------------------------------
 -- 7. Text decoder tables
@@ -789,9 +789,9 @@ for byte, pair in pairs(TextDecoder.DIGRAPH_PARTIAL) do
 end
 table.sort(digraphs, function(a, b) return a.byte < b.byte end)
 
--- Real byte samples straight from the ROM (not hand-typed) -- read
--- until a real TERMINATOR_BYTE (or 40 bytes, as a safety cap) starting
--- at each already-VERIFIED real text file offset.
+-- Byte samples straight from the ROM (not hand-typed) -- read until a
+-- TERMINATOR_BYTE (or 40 bytes, as a safety cap) starting at each
+-- already-VERIFIED text file offset.
 local function readRealSample(fileOffset, label)
   local bytes = {}
   local i = fileOffset
@@ -825,14 +825,14 @@ writeJs("text-decoder.js", "TEXT_DECODER", {
   colonByte = TextDecoder.COLON_BYTE,
   umlauts = umlauts,
   digraphs = digraphs,
-}, "Real TextDecoder.lua tables -- see that file's own doc comment for how each byte was cross-checked against live-decoded ROM text.")
+}, "TextDecoder.lua tables -- see that file's doc comment for how each byte was cross-checked against live-decoded ROM text.")
 
 ----------------------------------------------------------------------
--- 11. Monster catalog (EnemySpeciesTable -- 11 real species, ATK
--- VERIFIED, defCandidate1/2 real but not confirmed as a consumed
--- stat -- see combat.md's dated 2026-08-15 entries). Only ONE species
--- has a known real sprite location (the tutorial "gate creature");
--- the rest are honestly flagged as "graphic unknown", not guessed.
+-- 11. Monster catalog (EnemySpeciesTable -- 11 species, ATK VERIFIED,
+-- defCandidate1/2 real but not confirmed as a consumed stat -- see
+-- combat.md). Only ONE species has a known sprite location (the
+-- tutorial "gate creature"); the rest are honestly flagged as
+-- "graphic unknown", not guessed.
 ----------------------------------------------------------------------
 local function bytesToArray(raw)
   local out = {}
@@ -856,71 +856,59 @@ do
       defCandidate1 = s.row.defCandidate1,
       defCandidate2 = s.row.defCandidate2,
       rawBytes = bytesToArray(s.row.raw),
-      -- true only for the one species this project has actually
-      -- fought and captured a real live sprite location for (see
-      -- rom_profiles.lua's own `enemySprite` field) -- every other
-      -- species honestly has no known graphic yet.
+      -- true only for the one species actually fought, with a live
+      -- sprite location captured (see rom_profiles.lua's `enemySprite`
+      -- field) -- every other species has no known graphic yet.
       knownSprite = (KNOWN_SPRITE_ROW ~= nil) and (s.firstRowIndex - 1 <= KNOWN_SPRITE_ROW)
         and (KNOWN_SPRITE_ROW < s.firstRowIndex - 1 + s.count) or false,
     }
   end
   local es = profile.graphics and profile.graphics.enemySprite
 
-  -- FOUND, 2026-08-17 (external-reference byte matching against the US
-  -- "Final Fantasy Adventure" disassembly -- see EnemyStatTable.lua's
-  -- own doc comment for the full evidence trail, including the
-  -- decisive cross-check against this project's own earlier, unrelated
-  -- live-CPU-trace finding). A real, SEPARATE table from the species
-  -- table above (own file offset, own 24-byte stride) -- 21 named
-  -- bosses with real speed/HP-formula-input/XP/gold, all confirmed
+  -- Found via external-reference byte matching against the US "Final
+  -- Fantasy Adventure" disassembly -- see EnemyStatTable.lua's doc
+  -- comment for the full evidence trail. A SEPARATE table from the
+  -- species table above (own file offset, own 24-byte stride) -- 21
+  -- named bosses with speed/HP-formula-input/XP/gold, all confirmed
   -- byte-for-byte against the external reference.
   local bosses = {}
   if profile.enemyStatTable then
     local bossRows = EnemyStatTable.decode(romData, profile.enemyStatTable)
     local names = profile.enemyStatTable.externalReferenceNames or {}
     for i, r in ipairs(bossRows) do
-      -- REAL SPRITE, found 2026-08-17 (direct user instruction "die
-      -- müssen nicht verified sein, bau auch die grafiken in die
-      -- website ein"): `MonsterDefinitionTable` (SpriteTileFormula.lua)
-      -- is THE EXACT SAME real table as `enemyStatTable` here -- same
-      -- bank, same file base (0x10739/CPU 0x4739), same 24-byte stride,
-      -- same 21 rows, found independently by two different
-      -- investigations the same day (see EnemyStatTable.lua's own "SAME
-      -- TABLE" doc comment). So boss row `i-1` (0-based) IS
-      -- MonsterDefinitionTable record `i-1` -- every one of these 21
-      -- NAMED story bosses gets its own real sprite tiles, not just the
-      -- 1 (row 16, "Jackal") this project independently live-verified.
-      -- Shown regardless of arrangementConfirmed status, per the direct
-      -- instruction above -- honestly badged, not hidden.
+      -- `MonsterDefinitionTable` (SpriteTileFormula.lua) is the exact
+      -- same table as `enemyStatTable` here -- same bank, same file
+      -- base (0x10739/CPU 0x4739), same 24-byte stride, same 21 rows,
+      -- found independently (see EnemyStatTable.lua's "SAME TABLE" doc
+      -- comment). So boss row `i-1` (0-based) IS MonsterDefinitionTable
+      -- record `i-1` -- every one of these 21 named story bosses gets
+      -- its own sprite tiles, not just the 1 (row 16, "Jackal")
+      -- independently live-verified. Shown regardless of
+      -- arrangementConfirmed status -- honestly badged, not hidden.
       --
-      -- REAL POSE ARRANGEMENT, same day, direct follow-up ("versuche
-      -- daraus die tatsächlichen monster mit den animationsphasen zu
-      -- rekonstruieren wie du es bei spezies 4 gemacht hast"):
-      -- `resolveSpriteTileOffsets` now also reorders every real 16-tile
-      -- chunk that structurally matches species 4's own already-known
-      -- real pose shape (see SpriteTileFormula.CREATURE_4X4_POSE_
-      -- PERMUTATION's own doc comment) -- `spriteChunksReordered`/
-      -- `spriteChunksTotal` expose exactly how many of this boss's own
-      -- real animation-phase chunks got a confident real arrangement,
-      -- so the website can show an honest per-boss confidence instead
-      -- of one blanket claim.
+      -- Pose arrangement: `resolveSpriteTileOffsets` reorders every
+      -- 16-tile chunk that structurally matches species 4's already-
+      -- known pose shape (see SpriteTileFormula.CREATURE_4X4_POSE_
+      -- PERMUTATION's doc comment) -- `spriteChunksReordered`/
+      -- `spriteChunksTotal` expose exactly how many of this boss's
+      -- animation-phase chunks got a confident arrangement, so the
+      -- website can show an honest per-boss confidence instead of one
+      -- blanket claim.
       local monsterRecord = MonsterDefinitionTable.readRecord(romData, i - 1)
       local spriteOffsets, spriteBank, chunksReordered, chunksTotal
       if monsterRecord then
         spriteOffsets, spriteBank, chunksReordered, chunksTotal =
           MonsterDefinitionTable.resolveSpriteTileOffsets(romData, monsterRecord)
       end
-      -- REAL POSE-BY-POSE PRESENTATION, same day, direct follow-up
-      -- ("wenn die posen rekonstruiert sind dann bitte auch so
-      -- einbauen wie bei spezies 4"): species 4's own website card
-      -- shows ONE 4x4 canvas with switchable "Pose A"/"Pose B" tabs,
-      -- not a tall concatenated strip. `spritePoses` gives the SAME
-      -- shape for every OTHER boss whose real chunks are ALL
-      -- confidently reconstructed (chunksReordered==chunksTotal>0) --
-      -- one real 4x4 pose per array entry, in real chunk order. Left
-      -- nil (falls back to the flat strip view) for anything only
-      -- partially or not at all reconstructed -- showing tabs would
-      -- imply a confidence this project doesn't have for those chunks.
+      -- Pose-by-pose presentation: species 4's website card shows one
+      -- 4x4 canvas with switchable "Pose A"/"Pose B" tabs, not a tall
+      -- concatenated strip. `spritePoses` gives the same shape for
+      -- every other boss whose chunks are ALL confidently reconstructed
+      -- (chunksReordered==chunksTotal>0) -- one 4x4 pose per array
+      -- entry, in chunk order. Left nil (falls back to the flat strip
+      -- view) for anything only partially or not at all reconstructed
+      -- -- showing tabs would imply confidence this project doesn't
+      -- have for those chunks.
       local spritePoses = nil
       if spriteOffsets and chunksReordered == chunksTotal and chunksTotal > 0 then
         spritePoses = {}
@@ -959,42 +947,38 @@ do
       rows = es.rows,
       screenX = es.screenX,
       screenY = es.screenY,
-      -- ADDED 2026-08-15 (direct follow-up, "sprites mit
-      -- animationsphasen"): the real hardware X-flip toggle IS this
-      -- creature's own real 2nd animation "frame" (a horizontal
-      -- mirror of the SAME tiles, not a second drawn frame -- see
-      -- rom_profiles.lua's own `enemySprite.flipXTogglesPerStep` doc
-      -- comment for the full live OAM trace). Exposed explicitly so
-      -- the website/CatalogExplorer can show BOTH real poses instead
-      -- of just the un-flipped one.
+      -- The hardware X-flip toggle IS this creature's 2nd animation
+      -- "frame" (a horizontal mirror of the same tiles, not a second
+      -- drawn frame -- see rom_profiles.lua's `enemySprite.
+      -- flipXTogglesPerStep` doc comment for the live OAM trace).
+      -- Exposed explicitly so the website/CatalogExplorer can show
+      -- both poses instead of just the un-flipped one.
       flipXTogglesPerStep = es.flipXTogglesPerStep or false,
     } or nil,
     bosses = bosses,
-  }, "Real enemySpeciesTable rows (EnemySpeciesTable.lua), grouped into 11 distinct species. " ..
-     "ATK is VERIFIED (live register match); defCandidate1/2 are real bytes with NO confirmed " ..
-     "consumer found after 4 independent leads (see combat.md's 2026-08-15 entries) -- shown " ..
-     "as raw data, not claimed to be a working DEF stat. Only 1 of 11 species has a known real " ..
-     "sprite (found via live OAM tracing during actual combat) -- honestly flagged per-species; " ..
-     "that one real sprite's own 2-pose animation (X-flip toggle) is included under knownSprite. " ..
-     "`bosses` (2026-08-17, EnemyStatTable.lua) is a SEPARATE real table -- 21 named story bosses " ..
-     "with speed/hpBase/xp/gold confirmed byte-for-byte against the US cartridge's own public " ..
-     "disassembly; hpBase is a PRNG-formula input, not flat starting HP (see that module's own " ..
-     "doc comment); speciesByte/defeatBehaviorId/numObjects are real bytes, not yet independently " ..
-     "confirmed against this EU ROM's own code. Each boss also carries `spriteTileOffsets` " ..
-     "(2026-08-17, direct instruction \"die müssen nicht verified sein, bau auch die grafiken in " ..
-     "die website ein\") -- real ROM pixel data via MonsterDefinitionTable/SpriteTileFormula.lua, " ..
+  }, "enemySpeciesTable rows (EnemySpeciesTable.lua), grouped into 11 distinct species. " ..
+     "ATK is VERIFIED (live register match); defCandidate1/2 are real bytes with no confirmed " ..
+     "consumer found after 4 independent leads (see combat.md) -- shown as raw data, not " ..
+     "claimed to be a working DEF stat. Only 1 of 11 species has a known sprite (found via live " ..
+     "OAM tracing during combat) -- honestly flagged per-species; that sprite's 2-pose animation " ..
+     "(X-flip toggle) is included under knownSprite. `bosses` (EnemyStatTable.lua) is a SEPARATE " ..
+     "table -- 21 named story bosses with speed/hpBase/xp/gold confirmed byte-for-byte against " ..
+     "the US cartridge's public disassembly; hpBase is a PRNG-formula input, not flat starting " ..
+     "HP (see that module's doc comment); speciesByte/defeatBehaviorId/numObjects are real bytes, " ..
+     "not yet independently confirmed against this EU ROM's code. Each boss also carries " ..
+     "`spriteTileOffsets` -- ROM pixel data via MonsterDefinitionTable/SpriteTileFormula.lua, " ..
      "since this table IS MonsterDefinitionTable (same file base/stride/row count, found " ..
      "independently). Shown for all 21 regardless of `spriteArrangementConfirmed` (only true for " ..
-     "index 16, \"Jackal\" -- the one row independently live-OAM-verified); the other 20 show real, " ..
-     "individually-correct pixels in the ROM's own raw DMA copy order, an honestly unconfirmed " ..
+     "index 16, \"Jackal\" -- the one row independently live-OAM-verified); the other 20 show " ..
+     "individually-correct pixels in the ROM's raw DMA copy order, an honestly unconfirmed " ..
      "on-screen arrangement.")
 end
 
 ----------------------------------------------------------------------
--- 11b. Graphics candidates (GraphicsCandidates.lua) -- real, visually-
+-- 11b. Graphics candidates (GraphicsCandidates.lua) -- visually-
 -- confirmed creature/character art regions found via a heuristic ROM
 -- scan, NOT tied to any confirmed species/room/NPC identity. See that
--- module's own doc comment for the full honest scope.
+-- module's doc comment for the full honest scope.
 ----------------------------------------------------------------------
 do
   local candidates = {}
@@ -1012,10 +996,10 @@ do
     }
   end
   writeJs("graphics-candidates.js", "GRAPHICS_CANDIDATES", candidates,
-    "Real, visually-confirmed candidate creature/character graphics regions -- found via " ..
+    "Visually-confirmed candidate creature/character graphics regions -- found via " ..
     "tools/rom/scan_graphics.py's heuristic tile-entropy scan, then confirmed by rendering each " ..
-    "one and looking at it (see GraphicsCandidates.lua's own doc comment). NOT tied to any " ..
-    "confirmed species/room/NPC/spawn-trigger identity -- shown as real ROM art with an honest " ..
+    "one and looking at it (see GraphicsCandidates.lua's doc comment). NOT tied to any " ..
+    "confirmed species/room/NPC/spawn-trigger identity -- shown as ROM art with an honest " ..
     "visual description, not a decoded fact.")
 end
 
