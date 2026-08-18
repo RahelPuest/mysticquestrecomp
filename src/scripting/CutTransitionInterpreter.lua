@@ -81,61 +81,58 @@ local RomScriptStream = require("src.scripting.RomScriptStream")
 local CutTransitionInterpreter = {}
 CutTransitionInterpreter.__index = CutTransitionInterpreter
 
---- Real, live-traced entry points, keyed by transition. ONLY populated
--- with transitions this project has actually live-confirmed via the
--- methodology described in this module's own doc comment above --
--- `.new` fails loudly for any other key, matching this project's own
--- "no fabricated ROM behavior" rule: the other ~184 real
--- `CutTransitionTable` records simply have no entry here yet, on
--- purpose, not by oversight.
+--- Live-traced entry points, keyed by transition. Only populated with
+-- transitions this project has actually live-confirmed via the
+-- methodology described in this module's doc comment above -- `.new`
+-- fails loudly for any other key, matching this project's "no
+-- fabricated ROM behavior" rule: the other ~184 `CutTransitionTable`
+-- records simply have no entry here yet, on purpose, not by oversight.
 CutTransitionInterpreter.ENTRY_POINTS = {
   thirdRoomToFourthRoom = {
     bank = 14,
-    -- Real opcode `0xF4` byte itself, file `0x382F6` -- the byte
-    -- immediately preceding the already-known landing-record's own
-    -- `A1`/`A2` (roomSelector/subIndexByte) pair at file `0x382F7`.
+    -- Opcode `0xF4` byte itself, file `0x382F6` -- the byte immediately
+    -- preceding the already-known landing-record's `A1`/`A2`
+    -- (roomSelector/subIndexByte) pair at file `0x382F7`.
     cpuAddress = 0x42F6,
   },
-  -- Added 2026-08-16, same continuation as the "wie weiter" ->
-  -- "Roadmap-Nachtrag schließen" follow-up: same live single-step
-  -- methodology (`fourth_room_free()` + `fifth_room_free()`'s own
-  -- documented RIGHT/UP/DOWN trigger, single-stepped watching PC
-  -- `$11B7` in any bank -- see `tools/rom`'s trace script for this
-  -- exact run) found 79 real hits, all bank 14, 3 distinct HL values
-  -- ($4c85/$4c87/$4c89) as `$D499` advances -- the SAME 3-peek shape
-  -- as thirdRoom->fourthRoom above, and just as decisively narrowed:
-  -- only the FIRST hit's own preceding ROM byte (file `0x38c84`) is
-  -- literally `0xF4` (the other two, at `0x38c87`/`0x38c89`, precede
+  -- Same live single-step methodology (`fourth_room_free()` +
+  -- `fifth_room_free()`'s documented RIGHT/UP/DOWN trigger, single-
+  -- stepped watching PC `$11B7` in any bank -- see `tools/rom`'s trace
+  -- script for this exact run) found 79 hits, all bank 14, 3 distinct
+  -- HL values ($4c85/$4c87/$4c89) as `$D499` advances -- the same
+  -- 3-peek shape as thirdRoom->fourthRoom above, and just as decisively
+  -- narrowed: only the first hit's preceding ROM byte (file `0x38c84`)
+  -- is literally `0xF4` (the other two, at `0x38c87`/`0x38c89`, precede
   -- with `0x50`/`0x02` -- not `0xF4`, so not reached via top-level
   -- dispatch, same internal-jump limitation as before). The first
-  -- peek's own `(B,C)` pair read `(4,80)` -- B=4 independently
+  -- peek's `(B,C)` pair read `(4,80)` -- B=4 independently
   -- cross-confirmed via the shared `$026DC` roomSelector-argument
-  -- subroutine (same one thirdRoom->fourthRoom's own `romRoomSelector`
-  -- was resolved through): a live PC watch on `$026DC` during this
-  -- exact window caught it once, `A=4` -- resolving fifthRoom's own
-  -- previously-ambiguous `romRoomSelectors={2,3,4,5,6}` down to the
-  -- real, confirmed `4` (see `rom_profiles.lua`'s own updated
-  -- `fifthRoom.romRoomSelectorConfirmed`). The second peek's `(16,2)`
-  -- also matches this exit's ALREADY-documented static landing-tile
-  -- record exactly (`rom_profiles.lua`'s own `fourthRoom.exits[1]`
-  -- doc comment, file `0x38c82`/`0x38c8c`) -- an independent
-  -- confirmation this is genuinely the same real record, from a
-  -- completely different angle (live execution vs. static byte scan).
+  -- subroutine (same one thirdRoom->fourthRoom's `romRoomSelector` was
+  -- resolved through): a live PC watch on `$026DC` during this exact
+  -- window caught it once, `A=4` -- resolving fifthRoom's previously-
+  -- ambiguous `romRoomSelectors={2,3,4,5,6}` down to the confirmed `4`
+  -- (see `rom_profiles.lua`'s updated `fifthRoom.romRoomSelectorConfirmed`).
+  -- The second peek's `(16,2)` also matches this exit's already-
+  -- documented static landing-tile record exactly
+  -- (`rom_profiles.lua`'s `fourthRoom.exits[1]` doc comment, file
+  -- `0x38c82`/`0x38c8c`) -- an independent confirmation this is
+  -- genuinely the same record, from a completely different angle (live
+  -- execution vs. static byte scan).
   fourthRoomToFifthRoom = {
     bank = 14,
-    -- Real opcode `0xF4` byte itself, file `0x38c84` -- the byte
-    -- immediately preceding the peeked roomSelector/subIndexByte pair
-    -- at file `0x38c85`.
+    -- Opcode `0xF4` byte itself, file `0x38c84` -- the byte immediately
+    -- preceding the peeked roomSelector/subIndexByte pair at file
+    -- `0x38c85`.
     cpuAddress = 0x4C84,
   },
 }
 
---- `ctx` fields (all optional, passed straight through to the real
+--- `ctx` fields (all optional, passed straight through to the
 -- `ScriptRuntime`): same contract as `BossSequenceInterpreter.new`.
 -- This constructor adds its own `ctx.onPeekTwoByteGate`/
--- `ctx.isPeekGateClear` (a caller-supplied one would be OVERWRITTEN,
--- not composed -- only this module has the real, empirical knowledge
--- of what to do with opcode `0xF4` in this specific context).
+-- `ctx.isPeekGateClear` (a caller-supplied one would be overwritten,
+-- not composed -- only this module has the empirical knowledge of what
+-- to do with opcode `0xF4` in this specific context).
 function CutTransitionInterpreter.new(romData, transitionKey, ctx)
   assert(type(romData) == "string", "CutTransitionInterpreter.new expects a byte string")
   local entry = CutTransitionInterpreter.ENTRY_POINTS[transitionKey]
@@ -161,24 +158,23 @@ function CutTransitionInterpreter.new(romData, transitionKey, ctx)
 
   ctx = ctx or {}
   ctx.onPeekTwoByteGate = function(byte1, byte2)
-    -- Real peeked bytes -- see this module's own doc comment: the
-    -- FIRST (and, this pass, only) real top-level-dispatched `0xF4`
-    -- for this transition peeks `(roomSelector, subIndexByte)`.
+    -- Peeked bytes -- see this module's doc comment: the first (and,
+    -- this pass, only) top-level-dispatched `0xF4` for this transition
+    -- peeks `(roomSelector, subIndexByte)`.
     if not self.captured then
       self.captured = { roomSelector = byte1, subIndexByte = byte2 }
     end
   end
   ctx.isPeekGateClear = function()
-    -- HONEST SIMPLIFICATION: the real ROM re-peeks the SAME bytes
-    -- across several real `$D499` step values before its own gate
-    -- condition clears (74 real hits total, only the first 4 sharing
-    -- this specific peek -- see this module's own doc comment). This
-    -- project does not model the real `$D499` step machine (that is
-    -- exactly the "not reached via top-level dispatch" gap this
-    -- module's own doc comment names) -- accepting immediately still
-    -- captures the CORRECT real byte values (confirmed byte-exact
-    -- against the already-known static record), it just does not
-    -- reproduce the real retry cadence/timing.
+    -- HONEST SIMPLIFICATION: the ROM re-peeks the same bytes across
+    -- several `$D499` step values before its own gate condition clears
+    -- (74 hits total, only the first 4 sharing this specific peek --
+    -- see this module's doc comment). This project does not model the
+    -- `$D499` step machine (that is exactly the "not reached via
+    -- top-level dispatch" gap this module's doc comment names) --
+    -- accepting immediately still captures the correct byte values
+    -- (confirmed byte-exact against the already-known static record),
+    -- it just does not reproduce the retry cadence/timing.
     return true
   end
 
@@ -189,22 +185,21 @@ function CutTransitionInterpreter.new(romData, transitionKey, ctx)
   return self
 end
 
---- The real, captured `(roomSelector, subIndexByte)` pair, or `nil`
--- if the interpreter hasn't reached the real peek yet. Never
--- fabricated -- only ever set from `ctx.onPeekTwoByteGate` above,
--- itself only ever called by real `ScriptRuntime` execution of real
--- ROM bytes.
+--- The captured `(roomSelector, subIndexByte)` pair, or `nil` if the
+-- interpreter hasn't reached the peek yet. Never fabricated -- only
+-- ever set from `ctx.onPeekTwoByteGate` above, itself only ever called
+-- by real `ScriptRuntime` execution of real ROM bytes.
 function CutTransitionInterpreter:capturedRoomSelector()
   return self.captured and self.captured.roomSelector
 end
 
---- Advance exactly ONE real opcode dispatch per call, same shape as
--- `BossSequenceInterpreter:tick`. Once the real peek has fired
--- (`self.captured` set), this module DELIBERATELY halts itself --
--- see this module's own doc comment for exactly why it does not (yet)
--- continue past this point. This is an intentional stop, not an
--- error: `self.done` becomes `true` the same way it would for a
--- genuine `runtime.finished`/`runtime.stopped` condition, so callers
+--- Advance exactly one opcode dispatch per call, same shape as
+-- `BossSequenceInterpreter:tick`. Once the peek has fired
+-- (`self.captured` set), this module deliberately halts itself -- see
+-- this module's doc comment for exactly why it does not (yet) continue
+-- past this point. This is an intentional stop, not an error:
+-- `self.done` becomes `true` the same way it would for a genuine
+-- `runtime.finished`/`runtime.stopped` condition, so callers
 -- (`VictorySequence.lua`) don't need to special-case it.
 function CutTransitionInterpreter:tick()
   if self.done then
