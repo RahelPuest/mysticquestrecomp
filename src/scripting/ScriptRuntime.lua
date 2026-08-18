@@ -807,147 +807,124 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.queuedActionOrSkip(isActorReady, ctx.onQueuedActionOrSkip))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_OR_SKIP_HANDLER_ADDRESS_99,
     StandardScriptHandlers.actorSlotPositionOrSkip(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0xEF` (added 2026-08-14, whole-corpus scan -- $0E73's own
-  -- neighborhood): a real, simple "store 2 operand bytes into WRAM
-  -- $C344/$C345" primitive. `0xEC`/`0xED`/`0xEE` (the SAME
-  -- neighborhood's own siblings) are deliberately NOT registered --
-  -- see `ScriptOpcodeTable.lua`'s own doc comment: a third confirmed
-  -- member of the `0x80`/`$15A4` known-hard family (`$02AB`).
+  -- `0xEF` ($0E73's neighborhood): a simple "store 2 operand bytes
+  -- into WRAM $C344/$C345" primitive. `0xEC`/`0xED`/`0xEE` (the same
+  -- neighborhood's siblings) are deliberately NOT registered -- see
+  -- `ScriptOpcodeTable.lua`'s doc comment: a third confirmed member of
+  -- the `0x80`/`$15A4` known-hard family (`$02AB`).
   interp:registerHandler(ScriptOpcodeTable.TILE_CURSOR_SET_HANDLER_ADDRESS_EF,
     StandardScriptHandlers.tileCursorSet(ctx.onTileCursorSet))
-  -- `0x7A`/`0x7B` (added 2026-08-14, whole-corpus scan -- next real
-  -- untouched blocker after the `$0E73` neighborhood): a real
-  -- "readiness-as-parameter" actor-action family, unconditional (no
-  -- not-ready path at all) -- see `StandardScriptHandlers
-  -- .actorActionWithReadinessParam`'s own doc comment for the full
-  -- disassembly. Explicit registration (not the generic
-  -- `^ACTOR_ACTION_HANDLER_ADDRESS_` loop -- this constant family
-  -- deliberately uses a different name so it isn't picked up there)
-  -- so each opcode's own real fixed group/offset reach `ctx` intact.
+  -- `0x7A`/`0x7B`: a "readiness-as-parameter" actor-action family,
+  -- unconditional (no not-ready path at all) -- see
+  -- `StandardScriptHandlers.actorActionWithReadinessParam`'s doc
+  -- comment for the full disassembly. Explicit registration (not the
+  -- generic `^ACTOR_ACTION_HANDLER_ADDRESS_` loop -- this constant
+  -- family deliberately uses a different name so it isn't picked up
+  -- there) so each opcode's fixed group/offset reach `ctx` intact.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_7A,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0E, 0x06, isActorReady, ctx.onActorActionWithReadinessParam))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_7B,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0F, 0x06, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x5A`/`0x5B` (added 2026-08-14, whole-corpus scan): 2 more
-  -- `actorActionWithReadinessParam` members, offset `0x04`.
+  -- `0x5A`/`0x5B`: 2 more `actorActionWithReadinessParam` members, offset `0x04`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_5A,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0E, 0x04, isActorReady, ctx.onActorActionWithReadinessParam))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_5B,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0F, 0x04, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x6A`/`0x6B` (added 2026-08-14, whole-corpus scan): 2 more
-  -- `actorActionWithReadinessParam` members, offset `0x05`.
+  -- `0x6A`/`0x6B`: 2 more `actorActionWithReadinessParam` members, offset `0x05`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_6A,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0E, 0x05, isActorReady, ctx.onActorActionWithReadinessParam))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_6B,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0F, 0x05, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x24` (added 2026-08-14, whole-corpus scan): 1 more
-  -- `actorActionWithReadinessParam` member, offset `0x01`.
+  -- `0x24`: 1 more `actorActionWithReadinessParam` member, offset `0x01`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_24,
     StandardScriptHandlers.actorActionWithReadinessParam(0x1E, 0x01, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x68` (added 2026-08-14, whole-corpus scan): a real queued-
-  -- action, readiness-as-parameter command.
+  -- `0x68`: a queued-action, readiness-as-parameter command.
   interp:registerHandler(ScriptOpcodeTable.QUEUED_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_68,
     StandardScriptHandlers.queuedActionWithReadinessParam(0x05, isActorReady, ctx.onQueuedActionWithReadinessParam))
-  -- `0x74` (added 2026-08-14, whole-corpus scan): 1 more
-  -- `actorActionWithReadinessParam` member, offset `0x06`.
+  -- `0x74`: 1 more `actorActionWithReadinessParam` member, offset `0x06`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_74,
     StandardScriptHandlers.actorActionWithReadinessParam(0x1E, 0x06, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x54` (added 2026-08-14, whole-corpus scan): 1 more
-  -- `actorActionWithReadinessParam` member, offset `0x04`.
+  -- `0x54`: 1 more `actorActionWithReadinessParam` member, offset `0x04`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_54,
     StandardScriptHandlers.actorActionWithReadinessParam(0x1E, 0x04, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0xA9` (added 2026-08-14, whole-corpus scan): a real "3-way
-  -- classified flag-bit SET/CLEAR" command -- see
-  -- `StandardScriptHandlers.threeWayFlagBitCommand`'s own doc comment.
+  -- `0xA9`: a "3-way classified flag-bit SET/CLEAR" command -- see
+  -- `StandardScriptHandlers.threeWayFlagBitCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.THREE_WAY_FLAG_BIT_COMMAND_HANDLER_ADDRESS_A9,
     StandardScriptHandlers.threeWayFlagBitCommand(ctx.getFlagBitClassifyValue, ctx.onFlagBitSet, ctx.onFlagBitClear))
-  -- `0x67` (added 2026-08-14, whole-corpus scan): 1 more
-  -- `actorActionWithReadinessParam` member, offset `0x05`.
+  -- `0x67`: 1 more `actorActionWithReadinessParam` member, offset `0x05`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_67,
     StandardScriptHandlers.actorActionWithReadinessParam(0x1D, 0x05, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x4A`/`0x66` (added 2026-08-14, whole-corpus scan): 2 more
-  -- `actorActionWithReadinessParam` members.
+  -- `0x4A`/`0x66`: 2 more `actorActionWithReadinessParam` members.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_4A,
     StandardScriptHandlers.actorActionWithReadinessParam(0x0E, 0x03, isActorReady, ctx.onActorActionWithReadinessParam))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_66,
     StandardScriptHandlers.actorActionWithReadinessParam(0x1C, 0x05, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0x76` (added 2026-08-14, whole-corpus scan): 1 more
-  -- `actorActionWithReadinessParam` member, offset `0x06`.
+  -- `0x76`: 1 more `actorActionWithReadinessParam` member, offset `0x06`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_ACTION_WITH_READINESS_PARAM_HANDLER_ADDRESS_76,
     StandardScriptHandlers.actorActionWithReadinessParam(0x1C, 0x06, isActorReady, ctx.onActorActionWithReadinessParam))
-  -- `0xCC` (added 2026-08-14, whole-corpus scan): a real, zero-
-  -- operand-byte "re-mirror my own opcode byte" primitive -- see
-  -- `StandardScriptHandlers.opcodeByteMirror`'s own doc comment.
+  -- `0xCC`: a zero-operand-byte "re-mirror my own opcode byte"
+  -- primitive -- see `StandardScriptHandlers.opcodeByteMirror`'s doc
+  -- comment.
   interp:registerHandler(ScriptOpcodeTable.OPCODE_BYTE_MIRROR_HANDLER_ADDRESS_CC,
     StandardScriptHandlers.opcodeByteMirror(ctx.onOpcodeByteMirror))
-  -- `0xC8` (added 2026-08-14, whole-corpus scan): a real, decisive
-  -- "SOFT RESET the whole game" command -- see
-  -- `StandardScriptHandlers.softReset`'s own doc comment. `ctx
-  -- .onSoftReset` is REQUIRED (no honest default exists for
-  -- restarting the game) -- this handler REGISTERS unconditionally
-  -- (most real scripts never reach `0xC8`, so a `ScriptRuntime`
-  -- shouldn't be forced to supply this just to exist), but fails
-  -- loudly, at real dispatch time, the first time `0xC8` actually
-  -- runs without a real `ctx.onSoftReset` provided -- see
-  -- `.softReset`'s own doc comment for why the assertion is deferred
-  -- to dispatch time instead of construction time.
+  -- `0xC8`: a decisive "soft reset the whole game" command -- see
+  -- `StandardScriptHandlers.softReset`'s doc comment. `ctx
+  -- .onSoftReset` is REQUIRED (no honest default exists for restarting
+  -- the game) -- this handler registers unconditionally (most scripts
+  -- never reach `0xC8`, so a `ScriptRuntime` shouldn't be forced to
+  -- supply this just to exist), but fails loudly, at dispatch time,
+  -- the first time `0xC8` actually runs without a `ctx.onSoftReset`
+  -- provided -- see `.softReset`'s doc comment for why the assertion
+  -- is deferred to dispatch time instead of construction time.
   interp:registerHandler(ScriptOpcodeTable.SOFT_RESET_HANDLER_ADDRESS_C8,
     StandardScriptHandlers.softReset(ctx.onSoftReset))
-  -- `0xD1` (added 2026-08-14, whole-corpus scan): a real "budget
-  -- countdown, SET/CLEAR flag bit 6" command -- see
-  -- `StandardScriptHandlers.budgetFlagCommand`'s own doc comment.
+  -- `0xD1`: a "budget countdown, SET/CLEAR flag bit 6" command -- see
+  -- `StandardScriptHandlers.budgetFlagCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.BUDGET_FLAG_COMMAND_HANDLER_ADDRESS_D1,
     StandardScriptHandlers.budgetFlagCommand(ctx.hasSufficientBudget, ctx.onBudgetSufficient, ctx.onBudgetExhausted))
-  -- `0x9C`/`0x9D` (added 2026-08-14, whole-corpus scan): a real "raw
-  -- single-byte leaf command" family, same real leaf (`$2895`) --
-  -- see `StandardScriptHandlers.rawByteLeafCommand`'s own doc comment.
+  -- `0x9C`/`0x9D`: a "raw single-byte leaf command" family, same leaf
+  -- (`$2895`) -- see `StandardScriptHandlers.rawByteLeafCommand`'s doc
+  -- comment.
   interp:registerHandler(ScriptOpcodeTable.RAW_BYTE_LEAF_COMMAND_HANDLER_ADDRESS_9C,
     StandardScriptHandlers.rawByteLeafCommand(ctx.onRawByteLeaf))
   interp:registerHandler(ScriptOpcodeTable.RAW_BYTE_LEAF_COMMAND_HANDLER_ADDRESS_9D,
     StandardScriptHandlers.rawByteLeafCommand(ctx.onRawByteLeaf))
-  -- `0xC6` (added 2026-08-14, whole-corpus scan): a real "scene/
-  -- textbox init" command, the SAME 5 WRAM cells as opcode `0xF6`'s
-  -- own already-hypothesized initializer -- see
-  -- `StandardScriptHandlers.sceneInitCommand`'s own doc comment.
+  -- `0xC6`: a "scene/textbox init" command, the same 5 WRAM cells as
+  -- opcode `0xF6`'s already-hypothesized initializer -- see
+  -- `StandardScriptHandlers.sceneInitCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.SCENE_INIT_COMMAND_HANDLER_ADDRESS_C6,
     StandardScriptHandlers.sceneInitCommand(ctx.onSceneInit))
-  -- `0xC7` (added 2026-08-14, whole-corpus scan): a real "2-bit WRAM
-  -- field write" command -- see `StandardScriptHandlers
-  -- .twoBitFieldCommand`'s own doc comment.
+  -- `0xC7`: a "2-bit WRAM field write" command -- see
+  -- `StandardScriptHandlers.twoBitFieldCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.TWO_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C7,
     StandardScriptHandlers.twoBitFieldCommand(ctx.getTwoBitFieldValue, ctx.onTwoBitFieldWrite))
-  -- `0xDA`/`0xDB` (added 2026-08-14, whole-corpus scan): a real
-  -- dynamic-index flag-bit SET/CLEAR family -- see
-  -- `StandardScriptHandlers.dynamicFlagBitCommand`'s own doc comment.
+  -- `0xDA`/`0xDB`: a dynamic-index flag-bit SET/CLEAR family -- see
+  -- `StandardScriptHandlers.dynamicFlagBitCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.DYNAMIC_FLAG_BIT_COMMAND_HANDLER_ADDRESS_DA,
     StandardScriptHandlers.dynamicFlagBitCommand(true, ctx.onDynamicFlagBit))
   interp:registerHandler(ScriptOpcodeTable.DYNAMIC_FLAG_BIT_COMMAND_HANDLER_ADDRESS_DB,
     StandardScriptHandlers.dynamicFlagBitCommand(false, ctx.onDynamicFlagBit))
-  -- `0xC2` (added 2026-08-14, whole-corpus scan): a real "bitmask
-  -- dispatch" command -- see `StandardScriptHandlers
-  -- .bitmaskDispatchCommand`'s own doc comment.
+  -- `0xC2`: a "bitmask dispatch" command -- see `StandardScriptHandlers
+  -- .bitmaskDispatchCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.BITMASK_DISPATCH_COMMAND_HANDLER_ADDRESS_C2,
     StandardScriptHandlers.bitmaskDispatchCommand(ctx.onBitmaskDispatch))
-  -- `0xAF` (added 2026-08-14, whole-corpus scan): a real "chained
-  -- opaque effect" command, 4 sequential untraced leaves -- see
-  -- `StandardScriptHandlers.chainedOpaqueEffectCommand`'s own doc
-  -- comment.
+  -- `0xAF`: a "chained opaque effect" command, 4 sequential untraced
+  -- leaves -- see `StandardScriptHandlers.chainedOpaqueEffectCommand`'s
+  -- doc comment.
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AF,
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
-  -- `0xB7` (added 2026-08-14, whole-corpus scan): real `$1ED7`
-  -- selector `0x17` trampoline -- SAME shape as `0xAF`, reuses the
-  -- same factory and callback (this project's own established
-  -- "reuse the same callback when neither opcode's own distinction is
+  -- `0xB7`: `$1ED7` selector `0x17` trampoline -- same shape as `0xAF`,
+  -- reuses the same factory and callback (this project's established
+  -- "reuse the same callback when neither opcode's distinction is
   -- threaded through yet" convention).
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_B7,
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
-  -- `0xA1`/`0xA2`/`0xB6`/`0xAA`/`0xAB` (added 2026-08-15, direct user
-  -- request "ok dann mal die fehlenden opcodes dekodieren"): SAME real
-  -- shape as `0xAF`/`0xB7` above (zero operand bytes, unconditional) --
-  -- see `ScriptOpcodeTable.lua`'s own doc comments at each address for
-  -- the complete real disassembly. Same established convention: reuse
-  -- the same factory and callback since neither opcode's own
-  -- distinction is threaded through yet.
+  -- `0xA1`/`0xA2`/`0xB6`/`0xAA`/`0xAB`: same shape as `0xAF`/`0xB7`
+  -- above (zero operand bytes, unconditional) -- see
+  -- `ScriptOpcodeTable.lua`'s doc comments at each address for the
+  -- complete disassembly. Same established convention: reuse the same
+  -- factory and callback since neither opcode's distinction is
+  -- threaded through yet.
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A1,
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_A2,
@@ -958,74 +935,65 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
   interp:registerHandler(ScriptOpcodeTable.CHAINED_OPAQUE_EFFECT_COMMAND_HANDLER_ADDRESS_AB,
     StandardScriptHandlers.chainedOpaqueEffectCommand(ctx.onChainedOpaqueEffect))
-  -- `0xAD` (added 2026-08-15, direct follow-up "ok die restlichen
-  -- bitte auch noch", task #152): a real "wait for any button" gate --
-  -- see `StandardScriptHandlers.waitForAnyButtonCommand`'s own doc
-  -- comment for the complete real disassembly.
+  -- `0xAD`: a "wait for any button" gate -- see `StandardScriptHandlers
+  -- .waitForAnyButtonCommand`'s doc comment for the complete
+  -- disassembly.
   interp:registerHandler(ScriptOpcodeTable.WAIT_FOR_ANY_BUTTON_COMMAND_HANDLER_ADDRESS_AD,
     StandardScriptHandlers.waitForAnyButtonCommand(isAnyButtonPressed, ctx.onWaitForAnyButtonIdleTick))
-  -- `0x8B` (added 2026-08-15, direct follow-up "ok die restlichen
-  -- bitte auch noch", task #152, continuing straight from `0xAD`
-  -- above): a real "play back a pre-baked waypoint/step sequence" gate
-  -- -- see `StandardScriptHandlers.waypointStepCommand`'s own doc
-  -- comment for the complete real disassembly.
+  -- `0x8B`: a "play back a pre-baked waypoint/step sequence" gate --
+  -- see `StandardScriptHandlers.waypointStepCommand`'s doc comment for
+  -- the complete disassembly.
   interp:registerHandler(ScriptOpcodeTable.WAYPOINT_STEP_COMMAND_HANDLER_ADDRESS_8B,
     StandardScriptHandlers.waypointStepCommand(advanceWaypointStep))
-  -- `0xC5` (added 2026-08-14, whole-corpus scan): a real "6-bit WRAM
-  -- field write" command -- see `StandardScriptHandlers
-  -- .sixBitFieldCommand`'s own doc comment.
+  -- `0xC5`: a "6-bit WRAM field write" command -- see
+  -- `StandardScriptHandlers.sixBitFieldCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.SIX_BIT_FIELD_COMMAND_HANDLER_ADDRESS_C5,
     StandardScriptHandlers.sixBitFieldCommand(ctx.onSixBitFieldWrite))
-  -- `0x79` (added 2026-08-14, whole-corpus scan): a real actor-slot-
-  -- position command, readiness used as the slot parameter -- see
-  -- `StandardScriptHandlers.actorSlotPositionWithReadinessParam`'s
-  -- own doc comment.
+  -- `0x79`: an actor-slot-position command, readiness used as the slot
+  -- parameter -- see `StandardScriptHandlers
+  -- .actorSlotPositionWithReadinessParam`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_WITH_READINESS_PARAM_HANDLER_ADDRESS_79,
     StandardScriptHandlers.actorSlotPositionWithReadinessParam(0x06, isActorReady, ctx.onActorSlotPositionWithReadinessParam))
-  -- `0x69` (added 2026-08-14, whole-corpus scan): 1 more
-  -- `actorSlotPositionWithReadinessParam` member, offset `0x05`.
+  -- `0x69`: 1 more `actorSlotPositionWithReadinessParam` member, offset `0x05`.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_WITH_READINESS_PARAM_HANDLER_ADDRESS_69,
     StandardScriptHandlers.actorSlotPositionWithReadinessParam(0x05, isActorReady, ctx.onActorSlotPositionWithReadinessParam))
-  -- `0x19` ($12AE, added 2026-08-13): the SAME real `$123E` mechanism as
-  -- `0x49` above (see ScriptOpcodeTable's own doc comment for the
-  -- disassembly proving it), just reached via a different trampoline
-  -- base -- that base only changes the derived actor-slot index, which
-  -- this project doesn't thread through to `ctx` yet (see `0x49`'s own
-  -- "HONEST LIMIT" note above), so it's honest to reuse the SAME
-  -- `ctx.onSetActorSlotPosition` callback here rather than inventing a
-  -- second one this codebase can't yet distinguish by actor slot.
+  -- `0x19` ($12AE): the same `$123E` mechanism as `0x49` above (see
+  -- ScriptOpcodeTable's doc comment for the disassembly proving it),
+  -- just reached via a different trampoline base -- that base only
+  -- changes the derived actor-slot index, which this project doesn't
+  -- thread through to `ctx` yet (see `0x49`'s "HONEST LIMIT" note
+  -- above), so it's honest to reuse the same `ctx.onSetActorSlotPosition`
+  -- callback here rather than inventing a second one this codebase
+  -- can't yet distinguish by actor slot.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_19,
     StandardScriptHandlers.actorSlotPosition(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0x59` ($147E, added 2026-08-13, task #80's all-script census):
-  -- the SAME real $123E mechanism yet again -- see 0x49/0x19's own doc
-  -- comments above.
+  -- `0x59` ($147E): the same `$123E` mechanism yet again -- see
+  -- 0x49/0x19's doc comments above.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_59,
     StandardScriptHandlers.actorSlotPosition(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0x39` ($1396, added 2026-08-13, task #82): the SAME real $123E
-  -- mechanism yet again -- see 0x49/0x19/0x59's own doc comments above.
+  -- `0x39` ($1396): the same `$123E` mechanism yet again -- see
+  -- 0x49/0x19/0x59's doc comments above.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_39,
     StandardScriptHandlers.actorSlotPosition(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0x29` ($1322, added 2026-08-13, task #86): the SAME real $123E
-  -- mechanism yet again -- see 0x49/0x19/0x59/0x39's own doc comments
-  -- above -- found live against the real boss-defeat sequence itself
-  -- (past the newly-wired 0x08), not the earlier whole-corpus census.
+  -- `0x29` ($1322): the same `$123E` mechanism yet again -- see
+  -- 0x49/0x19/0x59/0x39's doc comments above -- found live against the
+  -- boss-defeat sequence itself (past the newly-wired 0x08), not the
+  -- earlier whole-corpus census.
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_29,
     StandardScriptHandlers.actorSlotPosition(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0xD4`/`0xD6`/`0xD8` (added 2026-08-13, task #86): all 3 share the
-  -- SAME real `$D86F` bit-1 gate -- see `StandardScriptHandlers
-  -- .gatedByteLeafCommand`'s own doc comment for the honest scope of
-  -- what's not modeled (the real bit-SET path). `ctx.isFadeActive`
-  -- defaults to "never active", matching every real occurrence this
-  -- project has actually observed live.
+  -- `0xD4`/`0xD6`/`0xD8`: all 3 share the same `$D86F` bit-1 gate --
+  -- see `StandardScriptHandlers.gatedByteLeafCommand`'s doc comment
+  -- for the honest scope of what's not modeled (the bit-SET path).
+  -- `ctx.isFadeActive` defaults to "never active", matching every
+  -- occurrence this project has actually observed live.
   interp:registerHandler(ScriptOpcodeTable.GATED_BYTE_LEAF_HANDLER_ADDRESS_D4,
     StandardScriptHandlers.gatedByteLeafCommand(ctx.onGatedByteLeaf, ctx.isFadeActive))
   interp:registerHandler(ScriptOpcodeTable.GATED_BYTE_LEAF_HANDLER_ADDRESS_D6,
     StandardScriptHandlers.gatedByteLeafCommand(ctx.onGatedByteLeaf, ctx.isFadeActive))
   interp:registerHandler(ScriptOpcodeTable.GATED_BYTE_LEAF_HANDLER_ADDRESS_D8,
     StandardScriptHandlers.gatedByteLeafCommand(ctx.onGatedByteLeaf, ctx.isFadeActive))
-  -- `0xD5`/`0xD7`/`0xD9` (added 2026-08-13, task #86): the ungated
-  -- sibling family -- see `StandardScriptHandlers.byteLeafCommand`'s
-  -- own doc comment.
+  -- `0xD5`/`0xD7`/`0xD9`: the ungated sibling family -- see
+  -- `StandardScriptHandlers.byteLeafCommand`'s doc comment.
   interp:registerHandler(ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D5,
     StandardScriptHandlers.byteLeafCommand(ctx.onGatedByteLeaf))
   interp:registerHandler(ScriptOpcodeTable.BYTE_LEAF_HANDLER_ADDRESS_D7,
