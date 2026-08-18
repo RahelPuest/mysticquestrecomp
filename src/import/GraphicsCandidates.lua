@@ -1,115 +1,109 @@
--- A curated, honestly-scoped list of REAL candidate creature/character
+-- A curated, honestly-scoped list of candidate creature/character
 -- graphics regions found via `tools/rom/scan_graphics.py` (a heuristic
--- 2bpp-tile entropy scan -- see that tool's own doc comment) and
--- VISUALLY CONFIRMED by rendering each one with `tools/graphics/
--- gbtile.py` and looking at it (a real, methodical step, not a claim
--- based on the entropy score alone).
+-- 2bpp-tile entropy scan -- see that tool's doc comment) and visually
+-- confirmed by rendering each one with `tools/graphics/gbtile.py` and
+-- looking at it (a methodical step, not a claim based on the entropy
+-- score alone).
 --
--- FOUND 2026-08-15, direct user request ("suche jetzt einfach mehr
--- npcs mit den grafiken und mehr monster... vor allem weil ich glaube
--- die die du bis jetzt gefunden hast sind nur bosse"), following the
--- exact methodology already scoped in this project's own planning
--- notes for this work (`docs/reverse-engineering/rom-map.md`'s own
--- "Bank 9-11 candidate scan" lead, never previously acted on -- task
--- #135 was still pending before this pass).
+-- FOUND following the exact methodology already scoped in this
+-- project's planning notes for this work
+-- (`docs/reverse-engineering/rom-map.md`'s "Bank 9-11 candidate scan"
+-- lead, never previously acted on).
 --
--- EXTENDED same day, direct follow-up ("bitte mit dem grafiken suchen
--- danach weiter machen bis wirklich alle gefunden wurden. nicht vorher
--- stoppen"): the first pass only checked individual `scan_graphics.py`
--- hits one at a time and stopped at 5 entries. This pass instead
--- rendered EVERY ROM bank (0-15) in full (`gbtile.py`, whole 16KB bank
--- at once) and visually reviewed each -- a real, systematic sweep, not
--- more sampling. Confirmed banks 0/1/2/3/4/5/6/7/13/14/15 are
--- genuinely code/text/room-table data (pure noise when rendered as
--- tiles, no real pixel structure) and bank 12 is predominantly real
+-- EXTENDED (direct follow-up asking to keep searching for graphics
+-- until all are found): the first pass only checked individual
+-- `scan_graphics.py` hits one at a time and stopped at 5 entries. This
+-- pass instead rendered every ROM bank (0-15) in full (`gbtile.py`,
+-- whole 16KB bank at once) and visually reviewed each -- a systematic
+-- sweep, not more sampling. Confirmed banks 0/1/2/3/4/5/6/7/13/14/15
+-- are genuinely code/text/room-table data (pure noise when rendered as
+-- tiles, no real pixel structure) and bank 12 is predominantly
 -- environment/tileset art (walls, floors -- matches this project's
--- own already-used room tilesets) with no clear creature content.
--- Banks 8, 9, 10, and 11 turned out to be genuinely, densely packed
--- with creature/character/icon art -- 7 MORE real regions added below
--- from this fuller sweep, on top of the original 5.
+-- already-used room tilesets) with no clear creature content. Banks 8,
+-- 9, 10, and 11 turned out to be genuinely, densely packed with
+-- creature/character/icon art -- 7 more regions added below from this
+-- fuller sweep, on top of the original 5.
 --
--- HONEST SCOPE, matching this project's own "no silent fallbacks"
--- rule: every entry below is a REAL, ROM-verified tile region (you can
--- render it yourself with `gbtile.py` and see the same art) that looks
--- like genuine creature/character sprite work, NOT random code/data
--- misread as pixels. What this does NOT claim:
---   - which (if any) of the 11 real `EnemySpeciesTable` species each
---     region belongs to (no live OAM trace exists for any of these --
---     the ALREADY-known enemy sprite's own tile block, `rom_profiles
---     .lua`'s `enemySprite`, was only found because that ONE species
---     is actually spawnable/fightable in this project's own known
---     content; none of these are)
---   - the exact real sprite boundaries within each region (a region's
---     own `tileCount` is the real, contiguous entropy-scan run length,
---     not a claimed "this is exactly one creature" -- a real sprite
---     might use a subset, or an OAM-scattered layout the same way the
---     known `enemySprite` does, see that field's own doc comment)
---   - real in-game reachability (none of these have a known trigger/
---     spawn condition -- they might be used, cut content, or reused
---     for a system this project hasn't identified yet)
--- Every entry's own `note` records what it visually looks like, in
--- plain language, exactly as a human would describe the rendered PNG
--- -- an honest visual impression, not a decoded fact.
+-- HONEST SCOPE, matching this project's "no silent fallbacks" rule:
+-- every entry below is a ROM-verified tile region (you can render it
+-- yourself with `gbtile.py` and see the same art) that looks like
+-- genuine creature/character sprite work, not random code/data misread
+-- as pixels. What this does not claim:
+--   - which (if any) of the 11 `EnemySpeciesTable` species each region
+--     belongs to (no live OAM trace exists for any of these -- the
+--     already-known enemy sprite's tile block, `rom_profiles.lua`'s
+--     `enemySprite`, was only found because that one species is
+--     actually spawnable/fightable in this project's known content;
+--     none of these are)
+--   - the exact sprite boundaries within each region (a region's
+--     `tileCount` is the contiguous entropy-scan run length, not a
+--     claimed "this is exactly one creature" -- a sprite might use a
+--     subset, or an OAM-scattered layout the same way the known
+--     `enemySprite` does, see that field's doc comment)
+--   - real in-game reachability (none of these have a known
+--     trigger/spawn condition -- they might be used, cut content, or
+--     reused for a system this project hasn't identified yet)
+-- Every entry's `note` records what it visually looks like, in plain
+-- language, exactly as a human would describe the rendered PNG -- an
+-- honest visual impression, not a decoded fact.
 --
--- EXTENDED AGAIN 2026-08-16, direct follow-up ("mach das gleiche mal
--- für die map tiles" -- do the same search for MAP/environment tiles
--- that was just done for monster/NPC tiles). Bank 12 is the one bank
--- this project's own full 16-bank sweep (above) already confirmed
--- holds real environment/architecture tileset art, not creatures --
--- `rom_profiles.lua`'s own `environmentTilesetBank12` entry and the
--- `tilesetFileOffset = 0x32000` formula MapTable.lua/rom_profiles.lua
--- already use for real, live rooms. So "search for map tiles" here
--- means something more precise than the monster search did: check
--- exactly how much of bank 12's own 1024 tiles are ALREADY wired into
--- a real, walkable room, vs. genuinely unconfirmed -- not just "does
--- this look like tileset art" (the whole bank already does).
+-- EXTENDED AGAIN (direct follow-up: do the same search for
+-- map/environment tiles that was just done for monster/NPC tiles).
+-- Bank 12 is the one bank this project's full 16-bank sweep (above)
+-- already confirmed holds environment/architecture tileset art, not
+-- creatures -- `rom_profiles.lua`'s `environmentTilesetBank12` entry
+-- and the `tilesetFileOffset = 0x32000` formula MapTable.lua/
+-- rom_profiles.lua already use for real, live rooms. So "search for
+-- map tiles" here means something more precise than the monster search
+-- did: check exactly how much of bank 12's 1024 tiles are already
+-- wired into a walkable room, vs. genuinely unconfirmed -- not just
+-- "does this look like tileset art" (the whole bank already does).
 --
 -- Rendered the whole bank in 4 natural 256-tile chunks (256 tiles is
 -- exactly one full loadable Game Boy background-tile VRAM page --
--- 0x30000/0x31000/0x32000/0x33000, a real hardware-meaningful
--- boundary, not an arbitrary split) and cross-checked each chunk
--- against every literal ROM-offset tile reference already recorded in
+-- 0x30000/0x31000/0x32000/0x33000, a hardware-meaningful boundary, not
+-- an arbitrary split) and cross-checked each chunk against every
+-- literal ROM-offset tile reference already recorded in
 -- `rom_profiles.lua` (`grep`, not a guess):
---   - 0x30000-0x30FFF: 57 distinct real, live-disambiguated tile
---     offsets already in use (e.g. `fourthRoom`'s own tileOffsets
---     129-147) -- ALREADY wired into real rooms, just via scattered
---     individual per-tile picks rather than the systematic table, so
---     NOT re-cataloged as a new "candidate" here (would misrepresent
---     already-confirmed content as newly found).
---   - 0x31000-0x31FFF: ZERO confirmed real usage anywhere in this
---     project. The only mention of this range at all is `secondRoom`'s
---     own doc comment (rom_profiles.lua ~line 1614) recording
---     `0x31f80-0x31fb0` as an ambiguous candidate match that was
---     explicitly NOT chosen (0x32170-0x321a0 was picked instead) --
---     i.e. the one time this range came up, it was rejected. A clean,
---     genuinely unconfirmed 256-tile region -- the single new entry
---     added below, `bank12_environment_b`.
---   - 0x32000-0x33FFF (chunks 3+4): the real, systematic
---     `tilesetFileOffset = 0x32000 + tileId*16` table every room using
---     the generic tileset already resolves through -- confirmed, no
---     new entry needed, this is what `environmentTilesetBank12.
---     confirmedFrom` already documents.
+--   - 0x30000-0x30FFF: 57 distinct, live-disambiguated tile offsets
+--     already in use (e.g. `fourthRoom`'s tileOffsets 129-147) --
+--     already wired into rooms, just via scattered individual per-tile
+--     picks rather than the systematic table, so not re-cataloged as a
+--     new "candidate" here (would misrepresent already-confirmed
+--     content as newly found).
+--   - 0x31000-0x31FFF: zero confirmed usage anywhere in this project.
+--     The only mention of this range at all is `secondRoom`'s doc
+--     comment (rom_profiles.lua ~line 1614) recording `0x31f80-0x31fb0`
+--     as an ambiguous candidate match that was explicitly not chosen
+--     (0x32170-0x321a0 was picked instead) -- i.e. the one time this
+--     range came up, it was rejected. A clean, genuinely unconfirmed
+--     256-tile region -- the single new entry added below,
+--     `bank12_environment_b`.
+--   - 0x32000-0x33FFF (chunks 3+4): the systematic `tilesetFileOffset
+--     = 0x32000 + tileId*16` table every room using the generic
+--     tileset already resolves through -- confirmed, no new entry
+--     needed, this is what `environmentTilesetBank12.confirmedFrom`
+--     already documents.
 --
 -- Same honest scope as every entry above: `bank12_environment_b` is
--- real, visually-confirmed tileset-style art (matches its neighbors'
+-- visually-confirmed tileset-style art (matches its neighbors'
 -- established style -- stone/architecture textures, decorative
--- borders) with NO live in-game room proven to use it -- not a claim
+-- borders) with no live in-game room proven to use it -- not a claim
 -- that it's cut content, unused, or reachable by any specific means.
 --
 -- Pure Lua, no love.* calls, same convention as EnemySpeciesTable/
 -- NpcCatalog. See `tests/import/graphics_candidates_test.lua` for
--- structural checks (every fileOffset/tileCount is a real, in-bounds
--- ROM region).
+-- structural checks (every fileOffset/tileCount is an in-bounds ROM
+-- region).
 
 local GraphicsCandidates = {}
 
---- Real, hand-curated candidate list. `fileOffset` is the real ROM
--- file offset of the region's own first tile (16-byte tile-aligned);
--- `tileCount` is the real, contiguous run of tile-shaped bytes found
--- by `scan_graphics.py` there (entropy-based lead generation, then
--- visually confirmed by rendering it). `cols` is a display-only
--- column count chosen for a readable grid (NOT a claimed real sprite
--- sheet width -- no such structure is confirmed).
+--- Hand-curated candidate list. `fileOffset` is the ROM file offset of
+-- the region's first tile (16-byte tile-aligned); `tileCount` is the
+-- contiguous run of tile-shaped bytes found by `scan_graphics.py` there
+-- (entropy-based lead generation, then visually confirmed by rendering
+-- it). `cols` is a display-only column count chosen for a readable grid
+-- (not a claimed sprite sheet width -- no such structure is confirmed).
 GraphicsCandidates.ENTRIES = {
   {
     id = "bank10_7900",
