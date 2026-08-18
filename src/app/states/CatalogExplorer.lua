@@ -1,66 +1,59 @@
 -- DEV-ONLY content browser for the monster/NPC/item catalog this
--- project has extracted (2026-08-15, direct user request "versuche
--- mal alle monster, npcs und items zu extrahieren... baue sie in der
--- app ein (sowohl interpreter als auch normale variante)") -- same
--- "F-key dev shortcut, real ROM-verified content, honestly-scoped"
--- pattern as `RoomExplorer.lua` (F8). `MYSTICQUEST_CATALOG_DEMO=1`
--- (see `main.lua`) pushes this directly, skipping the normal
--- Boot->Title->Field flow, for fast iteration/screenshot
--- verification -- exactly the same reasoning as
+-- project has extracted -- same "F-key dev shortcut, ROM-verified
+-- content, honestly-scoped" pattern as `RoomExplorer.lua` (F8).
+-- `MYSTICQUEST_CATALOG_DEMO=1` (see `main.lua`) pushes this directly,
+-- skipping the normal Boot->Title->Field flow, for fast
+-- iteration/screenshot verification -- exactly the same reasoning as
 -- `MYSTICQUEST_ROOM_EXPLORER_DEMO`/`MYSTICQUEST_VICTORY_DEMO`.
 --
--- Two real content modes, cycled with START:
---   "normal": renders the already-decoded STATIC data straight from
+-- Two content modes, cycled with START:
+--   "normal": renders the already-decoded static data straight from
 --     the Lua catalog modules (`EnemySpeciesTable`/`ItemTable`/
 --     `WeaponTable`/`NpcCatalog`) -- names/stats/positions, no script
---     interpreter involved. The same real data the new rom-inspector
---     website tabs show, just inside the actual LÖVE app.
---   "interpreter": for the ONE entry this project has a real, decoded
---     SCRIPT for (the boss-defeat sequence, tied to the one known-
---     species monster, species index 4 -- see `EnemySpeciesTable
---     .lua`'s own `verifiedExample`), runs the real
---     `BossSequenceInterpreter` live via `VictorySequence
---     .buildBossSequenceInterpreter` (the SAME exported function
---     `VictorySequence.lua`'s own `MYSTICQUEST_SCRIPT_INTERPRETER=1`
---     overlay uses -- one real implementation, two callers, not a
---     duplicate) and shows its own real, current dispatch state.
---   Every OTHER catalog entry has NO real script this project has
---     found -- interpreter mode honestly says so (see `NpcCatalog
---     .lua`'s own doc comment for exactly why NPCs in particular have
---     no static placement table at all, let alone a script) instead
---     of fabricating an output.
+--     interpreter involved. The same data the rom-inspector website
+--     tabs show, just inside the actual LÖVE app.
+--   "interpreter": for the one entry this project has a decoded script
+--     for (the boss-defeat sequence, tied to the one known-species
+--     monster, species index 4 -- see `EnemySpeciesTable.lua`'s
+--     `verifiedExample`), runs `BossSequenceInterpreter` live via
+--     `VictorySequence.buildBossSequenceInterpreter` (the same exported
+--     function `VictorySequence.lua`'s
+--     `MYSTICQUEST_SCRIPT_INTERPRETER=1` overlay uses -- one
+--     implementation, two callers, not a duplicate) and shows its
+--     current dispatch state.
+--   Every other catalog entry has no script this project has found --
+--     interpreter mode honestly says so (see `NpcCatalog.lua`'s doc
+--     comment for exactly why NPCs in particular have no static
+--     placement table at all, let alone a script) instead of
+--     fabricating an output.
 --
--- Sprite previews: real, live-decoded tile data is drawn for the ONE
--- monster and the 3 NPCs that have a known real tile location. Every
--- other entry (10 of 11 monsters, all items/weapons) has no known
--- graphic and is shown as text only.
+-- Sprite previews: live-decoded tile data is drawn for the one monster
+-- and the 3 NPCs that have a known tile location. Every other entry
+-- (10 of 11 monsters, all items/weapons) has no known graphic and is
+-- shown as text only.
 --
--- Animation (2026-08-15, direct user request "die sprites mit
--- animationsphasen"): the monster sprite alternates its real hardware
--- X-flip (`flipXTogglesPerStep`, see rom_profiles.lua's own doc
--- comment) on a fixed dev-browser timer -- the real ROM toggles this
--- per MOVEMENT STEP, not per wall-clock second, so this is an honest,
--- deliberate simplification for a static preview, not a claim of the
--- exact real cadence. characterA/B (secondRoom) reuse `NpcSprite.lua`
--- UNCHANGED -- the SAME real, production 4-direction/2-phase module
--- `Field.lua` drives for actual gameplay (real `framesPerPhase`
--- timing, real `flipY` handling for down/up's phase-2 mirror) -- one
--- real implementation, two callers, not a reduced reimplementation.
--- Direction is cycled with the A button (see `update`); phase advances
--- on its own real timer. Willy has no known real animation data (see
--- `NpcCatalog.lua`'s own doc comment) and keeps the static resting
--- pose via plain `CreatureSprite.fromOffsets`.
+-- Animation: the monster sprite alternates its hardware X-flip
+-- (`flipXTogglesPerStep`, see rom_profiles.lua's doc comment) on a
+-- fixed dev-browser timer -- the ROM toggles this per movement step,
+-- not per wall-clock second, so this is an honest, deliberate
+-- simplification for a static preview, not a claim of the exact
+-- cadence. characterA/B (secondRoom) reuse `NpcSprite.lua` unchanged --
+-- the same production 4-direction/2-phase module `Field.lua` drives
+-- for actual gameplay (`framesPerPhase` timing, `flipY` handling for
+-- down/up's phase-2 mirror) -- one implementation, two callers, not a
+-- reduced reimplementation. Direction is cycled with the A button (see
+-- `update`); phase advances on its own timer. Willy has no known
+-- animation data (see `NpcCatalog.lua`'s doc comment) and keeps the
+-- static resting pose via plain `CreatureSprite.fromOffsets`.
 --
--- Item/weapon categories (2026-08-15, catalog plan Phase 2, direct
--- user request "Items in mehr auswählbare Kategorien unterteilen"):
--- the B button cycles a real `categoryByte` filter for the items/
--- weapons lists (`ItemTable.groupByCategory`/`WeaponTable
--- .groupByCategory` -- the SAME real grouping the rom-inspector
--- website's category pills use). "Alle" (filter 0, the default)
--- matches this browser's OLD unfiltered behavior exactly; each
--- further B press narrows to one real categoryByte group, in
--- ascending order. See those modules' own doc comments for what the
--- real groupings are (and are NOT confirmed to mean).
+-- Item/weapon categories (catalog plan Phase 2): the B button cycles a
+-- `categoryByte` filter for the items/weapons lists
+-- (`ItemTable.groupByCategory`/`WeaponTable.groupByCategory` -- the
+-- same grouping the rom-inspector website's category pills use).
+-- "Alle" (filter 0, the default) matches this browser's old unfiltered
+-- behavior exactly; each further B press narrows to one categoryByte
+-- group, in ascending order. See those modules' doc comments for what
+-- the groupings are (and are not confirmed to mean).
 
 local EnemySpeciesTable = require("src.import.EnemySpeciesTable")
 local ItemTable = require("src.import.ItemTable")
@@ -81,8 +74,8 @@ local CATEGORY_LABELS = {
   monsters = "Monster", items = "Items", weapons = "Waffen", npcs = "NPCs",
 }
 
--- The one real species this project has actually fought (see
--- EnemySpeciesTable.lua's own doc comment) -- the ONLY monster entry
+-- The one species this project has actually fought (see
+-- EnemySpeciesTable.lua's doc comment) -- the only monster entry
 -- "interpreter" mode has real content for.
 local BOSS_LINKED_SPECIES_ROW = nil -- filled in .new() from profile.enemySpeciesTable.verifiedExample
 
@@ -98,17 +91,15 @@ function CatalogExplorer.new(romData, profile, input, overlay, stack)
     mode = "normal", -- "normal" | "interpreter"
   }, CatalogExplorer)
 
-  -- WIRED (task "komplett autark interpretiert", generated-cache
-  -- READ side, direct follow-up to task #34's own write side): prefer
-  -- the real, pre-decoded `data/generated/*.lua` cache when one exists
-  -- AND verifiably matches THIS loaded ROM's own sha1
-  -- (`GeneratedCache.loadAll`, all-or-nothing -- never a partial mix
-  -- of cached and freshly-decoded data). Absent on a fresh checkout
-  -- (the cache is gitignored, generated by `scripts
-  -- /extract_rom_cache.lua`) -- falls back to the exact same live-ROM
-  -- decode this browser has always used, unchanged. `self.dataSource`
-  -- records which path actually ran (surfaced nowhere in the UI yet,
-  -- but a real, honest signal for whoever wires that next).
+  -- Prefer the pre-decoded `data/generated/*.lua` cache when one exists
+  -- and verifiably matches this loaded ROM's sha1 (`GeneratedCache
+  -- .loadAll`, all-or-nothing -- never a partial mix of cached and
+  -- freshly-decoded data). Absent on a fresh checkout (the cache is
+  -- gitignored, generated by `scripts/extract_rom_cache.lua`) -- falls
+  -- back to the exact same live-ROM decode this browser has always
+  -- used, unchanged. `self.dataSource` records which path actually ran
+  -- (surfaced nowhere in the UI yet, but an honest signal for whoever
+  -- wires that next).
   local cache = GeneratedCache.loadAll(romData)
   if cache then
     self.dataSource = "cache"
@@ -125,11 +116,9 @@ function CatalogExplorer.new(romData, profile, input, overlay, stack)
     self.items = ItemTable.decode(romData, profile.itemTable)
     self.weapons = WeaponTable.decode(romData, profile.weaponTable)
     self.npcs = NpcCatalog.build(profile)
-    -- Catalog plan Phase 2 (2026-08-15, direct user request "Items in
-    -- mehr auswählbare Kategorien unterteilen"): real categoryByte
-    -- groups (see ItemTable.lua's/WeaponTable.lua's own
-    -- `groupByCategory` doc comments -- the SAME real grouping the
-    -- rom-inspector website's category pills use, one real
+    -- Catalog plan Phase 2: categoryByte groups (see ItemTable.lua's/
+    -- WeaponTable.lua's `groupByCategory` doc comments -- the same
+    -- grouping the rom-inspector website's category pills use, one
     -- implementation, two callers).
     self.itemCategories = ItemTable.groupByCategory(self.items)
     self.weaponCategories = WeaponTable.groupByCategory(self.weapons)
@@ -145,8 +134,8 @@ function CatalogExplorer.new(romData, profile, input, overlay, stack)
     BOSS_LINKED_SPECIES_ROW = profile.enemySpeciesTable.verifiedExample.rowIndex
   end
 
-  -- Real, live-verified sprite for the one known monster species (see
-  -- rom_profiles.lua's own `graphics.enemySprite`) -- exact same
+  -- Live-verified sprite for the one known monster species (see
+  -- rom_profiles.lua's `graphics.enemySprite`) -- exact same
   -- primitive/parameters `Field.lua` uses.
   local es = profile.graphics and profile.graphics.enemySprite
   if es then
@@ -156,11 +145,11 @@ function CatalogExplorer.new(romData, profile, input, overlay, stack)
   self.monsterFlipTimer = 0
   self.monsterFlipState = false
 
-  -- Real per-NPC sprites: an animated `NpcSprite` (real production
-  -- module, see this file's own top-of-file doc comment) for any NPC
-  -- with real `animation` data, a static `CreatureSprite` resting pose
-  -- otherwise (Willy -- no known real animation). `willy`'s own real
-  -- `tileOffsets` is a 2x2 block (cols=2,rows=2).
+  -- Per-NPC sprites: an animated `NpcSprite` (production module, see
+  -- this file's top-of-file doc comment) for any NPC with `animation`
+  -- data, a static `CreatureSprite` resting pose otherwise (Willy -- no
+  -- known animation). `willy`'s `tileOffsets` is a 2x2 block
+  -- (cols=2,rows=2).
   self.npcSprites = {}
   self.npcFacing = {}
   for i, npc in ipairs(self.npcs) do
@@ -168,30 +157,30 @@ function CatalogExplorer.new(romData, profile, input, overlay, stack)
       self.npcSprites[i] = NpcSprite.new(romData, npc.animation)
       self.npcFacing[i] = "down"
     elseif npc.tileOffsets then
-      -- NOTE: Willy's own real OBP1 palette select (see NpcCatalog's
-      -- own `palette` field) is NOT wired here -- an honest, minor
-      -- simplification for this dev browser (renders with the default
-      -- palette instead), not a claim it's OBP0 in the real ROM.
+      -- NOTE: Willy's OBP1 palette select (see NpcCatalog's `palette`
+      -- field) is not wired here -- an honest, minor simplification for
+      -- this dev browser (renders with the default palette instead),
+      -- not a claim it's OBP0 in the real ROM.
       self.npcSprites[i] = CreatureSprite.fromOffsets(romData, npc.tileOffsets, 2, 2)
     end
   end
 
-  -- A private, dev-only Stats instance -- the real interpreter mode
-  -- needs SOME real Stats object for its own ctx (see VictorySequence
-  -- .buildBossSequenceInterpreter's own doc comment: it's deliberately
-  -- NOT a private copy there because it's wired into real gameplay;
-  -- here, this browser has no real gameplay HP/MP to affect, so a
-  -- fresh, disposable instance is the honest choice).
+  -- A private, dev-only Stats instance -- the interpreter mode needs
+  -- some Stats object for its ctx (see VictorySequence
+  -- .buildBossSequenceInterpreter's doc comment: it's deliberately not
+  -- a private copy there because it's wired into real gameplay; here,
+  -- this browser has no real gameplay HP/MP to affect, so a fresh,
+  -- disposable instance is the honest choice).
   self.devStats = Stats.new()
 
   return self
 end
 
---- Lazily builds (once) the real interpreter for the boss-linked
--- monster entry -- mirrors `VictorySequence.lua`'s own production
--- wiring exactly (same exported function, same real
--- `CONTROL_CODE_0X11_REAL_TICKS`-paced `onControlCode`), just without
--- a `VictorySequence` instance around it.
+--- Lazily builds (once) the interpreter for the boss-linked monster
+-- entry -- mirrors `VictorySequence.lua`'s production wiring exactly
+-- (same exported function, same `CONTROL_CODE_0X11_REAL_TICKS`-paced
+-- `onControlCode`), just without a `VictorySequence` instance around
+-- it.
 function CatalogExplorer:_ensureBossInterpreter()
   if self.bossInterpreter then return end
   local VictorySequence = require("src.app.states.VictorySequence")
@@ -199,28 +188,27 @@ function CatalogExplorer:_ensureBossInterpreter()
     self.romData, self.profile, self.devStats)
 end
 
---- Real categoryByte filter, catalog plan Phase 2 (2026-08-15, direct
--- user request "Items in mehr auswählbare Kategorien unterteilen"):
--- `filter == 0` returns `allRecords` unfiltered (this browser's OLD
--- default behavior, unchanged); `filter > 0` indexes into `categories`
--- (1-based, ascending-`categoryByte` order -- the SAME real grouping
+--- categoryByte filter, catalog plan Phase 2: `filter == 0` returns
+-- `allRecords` unfiltered (this browser's old default behavior,
+-- unchanged); `filter > 0` indexes into `categories` (1-based,
+-- ascending-`categoryByte` order -- the same grouping
 -- `ItemTable.groupByCategory`/`WeaponTable.groupByCategory` produce,
--- also used by the rom-inspector website's category pills) and
--- returns only that real group's records.
+-- also used by the rom-inspector website's category pills) and returns
+-- only that group's records.
 function CatalogExplorer:_filteredList(allRecords, categories, filter)
   if filter == 0 then return allRecords end
   local group = categories[filter]
   return group and group.records or allRecords
 end
 
---- Plain, love.*-free debug snapshot (2026-08-15, task #126
--- consolidation) -- same convention as `Field:debugState`/
--- `VictorySequence:debugState`, lets `MYSTICQUEST_WAIT_FOR`/
--- `MYSTICQUEST_STATE_LOG` (see main.lua's own doc comments) drive and
--- verify this browser's real "interpreter" mode automatically instead
--- of guessing a fixed frame count. `bossStopped`/`bossCursor` are nil
--- until `mode == "interpreter"` has actually ticked the real boss
--- interpreter at least once (see `_ensureBossInterpreter`).
+--- Plain, love.*-free debug snapshot -- same convention as
+-- `Field:debugState`/`VictorySequence:debugState`, lets
+-- `MYSTICQUEST_WAIT_FOR`/`MYSTICQUEST_STATE_LOG` (see main.lua's doc
+-- comments) drive and verify this browser's "interpreter" mode
+-- automatically instead of guessing a fixed frame count.
+-- `bossStopped`/`bossCursor` are nil until `mode == "interpreter"` has
+-- actually ticked the boss interpreter at least once (see
+-- `_ensureBossInterpreter`).
 function CatalogExplorer:debugState()
   return {
     category = CATEGORIES[self.categoryIndex],
