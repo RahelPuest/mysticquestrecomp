@@ -1004,44 +1004,40 @@ do
 end
 
 ----------------------------------------------------------------------
--- 11d. Sprite catalog (SpriteTileFormula.lua) -- the real ROM->VRAM
+-- 11d. Sprite catalog (SpriteTileFormula.lua) -- the ROM->VRAM
 -- sprite-tile PIXEL SOURCE for every NPC (ActorDefinitionTable, 218
--- rows) and every monster/boss (MonsterDefinitionTable, 21 rows),
--- 2026-08-17. See SpriteTileFormula.lua's own doc comment for the full
--- disassembly/live-validation. HONEST SCOPE, carried into every entry
--- below: this closes the PIXEL-SOURCE half for everyone. The on-screen
--- ARRANGEMENT has 3 honest tiers: `arrangementConfirmed=true`
--- (characterA/characterB/the real first boss -- individually live-OAM-
--- verified) beats `arrangementFamily="humanoid4pose"` (172 further NPC
--- records, 91 distinct designs, sharing characterA/B's own exact real
--- copy-order list -- `resolveSpriteTileOffsets` already reorders these
--- into the real logical pose order, same confidence tier as any other
--- family-level, not individually-verified, finding in this project)
--- beats plain unflagged (an HONESTLY UNKNOWN on-screen layout, shown in
--- raw DMA copy order, not a guessed grid).
+-- rows) and every monster/boss (MonsterDefinitionTable, 21 rows). See
+-- SpriteTileFormula.lua's doc comment for the full disassembly/
+-- live-validation. HONEST SCOPE, carried into every entry below: this
+-- closes the PIXEL-SOURCE half for everyone. The on-screen ARRANGEMENT
+-- has 3 honest tiers: `arrangementConfirmed=true` (characterA/
+-- characterB/the first boss -- individually live-OAM-verified) beats
+-- `arrangementFamily="humanoid4pose"` (172 further NPC records, 91
+-- distinct designs, sharing characterA/B's exact copy-order list --
+-- `resolveSpriteTileOffsets` already reorders these into the logical
+-- pose order, a family-level not individually-verified finding) beats
+-- plain unflagged (an honestly unknown on-screen layout, shown in raw
+-- DMA copy order, not a guessed grid).
 ----------------------------------------------------------------------
 do
   local function buildSpriteEntries(records, resolveFn, confirmedIndices)
     local entries = {}
     for _, record in ipairs(records) do
       -- `chunksReordered`/`chunksTotal` are only meaningful for
-      -- MonsterDefinitionTable's own creature-4x4-pose reconstruction
-      -- (2026-08-17, "versuche daraus die tatsächlichen monster mit den
-      -- animationsphasen zu rekonstruieren") -- nil for
-      -- ActorDefinitionTable/NPCs, which use `arrangementFamily`
-      -- instead (a whole-record flag, not a per-chunk count).
+      -- MonsterDefinitionTable's creature-4x4-pose reconstruction --
+      -- nil for ActorDefinitionTable/NPCs, which use
+      -- `arrangementFamily` instead (a whole-record flag, not a
+      -- per-chunk count).
       local offsets, _, chunksReordered, chunksTotal = resolveFn(romData, record)
-      -- REAL POSE-BY-POSE PRESENTATION FOR NPCs TOO, same day, direct
-      -- follow-up ("ok jetzt mach das gleiche für alle npcs"): every
-      -- `humanoid4pose` family record's own `offsets` are ALREADY
-      -- reordered into the real logical pose order (4 tiles/pose,
-      -- `resolveSpriteTileOffsets` -> `reconstructPoseOrder`, the SAME
-      -- "swap the middle two" rule characterA/characterB's own real
-      -- down/up/left/left2 poses use) -- splitting them into
-      -- consecutive 4-tile groups gives real, individually-correct
-      -- poses in real order, the exact same shape as species 4's own
-      -- `spritePoses` (just 4 tiles/pose instead of 16, matching this
-      -- family's own real 16x16-not-32x32 sprite size).
+      -- Pose-by-pose presentation for NPCs too: every `humanoid4pose`
+      -- family record's `offsets` are already reordered into the
+      -- logical pose order (4 tiles/pose, `resolveSpriteTileOffsets`
+      -- -> `reconstructPoseOrder`, the same "swap the middle two" rule
+      -- characterA/characterB's down/up/left/left2 poses use) --
+      -- splitting them into consecutive 4-tile groups gives
+      -- individually-correct poses in order, the same shape as species
+      -- 4's `spritePoses` (4 tiles/pose instead of 16, matching this
+      -- family's 16x16-not-32x32 sprite size).
       local spritePoses = nil
       if record.spriteSource.arrangementFamily == "humanoid4pose" and offsets and #offsets % 4 == 0 then
         spritePoses = {}
@@ -1076,51 +1072,46 @@ do
     { [16] = true }
   )
   writeJs("sprite-catalog.js", "SPRITE_CATALOG", { npcs = npcEntries, monsters = monsterEntries },
-    "Real ROM->VRAM sprite-tile PIXEL SOURCE for every NPC (ActorDefinitionTable, 218 rows, index " ..
+    "ROM->VRAM sprite-tile PIXEL SOURCE for every NPC (ActorDefinitionTable, 218 rows, index " ..
     "121=characterA/99=characterB confirmed) and every monster/boss (MonsterDefinitionTable, 21 " ..
-    "rows, index 16=the real first boss confirmed) -- found 2026-08-17 (direct user instruction " ..
-    "\"versuche mal über einen ähnlichen hebel wie bei den tiles alle npc, boss und " ..
-    "monstersprites zu extrahieren\", then \"du sollst mehr npcs suchen\"), see " ..
-    "SpriteTileFormula.lua's own doc comment for the full disassembly/live-validation. 172 further " ..
-    "NPC records (91 distinct designs) carry arrangementFamily=\"humanoid4pose\" -- their " ..
-    "tileOffsets are ALREADY reordered into the real logical pose order (same family as " ..
-    "characterA/characterB), a real but not individually live-verified confidence tier, distinct " ..
-    "from arrangementConfirmed. HONEST SCOPE: tileOffsets are real, individually-correct ROM " ..
-    "pixel data for every entry -- the on-screen ARRANGEMENT (which tile goes where) is only " ..
-    "independently confirmed for the 3 arrangementConfirmed=true entries; every other NPC entry's " ..
-    "tileOffsets are shown in the ROM's own raw DMA copy order, an HONESTLY UNKNOWN on-screen " ..
-    "layout, not a guessed grid. Monster/boss entries carry `chunksReordered`/`chunksTotal` " ..
-    "instead (2026-08-17, direct follow-up \"versuche daraus die tatsächlichen monster mit den " ..
-    "animationsphasen zu rekonstruieren wie du es bei spezies 4 gemacht hast\") -- each real " ..
-    "16-tile chunk (one real animation pose) that structurally matches species 4's own already-" ..
-    "known real pose shape is reordered into the real on-screen layout; chunks that don't match " ..
-    "stay in raw DMA order. `chunksReordered==chunksTotal` is the strongest tier (every pose " ..
-    "reconstructed); `chunksReordered>0` means at least one real pose is confidently arranged; " ..
-    "`chunksReordered==0` means nothing could be confidently reordered for that entry.")
+    "rows, index 16=the first boss confirmed) -- see SpriteTileFormula.lua's doc comment for the " ..
+    "full disassembly/live-validation. 172 further NPC records (91 distinct designs) carry " ..
+    "arrangementFamily=\"humanoid4pose\" -- their tileOffsets are already reordered into the " ..
+    "logical pose order (same family as characterA/characterB), a real but not individually " ..
+    "live-verified confidence tier, distinct from arrangementConfirmed. HONEST SCOPE: tileOffsets " ..
+    "are individually-correct ROM pixel data for every entry -- the on-screen ARRANGEMENT (which " ..
+    "tile goes where) is only independently confirmed for the 3 arrangementConfirmed=true " ..
+    "entries; every other NPC entry's tileOffsets are shown in the ROM's raw DMA copy order, an " ..
+    "honestly unknown on-screen layout, not a guessed grid. Monster/boss entries carry " ..
+    "`chunksReordered`/`chunksTotal` instead -- each 16-tile chunk (one animation pose) that " ..
+    "structurally matches species 4's already-known pose shape is reordered into the on-screen " ..
+    "layout; chunks that don't match stay in raw DMA order. `chunksReordered==chunksTotal` is the " ..
+    "strongest tier (every pose reconstructed); `chunksReordered>0` means at least one pose is " ..
+    "confidently arranged; `chunksReordered==0` means nothing could be confidently reordered.")
 end
 
 ----------------------------------------------------------------------
 -- 11c. Map tile catalog (MapTileCatalog.lua) -- the OPPOSITE of 11b:
--- every real map/environment tile this project has ALREADY confirmed
--- via a fully-decoded, VERIFIED room (not a candidate). Dedupes across
--- all of profile.graphics's real rooms (same rooms ROOM_MAPS above
--- exports individually) into one aggregate, grouped by bank.
+-- every map/environment tile this project has already confirmed via a
+-- fully-decoded, VERIFIED room (not a candidate). Dedupes across all
+-- of profile.graphics's rooms (same rooms ROOM_MAPS above exports
+-- individually) into one aggregate, grouped by bank.
 ----------------------------------------------------------------------
 do
   local catalog = MapTileCatalog.build(profile)
   writeJs("map-tile-catalog.js", "MAP_TILE_CATALOG", catalog,
-    "Every real map/environment ROM tile this project has ALREADY confirmed -- deduplicated " ..
-    "across all " .. catalog.roomCount .. " fully-decoded, VERIFIED rooms this project has found " ..
-    "(the same rooms ROOM_MAPS above exports individually; see MapTileCatalog.lua's own doc " ..
-    "comment for why this aggregate view exists). Each entry records which real room(s) use it -- " ..
-    "NOT a candidate/heuristic finding like GRAPHICS_CANDIDATES, every offset here was already " ..
-    "individually matched against a real, live-captured VRAM tile pattern.")
+    "Every map/environment ROM tile this project has already confirmed -- deduplicated across " ..
+    "all " .. catalog.roomCount .. " fully-decoded, VERIFIED rooms this project has found (the " ..
+    "same rooms ROOM_MAPS above exports individually; see MapTileCatalog.lua's doc comment for " ..
+    "why this aggregate view exists). Each entry records which room(s) use it -- not a " ..
+    "candidate/heuristic finding like GRAPHICS_CANDIDATES, every offset here was already " ..
+    "individually matched against a live-captured VRAM tile pattern.")
 end
 
 ----------------------------------------------------------------------
 -- 12. Item/spell + weapon/armor catalog (ItemTable.lua/WeaponTable.lua
--- -- both table boundaries substantially extended 2026-08-15, see
--- rom_profiles.lua's own dated doc comments).
+-- -- both table boundaries substantially extended, see rom_profiles.lua's
+-- own doc comments).
 ----------------------------------------------------------------------
 do
   local itemRecords = ItemTable.decode(romData, profile.itemTable)
@@ -1147,16 +1138,14 @@ do
     }
   end
 
-  -- Catalog plan Phase 2 (2026-08-15, direct user request "Items in
-  -- mehr auswählbare Kategorien unterteilen"): real categoryByte
-  -- groupings, for the website's category filter pills -- see
-  -- ItemTable.lua's/WeaponTable.lua's own `groupByCategory` doc
-  -- comments for exactly what `sizeClass` does and does not claim.
-  -- Only the summary (categoryByte/count/sizeClass) is exported here,
-  -- not the nested record lists -- the flat `items`/`weapons` arrays
-  -- above already carry the full records, and each row's own
-  -- `categoryByte` is enough for the website to filter client-side
-  -- without duplicating the data.
+  -- Catalog plan Phase 2: categoryByte groupings, for the website's
+  -- category filter pills -- see ItemTable.lua's/WeaponTable.lua's
+  -- `groupByCategory` doc comments for exactly what `sizeClass` does
+  -- and does not claim. Only the summary (categoryByte/count/
+  -- sizeClass) is exported here, not the nested record lists -- the
+  -- flat `items`/`weapons` arrays above already carry the full
+  -- records, and each row's `categoryByte` is enough for the website
+  -- to filter client-side without duplicating the data.
   local itemCategories = {}
   for i, g in ipairs(ItemTable.groupByCategory(itemRecords)) do
     itemCategories[i] = { categoryByte = g.categoryByte, count = g.count, sizeClass = g.sizeClass }
@@ -1166,19 +1155,18 @@ do
     weaponCategories[i] = { categoryByte = g.categoryByte, count = g.count, sizeClass = g.sizeClass }
   end
 
-  -- FOUND, 2026-08-17 (same external-reference-matching pass as
-  -- EnemyStatTable -- see WeaponStatTable.lua's own doc comment). A
-  -- real, SEPARATE table from `weapons` above (own file offset, own
-  -- 16-byte stride, own real row order matching the external
-  -- reference's catalog order) -- power/price confirmed byte-for-byte
-  -- against the US cartridge's own disassembly AND independently
-  -- cross-checked against this project's own earlier gamesurge.com
-  -- walkthrough capture. Kept SEPARATE from `weapons` (not merged
-  -- in by index) because the two tables' real row-order
-  -- correspondence isn't confirmed -- see that module's own doc
-  -- comment for a concrete example of why (weaponCatalog's German
-  -- "Streit" sitting where a naive same-order guess would expect
-  -- "Were Axe" doesn't obviously fit).
+  -- Found via the same external-reference-matching pass as
+  -- EnemyStatTable -- see WeaponStatTable.lua's doc comment. A
+  -- SEPARATE table from `weapons` above (own file offset, own 16-byte
+  -- stride, own row order matching the external reference's catalog
+  -- order) -- power/price confirmed byte-for-byte against the US
+  -- cartridge's disassembly and independently cross-checked against
+  -- an earlier gamesurge.com walkthrough capture. Kept SEPARATE from
+  -- `weapons` (not merged by index) because the two tables' row-order
+  -- correspondence isn't confirmed -- see that module's doc comment
+  -- for a concrete example why (weaponCatalog's German "Streit"
+  -- sitting where a naive same-order guess would expect "Were Axe"
+  -- doesn't obviously fit).
   local weaponStats = {}
   if profile.weaponStatTable then
     local statRows = WeaponStatTable.decode(romData, profile.weaponStatTable)
@@ -1205,58 +1193,52 @@ do
     itemCategories = itemCategories,
     weaponCategories = weaponCategories,
     weaponStats = weaponStats,
-  }, "Real item/spell table (ItemTable.lua) and weapon/armor table (WeaponTable.lua). Names " ..
-     "decode cleanly for most records (2026-08-15: found spell records need a 2nd real name " ..
-     "offset, see ItemTable.lua's own doc comment) -- records with name=\"\" genuinely don't " ..
-     "decode at either known offset, shown honestly rather than guessed. Stat bytes beyond the " ..
-     "name are real but NOT interpreted (raw only). itemCategories/weaponCategories (2026-08-15, " ..
-     "catalog plan Phase 2) group the real records by their real categoryByte -- sizeClass is a " ..
-     "plain size threshold (>=5 records), NOT a claimed real slot name (e.g. weapon/armor/helm) -- " ..
-     "see WeaponTable.lua's own doc comment for why that's still unconfirmed. `weaponStats` " ..
-     "(2026-08-17, WeaponStatTable.lua) is a SEPARATE real table -- 16 real weapons with power/price " ..
-     "confirmed byte-for-byte against the US cartridge's own public disassembly, kept apart from " ..
-     "`weapons` above since the two tables' row-order correspondence to each other isn't confirmed.")
+  }, "Item/spell table (ItemTable.lua) and weapon/armor table (WeaponTable.lua). Names decode " ..
+     "cleanly for most records (spell records need a 2nd name offset, see ItemTable.lua's doc " ..
+     "comment) -- records with name=\"\" genuinely don't decode at either known offset, shown " ..
+     "honestly rather than guessed. Stat bytes beyond the name are real but NOT interpreted (raw " ..
+     "only). itemCategories/weaponCategories (catalog plan Phase 2) group the records by their " ..
+     "categoryByte -- sizeClass is a plain size threshold (>=5 records), NOT a claimed slot name " ..
+     "(e.g. weapon/armor/helm) -- see WeaponTable.lua's doc comment for why that's still " ..
+     "unconfirmed. `weaponStats` (WeaponStatTable.lua) is a SEPARATE table -- 16 weapons with " ..
+     "power/price confirmed byte-for-byte against the US cartridge's public disassembly, kept " ..
+     "apart from `weapons` above since the two tables' row-order correspondence isn't confirmed.")
 end
 
 ----------------------------------------------------------------------
 -- 13. NPC catalog (NpcCatalog.lua) -- NOT a static ROM table (see that
--- module's own doc comment for why "complete" here means "every NPC
--- this project has actually found," not "every NPC in the ROM").
+-- module's doc comment for why "complete" here means "every NPC this
+-- project has actually found," not "every NPC in the ROM").
 ----------------------------------------------------------------------
 writeJs("npcs.js", "NPCS", NpcCatalog.build(profile),
-  "Real NPCs this project has found and placed, read from rom_profiles.lua's own verified " ..
-  "scene data (NpcCatalog.lua). No static ROM table backs NPC placement in this game -- each " ..
-  "entry was found individually via live OAM tracing + per-room dialogue testing, not decoded " ..
-  "from a table this exporter could walk mechanically.")
+  "NPCs this project has found and placed, read from rom_profiles.lua's verified scene data " ..
+  "(NpcCatalog.lua). No static ROM table backs NPC placement in this game -- each entry was " ..
+  "found individually via live OAM tracing + per-room dialogue testing, not decoded from a " ..
+  "table this exporter could walk mechanically.")
 
 ----------------------------------------------------------------------
--- 14. Story text census (rom_profiles.lua's new `storyText`, 2026-08-15,
--- direct user request "suchen alle monster und npcs mit allen daten,
--- texten und grafiken aus dem rom") -- real monster defeat messages
--- and named story characters, found via tools/rom/dump_strings.py's
--- already-proven text scanner (the same method that found Amanda's
--- own real secondRoom dialogue), NOT decoded from a table -- see
--- rom_profiles.lua's own doc comment for the full honesty scope.
+-- 14. Story text census (rom_profiles.lua's `storyText`) -- monster
+-- defeat messages and named story characters, found via
+-- tools/rom/dump_strings.py's proven text scanner (the same method
+-- that found Amanda's secondRoom dialogue), NOT decoded from a table
+-- -- see rom_profiles.lua's doc comment for the full honesty scope.
 ----------------------------------------------------------------------
 if profile.storyText then
   writeJs("story.js", "STORY", profile.storyText,
-    "Real ROM-wide text census: monster \"<Name> bezwungen/besiegt\" victory messages and " ..
-    "named story characters, found via a targeted tools/rom/dump_strings.py scan. Only Willy " ..
-    "and Amanda have a known live room/sprite (positionKnown=true) -- every other name was " ..
-    "found in dialogue text only, with NO live position ever captured for it " ..
-    "(positionKnown=false, honestly labeled, not omitted). bossDefeats has NO confirmed link " ..
-    "to enemySpeciesTable's own 11 numbered species rows -- shown standalone, not force-matched.")
+    "ROM-wide text census: monster \"<Name> bezwungen/besiegt\" victory messages and named " ..
+    "story characters, found via a targeted tools/rom/dump_strings.py scan. Only Willy and " ..
+    "Amanda have a known live room/sprite (positionKnown=true) -- every other name was found in " ..
+    "dialogue text only, with no live position ever captured for it (positionKnown=false, " ..
+    "honestly labeled, not omitted). bossDefeats has no confirmed link to enemySpeciesTable's " ..
+    "11 numbered species rows -- shown standalone, not force-matched.")
 end
 
 ----------------------------------------------------------------------
--- 15. Music (MusicDecoder.lua, 2026-08-15, direct user request "schau
--- dir mal das musik und sound system an und entschluessel es" ->
--- "konsolidieren, dokumentieren und in die website einbauen") -- real
--- Bank-15 sound-driver song table + per-channel event streams, decoded
--- by actually walking the real ROM bytes (same module task #151's own
--- future love.audio playback will build on), not hand-transcribed.
--- See docs/reverse-engineering/rom-map.md's "Audio format -- DECODED"
--- section for the full disassembly trail this module is built from.
+-- 15. Music (MusicDecoder.lua) -- Bank-15 sound-driver song table +
+-- per-channel event streams, decoded by walking the ROM bytes (same
+-- module a future love.audio playback will build on), not
+-- hand-transcribed. See docs/reverse-engineering/rom-map.md's "Audio
+-- format -- DECODED" section for the full disassembly trail.
 ----------------------------------------------------------------------
 do
   local songTable = MusicDecoder.loadSongTable(romData)
