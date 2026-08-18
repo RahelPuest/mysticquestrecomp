@@ -214,96 +214,94 @@ TextDecoder.SPEAKER_COLON_BYTE = 0x2C
 -- by `(byte - 0x10)`) -- i.e. these are real, decoded CONTROL codes a
 -- SCRIPT's own embedded text can contain, not (necessarily) bytes that
 -- appear in the static message-text blobs `TextDecoder.decodeString`
--- normally reads. NOT wired into the normal decode path (this project's
--- own "2+ independent occurrences" VERIFIED bar isn't cleared for most
--- of these -- only 0x1A already was, independently, from the completely
--- separate text-corpus side, a real decisive cross-validation that this
--- table is correctly understood). Real, disassembled conclusions per
--- byte, not guesses:
---   0x10 -- sets a real mode register ($D84A=6), hands off to the
+-- normally reads. NOT wired into the normal decode path (this
+-- project's "2+ independent occurrences" VERIFIED bar isn't cleared
+-- for most of these -- only 0x1A already was, independently, from the
+-- completely separate text-corpus side, a decisive cross-validation
+-- that this table is correctly understood). Disassembled conclusions
+-- per byte, not guesses:
+--   0x10 -- sets a mode register ($D84A=6), hands off to the
 --           already-documented "0xFF sub-table" system (multi-line
 --           textbox mode switch).
---   0x11 -- a real conditional-halt bridge (tests WRAM $D853 bit 7 --
---           the same real cell the 0xFF sub-table's own "release
---           point" sub-opcode already reads).
---   0x12 -- reschedules into the 0xFF sub-table's own sub-opcode 4 (a
---           real conditional halt via a bank-2 call).
---   0x13 -- a real, substantial 164-byte WRAM block copy ($D4A7->
---           $D56E) plus a smaller $C0A0->$D862 copy -- not yet further
+--   0x11 -- a conditional-halt bridge (tests WRAM $D853 bit 7 -- the
+--           same cell the 0xFF sub-table's "release point" sub-opcode
+--           already reads).
+--   0x12 -- reschedules into the 0xFF sub-table's sub-opcode 4 (a
+--           conditional halt via a bank-2 call).
+--   0x13 -- a substantial 164-byte WRAM block copy ($D4A7->$D56E) plus
+--           a smaller $C0A0->$D862 copy -- not yet further
 --           characterized.
---   0x14, 0x15 -- the real NAME-INSERTION mechanism: each sets a real
---           WRAM pointer ($D79D for 0x14, $D7A2 for 0x15 -- two
---           different real string slots, plausibly hero/heroine or two
---           distinct stored strings) into $D8AA/$D8AB, then bridges
---           into the 0xFF sub-table. Very likely the real mechanism
---           behind the long-flagged, never-decoded "[0x14]-style
---           speaker tag" this project's own VictorySequence.lua doc
---           comments have referenced since early in this project's
---           history -- the exact real string SOURCE ($D79D/$D7A2's own
---           relationship to NameEntry.lua's real save format) is not
---           yet traced.
---   0x16-0x19 -- real, structured 0x0000 (unused/reserved) table
---           entries -- deliberately not real control codes.
+--   0x14, 0x15 -- the NAME-INSERTION mechanism: each sets a WRAM
+--           pointer ($D79D for 0x14, $D7A2 for 0x15 -- two different
+--           string slots, plausibly hero/heroine or two distinct
+--           stored strings) into $D8AA/$D8AB, then bridges into the
+--           0xFF sub-table. Very likely the mechanism behind the
+--           long-flagged, never-decoded "[0x14]-style speaker tag"
+--           VictorySequence.lua's doc comments have referenced since
+--           early in this project's history -- the exact string
+--           source ($D79D/$D7A2's relationship to NameEntry.lua's save
+--           format) is not yet traced.
+--   0x16-0x19 -- structured 0x0000 (unused/reserved) table entries --
+--           deliberately not control codes.
 --   0x1A -- NEWLINE_BYTE, see above -- independently, decisively
---           cross-validated: this byte's own real handler ($35B0) does
---           real newline/line-advance work, matching this file's own
---           completely separately-derived text-corpus finding exactly.
---   0x1B -- sets up the real text-cursor position pair ($D8B2-$D8B5)
---           from a real WRAM base position, then bridges into the 0xFF
---           sub-table's own line-clear routine.
---   0x1C-0x1F -- a real up/down/left/right TEXT-CURSOR MOVE family --
---           these are the EXACT SAME real code (file $35C6-$35E3) this
---           project's own earlier, separate "0xFF sub-table"
---           investigation already fully disassembled and named a
---           "cursor-delta dispatcher", now confirmed reachable directly
---           through embedded script text as well.
--- Real jump-table targets (kept here for anyone continuing this, not
+--           cross-validated: this byte's handler ($35B0) does
+--           newline/line-advance work, matching this file's completely
+--           separately-derived text-corpus finding exactly.
+--   0x1B -- sets up the text-cursor position pair ($D8B2-$D8B5) from a
+--           WRAM base position, then bridges into the 0xFF sub-table's
+--           line-clear routine.
+--   0x1C-0x1F -- an up/down/left/right TEXT-CURSOR MOVE family --
+--           these are the exact same code (file $35C6-$35E3) an
+--           earlier, separate "0xFF sub-table" investigation already
+--           fully disassembled and named a "cursor-delta dispatcher",
+--           now confirmed reachable directly through embedded script
+--           text as well.
+-- Jump-table targets (kept here for anyone continuing this, not
 -- otherwise used by this module): 0x10=$34E7, 0x11=$34F4, 0x12=$3502,
 -- 0x13=$351A, 0x14=$357D, 0x15=$3582, 0x1A=$35B0, 0x1B=$35C1,
 -- 0x1C=$35C6, 0x1D=$35CD, 0x1E=$35D4, 0x1F=$35DD.
 
--- STRENGTHENED (2026-08-15, quick-win follow-up): the original finding
--- was a single live-VRAM observation ("LP [F6] MP [F6]" matching the
--- live HUD's own "LP <n> MP <n>" display), never independently cross-
--- checked a second way. Found a real, STATIC ROM string containing the
--- exact same pattern this pass -- file offset 0xBE10, decodes cleanly
--- (via this exact module) to "LP   [F6]   MP   [F6]Naechster Level"
--- (a real German status-menu screen: "Kraft"/"Reife"/"Wille" stat
--- labels immediately precede it, "Naechster Level" = "Next Level"
--- immediately follows) -- a second, genuinely independent confirmation
--- of the exact same real-world meaning, this time from actual ROM text
--- data rather than a live screen read. A SECOND, unrelated real
--- occurrence also found in the on-screen name-entry keyboard's own
--- static layout string (file ~0xBE6x, immediately before the digit
--- row "01234...") -- a real use in a completely different UI screen.
--- Also cross-checked against `rom_profiles.lua`'s own `font
--- .extraGlyphs` doc comment: the SAME linear tile-offset formula
--- already used for `.`/`-`/`!`/`?`/`:` predicts 0xF6's own real font
--- tile as file `0x22F60` -- directly decoded, and it's a plain
--- diagonal line, NOT a punctuation glyph -- ruling out "printable
--- character this project just hasn't assigned a name yet" as an
--- alternative explanation. Still reads as a real "insert a numeric
--- value here" template/substitution opcode, NOT a printable character
--- -- deliberately NOT added to decodeByte (would wrongly render it as
--- a literal glyph). What remains genuinely open: which CPU code reads
--- it and how the substitution actually happens (no live trace attempted
--- yet) -- the WHAT is now solidly evidenced, the HOW is still open.
+-- STRENGTHENED: the original finding was a single live-VRAM
+-- observation ("LP [F6] MP [F6]" matching the live HUD's "LP <n> MP
+-- <n>" display), never independently cross-checked a second way.
+-- Found a static ROM string containing the exact same pattern -- file
+-- offset 0xBE10, decodes cleanly (via this exact module) to "LP
+-- [F6]   MP   [F6]Naechster Level" (a German status-menu screen:
+-- "Kraft"/"Reife"/"Wille" stat labels immediately precede it,
+-- "Naechster Level" = "Next Level" immediately follows) -- a second,
+-- genuinely independent confirmation of the exact same meaning, this
+-- time from actual ROM text data rather than a live screen read. A
+-- second, unrelated occurrence also found in the on-screen name-entry
+-- keyboard's static layout string (file ~0xBE6x, immediately before
+-- the digit row "01234...") -- a use in a completely different UI
+-- screen. Also cross-checked against `rom_profiles.lua`'s `font
+-- .extraGlyphs` doc comment: the same linear tile-offset formula
+-- already used for `.`/`-`/`!`/`?`/`:` predicts 0xF6's font tile as
+-- file `0x22F60` -- directly decoded, and it's a plain diagonal line,
+-- not a punctuation glyph -- ruling out "printable character this
+-- project just hasn't assigned a name yet" as an alternative
+-- explanation. Still reads as an "insert a numeric value here"
+-- template/substitution opcode, not a printable character --
+-- deliberately not added to decodeByte (would wrongly render it as a
+-- literal glyph). What remains genuinely open: which CPU code reads it
+-- and how the substitution actually happens (no live trace attempted
+-- yet) -- the what is now solidly evidenced, the how is still open.
 
--- VERIFIED (2026-08-09): the real "documented two-character dialogue-
--- compression scheme" mentioned (as an unconfirmed reference-project
--- hypothesis) in docs/roadmap.md -- a real digraph table living BELOW
--- MAIN_BASE (0xB0), separate from and much larger than the general
--- dialogue text found so far. Found by first locating a completely
--- literal, uncompressed match for "WILLY" (via the already-known
--- MAIN_GLYPHS formula, no compression involved -- proper names/shouted
--- words appear to bypass the table) at ROM file offset 0x3A268, then
--- decoding the ~1KB of real script bytes around it. Every entry below
--- was cross-checked against a real, otherwise-fully-readable German
--- sentence or proper noun spanning 2+ independent occurrences in that
--- dump (e.g. 0x55 confirmed both inside "Willy" and inside
--- "Wasserfaellen" -- two unrelated words, same byte, same 2 letters
--- both times) -- this project's normal VERIFIED bar. See
--- docs/reverse-engineering/text.md for the full byte-by-byte trace.
+-- VERIFIED: the "documented two-character dialogue-compression scheme"
+-- mentioned (as an unconfirmed reference-project hypothesis) in
+-- docs/roadmap.md -- a digraph table living below MAIN_BASE (0xB0),
+-- separate from and much larger than the general dialogue text found
+-- so far. Found by first locating a completely literal, uncompressed
+-- match for "WILLY" (via the already-known MAIN_GLYPHS formula, no
+-- compression involved -- proper names/shouted words appear to bypass
+-- the table) at ROM file offset 0x3A268, then decoding the ~1KB of
+-- script bytes around it. Every entry below was cross-checked against
+-- an otherwise-fully-readable German sentence or proper noun spanning
+-- 2+ independent occurrences in that dump (e.g. 0x55 confirmed both
+-- inside "Willy" and inside "Wasserfaellen" -- two unrelated words,
+-- same byte, same 2 letters both times) -- this project's normal
+-- VERIFIED bar. See docs/reverse-engineering/text.md for the full
+-- byte-by-byte trace.
 --
 -- Confirmed real examples this table was built from (bytes elided,
 -- see text.md for the literal ROM offsets):
