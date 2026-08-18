@@ -1,82 +1,76 @@
--- A real, per-real-frame driver for the "cut"-style room-transition
--- mechanism (opcode `0xF4`, ROM `$11B7`) -- direct response to the
--- user's own explicit instruction ("es soll alles komplett über den
--- interpreter laufen") after being told room transitions run entirely
--- through hand-authored Lua logic (`VictorySequence.lua`'s room-graph
--- walker) despite the underlying real ROM mechanism already being
--- fully reverse-engineered (see `src/import/CutTransitionTable.lua`).
+-- A per-frame driver for the "cut"-style room-transition mechanism
+-- (opcode `0xF4`, ROM `$11B7`) -- direct response to the user's
+-- explicit instruction that everything should run through the
+-- interpreter, after being told room transitions run entirely through
+-- hand-authored Lua logic (`VictorySequence.lua`'s room-graph walker)
+-- despite the underlying ROM mechanism already being fully
+-- reverse-engineered (see `src/import/CutTransitionTable.lua`).
 --
 -- WHY A DEDICATED MODULE, not just more code in `VictorySequence.lua`:
--- same reasoning as `BossSequenceInterpreter.lua` (its own structural
--- template) -- needs its own real state (which bank/stream is live,
--- the persistent cursor, what's been captured so far) surviving across
--- many real `love.update` calls, headlessly testable, no `love.*`
--- calls.
+-- same reasoning as `BossSequenceInterpreter.lua` (its structural
+-- template) -- needs its own state (which bank/stream is live, the
+-- persistent cursor, what's been captured so far) surviving across many
+-- `love.update` calls, headlessly testable, no `love.*` calls.
 --
--- HONEST, DELIBERATELY NARROW SCOPE (2026-08-16, direct continuation,
--- "Ehrliches MVP" chosen by the user after live investigation revealed
--- more real structure than expected -- see
--- docs/reverse-engineering/events.md's own dated entry for the full
--- live-trace evidence this module is built on):
+-- HONEST, DELIBERATELY NARROW SCOPE (direct continuation, "honest MVP"
+-- chosen by the user after live investigation revealed more structure
+-- than expected -- see docs/reverse-engineering/events.md's matching
+-- entry for the full live-trace evidence this module is built on):
 --
--- 1. A real, live single-step trace (`third_room_free()` + the real
---    RIGHT/UP hold trigger, single-stepped with a native mGBA
---    watchpoint on PC `$11B7`) found the real ROM does NOT reach this
---    opcode via bank 1 (this project's own earlier, WRONG assumption,
---    from reading `$11B7`'s own STATIC disassembly without checking
---    which bank is live-mapped) -- it fires 74 real times across the
---    transition, EVERY time with bank 14 mapped in at `$4000`-`$7FFF`
---    (matching `CutTransitionTable.lua`'s own already-known fact that
---    all 186 real landing records live in bank 14).
+-- 1. A live single-step trace (`third_room_free()` + the RIGHT/UP hold
+--    trigger, single-stepped with a native mGBA watchpoint on PC
+--    `$11B7`) found the ROM does not reach this opcode via bank 1
+--    (this project's earlier, wrong assumption, from reading `$11B7`'s
+--    static disassembly without checking which bank is live-mapped) --
+--    it fires 74 times across the transition, every time with bank 14
+--    mapped in at `$4000`-`$7FFF` (matching `CutTransitionTable.lua`'s
+--    already-known fact that all 186 landing records live in bank 14).
 -- 2. Those 74 hits resolve to exactly 3 distinct `HL` values as the
---    real ROM's own `$D499` step counter advances -- `$42F7` (D499
---    0-3), `$42F9` (D499 4-5), `$42FB` (D499 6-7) -- and the real
---    peeked `(B,C)` bytes at each are BYTE-EXACT matches to the
---    already-known static record `00 05 F4 01 57 0E 0C 00 0B` (file
---    `0x382F4`-`0x382FC`, bank 14): `(1,87)` = roomSelector/
---    subIndexByte, `(14,12)` = the landing tile, `(0,11)` = the
---    record's own trailing terminator.
--- 3. DECISIVE, NARROWING finding: only the FIRST of these three (`HL
---    =$42F7`, reached from opcode byte `$F4` at `$42F6`) is reached
---    via the real, genuine TOP-LEVEL script-dispatch loop (`$3727`,
---    the same fetch-decode-dispatch `ScriptRuntime`/`ScriptInterpreter`
---    already model). The other two are NOT -- the ROM bytes at their
---    own preceding positions (`$382F8`=`0x57`, `$382FA`=`0x0C`) are
---    directly, live-confirmed NOT `0xF4`, so a literal top-level fetch
---    could never have dispatched there. The real `$413C` step-table
---    machine must be jumping DIRECTLY into the same shared peek leaf
---    (`$11B7`) with `HL` pre-positioned by its own internal control
---    flow -- a lower-level mechanism this project's `ScriptRuntime`
---    (whose whole abstraction is "one real opcode dispatch per
---    `:step()`, via the top-level fetch loop") does not model and
---    would need a SEPARATE, dedicated decode of the `$413C` automaton
---    itself to cover (not attempted this pass -- a real, substantial,
---    separately-scoped follow-up, not a quick addition).
+--    ROM's `$D499` step counter advances -- `$42F7` (D499 0-3), `$42F9`
+--    (D499 4-5), `$42FB` (D499 6-7) -- and the peeked `(B,C)` bytes at
+--    each are byte-exact matches to the already-known static record
+--    `00 05 F4 01 57 0E 0C 00 0B` (file `0x382F4`-`0x382FC`, bank 14):
+--    `(1,87)` = roomSelector/subIndexByte, `(14,12)` = the landing
+--    tile, `(0,11)` = the record's trailing terminator.
+-- 3. Decisive, narrowing finding: only the first of these three (`HL
+--    =$42F7`, reached from opcode byte `$F4` at `$42F6`) is reached via
+--    the genuine top-level script-dispatch loop (`$3727`, the same
+--    fetch-decode-dispatch `ScriptRuntime`/`ScriptInterpreter` already
+--    model). The other two are not -- the ROM bytes at their preceding
+--    positions (`$382F8`=`0x57`, `$382FA`=`0x0C`) are directly,
+--    live-confirmed not `0xF4`, so a literal top-level fetch could
+--    never have dispatched there. The `$413C` step-table machine must
+--    be jumping directly into the same shared peek leaf (`$11B7`) with
+--    `HL` pre-positioned by its own internal control flow -- a
+--    lower-level mechanism this project's `ScriptRuntime` (whose whole
+--    abstraction is "one opcode dispatch per `:step()`, via the
+--    top-level fetch loop") does not model and would need a separate,
+--    dedicated decode of the `$413C` automaton itself to cover (not
+--    attempted this pass -- a substantial, separately-scoped
+--    follow-up, not a quick addition).
 --
--- WHAT THIS MODULE THEREFORE DOES, HONESTLY: drives the real
--- `ScriptRuntime` from the real, live-confirmed entry point through the
--- ONE peek this project can honestly claim goes through genuine
--- top-level dispatch -- capturing the real roomSelector/subIndexByte
--- pair -- then DELIBERATELY halts itself (`self.done = true`, a
--- documented, intentional stop, not a crash or an undecoded-opcode
--- error). It does NOT capture the landing tile (that peek is real, but
--- not reached the way this module's own abstraction can honestly claim
--- credit for) -- `VictorySequence.lua` keeps using the pre-baked
--- `landingX`/`landingY` constants for that half, clearly labeled as
--- such at the call site.
+-- WHAT THIS MODULE THEREFORE DOES, HONESTLY: drives the `ScriptRuntime`
+-- from the live-confirmed entry point through the one peek this project
+-- can honestly claim goes through genuine top-level dispatch --
+-- capturing the roomSelector/subIndexByte pair -- then deliberately
+-- halts itself (`self.done = true`, a documented, intentional stop, not
+-- a crash or an undecoded-opcode error). It does not capture the
+-- landing tile (that peek is real, but not reached the way this
+-- module's abstraction can honestly claim credit for) --
+-- `VictorySequence.lua` keeps using the pre-baked `landingX`/`landingY`
+-- constants for that half, clearly labeled as such at the call site.
 --
--- UPDATE 2026-08-16 (continuation, "wie weiter" -> "Roadmap-Nachtrag
--- schließen", the discrepancy check surfaced this as an obvious,
--- well-scoped next step): the exact same live methodology, applied to
--- fourthRoom->fifthRoom, found the same 3-peek shape (bank 14, HL
--- $4c85/$4c87/$4c89), the same "only the first peek is genuine
--- top-level dispatch" narrowing, AND independently cross-confirmed the
+-- UPDATE (continuation, a discrepancy check surfaced this as an
+-- obvious, well-scoped next step): the exact same live methodology,
+-- applied to fourthRoom->fifthRoom, found the same 3-peek shape (bank
+-- 14, HL $4c85/$4c87/$4c89), the same "only the first peek is genuine
+-- top-level dispatch" narrowing, and independently cross-confirmed the
 -- captured roomSelector (4) via the shared `$026DC` subroutine already
--- used to resolve thirdRoom->fourthRoom's own -- see
--- `ENTRY_POINTS.fourthRoomToFifthRoom`'s own doc comment below for the
--- full trace. Now 2 of ~186 known real landing records have a live
--- entry point here, still each only covering its own roomSelector
--- half, same honest limitation as above.
+-- used to resolve thirdRoom->fourthRoom's -- see
+-- `ENTRY_POINTS.fourthRoomToFifthRoom`'s doc comment below for the full
+-- trace. Now 2 of ~186 known landing records have a live entry point
+-- here, still each only covering its own roomSelector half, same
+-- honest limitation as above.
 --
 -- Pure Lua, no `love.*` calls, headlessly testable like every other
 -- `src/scripting/*` module.
