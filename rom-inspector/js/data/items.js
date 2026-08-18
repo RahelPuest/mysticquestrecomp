@@ -368,7 +368,7 @@ const ITEMS = {
       "id": 31,
       "index": 38,
       "isSpell": true,
-      "name": " Spiegelne",
+      "name": " Spiegel",
       "price": 65535
     },
     {
@@ -384,7 +384,7 @@ const ITEMS = {
       "id": 33,
       "index": 40,
       "isSpell": true,
-      "name": "OR-MdwDCne",
+      "name": "OR-MdwDC",
       "price": 65535
     },
     {

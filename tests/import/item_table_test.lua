@@ -22,6 +22,24 @@ Harness.test("ItemTable.decode: parses a synthetic 2-record table", function()
   Harness.assertEqual(records[2].id, 2)
 end)
 
+Harness.test("ItemTable.decode: name decoding never reads past the 8-byte name field into stat bytes (found 2026-08-18, real bug -- direct user report 'buchstabensalat')", function()
+  -- A synthetic record whose name is exactly 8 bytes ("Testname" has no
+  -- terminator before the field boundary), immediately followed by a
+  -- stat byte (0xC5 = 'L' in the real glyph table) that decodes to a
+  -- valid character too. Before the fix, TextDecoder.decodeString was
+  -- given the FULL 16-byte record and had no reason to stop at the real
+  -- 8-byte name boundary, so it kept reading into that stat byte and
+  -- beyond -- producing an overlong, garbled name. After the fix, the
+  -- name must stop at exactly 8 characters.
+  local name8 = "\197\216\213\216\197\216\213\216" -- "LebeLebe": 8 real letter bytes, no embedded terminator
+  local rec = name8 .. "\197\65\16\0\0\0\0\1" -- byte 9 (0xC5, 'L') would decode to a letter too if not bounded
+  local itemTable = { fileOffset = 0, recordLength = 16, nameLength = 8, recordCount = 1 }
+
+  local records = ItemTable.decode(rec, itemTable)
+  Harness.assertEqual(#records[1].name, 8,
+    "name must be exactly nameLength characters, never longer")
+end)
+
 Harness.test("ItemTable.decode: price is bytes 13-14 (0-based), little-endian u16", function()
   -- byte13=0x28, byte14=0x00 -> 40 (record 8's real "Cure" price).
   local rec0 = "\197\216\213\216\0\0\0\0" .. "\128\160\16\0\0\40\0\1"
@@ -110,6 +128,15 @@ Harness.testIfAvailable(
     Harness.assertEqual(records[29].name, "Bonbon")
     Harness.assertEqual(records[52].name, "Rubin")
     Harness.assertEqual(records[55].name, "Diamant")
+
+    -- Real-ROM regression for the 2026-08-18 field-overrun fix: these
+    -- two used to read " Spiegelne"/"OR-MdwDCne" (real name + 2 garbled
+    -- characters bled in from the record's own categoryByte/stat
+    -- bytes) before the name decode was bounded to the real 8-byte
+    -- field. Both are now exactly 8 characters, matching the field
+    -- width, with no trailing bleed-through.
+    Harness.assertEqual(records[39].name, " Spiegel")
+    Harness.assertEqual(records[41].name, "OR-MdwDC")
   end
 )
 

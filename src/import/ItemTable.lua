@@ -66,6 +66,33 @@
 -- curMP/maxMP cells) has NOT been located by this pass -- it is
 -- evidently a separate ROM structure from this item/price table, not
 -- yet found. See events.md's own 2026-08-18 entry for the full trail.
+--
+-- FIXED, 2026-08-18, direct user report ("buchstabensalat" -- garbled
+-- names on the website): `TextDecoder.decodeString` has no field-width
+-- concept of its own -- given the FULL 16-byte `raw` record (as this
+-- module used to pass it), it happily kept decoding past the real
+-- 8-byte name field into the following stat/price bytes whenever one of
+-- THOSE bytes also happened to fall in a mapped glyph/digraph range --
+-- common, since item stat values are small integers that frequently
+-- collide with the wide 0x80-0xFF glyph range. Real, concrete examples
+-- this bug produced: record 38's real name "Spiegel" read as
+-- " Spiegelne" (the extra "ne" came from `categoryByte`/stat bytes,
+-- not the name); records 45-48 shared a real "NWpGnsc" prefix but each
+-- grew 2 more nonsense characters from their own differing stat bytes.
+-- **This was NOT a digraph-table gap** (the individual byte->character
+-- mappings involved were themselves correct) -- it was a missing upper
+-- bound on WHERE those correct mappings should even be attempted.
+-- VERIFIED the underlying 16-byte-stride table itself was never in
+-- doubt: the real per-category `id` counter (byte 15) increments
+-- unbroken 1->51 across the entire 59-record range with exactly one
+-- reset at the documented item/spell boundary -- proof this table
+-- genuinely continues that far; the garbling was a display artifact of
+-- this module's own decode call, not evidence of an over-extended
+-- table boundary. Fixed by slicing `raw` down to exactly `nameLength`
+-- bytes before ever calling `TextDecoder.decodeString`, so decoding can
+-- structurally never reach `categoryByte` or any stat byte beyond it.
+-- See events.md's own 2026-08-18 entry for the full before/after
+-- diagnostic.
 
 local TextDecoder = require("src.import.TextDecoder")
 
@@ -106,10 +133,31 @@ function ItemTable.decode(romData, itemTable)
   for i = 0, itemTable.recordCount - 1 do
     local recordFile = itemTable.fileOffset + i * recordLength
     local raw = romData:sub(recordFile + 1, recordFile + recordLength)
-    local name = TextDecoder.decodeString(raw, 0)
+    -- BOUNDED to the real name field (found 2026-08-18, direct user
+    -- report "buchstabensalat" -- see this module's own top-of-file
+    -- 2026-08-18 doc comment for the full trail): `TextDecoder
+    -- .decodeString` has no field-width concept of its own -- given the
+    -- FULL 16-byte `raw` record, it happily keeps decoding past the
+    -- real 8-byte name field into the stat/price bytes whenever one of
+    -- THOSE bytes also happens to fall in a mapped glyph/digraph range
+    -- (common -- item stat values are small integers that frequently
+    -- collide with the wide 0x80-0xFF glyph range), producing an
+    -- overlong, garbled name (e.g. record 38's real "Spiegel" used to
+    -- read as " Spiegelne", record 45-48's shared "NWpGnsc" prefix used
+    -- to grow 2 more nonsense characters each from their own differing
+    -- stat bytes). `nameField` caps the slice at exactly `nameLength`
+    -- bytes so decoding can never read past `categoryByte` (always at
+    -- 0-based position `nameLength`, per the unchanged read below --
+    -- true for BOTH name shapes) or any stat byte beyond it. The
+    -- offset-1/prefixed shape does NOT get an extra byte past this
+    -- field -- its prefix occupies the field's own first slot, leaving
+    -- `nameLength-1` (7) bytes for the actual name text in that shape,
+    -- not `nameLength`.
+    local nameField = raw:sub(1, nameLength)
+    local name = TextDecoder.decodeString(nameField, 0)
     local namePrefixByte = nil
     if name == "" then
-      local altName = TextDecoder.decodeString(raw, 1)
+      local altName = TextDecoder.decodeString(nameField, 1)
       if altName ~= "" then
         name = altName
         namePrefixByte = raw:byte(1)

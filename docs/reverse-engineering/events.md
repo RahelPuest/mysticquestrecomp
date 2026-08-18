@@ -11559,3 +11559,59 @@ specifically (like `EnemyStatTable`'s own bank-number caveat) -- worth
 re-deriving candidate values from a live mgba MP-consumption trace
 (cast any spell if one is ever reachable, diff `$D7B6` before/after)
 rather than assuming the external numbers transfer unchanged.
+
+## 2026-08-18, same day, direct user report ("in der items/waffentabelle befinden sich mehrere einträge die wie buchstabensalat aussehn") -- a real field-overrun bug found and fixed, distinct from the digraph-table gaps
+
+`ItemTable.decode` passed the FULL 16-byte `raw` record straight to
+`TextDecoder.decodeString`, which has no field-width concept of its own
+-- it just decodes byte-by-byte until it hits the terminator, an
+unmapped byte, or the end of the string it's given. With the whole
+16-byte record as that string, decoding routinely ran straight past the
+real 8-byte name field into `categoryByte`/stat/price bytes whenever one
+of THOSE bytes also happened to fall in a mapped glyph/digraph range --
+common, since small stat integers frequently collide with the wide
+0x80-0xFF glyph range. Concrete real examples this produced: record 38's
+real name "Spiegel" read as `" Spiegelne"` (the extra "ne" came from
+`categoryByte`, not the name); record 40's real name "OR-MdwDC" read as
+`"OR-MdwDCne"`.
+
+**First checked whether the table's own real boundary/stride was the
+problem** (i.e. whether `recordCount=59` had simply overreached into
+unrelated ROM data) before touching any code: the real per-category `id`
+counter (byte 15) increments unbroken 1->51 across the ENTIRE 59-record
+range with exactly one reset at the documented item/spell boundary --
+decisive, already-established-methodology proof (the same kind of
+counter-reset evidence that originally validated this table's existence)
+that the 16-byte stride genuinely continues that far. The garbling was
+never evidence of a wrong table boundary.
+
+**Fix**: `ItemTable.decode` now slices `raw` down to exactly
+`nameLength` (8) bytes into a `nameField` before ever calling
+`TextDecoder.decodeString`, for both the offset-0 and offset-1/prefixed
+name shapes -- decoding can now structurally never reach a byte beyond
+the real name field, regardless of what that byte happens to contain.
+2 new tests: a synthetic one that deliberately places a valid-looking
+letter byte right after an 8-byte name (locks in the field-width bound
+generically), and a real-ROM regression pinning records 38/40's now-
+correct names.
+
+**Honest scope, explicitly not claimed fixed by this pass**: many
+records still don't decode into plausible German words even within the
+correct 8-byte bound (e.g. records 20-21 "rCE:- h"/"drCngus-m", 29 "eh",
+34-36 "irÜnsÄeg,"/"ehransÄ"/"ehegnsÄ", 39 "hOpq", 43/50 the IDENTICAL
+"i-vJpORq" appearing at two unrelated table positions, 45-48's shared
+"NWpGnsc" prefix). These are NOT overrun artifacts -- verified
+byte-by-byte, every one of these decodes fully and correctly within the
+bounded field using this project's own existing, already-correct
+byte->character mappings (confirmed against the same mappings that
+correctly produce "Flamme"/"Lava"/"Frost"/"Blitz"/"Donner"/"Bonbon"/
+"Rubin"/"Diamant"/"Gold" elsewhere in the identical table). This is a
+genuinely separate, still-open question -- either real, still-unmapped
+digraph gaps specific to less-common item names, or evidence some of
+these records aren't meaningful name text at all despite sitting at a
+structurally valid table position (the exact-duplicate "i-vJpORq" at
+two different indices is the strongest single hint toward the latter).
+Not pursued further this pass -- flagged honestly rather than guessed
+at, per this project's own established discipline. Website re-exported
+(`rom-inspector/tools/export_data.lua`). `luajit tests/run_tests.lua`:
+578/578 pass (577 -> 578).
