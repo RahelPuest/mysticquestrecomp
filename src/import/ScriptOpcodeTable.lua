@@ -1372,6 +1372,102 @@ ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_E7 = 0x0FA9 -- group 0x02, via $
 ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_C9 = 0x3916
 ScriptOpcodeTable.TWO_BYTE_COMMAND_HANDLER_ADDRESS_CA = 0x3921
 
+-- SOLVED, 2026-08-19, direct user redirect ("dann versuche eine andere
+-- strategie... wir können das nicht live tracken"): the "$3937 leaf is
+-- untraced" gap above is now closed, and this turns out to be the
+-- REAL, natural, in-corpus trigger this project's whole bank-14
+-- `CutTransitionTable` investigation was chasing all session (see
+-- `rom_profiles.lua`'s `entranceSeal` doc comment for the full `$31AD`
+-- thread this closes out).
+--
+-- `$3937` (real disassembly): `PUSH HL / PUSH BC / LD H,D / LD L,E
+-- (HL = the operand just read) / CALL $3282 (the SAME bank-8 table
+-- lookup `$31AD`'s own family uses) / LD D,H / LD E,L / POP HL (HL =
+-- the fixed BC this opcode passed in, i.e. `$D613`/`$D623`/`$D633`) /
+-- LD A,0x02 / LD (HL+),A / LD A,D / LD (HL+),A / LD A,E / LD (HL+),A /
+-- LD (HL),0x00 / POP HL (restores the CALLING script's own cursor) /
+-- CALL $3727 (the main dispatch loop) / RET`.
+--
+-- **Decisive structural fact, previously unclear**: this does NOT
+-- redirect the calling script's own cursor at all -- it writes the
+-- resolved table result into a genuinely SEPARATE, independent 4-byte
+-- WRAM slot (`0x02`, then the resolved address high/low, then a `0x00`
+-- terminator) and returns control to the calling script completely
+-- unchanged. `0xC9`/`0xCA`/`0xCB` are a real, 3-channel "spawn an
+-- independent parallel sub-script" primitive, not a jump/chain within
+-- the current one -- confirmed by live-tracing a real script (below)
+-- that keeps executing its own next instructions normally immediately
+-- after firing one of these.
+--
+-- **Live, corpus-real confirmation, using this project's OWN
+-- `ScriptRuntime`/`RomScriptStream` infrastructure (no live mGBA
+-- needed -- exactly the "different, non-live-tracking strategy" asked
+-- for)**: ran every real, non-filler entry of the FULL
+-- `scriptPointerTable` (not just the previously-catalogued 1357 -- see
+-- this same table's own doc comment in `rom_profiles.lua` for the
+-- "filler" claim correction found alongside this) through the real
+-- interpreter, capturing every literal operand these 3 opcodes ever
+-- use. Script index **706** (well within the original, independently-
+-- verified 1357-script range -- NOT one of the newly-found extra
+-- entries, genuinely trustworthy) fires `CB` with operand **715** as
+-- its own literal, UNGATED, VERY FIRST INSTRUCTION -- confirmed by a
+-- full opcode-by-opcode trace: `CB(715)` at the script's own start,
+-- then normal continued execution (opcodes `0x03`/`0xE3`/`0x7A`/`0x2F`/
+-- more `CB` calls/`onTriggerEvent`), unrelated to and undisturbed by
+-- the `CB(715)` call.
+--
+-- Resolving `715` through the SAME `$3282`/`$3C4F` formula `$31AD`'s
+-- own family uses (verified this session by direct live mGBA
+-- injection): table[715] = raw `0x4373`; `raw+0x4000=0x8373`, high
+-- byte `0x83` falls in `[0x80,0xBF]` -> **bank 14**, final address
+-- `0x4373` (file `0x38373`). The bytes there: `0B C9 00 05 F4 0F 33 0E
+-- 0C 00 0B` -- 2 bytes further in (file `0x38375`) is a fully
+-- recognizable, real `CutTransitionTable`-shaped 9-byte record (`00 05
+-- F4 [roomSelector=0x0F] [0x33] [tileCol=0x0E] [tileRow=0x0C] 00 0B`)
+-- -- `roomSelector 15` is the `unknownRoomB` family, matching this
+-- project's own already-catalogued real transitions exactly. The
+-- 2-byte gap (vs. the 1-byte gap this session's own live `$31AD`
+-- injection found for a different index) is consistent with a short,
+-- real 2-opcode preamble (`0x0B` then another `0xC9`) rather than
+-- landing exactly on the record -- not fully explained, an honest
+-- small residual, not a blocker to the main finding.
+--
+-- **This is, concretely, the first time this project has found a
+-- REAL, already-catalogued, trustworthy script that -- unconditionally,
+-- as its own first instruction -- fires a literal, in-corpus
+-- instruction resolving to a genuine bank-14 `CutTransitionTable`
+-- record**, via a mechanism (this opcode family) entirely independent
+-- of the `$31AD`/`$3213` actor-grid machinery this session spent most
+-- of its effort on and ultimately could not pin to a natural trigger.
+-- Also reframes what `CutTransitionTable` most likely IS: a real
+-- top-level, catalogued SCRIPT (part of the normal 1357-script corpus,
+-- not player-movement/door logic) spawning a transition as one of its
+-- own actions -- consistent with, and a strong structural explanation
+-- for, this session's own exhaustive live boundary-walking of every
+-- currently-reachable room finding ZERO hidden doors: these
+-- transitions are event/cutscene-triggered, not walked into.
+--
+-- **Honest, explicit caveat**: the SAME script (706) also fires `CB`/
+-- `C9` with 3 further operands (`16298`, `16299`, `10955`) -- all well
+-- BEYOND the real table's own bounds (`table[idx]` for `idx` this
+-- large reads past bank 8's own 16KB window, landing on whatever the
+-- CPU's `$8000+` address space actually maps to on real hardware --
+-- not a valid ROM table read at all under this project's own already-
+-- verified table-size finding). Not explained this pass -- possibly a
+-- genuinely different unit/scale for large operands this project
+-- hasn't found yet, possibly content that's simply never meant to be
+-- reached this way. Flagged honestly rather than silently dropped.
+--
+-- **Still open, the natural next step**: WHAT makes script index 706
+-- itself run in real gameplay was not identified this pass -- that is
+-- the new, concrete, well-scoped remaining question (which of the
+-- game's many known script-selection paths ever picks index 706), not
+-- "does a natural trigger exist" (this entry answers that: yes, this
+-- mechanism is real and corpus-native, not a hypothetical). See
+-- `docs/reverse-engineering/events.md`'s matching 2026-08-19 entry for
+-- the full investigation trail and the scratch tooling used (not
+-- committed, per this project's own convention).
+
 -- 0xF3/0xF4 ($11CE/$11B7) -- FOUND, task #86, same live shadow-run.
 -- See StandardScriptHandlers.peekTwoByteGate's own doc comment for the
 -- full, carefully-decoded disassembly (a genuinely unusual shape:

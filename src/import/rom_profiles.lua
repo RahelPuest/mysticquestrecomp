@@ -4195,6 +4195,31 @@ RomProfiles.PROFILES = {
       -- 0xFFFF unprogrammed-ROM filler (2714 raw bytes checked at the
       -- boundary) -- see events.md "The script-pointer table's real
       -- size: exactly 1357 entries".
+      --
+      -- CORRECTED, 2026-08-19 (direct follow-up, "andere strategie"
+      -- bank-14 investigation): the claim above is WRONG past the
+      -- narrow window that was actually checked -- real, non-`0xFFFF`
+      -- data resumes almost immediately after a handful of scattered
+      -- filler entries and continues in large real stretches (100s to
+      -- 1000+ entries at a time) all the way to the table's own true
+      -- end at index 6262 (bank 8's own file boundary, `0x24000`).
+      -- `recordCount` below is left at `1357` -- the ORIGINAL,
+      -- independently-verified, trustworthy corpus this project's
+      -- extensive tooling (`scan_all_scripts.lua` and others) already
+      -- relies on -- rather than silently widened, since NOT every
+      -- non-`0xFFFF` entry past 1357 has been confirmed to be a real,
+      -- INTENTIONAL script the game itself ever runs (vs. incidentally
+      -- non-`0xFFFF` data that isn't script content at all). What IS
+      -- newly confirmed: table index 715 (well within THIS verified
+      -- 1357-entry range) is a real, meaningful, in-corpus target --
+      -- see `ScriptOpcodeTable.lua`'s own `0xC9`/`0xCA` doc comment for
+      -- the full chain (script index 706 fires it unconditionally,
+      -- resolving to a genuine bank-14 `CutTransitionTable` record).
+      -- Whether the table's own true extent (to index 6262) should be
+      -- treated as more real script content, versus this specific
+      -- table being reused/overlapping with unrelated data past 1357,
+      -- is a real, well-scoped, NOT yet resolved follow-up question --
+      -- flagged here rather than guessed at.
       recordCount = 1357,
       -- Live-traced example (see events.md for the full chain): index
       -- 232 -> table[232]=0x070F -> +0x4000 = 0x470F (real script
