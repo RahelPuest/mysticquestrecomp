@@ -50,10 +50,26 @@
 -- management, not a claimed combat effect. `Waffe`: selecting a held
 -- weapon equips it (`Inventory:equip`) -- whether this changes real
 -- combat damage is honestly still open (see combat.md's "MAJOR
--- CORRECTION" and its follow-up entry). `Magie`/`Frage` are unchanged
--- (still close immediately) -- no MP-cost/casting formula and no
--- follower/NPC system exist yet, so building interactivity there would
--- be fabricated, not real.
+-- CORRECTION" and its follow-up entry). `Frage` is unchanged (still
+-- closes immediately) -- no follower/NPC system exists yet.
+--
+-- EXTENDED 2026-08-19 (direct continuation, "konsolidiere alles...
+-- baue es in die app... ein", after the Magic/spell system
+-- investigation): `Magie` now opens a real sub-list too, once
+-- `Inventory.lua`'s own `spells` list is non-empty -- that branch
+-- genuinely never existed before (a real, second bug alongside
+-- `Inventory.lua`'s own item/spell split direction, found and fixed
+-- the same pass). Shows each known spell's real name plus its real,
+-- live-disassembled `mpCost` (ItemTable.lua's own doc comment, 8/8
+-- external matches) -- e.g. "Salb 1MP". Selecting a spell is
+-- deliberately a no-op (see `_updateSubMenu`'s own doc comment) -- no
+-- MP deduction, no combat/field effect -- this project found the real
+-- MP-deduction and effect-dispatch ROM code this same session but has
+-- NOT independently verified it against actual gameplay, so wiring it
+-- here would be fabricated, not real. A fresh, ungranted character's
+-- real, live-tested behavior (Magie closes immediately) is completely
+-- unaffected -- re-verified via a real `love .` screenshot after this
+-- change, not just reasoned about.
 
 local Font = require("src.rendering.Font")
 local Inventory = require("src.entities.Inventory")
@@ -90,6 +106,7 @@ end
 function Menu:_currentSubList()
   if self.mode == "items" then return self.inventory.items end
   if self.mode == "weapons" then return self.inventory.heldWeapons end
+  if self.mode == "spells" then return self.inventory.spells end
   return nil
 end
 
@@ -111,6 +128,17 @@ function Menu:update(dt)
     local option = Menu.OPTIONS[self.cursor]
     if option == "Dinge" and #self.inventory.items > 0 then
       self.mode, self.subCursor = "items", 1
+    elseif option == "Magie" and #self.inventory.spells > 0 then
+      -- ADDED 2026-08-19 (direct continuation of the Magic/spell
+      -- system investigation): this branch never existed -- "Magie"
+      -- always fell through to the generic no-op close below,
+      -- regardless of `self.inventory.spells`, even though that list
+      -- is real, tracked data an F12-style grant already populates
+      -- (see `Inventory.lua`). Real ROM-verified behavior for a FRESH,
+      -- ungranted character (zero known spells) is unaffected -- it
+      -- still closes immediately, matching the module's own original
+      -- live-tested finding.
+      self.mode, self.subCursor = "spells", 1
     elseif option == "Waffe" and #self.inventory.heldWeapons > 0 then
       self.mode = "weapons"
       -- Start the cursor on the currently-equipped weapon, if held --
@@ -161,6 +189,19 @@ function Menu:_updateSubMenu()
       self.inventory:equip(record.name)
       self.mode = "options" -- equip is instant; no reason to linger in the sub-list
     end
+    -- `self.mode == "spells"` deliberately has no branch here: unlike
+    -- `Dinge`, a spell is browsable but not (yet) actionable. Selecting
+    -- one does NOT consume it (`Inventory.lua`'s own doc comment:
+    -- spells are KNOWN, not consumed like items) and does NOT apply
+    -- an MP-cost deduction or any combat/field effect -- this
+    -- project's own "Magic/Spell" investigation found the real MP-
+    -- deduction and effect-dispatch code (see ItemTable.lua's own doc
+    -- comment) but has not wired it into actual gameplay, and doing
+    -- so here would fabricate behavior this project can't yet verify
+    -- against the real ROM. Same "HONEST SCOPE: no numeric effect
+    -- applied" precedent `Dinge`'s own `useItem` already established,
+    -- just without even the item-management side effect (a spell
+    -- doesn't leave the list once "cast").
   end
 end
 
@@ -176,22 +217,30 @@ function Menu:_drawOptions()
   end
 end
 
---- Shared draw for both sub-lists (items/weapons) -- same box, same
--- cursor convention as the main options list, just a different backing
--- array and label. FIXED (caught via an actual `love .` screenshot, not
--- guessed -- the same "no invisible/off-screen text" discipline this
--- project's other dev browsers already learned the hard way): the
--- label used to draw above the box (`BOX_Y - LINE_H - 2`), which runs
--- off the top of the native 144px canvas given `BOX_Y=8` -- now a
--- header row inside the box, with the list itself starting one row
--- lower.
+--- Shared draw for both sub-lists (items/weapons/spells) -- same box,
+-- same cursor convention as the main options list, just a different
+-- backing array and label. FIXED (caught via an actual `love .`
+-- screenshot, not guessed -- the same "no invisible/off-screen text"
+-- discipline this project's other dev browsers already learned the
+-- hard way): the label used to draw above the box (`BOX_Y - LINE_H -
+-- 2`), which runs off the top of the native 144px canvas given
+-- `BOX_Y=8` -- now a header row inside the box, with the list itself
+-- starting one row lower.
+--
+-- EXTENDED 2026-08-19 (Magie sub-list): appends the real, decoded
+-- `mpCost` (see ItemTable.lua's own doc comment, 8/8 external matches)
+-- next to a spell's name when the record carries one -- items/weapons
+-- records have no such field (`record.mpCost` is `nil`), so this stays
+-- a no-op for those two lists, not a spells-only special case wired in
+-- by mode name.
 function Menu:_drawSubMenu(list, label)
   self.font:print(label, BOX_X + 4, BOX_Y + 3, { 0, 0, 0, 1 })
   for i, record in ipairs(list) do
     local y = BOX_Y + 4 + LINE_H + (i - 1) * LINE_H
     if y > BOX_Y + BOX_H - LINE_H then break end -- honest clip, no overflow past the box
     local prefix = (i == self.subCursor) and ">" or " "
-    self.font:print(prefix .. record.name, BOX_X + 4, y, { 0, 0, 0, 1 })
+    local suffix = record.mpCost and record.mpCost > 0 and (" " .. record.mpCost .. "MP") or ""
+    self.font:print(prefix .. record.name .. suffix, BOX_X + 4, y, { 0, 0, 0, 1 })
   end
 end
 
@@ -221,6 +270,8 @@ function Menu:draw()
       self:_drawSubMenu(self.inventory.items, "Dinge")
     elseif self.mode == "weapons" then
       self:_drawSubMenu(self.inventory.heldWeapons, "Waffe")
+    elseif self.mode == "spells" then
+      self:_drawSubMenu(self.inventory.spells, "Magie")
     end
     self.font:print(Menu.STATUS_WORD, statusX + 3, BOX_Y + 4, { 0, 0, 0, 1 })
     local weapon = self.inventory:equippedWeapon()

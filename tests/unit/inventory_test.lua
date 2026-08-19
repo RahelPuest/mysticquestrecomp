@@ -70,17 +70,22 @@ Harness.testIfAvailable(
     local inv = Inventory.new(romData, profile)
     local boundary = profile.itemTable.categoryBoundaryRecord
 
-    Harness.assertEqual(#inv.itemCatalog, boundary)
-    Harness.assertEqual(#inv.spellCatalog, profile.itemTable.recordCount - boundary)
+    -- CORRECTED 2026-08-19 (see Inventory.lua's own doc comment): the
+    -- split direction was backwards -- records BELOW the boundary
+    -- (0-7) are the real spells, records AT/ABOVE it (8+) are the
+    -- real shop items. Counts and per-record checks below now assert
+    -- the corrected direction.
+    Harness.assertEqual(#inv.spellCatalog, boundary)
+    Harness.assertEqual(#inv.itemCatalog, profile.itemTable.recordCount - boundary)
 
     -- Every catalog entry's own index should land on the correct side
     -- of the boundary -- catches an off-by-one in the split, not just
     -- the totals.
-    for _, record in ipairs(inv.itemCatalog) do
-      Harness.assertTrue(record.index < boundary, "itemCatalog entry should be before the boundary")
-    end
     for _, record in ipairs(inv.spellCatalog) do
-      Harness.assertTrue(record.index >= boundary, "spellCatalog entry should be at/after the boundary")
+      Harness.assertTrue(record.index < boundary, "spellCatalog entry should be before the boundary")
+    end
+    for _, record in ipairs(inv.itemCatalog) do
+      Harness.assertTrue(record.index >= boundary, "itemCatalog entry should be at/after the boundary")
     end
   end
 )
@@ -115,18 +120,19 @@ Harness.testIfAvailable(
     Harness.assertEqual(#inv.spells, 0)
 
     -- Grant a real spell from the catalog -- files under spells, not items.
-    -- NOTE (2026-08-15, item/spell table extended -- see ItemTable.lua's
-    -- own doc comment): `spellCatalog[1].name` is now the real, live-
-    -- decoded "Lebe" -- which genuinely, honestly COLLIDES with
-    -- `itemCatalog[1].name` (also "Lebe", a different real ROM record
-    -- that happens to decode to the same shortened name). `addItem`
+    -- NOTE (2026-08-19, item/spell split direction CORRECTED -- see
+    -- Inventory.lua's own doc comment): `spellCatalog[1].name` is the
+    -- real, live-decoded "Lebe" (the Cure spell, record 0) -- which
+    -- genuinely, honestly COLLIDES with `itemCatalog[1].name` (also
+    -- "Lebe", the real Cure shop potion, record 8 -- a different real
+    -- ROM record that happens to decode to the same name). `addItem`
     -- checks `itemCatalog` first (see its own doc comment), so granting
     -- that exact name would resolve against the ALREADY-held item, not
     -- a distinct spell -- a real, honest ambiguity in the ROM's own
     -- data, not a bug in this test or in `addItem`. Uses
-    -- `spellCatalog[2]` ("S-Lebe") instead, a real spell name with no
-    -- such collision, to keep testing what this test actually intends
-    -- (a DISTINCT item + spell round-trip).
+    -- `spellCatalog[2]` ("Salb", the real Heal spell, record 1) instead,
+    -- a real spell name with no such collision, to keep testing what
+    -- this test actually intends (a DISTINCT item + spell round-trip).
     local firstSpellName = inv.spellCatalog[2].name
     Harness.assertTrue(inv:addItem(firstSpellName))
     Harness.assertTrue(inv:has(firstSpellName))
@@ -163,7 +169,7 @@ Harness.testIfAvailable(
   function()
     local inv = Inventory.new(romData, profile)
     local itemName = inv.itemCatalog[1].name
-    local spellName = inv.spellCatalog[2].name -- see the collision note above -- avoids itemCatalog[1]'s own name clash
+    local spellName = inv.spellCatalog[2].name -- "Salb" -- see the collision note above -- avoids itemCatalog[1]'s own "Lebe" name clash
 
     Harness.assertTrue(not inv:useItem(itemName), "not held yet")
 

@@ -70,8 +70,8 @@ function Inventory.new(romData, profile)
   local self = setmetatable({
     items = {}, -- held consumable items, real-empty for a fresh character
     spells = {}, -- known spells, real-empty for a fresh character
-    itemCatalog = {}, -- every real ItemTable record whose categoryByte marks it a consumable
-    spellCatalog = {}, -- every real ItemTable record whose categoryByte marks it a spell
+    itemCatalog = {}, -- every real ItemTable record index >= categoryBoundaryRecord (the shop-purchasable recovery/status-cure items)
+    spellCatalog = {}, -- every real ItemTable record index < categoryBoundaryRecord (the 8 real MP-costed castable spells)
     weaponCatalog = {}, -- every real WeaponTable record (the full in-ROM catalog, not what the player owns)
     weaponStatCatalog = {}, -- every real WeaponStatTable record (power/price, see below) -- a SEPARATE catalog, not merged into weaponCatalog
     heldWeapons = {}, -- the weapons this character actually HAS -- starts with just the real starting weapon
@@ -83,9 +83,14 @@ function Inventory.new(romData, profile)
       local records = ItemTable.decode(romData, profile.itemTable)
       local boundary = profile.itemTable.categoryBoundaryRecord
       for _, record in ipairs(records) do
-        -- VERIFIED split (ItemTable.lua doc comment): records before the
-        -- boundary are consumable items, from the boundary on are spells.
-        if boundary and record.index >= boundary then
+        -- CORRECTED 2026-08-19 (see ItemTable.lua's own doc comment,
+        -- live-disassembled MP-deduction code + 8/8 external mpCost
+        -- matches): this split used to read "records before the
+        -- boundary are consumable items, from the boundary on are
+        -- spells" -- exactly backwards. Records 0-7 (index < boundary)
+        -- are the real 8 MP-costed castable spells; records 8+ are the
+        -- real shop-purchasable recovery/status-cure items.
+        if boundary and record.index < boundary then
           self.spellCatalog[#self.spellCatalog + 1] = record
         else
           self.itemCatalog[#self.itemCatalog + 1] = record

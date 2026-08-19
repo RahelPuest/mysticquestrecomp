@@ -1488,7 +1488,7 @@ const OPCODES = [
   },
   {
     "handler": 3762,
-    "note": "A real, fully-traced $D499-driven 2-step entity-lifecycle state machine (step0 allocates a real entity slot via the already-known $0A74 primitive, calls $2F03; step1 calls $2ED3 -- real halt if not ready -- else despawns the slot via $0AE3). Both $2F03/$2ED3 resolve to real cases of the already-mapped $1ED7 bank-1 dispatcher. Genuinely known-hard NOT because the mechanism is opaque (it's real, traced, decodable ROM code) but because fully resolving \"ready\" needs the $52CD sub-table's own untraced targets AND a live entity/OAM lifecycle simulation this project doesn't have.",
+    "note": "A real, fully-traced $D499-driven 2-step entity-lifecycle state machine (step0 allocates a real entity slot via the already-known $0A74 primitive, calls $2F03; step1 calls $2ED3 -- real halt if not ready -- else despawns the slot via $0AE3). Both $2F03/$2ED3 resolve to real cases of the already-mapped $1ED7 bank-1 dispatcher. LIVE-CONFIRMED 2026-08-19: the first successful live puppeteering injection in this project's history reached this exact handler and ran it -- step0's real entity-slot allocation matched byte-for-byte (a genuine 20-slot live scan, real data written into a found free slot). Genuinely known-hard NOT because the mechanism is opaque (it's real, traced, decodable ROM code, now also live-confirmed) but because fully resolving \"ready\" needs the $52CD sub-table's own untraced targets AND a live entity/OAM lifecycle simulation this project doesn't have wired into its own interpreter yet.",
     "opcode": 186,
     "status": "known-hard"
   },
