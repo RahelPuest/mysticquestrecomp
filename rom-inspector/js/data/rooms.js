@@ -115,7 +115,22 @@ const ROOMS = [
     "widthTiles": 20
   },
   {
-    "exits": [],
+    "exits": [
+      {
+        "landingX": 8,
+        "landingY": 72,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-derived (see doc comment above)",
+        "targetRoom": "unknownRoomA_8",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 112,
+          "yMin": 80
+        }
+      }
+    ],
     "heightTiles": 16,
     "name": "seventhRoom",
     "widthTiles": 20,
@@ -188,6 +203,111 @@ const ROOMS = [
     ],
     "heightTiles": 16,
     "name": "thirdRoom",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 8,
+        "landingY": 80,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-derived",
+        "targetRoom": "unknownRoomA_11",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 72,
+          "yMin": 64
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "unknownRoomA_10",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 8,
+        "landingY": 80,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-derived",
+        "targetRoom": "unknownRoomA_12",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 72,
+          "yMin": 64
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "unknownRoomA_11",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 8,
+        "landingY": 120,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-derived",
+        "targetRoom": "unknownRoomA_13",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 112,
+          "yMin": 104
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "unknownRoomA_12",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 8,
+        "landingY": 112,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-derived",
+        "targetRoom": "unknownRoomA_9",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 112,
+          "yMin": 80
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "unknownRoomA_8",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 8,
+        "landingY": 80,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-derived",
+        "targetRoom": "unknownRoomA_10",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 72,
+          "yMin": 64
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "unknownRoomA_9",
     "widthTiles": 20
   },
   {

@@ -2000,7 +2000,37 @@ RomProfiles.PROFILES = {
         -- eighthRoom was byte-matched against a row that no longer
         -- exists here. No real destination known for this room's south
         -- row or east edge yet -- left honestly unexplored.
-        exits = {},
+        --
+        -- ADDED 2026-08-19, direct user instruction ("Regel für
+        -- unknownRoomA bewusst lockern... voll spielbare Version"):
+        -- an EXPLICIT, deliberate ENGINEERING CHOICE, not a claimed ROM
+        -- fact -- same category and same honesty standard as
+        -- `sixthRoom`'s own static west exit. `unknownRoomA`'s own 6
+        -- rooms (see `graphics.unknownRoomA_8` etc. below) are real,
+        -- fully-decoded ROM content that this project's own established
+        -- policy previously refused to connect ("would misrepresent
+        -- invented data as decoded ROM behavior"). That policy is
+        -- deliberately relaxed HERE, on direct user instruction, in
+        -- service of overall playability -- the room CONTENT stays 100%
+        -- real ROM data; only this door and its exact position are
+        -- invented. This room's own east wall (rows 11-14, the only
+        -- real floor found along any of its 4 edges besides the
+        -- already-explored south) was picked simply because it's the
+        -- one edge with enough real walkable floor to place a door on --
+        -- not because of any ROM evidence it leads anywhere.
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-derived (see doc comment above)",
+            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 112 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_8",
+            -- Landing tile (row8,col1 1-based -> 0-based row7/col0) is
+            -- real, confirmed-walkable floor in unknownRoomA_8's own
+            -- already-decoded grid (tile 33, in `floorTileIds`) --
+            -- verified by direct inspection, not guessed.
+            landingX = 8, landingY = 72,
+          },
+        },
       },
       -- ADDED (same continuation, same self-correction): real bank-5
       -- catalog record 236 -- seventhRoom's own SOUTH neighbor (not the
@@ -2864,56 +2894,138 @@ RomProfiles.PROFILES = {
       -- HONEST SCOPE, same as rom-map.md's own "unknownRoomA VISUALLY
       -- CONFIRMED" section: the ROOM CONTENT itself (tiles, layout,
       -- floor classification) is real ROM data. The CONNECTIVITY is
-      -- NOT -- no live gameplay trigger into this area was ever found,
-      -- so there is no real ROM-derived door/exit into or between these
-      -- 6 rooms. This project does not fabricate one (would misrepresent
-      -- invented data as decoded ROM behavior, exactly what this
-      -- project's own engineering rules forbid) -- see
-      -- `src/app/states/RoomExplorer.lua` for how a developer actually
-      -- reaches these rooms in-app: a clearly-marked dev-only content
-      -- browser (F8 from Field.lua), not a real in-fiction path.
+      -- NOT -- no live gameplay trigger into this area was ever found.
+      -- `src/app/states/RoomExplorer.lua` (F8 from Field.lua) remains
+      -- the clearly-marked dev-only way to browse all 6 without any
+      -- invented door.
+      --
+      -- POLICY CHANGE, 2026-08-19, direct user instruction ("Regel für
+      -- unknownRoomA bewusst lockern... voll spielbare Version"): this
+      -- doc comment used to say this project "does not fabricate" a
+      -- door here. That blanket refusal is deliberately relaxed now,
+      -- specifically for these 6 rooms, in service of overall
+      -- playability -- see `seventhRoom.exits`' own doc comment for the
+      -- real entry point, and each room's own `exits` field below for
+      -- the linear 8->9->10->11->12->13 chain connecting them. Every
+      -- one of these doors is an explicit ENGINEERING CHOICE (own
+      -- `status` field says so on each), never presented as ROM-
+      -- confirmed -- the underlying room CONTENT stays exactly as real
+      -- as it always was; only the doors and their positions are new,
+      -- invented plumbing. Landing tiles were each individually checked
+      -- against the room's own real `floorTileIds` before being chosen
+      -- (see `/tmp/find_landing_spots.lua`-style scratch tooling, not
+      -- checked in) -- not eyeballed.
       unknownRoomA_8 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented dev-only wiring, not ROM data",
+        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
         romRoomSelector = 8,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[8],
+        -- ENGINEERING CHOICE (see the block doc comment above): east
+        -- wall rows 11-14 (1-based) is real, confirmed-walkable floor
+        -- on this room's own east edge -- the only edge here with
+        -- enough real floor for a door besides the entry point.
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-derived",
+            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 112 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_9",
+            -- row13,col1 (1-based) -- real floor (tile 94, in
+            -- floorTileIds) on unknownRoomA_9's own west edge.
+            landingX = 8, landingY = 112,
+          },
+        },
       },
       unknownRoomA_9 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented dev-only wiring, not ROM data",
+        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
         romRoomSelector = 9,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[9],
+        -- ENGINEERING CHOICE: row9 (1-based) is real floor on both this
+        -- room's own east edge AND unknownRoomA_10's west edge -- picked
+        -- for the clean match, not a claimed ROM fact.
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-derived",
+            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 72 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_10",
+            landingX = 8, landingY = 80,
+          },
+        },
       },
       unknownRoomA_10 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented dev-only wiring, not ROM data",
+        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
         romRoomSelector = 10,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[10],
+        -- ENGINEERING CHOICE: row9 (1-based) is real floor on both this
+        -- room's own east edge AND unknownRoomA_11's west edge.
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-derived",
+            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 72 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_11",
+            landingX = 8, landingY = 80,
+          },
+        },
       },
       unknownRoomA_11 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented dev-only wiring, not ROM data",
+        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
         romRoomSelector = 11,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[11],
+        -- ENGINEERING CHOICE: row9 (1-based) is real floor on both this
+        -- room's own east edge AND unknownRoomA_12's west edge.
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-derived",
+            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 72 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_12",
+            landingX = 8, landingY = 80,
+          },
+        },
       },
       unknownRoomA_12 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented dev-only wiring, not ROM data",
+        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
         romRoomSelector = 12,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[12],
+        -- ENGINEERING CHOICE: row14 (1-based) is the one real floor row
+        -- shared between this room's own east edge and
+        -- unknownRoomA_13's own west edge (its only west-edge floor
+        -- tile at all).
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-derived",
+            zone = { xMin = 144, xMax = 160, yMin = 104, yMax = 112 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_13",
+            landingX = 8, landingY = 120,
+          },
+        },
       },
+      -- unknownRoomA_13 is this engineering-choice chain's own dead
+      -- end -- no further exit (see the block doc comment above): its
+      -- own real floor is concentrated on its NORTH/EAST edges (a
+      -- genuinely different shape from the other 5 rooms' own west/
+      -- east corridor pattern), not a clean continuation of this same
+      -- chain. Left honestly unexplored rather than forcing a 7th door
+      -- through geometry that doesn't support one as cleanly.
       unknownRoomA_13 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented dev-only wiring, not ROM data",
+        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
         romRoomSelector = 13,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,

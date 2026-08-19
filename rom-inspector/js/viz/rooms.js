@@ -49,9 +49,20 @@ function render_rooms(main) {
       die 2026-08-16 direkt aus dem ROM dekodiert wurden (Bank 14, Ziel-<code>roomSelector</code>
       + reale Landeposition in einem Record). Der Grund für den Unterschied ist ehrlich: nur
       2 dieser 82 Einträge haben einen bekannten echten In-Game-Auslöser und sind deshalb hier
-      als spielbare Kante verdrahtet &mdash; die anderen 80 (darunter 36 zur lange mysteriösen
-      <code>unknownRoomA</code>-Familie) sind reale ROM-Daten ohne bekannten Trigger. Siehe den
-      <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige Tabelle.
+      als spielbare Kante verdrahtet &mdash; die anderen 80 sind reale ROM-Daten ohne bekannten
+      Trigger. Siehe den <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige
+      Tabelle.
+    </p>
+    <p class="page-lede">
+      <strong>ENGINEERING CHOICE, 2026-08-19</strong> (direkte Nutzeranweisung, "voll spielbare
+      Version"): <code>seventhRoom</code> &rarr; <code>unknownRoomA_8..13</code> ist eine
+      bewusst erfundene Tür-Kette, keine ROM-bestätigte Verbindung &mdash; jede einzelne Kante
+      trägt <code>status = "ENGINEERING CHOICE, not ROM-derived"</code> in den Rohdaten. Die
+      lange mysteriöse <code>unknownRoomA</code>-Familie (6 real dekodierte Räume, vorher nur
+      über den Dev-Browser F8 erreichbar) ist damit zum ersten Mal auf einem normalen Spielweg
+      betretbar. Der Rauminhalt selbst ist zu 100% echte ROM-Daten; nur diese 6 Türen und ihre
+      genaue Position sind erfunden &mdash; jeder Landepunkt wurde einzeln gegen den echten,
+      bereits dekodierten Boden-Raster geprüft (nie in eine Wand), nicht geraten.
     </p>
     <p class="page-lede">
       <span style="color:#9d6fe0;">&equiv; <code>startRoom</code></span> (violetter Rahmen
