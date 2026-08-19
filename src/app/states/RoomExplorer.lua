@@ -33,6 +33,29 @@
 -- way; just don't read "room N here" as "this is definitely some
 -- specific dungeon room" for anything past the original 6.
 --
+-- CORRECTED 2026-08-19 (direct P0 follow-up): the generic-tileset
+-- upgrade below (adopted to replace an "unknownRoomA-borrowed
+-- placeholder" that used to stand in for all 384 rooms) had
+-- accidentally regressed bank-5 records 8-13 -- rendering them with the
+-- GENERIC catalog metatile table + tileset instead of unknownRoomA's
+-- own dedicated, independently-VERIFIED ones (`roomFloorLayoutPipeline
+-- .unknownRoomACandidates`, metatile table file `0x20938`, tileset
+-- file `0x32000` -- genuinely different real ROM regions from the
+-- generic catalog's own `0x20690`/`0x30000`, not the same value under
+-- two names). `_loadRoom` below now special-cases 8-13 back onto their
+-- own real table pair -- confirmed live (`MYSTICQUEST_DEBUG_STATE=
+-- roomexplorer:9`/`:14`, screenshotted): renders the exact real
+-- brick-wall/mesh-floor dungeon art already established, matching
+-- `render_unknown_room_a.py`'s own independent rendering exactly. This
+-- also gives `unknownRoomA` real, position-aware, per-metatile-
+-- instance walkability automatically (this module's own existing
+-- `TileWalkability.buildFromCollisionGrid` mechanism, already built
+-- for exactly this shape of data) -- the "trustworthy floor source"
+-- `rom_profiles.lua`'s own `unknownRoomA_8` doc comment says was still
+-- missing, without needing a flat, tile-ID-keyed `floorTileIds` set at
+-- all (proven structurally incapable of representing this table's real
+-- collision data -- see that doc comment's own 2026-08-19 entries).
+--
 -- TILESET UPGRADED: now uses `genericCatalogMetatileTableFileOffset`
 -- (`roomSelector` 0/1's `tileSourcePointer`, `0x200B0`) instead of the
 -- old, unknownRoomA-borrowed placeholder -- a structurally-derived
@@ -146,9 +169,51 @@ function RoomExplorer:_loadRoom(index)
   self.sourceLabel = sourceLabel
   self.recordIndex = recordIndex
 
+  -- CORRECTED 2026-08-19 (direct P0 follow-up, "unknownRoomA's own
+  -- floor data" investigation): bank-5 records 8-13 are the ONLY 6 of
+  -- these 384 catalog entries with an independently-VERIFIED, DEDICATED
+  -- metatile table of their own (`roomFloorLayoutPipeline
+  -- .unknownRoomACandidates.metatileTableFileOffset`, file `0x20938`)
+  -- -- this module's doc comment already says so ("that stronger claim
+  -- only holds for the original 6, unknownRoomA, roomSelectors 8-13").
+  -- The generic `genericCatalogMetatileTableFileOffset` default below
+  -- was adopted for the OTHER 378 records (replacing an earlier,
+  -- cruder "borrow unknownRoomA's own table for everything" placeholder
+  -- -- see this file's own "TILESET UPGRADED" doc comment above) but
+  -- accidentally stopped special-casing 8-13 back to their own real
+  -- table in the process -- a real, previously-unnoticed regression,
+  -- not an intentional simplification. Restoring it here also gives
+  -- `unknownRoomA` real, position-aware, per-metatile-instance
+  -- collision data automatically (this module's own `collisionGrid`
+  -- below) -- the exact "trustworthy floor source" `rom_profiles.lua`'s
+  -- `unknownRoomA_8` doc comment says is still missing, WITHOUT needing
+  -- a flat, tile-ID-keyed `floorTileIds` set at all (already proven
+  -- structurally incapable of representing this specific table's real
+  -- collision data -- see that doc comment's own 2026-08-19 "DEEPER
+  -- BLOCKER" entry).
+  local isUnknownRoomA = sourceLabel == "bank5" and recordIndex >= 8 and recordIndex <= 13
+  local unknownRoomACandidates = self.profile.roomFloorLayoutPipeline.unknownRoomACandidates
+  -- Both the metatile table AND the tileset differ for unknownRoomA's
+  -- own dedicated pipeline -- `unknownRoomACandidates.tilesetFileOffset`
+  -- (file 0x32000) vs. `mapTable.tilesetFileOffset` (file 0x30000, the
+  -- generic bank5 tileset) are genuinely different real ROM regions,
+  -- not the same value under two names. Swapping only the metatile
+  -- table and leaving the generic tileset in place (a real bug this
+  -- fix's own first attempt made) pairs unknownRoomA's own real
+  -- metatile/collision data against the WRONG graphics -- garbled,
+  -- not the clean brick-wall/mesh-floor art already visually confirmed
+  -- (see rom_profiles.lua's own `unknownRoomA_8` doc comment).
+  local metatileTableFileOffset = isUnknownRoomA
+    and unknownRoomACandidates.metatileTableFileOffset
+    or self.profile.roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset
+  local tilesetFileOffset = isUnknownRoomA
+    and unknownRoomACandidates.tilesetFileOffset
+    or mapTable.tilesetFileOffset
+  self.isUnknownRoomA = isUnknownRoomA
+
   local opts = {
-    metatileTableFileOffset = self.profile.roomFloorLayoutPipeline.genericCatalogMetatileTableFileOffset,
-    tilesetFileOffset = mapTable.tilesetFileOffset,
+    metatileTableFileOffset = metatileTableFileOffset,
+    tilesetFileOffset = tilesetFileOffset,
     metatileGridRows = METATILE_GRID_ROWS,
     metatileGridCols = METATILE_GRID_COLS,
   }
@@ -253,11 +318,19 @@ function RoomExplorer:draw()
 
   if self.overlay then
     self.overlay:addLine("room (dev-only, no ROM connectivity)",
-      string.format("%s record %d", self.sourceLabel, self.recordIndex))
-    self.overlay:addLine("tileset",
-      "structurally derived (roomSelector 0/1's real tileSourcePointer) -- not gameplay-confirmed")
-    self.overlay:addLine("collision",
-      "extrapolated (COLLISION_WALL_MASK) -- not live-verified for this room")
+      string.format("%s record %d%s", self.sourceLabel, self.recordIndex,
+        self.isUnknownRoomA and " (unknownRoomA)" or ""))
+    if self.isUnknownRoomA then
+      self.overlay:addLine("tileset",
+        "unknownRoomA's own dedicated, VERIFIED metatile table (file 0x20938) -- not the generic catalog default")
+      self.overlay:addLine("collision",
+        "VISUALLY CONFIRMED (2026-08-19: collision 0x30 renders as real brick wall, 0x00/0x08 as real mesh floor) -- still no live movement test")
+    else
+      self.overlay:addLine("tileset",
+        "structurally derived (roomSelector 0/1's real tileSourcePointer) -- not gameplay-confirmed")
+      self.overlay:addLine("collision",
+        "extrapolated (COLLISION_WALL_MASK) -- not live-verified for this room")
+    end
   end
 end
 

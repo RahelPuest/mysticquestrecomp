@@ -3374,6 +3374,31 @@ RomProfiles.PROFILES = {
       -- .py`, `audit_unknownRoomA_conflicts.lua`,
       -- `verify_new_floorset.lua`) kept in the scratchpad, not
       -- committed.
+      --
+      -- RESOLVED, same day, direct follow-up ("p0 hat prio"): the
+      -- "needs a structural change" conclusion above turned out to be
+      -- smaller than expected -- `TileWalkability.buildFromCollisionGrid`
+      -- (position-aware, no flat set needed) already existed, already
+      -- proven for `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
+      -- output, and `RoomExplorer.lua` (F8) already used exactly this
+      -- pair for its own general 384-room browsing -- it just had a
+      -- real, previously-unnoticed regression: bank-5 records 8-13 were
+      -- being decoded with the GENERIC catalog metatile table/tileset
+      -- instead of unknownRoomA's own dedicated, verified pair (see
+      -- `RoomExplorer.lua`'s own dated doc comment for the full fix).
+      -- Fixed there, confirmed live via 2 real screenshots
+      -- (`MYSTICQUEST_DEBUG_STATE=roomexplorer:9`/`:14`) matching
+      -- `render_unknown_room_a.py`'s own independent rendering exactly
+      -- -- F8's own dev-browser now shows `unknownRoomA` with its real
+      -- art AND real, position-aware, per-metatile-instance
+      -- walkability, no flat `floorTileIds` limitation. The fields
+      -- below (`grid`/`floorTileIds`/`tileOffsets`) are NOT what drives
+      -- this anymore (F8 decodes everything live from the ROM, per
+      -- `RoomExplorer.lua`'s own top-of-file doc comment) -- they stay
+      -- as a real, still-accurate record of the room CONTENT (and the
+      -- gate flag F8 checks for), just no longer the walkability
+      -- source. Connectivity (real doors into normal gameplay) stays
+      -- withdrawn regardless -- still no live trigger.
       unknownRoomA_8 = {
         status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 8,
