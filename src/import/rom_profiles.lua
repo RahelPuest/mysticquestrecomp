@@ -717,6 +717,60 @@ RomProfiles.PROFILES = {
         -- mechanism, while also showing open/close are NOT symmetric
         -- at the code level -- a real, previously-unknown structural
         -- detail.
+        --
+        -- SAME DAY, direct follow-up ("ja mach das", tracing WHICH
+        -- script drives the close): decisive, historic-for-this-thread
+        -- finding. `$0F1E` is exactly this project's own already-
+        -- decoded `ScriptOpcodeTable.BYTE_WORD_COMMAND_HANDLER_ADDRESS`
+        -- (real script opcode `0xB0`) -- live-captured real operands
+        -- for THIS specific invocation: `byteValue=0x6C, wordValue=
+        -- 0x0509`, script bytes at ROM file `0x346C9` (bank 13). This
+        -- is a real script dispatch, not hardcoded room-init code (see
+        -- `$0F24`'s own `CALL $3727` tail, returning to the main
+        -- dispatch loop) -- and it answers this project's own long-
+        -- standing "$2400 helper -- HYPOTHESIS" open question (see
+        -- `StandardScriptHandlers.byteWordCommand`'s own doc comment):
+        -- for this real invocation, `$2400` performs the entrance-seal
+        -- close write.
+        --
+        -- Traced further, HOW bank 13 gets reached: zero of the 1357
+        -- `scriptPointerTable` entries resolve to bank 13 at all (a
+        -- real, direct check, not assumed) -- so this script is NOT
+        -- one of the 1357 top-level scripts. Live bank-stack tracing
+        -- (watching every `$29FB`/`$2A0A` push/pop transition) found
+        -- the real PUSH of bank 13 happens at `$3260` -> `$3C6B` (a
+        -- bank-calling trampoline, same shape as this project's own
+        -- already-documented "save regs, `CALL $29FB`, jump through the
+        -- target bank's own local table" convention) -- and `$3260`
+        -- itself is straight-line fall-through code starting at `$31AD`
+        -- -- **this project's own already-fully-disassembled `$31AD`
+        -- "cross-actor dispatch redirect" mechanism** (task #149,
+        -- originally characterized only for the boss-defeat sequence's
+        -- own continuation: sets `$C0A1`/`$C0A2` bits 2+1, writes the
+        -- persistent cursor `$D8B6`/`$D8B7`, `CALL $3727`). Byte-exact
+        -- match confirmed via fresh disassembly of `$31AD`-`$3234`.
+        --
+        -- **Historic significance for the wider room-connectivity
+        -- investigation** (see events.md's own 2026-08-19 "bank-14
+        -- transition" entries): this is a SECOND, independent, live-
+        -- observed real trigger for `$31AD` (room-load, not actor-
+        -- despawn-edge-detection) -- direct proof `$31AD` is a genuinely
+        -- GENERAL "redirect the persistent script cursor" dispatcher,
+        -- not a boss-defeat-specific one-off, AND that it can reach
+        -- bank 13 in real play -- one bank further than the exhaustive
+        -- whole-corpus STATIC simulation ever found reachable (bank 12
+        -- max, with generous-but-fixed stub gate answers) -- because
+        -- that simulation could only cover the 1357 known scripts'
+        -- own reachable content, never `$31AD`'s own real trigger
+        -- conditions, which live outside that corpus entirely. Does
+        -- NOT by itself reach bank 14 (this session's real remaining
+        -- open connectivity target) -- what specifically calls `$31AD`
+        -- for THIS trigger (room-load, as opposed to the boss-defeat
+        -- trigger) was not traced further this pass -- a real, well-
+        -- scoped, promising follow-up: if `$31AD` has a THIRD real
+        -- trigger reaching bank 14, that would be the first genuine,
+        -- live-provable path into the 82 real `CutTransitionTable`
+        -- transitions this project has been chasing all session.
         entranceSeal = {
           status = "VERIFIED",
           bgRow = 10, bgCol = 18, rows = 2, cols = 2, -- BG tilemap row10-11, col18-19
