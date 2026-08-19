@@ -210,7 +210,7 @@ Harness.testIfAvailable(
     -- Cure 2/Heal 1/Sleep 1/Mute 1/Fire 1/Ice 2/Lightning 2/Nuke 3) --
     -- 8 of 8 records match exactly, in order. See this module's own
     -- top-of-file 2026-08-19 doc comment for the full live-
-    -- disassembled ROM trace (bank 2 $B18F-$B1AB / $A660-$A67E) this
+    -- disassembled ROM trace (bank 2 $718F-$71AB / $6660-$667E) this
     -- field is derived from.
     local expectedMpCost = {
       [1] = 2, -- "Lebe" (Cure)

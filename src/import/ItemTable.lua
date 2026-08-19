@@ -125,8 +125,8 @@
 -- Found by live-disassembling the real ROM's own MP-deduction code
 -- (`tools/rom/watcher.py`/`disasm.py`, direct scan for every real
 -- literal reference to `$D7B6`-`$D7B9`, the already-known curMP/maxMP
--- WRAM cells): bank 2, CPU `$B18F`-`$B1AB` (the menu-context "cast"
--- routine) and its battle-context sibling `$A660`-`$A67E` (same shape,
+-- WRAM cells): bank 2, CPU `$718F`-`$71AB` (the menu-context "cast"
+-- routine) and its battle-context sibling `$6660`-`$667E` (same shape,
 -- gated behind an extra `$D6EF`/index<9 check first) both do the exact
 -- same real thing --
 --   LD HL,0x5DEC / CALL 0x768C   -- resolve a per-spell-index pointer
@@ -255,7 +255,7 @@ function ItemTable.decode(romData, itemTable)
     local price = raw:byte(14) + raw:byte(15) * 256
     -- mpCost: `categoryByte AND 0x1F` -- found 2026-08-19 by live-
     -- disassembling the real ROM's own MP-deduction routine (bank 2,
-    -- CPU $B18F-$B1AB and its battle-context sibling $A660-$A67E; see
+    -- CPU $718F-$71AB and its battle-context sibling $6660-$667E; see
     -- this module's own top-of-file doc comment for the full trace).
     -- Only genuinely meaningful for records 0-7 (the real castable
     -- spells -- masked value is 0 for every other record, records 8+

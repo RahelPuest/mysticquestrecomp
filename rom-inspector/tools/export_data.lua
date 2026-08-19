@@ -1209,7 +1209,7 @@ do
      "honestly rather than guessed. `items[].price` (found 2026-08-18) is bytes 13-14 (LE u16), " ..
      "VERIFIED 8/8 against a real external gold-cost list -- 0 for records 0-7 (never sold in a " ..
      "shop), not a missing value. `items[].mpCost` (found 2026-08-19, live-disassembled ROM " ..
-     "MP-deduction code, bank 2 $B18F-$B1AB) is `categoryByte AND 0x1F` -- VERIFIED 8/8 against " ..
+     "MP-deduction code, bank 2 $718F-$71AB) is `categoryByte AND 0x1F` -- VERIFIED 8/8 against " ..
      "the same external guide. `isSpell` (records 0-7) marks the real castable spells " ..
      "(Cure/Heal/Sleep/Mute/Fire/Ice/Lightning/Nuke); records 8+ are the shop-purchasable " ..
      "recovery/status-cure items -- CORRECTED 2026-08-19, this used to be labeled backwards. " ..

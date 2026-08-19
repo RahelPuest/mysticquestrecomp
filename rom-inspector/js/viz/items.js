@@ -24,7 +24,7 @@ function render_items(main) {
       Blok=Sleep, Ruhe=Mute, Flam=Fire, Eis=Ice, Bliz=Lightning, Bomb=Nuke) --
       NICHT "Wurf-/Kampfitems" wie fruehere Doku hier annahm. Live per
       mGBA-Disassemblierung der echten ROM-Abzugsroutine gefunden (Bank 2,
-      <code>$B18F-$B1AB</code>): <code>categoryByte AND 0x1F</code> ist der
+      <code>$718F-$71AB</code>): <code>categoryByte AND 0x1F</code> ist der
       echte MP-Kosten-Wert, 8 von 8 exakt gegen denselben externen Guide
       abgeglichen (Cure=2, Heal=1, Sleep=1, Mute=1, Fire=1, Ice=2,
       Lightning=2, Nuke=3). Was der jeweilige Zauber im Kampf konkret

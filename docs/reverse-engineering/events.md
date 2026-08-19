@@ -11966,7 +11966,7 @@ different domain entirely) was not touched.
 
 **Static scan first**: direct byte search of the whole 256KB ROM for every literal `LD A,(nn)`/`LD (nn),A`/`LD HL,nn` (opcodes `0xFA`/`0xEA`/`0x21`) referencing `$D7B6`-`$D7B9` found real hits in bank 0 and bank 2. Bank 0's cluster (`$3968`-`$3980`) turned out to be the ALREADY-KNOWN `HEAL_MP_HANDLER_ADDRESS` (restore-to-max, not consumption) -- a useful sanity check that the method works, not a new find. A second bank-2 cluster (`$AE60`-`$AEAE`) turned out to be the real NEW-CHARACTER INIT routine -- decisively confirms this project's already-live-observed starting stats (`LP 19`, `MP 6`) are hardcoded ROM constants, not rolled.
 
-**The real find**: bank 2, CPU `$B18F`-`$B1AB` (menu-context) and a battle-context sibling `$A660`-`$A67E` (same shape, gated behind an extra `$D6EF`/index-under-9 check first) -- both fully disassembled:
+**The real find**: bank 2, CPU `$718F`-`$71AB` (menu-context) and a battle-context sibling `$6660`-`$667E` (same shape, gated behind an extra `$D6EF`/index-under-9 check first) -- both fully disassembled:
 ```
 LD HL,0x5DEC          ; table base
 CALL 0x768C            ; resolve per-index pointer (disassembled too)
@@ -11988,3 +11988,7 @@ LD (0xD7B6),A              ; else: commit
 **Honest remaining scope**: this closes WHICH record is which spell, its real MP cost, and the real ROM code that deducts it -- it does NOT close what casting a given spell actually DOES in combat (elemental damage/heal-amount/status-effect formulas per spell), and none of this is wired into live gameplay (no spell-learning trigger exists to make it reachable yet).
 
 `luajit tests/run_tests.lua`: 580/580 pass (up from 578). Python tooling for the live trace and disassembly (scratchpad scripts, not checked in, same convention as every other live-tracing pass this project has done).
+
+## 2026-08-19, self-caught correction (same day, immediately before starting the spell-effect follow-up): the MP-deduction routine addresses were mislabeled -- file offsets used as CPU addresses
+
+Caught while preparing to trace the spell-effect follow-up: the previous entry's own "bank 2, CPU `$B18F`-`$B1AB` / `$A660`-`$A67E`" citations used the raw FILE OFFSET digits directly as if they were CPU addresses -- a real labeling bug, not a data/logic error (the actual disassembled bytes, the `mpCost` field, and the 8/8 external match were never wrong; only the address LABEL was). Recomputed properly via this project's own established `bank*0x4000 + (cpuAddr-0x4000)` formula: file `0xB18F`/`0xB1AB` -> bank 2, **CPU `$718F`/`$71AB`**; file `0xA660`/`0xA67E`-> bank 2, **CPU `$6660`/`$667E`**. Corrected everywhere this was cited: `ItemTable.lua`, `tests/import/item_table_test.lua`, `rom_profiles.lua` (n/a -- not cited there), `roadmap.md`, `rom-inspector/tools/export_data.lua`, `rom-inspector/js/viz/items.js`, `rom-inspector/js/data/open-questions.js`, and this file's own previous entry. Website re-exported, `node --check` clean, `luajit tests/run_tests.lua`: 580/580 unaffected (no behavior/data changed, address-label-only fix).
