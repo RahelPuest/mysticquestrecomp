@@ -643,7 +643,13 @@ function Field:update(dt)
         if self.enemySpriteFlash then
           self.enemyFlashTimer = self.enemyFlashFrames
         end
-        if self.enemy:hit() then
+        -- Same wiring/fallback shape as contact damage just above:
+        -- the real, PRNG-driven `CombatFormulas.rollPlayerAttackDamage`
+        -- when a real `combatNoise` stream exists, `Enemy:hit()`'s own
+        -- documented default otherwise (a love-free/no-ROM context
+        -- still needs a hit to register).
+        local noiseByte = self.combatNoise and self.combatNoise:draw() or nil
+        if self.enemy:hit(noiseByte) then
           -- Death "explosion" (direct user correction -- see
           -- rom_profiles.lua's `enemyDeath` doc comment for the full
           -- live-traced evidence): the creature's six body-part tiles

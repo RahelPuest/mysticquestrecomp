@@ -63,4 +63,36 @@ function CombatFormulas.rollHP(speciesByte, noiseByte)
   return bit.rshift((256 - n) * speciesByte, 4)
 end
 
+--- Real ROM player-attacks-enemy damage formula -- the SAME PRNG
+-- mechanism and `floor(noise*base/1024)+base` shape as `.rollDamage`
+-- above, but this direction's own `base` comes DIRECTLY from a real
+-- bank-4 table lookup (`$4495` -> `$466E` [table at file `0x10d31`]
+-- -> `$469B` [reads WRAM `$CF63`] -> `$46F6` -> `$2B1E`, the same
+-- PRNG `.rollDamage` uses), NOT from an ATK-DEF subtraction -- no
+-- enemy-side DEF term exists anywhere in this real chain (see
+-- docs/reverse-engineering/combat.md's own "MAJOR CORRECTION" entry
+-- for the full disassembly trail; 3 separate static-analysis passes
+-- looked for an enemy DEF term and found none). Kept as its own
+-- function rather than a call to `.rollDamage` with a fabricated
+-- ATK/DEF pair, since that would misrepresent a real mechanism this
+-- project has actually traced as having no DEF term at all.
+--
+-- `base`: the real per-weapon/attack-type table value (`4` for the
+-- only currently-equippable weapon, "Breit" -- see
+-- `Enemy.PLAYER_ATTACK_DAMAGE`'s own doc comment; genuinely open
+-- whether this varies per weapon or is a fixed per-attack-type
+-- constant, still `4` either way for everything currently reachable).
+-- `noiseByte`: one real PRNG draw, 0-255 (see `CombatNoise.lua`).
+--
+-- HONEST NOTE: for `base=4` (the only value ever observed), the
+-- maximum possible product (`255*4=1020`) stays under the formula's
+-- own `1024` floor threshold, so this returns exactly `base` for
+-- EVERY possible `noiseByte` -- real, not a bug (the same floor-
+-- rounding coincidence already documented for `.rollDamage`'s own
+-- base=3 case). Wiring this in changes nothing observable today; it
+-- matters the moment a second weapon/enemy pushes `base` past `256`.
+function CombatFormulas.rollPlayerAttackDamage(base, noiseByte)
+  return math.floor((noiseByte * base) / 1024) + base
+end
+
 return CombatFormulas

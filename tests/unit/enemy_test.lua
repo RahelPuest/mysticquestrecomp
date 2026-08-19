@@ -45,6 +45,18 @@ Harness.test("Enemy:hit: repeated hits eventually clear it, reporting the cleari
   Harness.assertTrue(not e:isAlive())
 end)
 
+Harness.test("Enemy:hit: real formula wiring -- any explicit noiseByte still deals exactly PLAYER_ATTACK_DAMAGE (base=4 has no visible noise contribution)", function()
+  -- Confirms Enemy:hit() actually calls CombatFormulas
+  -- .rollPlayerAttackDamage (not silently ignoring its argument) --
+  -- exercises the full 0-255 noiseByte range, not just the default.
+  for noiseByte = 0, 255, 31 do
+    local e = Enemy.new(0, 0)
+    e:hit(noiseByte)
+    Harness.assertEqual(e.stats.curLP, Enemy.HP_TO_CLEAR - Enemy.PLAYER_ATTACK_DAMAGE,
+      "noiseByte=" .. noiseByte .. " should still deal exactly PLAYER_ATTACK_DAMAGE")
+  end
+end)
+
 Harness.test("Enemy:hit: hitting an already-dead enemy does not report a fresh clear", function()
   local e = Enemy.new(0, 0)
   for _ = 1, Enemy.HP_TO_CLEAR do e:hit() end

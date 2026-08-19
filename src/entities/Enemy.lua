@@ -29,6 +29,7 @@ local Stats = require("src.entities.Stats")
 local FixedStep = require("src.core.FixedStep")
 local GBTile = require("src.rendering.GBTile")
 local EnemyMovementInterpreter = require("src.entities.EnemyMovementInterpreter")
+local CombatFormulas = require("src.entities.CombatFormulas")
 
 local Enemy = {}
 Enemy.__index = Enemy
@@ -262,6 +263,16 @@ Enemy.CONTACT_TICK_SECONDS = 1.0
 -- (would need a second weapon to test -- blocked, see combat.md) or a
 -- fixed per-attack-type constant. `4` stays numerically correct either
 -- way.
+-- WIRED 2026-08-19 (direct follow-up, P4 parity/correctness pass):
+-- `Enemy:hit()` below now calls `CombatFormulas.rollPlayerAttackDamage`
+-- (the real, PRNG-driven ROM formula, same shape as the already-wired
+-- `.rollDamage`) with this as the real `base` operand, instead of
+-- applying this constant directly -- mirrors exactly how contact
+-- damage was already wired to `.rollDamage` instead of a flat
+-- `CONTACT_DAMAGE` number. Kept here (not deleted) for the same
+-- reason `CONTACT_DAMAGE` was kept: a real, live-verified base value,
+-- and `boss_encounter_test.lua`'s own minimal simulation still uses
+-- it directly to compute an expected hit count.
 Enemy.PLAYER_ATTACK_DAMAGE = 4
 -- VERIFIED (see HP_INIT_TRACE_NOTE above): the starting enemy's initial
 -- HP, found by direct ROM code trace, not reproduced by button-mash
@@ -460,11 +471,26 @@ function Enemy:tickContactCooldown(dt)
   return false
 end
 
---- Take a hit from the player's attack (see PLAYER_ATTACK_DAMAGE's
--- UNVERIFIED caveat above). Returns true if this hit just cleared it.
-function Enemy:hit()
+--- Take a hit from the player's attack -- real ROM formula
+-- (`CombatFormulas.rollPlayerAttackDamage`, see PLAYER_ATTACK_DAMAGE's
+-- own doc comment for the wiring history), not a flat number.
+--
+-- `noiseByte`: one real PRNG draw, 0-255 (see `CombatNoise.lua`) --
+-- the real caller (`Field.lua`) draws this from its own live,
+-- shared `combatNoise` instance, the SAME PRNG stream contact damage
+-- draws from (the real ROM has exactly one `$C0B0`/`$C0B1` counter
+-- pair, not a separate stream per direction). OPTIONAL, defaulting to
+-- `0` -- safe and NOT a fabricated result: `PLAYER_ATTACK_DAMAGE`'s
+-- own doc comment already establishes this returns identically `4`
+-- for every possible noise byte, so callers that don't need
+-- noise-level precision (this module's own tests, `boss_encounter_
+-- test.lua`'s minimal love-free simulation) can omit it safely.
+--
+-- Returns true if this hit just cleared it.
+function Enemy:hit(noiseByte)
   local wasAlive = self:isAlive()
-  self.stats:damage(Enemy.PLAYER_ATTACK_DAMAGE)
+  local damage = CombatFormulas.rollPlayerAttackDamage(Enemy.PLAYER_ATTACK_DAMAGE, noiseByte or 0)
+  self.stats:damage(damage)
   return wasAlive and not self:isAlive()
 end
 

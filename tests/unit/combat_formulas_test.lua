@@ -48,6 +48,27 @@ Harness.test("CombatFormulas.rollHP: real live-verified speciesByte=2 case match
   end
 end)
 
+Harness.test("CombatFormulas.rollPlayerAttackDamage: base=4 (the only currently-equippable weapon), no noise contribution for any real noiseByte", function()
+  -- Real, live-confirmed value: base=4 (Enemy.PLAYER_ATTACK_DAMAGE),
+  -- and 4*255/1024 still floors to 0 -- damage is exactly 4 regardless
+  -- of the PRNG draw, matching the OLD, independently-traced
+  -- Enemy.PLAYER_ATTACK_DAMAGE=4 exactly (see that constant's own
+  -- doc comment for the wiring history).
+  for noiseByte = 0, 255, 17 do
+    Harness.assertEqual(CombatFormulas.rollPlayerAttackDamage(4, noiseByte), 4)
+  end
+end)
+
+Harness.test("CombatFormulas.rollPlayerAttackDamage: noise term becomes visible once base is large enough", function()
+  -- Same shape/threshold as .rollDamage's own equivalent test --
+  -- base=9 pushes floor(noise*9/1024) up to 2 at the max noise byte.
+  local low = CombatFormulas.rollPlayerAttackDamage(9, 0)
+  local high = CombatFormulas.rollPlayerAttackDamage(9, 255)
+  Harness.assertEqual(low, 9)
+  Harness.assertEqual(high, 11)
+  Harness.assertTrue(high > low, "a higher noise byte should never produce lower damage")
+end)
+
 Harness.test("CombatFormulas.rollHP: fails loudly (no fabricated value) on the real, unexplained n=0 case", function()
   -- noiseByte 0-15 all shift to n=0 -- the real ROM's own genuinely
   -- different, unexplained code path (see this function's own doc
