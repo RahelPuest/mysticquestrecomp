@@ -949,6 +949,57 @@ ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_A0 = 0x0194
 -- entity/OAM lifecycle this project has no live model for. Left
 -- deliberately unwired; a bounded, reusable next thread (trace
 -- $52CD's targets) for whoever picks this back up.
+--
+-- LIVE-CONFIRMED, 2026-08-19 (direct continuation of the "puppeteering
+-- driver" investigation, "Puppeteering: organischen 0xBA-Pfad zuerst
+-- disassemblieren"): the FIRST successful live puppeteering injection
+-- in this project's history reached this real handler and ran it to
+-- completion. Two real bugs in every earlier injection attempt (this
+-- session's own included) are what made this possible: (1) the
+-- earlier technique poked mGBA's own cached `currentBank` field, which
+-- a direct test proved has ZERO effect on real memory reads/fetches --
+-- the correct primitive is a real bus write, `mem[0x2100] = bank`; (2)
+-- the earlier "proper push" (increment the bank-stack depth, write a
+-- NEW slot) was itself wrong -- it shifts every subsequent real pop UP
+-- one level, landing on the PRE-injection top-of-stack value instead
+-- of the value one level below it. The fix: overwrite the EXISTING top
+-- slot's own WRAM byte in place (`mem[0xC000+depth] = bank`) and leave
+-- the depth counter (`$FF8A`) itself untouched -- verified by direct,
+-- side-by-side comparison against a clean (non-injected) reference
+-- trace of the identical natural moment, whose own real pop target
+-- this fix reproduces exactly. A third, equally real precondition:
+-- the injection must start from an ALREADY-ACTIVE real script context
+-- (`checkpoints.courtyard_boss_defeated()`) -- an arbitrary early-boot
+-- `$3727` hit's own real Z80 return-address chain has nothing to do
+-- with genuine script dispatch and derails once unwound.
+--
+-- With all three fixed, live execution reached `$0EB2` for real and
+-- ran through it: **step0 confirmed byte-for-byte against the static
+-- analysis above** -- a real `CALL $0A74` (bank 13's own instance of
+-- the already-known entity-slot allocator), a genuine 20-slot scan of
+-- the real entity table (`$C200`, 16-byte stride, `CP 0xFF` free-slot
+-- test, exactly matching `EntityStructLayout`'s own already-documented
+-- shape), landing on slot 13 (`$C2D0`) and populating it with real
+-- data. Execution then continued a further ~150 real steps (through
+-- `$88A`, `$AAC`-`$AC6`, ...) with no halt observed within that
+-- window -- consistent with, though not yet independently confirmed
+-- against, actually clearing step1's own `$2ED3` "ready" check and
+-- reaching the real despawn path this static analysis above already
+-- named as the remaining unknown. Genuinely NEW as of this pass: for
+-- the first time, this project has LIVE, not just static, confirmation
+-- that opcode `0xBA` really is the entity-spawn mechanism this doc
+-- comment already described -- the earlier "no live model for this"
+-- limitation is substantially narrowed, though the full struct-field
+-- semantics of what gets written into the spawned slot, and
+-- independent confirmation the despawn half also completes cleanly,
+-- are honest, well-scoped follow-up work, not claimed closed here.
+-- Still deliberately unwired in this project's own interpreter --
+-- HONEST SCOPE, same as always: a live trace against one specific real
+-- script instance is strong evidence, not yet a general, reusable Lua
+-- implementation. See docs/reverse-engineering/events.md's own
+-- 2026-08-19 entry for the full, dated investigation trail (5 rounds:
+-- 2 real injection-primitive bugs found and fixed, 1 empirically-
+-- tested-and-revised hypothesis, then this live confirmation).
 
 -- Round 6 (same "do 2 first" pass, a 5th re-scan): 3 more Family-A/B
 -- opcodes and 1 more always-continuing shape reusing soundParam.
