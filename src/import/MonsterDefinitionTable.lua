@@ -12,18 +12,36 @@
 -- `$D438:$D439`, a per-entity "current record" cell, same role as the
 -- room-tile pipeline's `$D390:$D391`).
 --
--- LIVE-CONFIRMED EVIDENCE this is the right table: bytes[+2..+5] of
--- this same 24-byte row get written straight to WRAM `$D3F4`/`$D3F5`
--- (bank4 file `0x1036a`-`0x1036e`, `LD (0xd3f5),A` / `LD (0xd3f4),A`)
--- -- and `$D3F4`/`$D3F5` is this project's already-documented HP-
--- populate location (`checkpoints.courtyard_enemy_engaged`'s doc
--- comment: "HP=30 populated at $D3F4/$D3F5"). Directly single-stepped
--- the first-boss encounter (`reach_room.reach_first_room()`, no further
--- input) and confirmed: row 16 (file `0x108b9`) is byte-for-byte the
--- record active at that exact moment, and its `spriteSource`
--- (bytes[8..13], see below) resolves via `SpriteTileFormula` to all 32
--- of this project's already-known `enemySprite`/`enemyDescent`
--- tileOffsets, exactly.
+-- LIVE-CONFIRMED EVIDENCE this is the right table: `$D438`/`$D439`
+-- (this table's own "current record" pointer) reads exactly `$48B9`
+-- during a real live encounter (`checkpoints.courtyard_enemy_engaged()`
+-- + a short settle) -- resolves via this table's own `fileOffset(BANK,
+-- cpuAddr)` formula to file `0x108b9`, exactly row 16. Its
+-- `spriteSource` (bytes[8..13], see below) also resolves via
+-- `SpriteTileFormula` to all 32 of this project's already-known
+-- `enemySprite`/`enemyDescent` tileOffsets, exactly -- two independent
+-- confirmations, not one.
+--
+-- CORRECTED (2026-08-19, direct follow-up: "weiter mit p1"): the
+-- earlier claim here ("bytes[+2..+5] get written straight to WRAM
+-- $D3F4/$D3F5") was wrong -- disassembling the real write site (bank4
+-- file `0x1034d`-`0x10372`) shows a genuine COMPUTATION, not a raw
+-- copy: byte[1] of the row (a per-row "HP factor," e.g. `0x02` for row
+-- 16) is passed as one operand into `$2B7B` -- a real, recognizable
+-- 8x8->16-bit multiply subroutine (classic shift-and-add: `ADD HL,HL` /
+-- `RLCA` / conditional `ADD HL,DE`, 8 iterations) -- multiplied by a
+-- SECOND factor supplied by the CALLER in `A` (not stored in this table
+-- at all), then the 16-bit product is shifted left 4 bits (`x16`)
+-- before landing in `$D3F5`(high)/`$D3F4`(low). Live-confirmed for row
+-- 16: real HP reads 31 (not the earlier doc's approximate "30") a few
+-- frames after contact -- the exact caller-supplied multiplier for
+-- this specific encounter was not further isolated this pass.
+-- CONCRETE CONSEQUENCE: `hpFieldBytes` below is NOT itself a usable
+-- final HP value for any row (including row 16) -- it's one real
+-- ingredient of a live formula whose OTHER input isn't in this table.
+-- Reading raw bytes off the other 20 rows and comparing them to known
+-- species HP would be comparing the wrong quantity -- flagged here so
+-- nobody (this project included) repeats that mistake.
 --
 -- MEASURED EXTENT: a plausibility scan (same method as
 -- `ActorDefinitionTable`'s -- does `innerPtr` land in the bank-4 banked
@@ -77,11 +95,15 @@ end
 --- Reads the raw 24-byte record at table index `index` (0-based).
 -- Returns the raw bytes plus `spriteSource` (bytes[8..13], the "outer
 -- sprite record" -- see `SpriteTileFormula.lua`'s doc comment) and
--- `hpFieldBytes` (bytes[2..5], live-confirmed written to WRAM
--- `$D3F4`/`$D3F5` -- only the first 2 of these 4 bytes are
--- independently confirmed as the HP pair; the other 2 are real ROM
--- data, not yet independently interpreted). All other bytes are real
--- ROM data but not decoded -- available only inside `raw`.
+-- `hpFieldBytes` (bytes[2..5] -- kept for backward compatibility, but
+-- CORRECTED 2026-08-19: this is NOT a raw HP pair. Only byte[1] of the
+-- row (not included in this slice -- see `raw:byte(2)`) is the real HP
+-- INPUT, fed as one factor into a live multiply (`$2B7B`, real 8x8->16
+-- routine) against a second, caller-supplied factor NOT stored in this
+-- table, then shifted left 4 bits -- see this file's own top doc
+-- comment for the full disassembly. Do not read `hpFieldBytes` as a
+-- usable HP value for any row). All other bytes are real ROM data but
+-- not decoded -- available only inside `raw`.
 function MonsterDefinitionTable.readRecord(romData, index)
   local off = fileOffset(BANK, TABLE_BASE_CPU) + index * RECORD_SIZE
   local raw = romData:sub(off + 1, off + RECORD_SIZE)
