@@ -215,8 +215,15 @@ Harness.testIfAvailable(
     local expectedMpCost = {
       [1] = 2, -- "Lebe" (Cure)
       [2] = 1, -- "Salb" (Heal)
-      [3] = 1, -- "Blok" (Sleep)
-      [4] = 1, -- "Ruhe" (Mute)
+      -- Sleep/Mute swapped 2026-08-19 (same-day follow-up "Element-/
+      -- Angriffszauber-Kategorie suchen"): the walkthrough-order guess
+      -- couldn't distinguish these two (both real cost 1) -- real ROM
+      -- evidence (both records' own effect-category table membership,
+      -- see ItemTable.lua's own doc comment) decisively resolves it:
+      -- "Blok" groups with shop item "Stille" (Silence/Mute) -> Mute;
+      -- "Ruhe" groups with shop item "Schlaf" (Sleep) -> Sleep.
+      [3] = 1, -- "Blok" (Mute)
+      [4] = 1, -- "Ruhe" (Sleep)
       [5] = 1, -- "Flam" (Fire)
       [6] = 2, -- "Eis " (Ice)
       [7] = 2, -- "Bliz" (Lightning)

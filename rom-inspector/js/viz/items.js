@@ -21,7 +21,8 @@ function render_items(main) {
     <p class="page-lede" style="margin-top:8px;">
       <strong>MP-Kosten</strong> (gefunden 2026-08-19): die Records 0-7 sind
       die echten 8 wirkbaren Magie-Menue-Zauber (Lebe=Cure, Salb=Heal,
-      Blok=Sleep, Ruhe=Mute, Flam=Fire, Eis=Ice, Bliz=Lightning, Bomb=Nuke) --
+      Blok=Mute, Ruhe=Sleep, Flam=Fire, Eis=Ice, Bliz=Lightning, Bomb=Nuke --
+      Sleep/Mute per echtem Code-Beleg korrigiert, siehe unten) --
       NICHT "Wurf-/Kampfitems" wie fruehere Doku hier annahm. Live per
       mGBA-Disassemblierung der echten ROM-Abzugsroutine gefunden (Bank 2,
       <code>$718F-$71AB</code>): <code>categoryByte AND 0x1F</code> ist der
@@ -30,18 +31,29 @@ function render_items(main) {
       Lightning=2, Nuke=3).
     </p>
     <p class="page-lede" style="margin-top:8px;">
-      <strong>Effekt-Dispatch</strong> (gefunden 2026-08-19, selber Tag):
-      der echte Einstiegspunkt (Bank 2, <code>$6FBE</code>) läuft nach dem
-      MP-Abzug eine echte Kette pro-Effekt-Kategorie-Tabellen ab
-      (<code>$7B29</code>/<code>$7B31</code>/<code>$7B38</code>, geprüft
-      über <code>CALL $7155</code>). Cure (Index 1) berechnet die
-      Heilmenge über den bereits bekannten Kampf-PRNG plus dieselben
-      Level-Wachstumstabellen-Routinen (<code>$2B7B</code>/<code>$2B8B</code>),
-      die auch der Level-Aufstieg benutzt. Heal (Index 2) stellt sich als
-      Status-Heilung heraus, nicht als zweiter LP-Zauber -- löst die
-      Cure/Heal-Namensverwirrung auf. Ehrlich offen: die Element-/
-      Angriffszauber (Feuer/Eis/Blitz/Nuke) haben ihre eigene
-      Effekt-Kategorie noch nicht gefunden.
+      <strong>Effekt-Dispatch, VOLLSTÄNDIGE Kette</strong> (gefunden
+      2026-08-19, selber Tag): der echte Einstiegspunkt (Bank 2,
+      <code>$6FBE</code>) läuft nach dem MP-Abzug eine echte Kette von
+      8 Effekt-Kategorie-Tabellen ab (<code>$7B29→$7B31→$7B38→$7B46→
+      $7B3D→$7B40→$7B43→$7B48</code>, geprüft über <code>CALL
+      $7155</code>) -- jede Tabelle ist eine echte, nullterminierte
+      Liste 1-basierter Item-/Zauber-Indizes, direkt aus dem ROM
+      gelesen. Cure (Index 1) berechnet die Heilmenge über den bereits
+      bekannten Kampf-PRNG plus dieselben Level-Wachstumstabellen-
+      Routinen (<code>$2B7B</code>/<code>$2B8B</code>), die auch der
+      Level-Aufstieg benutzt. Heal (Index 2) stellt sich als
+      Status-Heilung heraus, nicht als zweiter LP-Zauber. Entscheidender
+      Design-Befund: Items UND Zauber teilen sich EIN Effektsystem --
+      der Cure-Zauber und die Shop-Tränke Lebe/S-Lebe/Magi/S-Magi/
+      Elixier laufen durch exakt denselben LP-Wiederherstellungs-Code.
+      Selbst korrigiert: Sleep/Mute waren anfangs nach externer
+      Guide-Reihenfolge geraten (beide Kosten 1 MP) -- die echte
+      Tabellen-Zugehörigkeit klärt es andersherum (Blok gruppiert mit
+      Shop-Item "Stille" → Mute; Ruhe mit "Schlaf" → Sleep). Ehrlich
+      offen, nicht geraten: Zauber-Index 6 (Eis) taucht in KEINER der
+      8 Tabellen auf -- entweder gibt es eine 9. Tabelle, die diese
+      Passage nicht erreicht hat, oder Eis' echter Effekt liegt
+      komplett außerhalb dieser Kette.
     </p>
     <div class="toolbar">
       <div class="pill-tabs" id="itemTabs">

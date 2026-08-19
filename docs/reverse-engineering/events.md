@@ -12009,3 +12009,34 @@ Direct continuation, immediately after the mislabeled-address self-correction ab
 **Honest scope, not forced further**: the real dispatch ARCHITECTURE (entry point, MP-gate, the category-table-chain shape, and 2 of the categories' own real effect kind) is now understood and disassembled -- genuinely more than this project had an hour earlier. NOT traced this pass: the elemental/attack spells' own effect category (indices 5-8, Fire/Ice/Lightning/Nuke -- very plausibly a further table beyond `$7B38` in the same chain, not yet located), the exact numeric content of the level-indexed growth-curve table Cure reads, and `$7B38`'s own full real purpose. A genuine, well-scoped next step for whoever continues, not claimed closed here. Still not wired into any gameplay -- same reason as before, no reachable spell-learning trigger exists yet.
 
 Documentation-only pass (`ItemTable.lua`'s own doc comment extended with the full disassembly; `roadmap.md`, `rom-inspector`'s `items.js`/`open-questions.js` updated to match) -- no Lua behavior/data changed. `luajit tests/run_tests.lua`: 580/580 unaffected. Python tooling for the live trace (scratchpad scripts, not checked in).
+
+## 2026-08-19, direct follow-up ("Element-/Angriffszauber-Kategorie suchen"): the FULL 8-category effect-dispatch chain mapped -- items and spells share one effect system, Sleep/Mute corrected, Ice's own effect genuinely missing
+
+Direct continuation. The previous entry's own table `$7B38` turned out NOT to be the last table in the chain -- continued disassembling past its own `JR NC` target and found the chain keeps going.
+
+**Full real chain, in real check order** (each table's own `JR NC` falls through to the next; the last uses `RET NC`, ending the chain for real): `$7B29 -> $7B31 -> $7B38 -> $7B46 -> $7B3D -> $7B40 -> $7B43 -> $7B48`.
+
+**`$7155` (the shared resolver) fully disassembled**: walks a real, null-terminated list of 1-based item/spell indices starting at the caller-provided `HL`, comparing each against `C` (the currently selected index); `RET` with carry unset on the `0x00` terminator (no match, try the next table); on a match, calls `$7185` (a further per-entry resolver, not traced this pass) then sets carry and returns (match found).
+
+**Read every table's real raw bytes directly from ROM** (trivial once `$7155`'s own list format was understood) and cross-referenced each entry against `ItemTable.decode`'s own already-decoded names:
+
+| Table | Members (1-based) | Names |
+|---|---|---|
+| `$7B29` | 1,9,10,11,12,13,29 | Lebe(spell)/Lebe/S-Lebe/Magi/S-Magi/Elixier/Bonbon |
+| `$7B31` | 2,14,15,16,17,18 | Salb(spell)/Salbe/Auge/Bewege/Spruch/Allheil |
+| `$7B38` | 52,53,54,55 | Rubin/Smaragd/Saphir/Diamant |
+| `$7B46` | 50 | Kristal |
+| `$7B3D` | 4,20 | Ruhe(spell)/Schlaf |
+| `$7B40` | 3,19 | Blok(spell)/Stille |
+| `$7B43` | 56,57 | (2 still-undecoded-name records) |
+| `$7B48` | 5,7,8,23,24 | Flam(spell)/Bliz(spell)/Bomb(spell)/Flamme/Lava |
+
+**Decisive, real DESIGN finding**: this is not a spell-only mechanism -- it's ONE shared effect system serving BOTH the Magic-menu spells (indices 1-8, MP-gated) and the Dinge-menu consumable items (indices 9+, which structurally never reach the MP-deduct call at all -- its own gate is `C<9`). The Cure spell and the shop potions Lebe/S-Lebe/Magi/S-Magi/Elixier all run the exact same LP-restore code; the Heal spell and the shop items Salbe/Auge/Bewege/Spruch/Allheil all run the exact same status-cure code -- confirming and extending this project's own much older, tentative 2026-08-16 note ("Salbe/Auge/Bewege/Spruch show a clean single-bit progression, plausibly which status this cures") with real, decisive code evidence instead of a byte-pattern guess.
+
+**Real, self-caught correction**: the previous entry's own Sleep/Mute assignment was guessed purely from matching the external walkthrough's LISTED ORDER -- both cost 1 MP, so cost alone can't distinguish them. This table evidence resolves it the OTHER way: "Blok" groups with shop item "Stille" (German for Silence/Mute) -> Blok = Mute; "Ruhe" groups with shop item "Schlaf" (German for Sleep) -> Ruhe = Sleep. Corrected everywhere this was cited (`ItemTable.lua`'s own doc comment, `tests/import/item_table_test.lua`'s `mpCost` test comments, `roadmap.md`, the website).
+
+**Honest, explicitly flagged anomaly, not forced to a guess**: spell index 6 ("Eis "/Ice) does NOT appear in ANY of the 8 tables -- verified by listing every table's complete real membership, not spot-checking. Either a 9th table exists reached some other way this pass's own chain-walk didn't find (the chain genuinely ends at `$7B48`'s own `RET NC`, no further `JR NC` target exists), or Ice's real effect lives entirely outside this dispatch chain, or (less likely for a shipped game, not ruled out) Ice genuinely has no coded effect beyond its MP cost. Left open.
+
+**`$7143`** (the shared helper `$7B3D`/`$7B40` both call before their own distinct effect routine) disassembled too: computes `($D858)*10 + <param>` -- a real 2D table index formula (10-byte-stride rows, `$D858` plausibly a target-character slot). Its own row table's content and `$7B43`'s distinct `A*4` indexing scheme were not further decoded.
+
+Documentation-only pass (`ItemTable.lua`'s doc comment extended and self-corrected; `roadmap.md`, `rom-inspector`'s `items.js`/`open-questions.js` updated to match) -- no Lua behavior/data changed (the Sleep/Mute swap only touched comments -- both real records already had the correct `mpCost=1` regardless of which English name was attached). `luajit tests/run_tests.lua`: 580/580 unaffected. Python tooling for the live trace (scratchpad scripts, not checked in).

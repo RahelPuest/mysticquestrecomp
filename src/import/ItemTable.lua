@@ -149,9 +149,13 @@
 -- real `categoryByte AND 0x1F` reads **2,1,1,1,1,2,2,3 -- an exact,
 -- 8/8, IN-ORDER match**. Independently corroborated by the records'
 -- own already-decoded (if short/truncated) German names lining up
--- semantically: "Lebe"(Cure)/"Salb"(Heal, Salbe=balm)/"Blok"(Sleep)/
--- "Ruhe"(Mute, Ruhe=silence)/"Flam"(Fire, Flamme)/"Eis "(Ice)/
--- "Bliz"(Lightning, Blitz)/"Bomb"(Nuke, Bombe). Every record 8+ reads
+-- semantically: "Lebe"(Cure)/"Salb"(Heal, Salbe=balm)/"Blok"(Mute)/
+-- "Ruhe"(Sleep)/"Flam"(Fire, Flamme)/"Eis "(Ice)/"Bliz"(Lightning,
+-- Blitz)/"Bomb"(Nuke, Bombe) -- Sleep/Mute SWAPPED from an earlier
+-- version of this note (both cost 1, indistinguishable by cost alone;
+-- corrected 2026-08-19 once real effect-category table membership
+-- decisively resolved it, see this doc comment's own "SPELL-EFFECT
+-- DISPATCH ARCHITECTURE" section further below). Every record 8+ reads
 -- `categoryByte AND 0x1F == 0` without exception -- consistent with
 -- "not a spell, this field doesn't apply," not contradicting the read.
 --
@@ -225,17 +229,87 @@
 --     logic involving `$D858` (a small index this project has seen
 --     elsewhere in this same dispatch as a "target slot" value).
 --
--- HONEST SCOPE: the real dispatch ARCHITECTURE (entry point, MP-gate,
--- the category-table-chain shape, and 2 of the categories' own real
--- effect kind) is now understood and disassembled. NOT traced this
--- pass: the elemental/attack spells' own effect category (indices
--- 5-8: Fire/Ice/Lightning/Nuke -- very plausibly a further table
--- beyond `$7B38` in the same chain, not yet located), the exact
--- numeric content of the level-indexed growth-curve table Cure reads,
--- and `$7B38`'s own full real purpose. A genuine, well-scoped further
--- step for whoever continues -- not claimed closed here. Still NOT
--- wired into any gameplay (same reason as above: no reachable spell-
+-- HONEST SCOPE (SUPERSEDED by the "FULL CATEGORY-TABLE CHAIN MAPPED"
+-- section immediately below, same day -- kept for the historical
+-- record of what this pass knew at the time, not deleted): the real
+-- dispatch ARCHITECTURE (entry point, MP-gate, the category-table-
+-- chain shape, and 2 of the categories' own real effect kind) is now
+-- understood and disassembled. NOT traced this pass: the elemental/
+-- attack spells' own effect category, the exact numeric content of the
+-- level-indexed growth-curve table Cure reads, and `$7B38`'s own full
+-- real purpose. Still NOT wired into any gameplay (no reachable spell-
 -- learning trigger exists yet).
+--
+-- FULL CATEGORY-TABLE CHAIN MAPPED, 2026-08-19, same day, direct
+-- follow-up ("Element-/Angriffszauber-Kategorie suchen"): continued
+-- the dispatch chain past `$7B38` -- it is NOT the last table. Full
+-- real chain, in real check order (each `JR NC` falls through to the
+-- next; the last uses `RET NC`, ending the chain):
+-- `$7B29 -> $7B31 -> $7B38 -> $7B46 -> $7B3D -> $7B40 -> $7B43 ->
+-- $7B48`. Each table is a real, null-terminated list of 1-based item/
+-- spell indices (the resolver, `$7155`, is now fully understood too:
+-- walks the list, `RET` unset-carry on the `0x00` terminator (no
+-- match), `CP C` against each entry, and on a hit calls `$7185` then
+-- `SCF`+`RET` -- carry set = match). Read every table's real raw bytes
+-- directly from ROM and cross-referenced against `ItemTable.decode`'s
+-- own already-decoded names (1-based table entry N = `records[N]`,
+-- matching `$768C`'s own 1-based indexing already established):
+--
+--   $7B29 {1,9,10,11,12,13,29} = Lebe(spell)/Lebe/S-Lebe/Magi/S-Magi/
+--     Elixier/Bonbon -- LP-restore, real ROM code
+--   $7B31 {2,14,15,16,17,18}   = Salb(spell)/Salbe/Auge/Bewege/Spruch/
+--     Allheil -- status-cure
+--   $7B38 {52,53,54,55}        = Rubin/Smaragd/Saphir/Diamant --
+--     gem/jewel category, gated on $D87E==0xFF, still unidentified
+--   $7B46 {50}                 = Kristal -- its own single-item category
+--   $7B3D {4,20}               = Ruhe(spell)/Schlaf
+--   $7B40 {3,19}               = Blok(spell)/Stille
+--   $7B43 {56,57}              = the 2 still-undecoded-name records
+--     (raw "Äns"/"nnt-d")
+--   $7B48 {5,7,8,23,24}        = Flam(spell)/Bliz(spell)/Bomb(spell)/
+--     Flamme/Lava -- the elemental/attack-adjacent catch-all
+--
+-- **Real, decisive DESIGN finding**: this dispatch is NOT spell-only --
+-- it's a single, shared effect system serving BOTH the Magic-menu
+-- spells (indices 1-8, gated on MP via the deduction routine above)
+-- AND the Dinge-menu consumable items (indices 9+, which structurally
+-- never reach the MP-deduct call at all -- its own gate is `C<9`).
+-- "Lebe" the spell and "Lebe"/"S-Lebe"/etc the shop potions all funnel
+-- through the exact same LP-restore code; "Salb" the spell and Salbe/
+-- Auge/Bewege/Spruch/Allheil the status-cure shop items likewise --
+-- confirming and extending this project's own much older, tentative
+-- "Salbe/Auge/Bewege/Spruch show a clean single-bit progression,
+-- plausibly which status this cures" note (2026-08-16) with real,
+-- decisive code evidence, not just a byte-pattern guess.
+--
+-- **Real, self-caught CORRECTION**: the earlier same-day note above
+-- assigned "Blok"=Sleep/"Ruhe"=Mute purely from matching the external
+-- walkthrough's LISTED ORDER -- both cost 1 MP, so cost alone can't
+-- distinguish them. This table evidence decisively resolves it the
+-- other way: "Blok" groups with shop item "Stille" (German for
+-- Silence/Mute) -> Blok = Mute; "Ruhe" groups with shop item "Schlaf"
+-- (German for Sleep) -> Ruhe = Sleep. Corrected everywhere this was
+-- cited (this doc comment's own semantic-name-matching note above,
+-- `tests/import/item_table_test.lua`'s `mpCost` test comments).
+--
+-- HONEST, EXPLICITLY FLAGGED ANOMALY, not forced to a guess: spell
+-- index 6 ("Eis "/Ice, per the external walkthrough's own MP-cost
+-- order) does NOT appear in ANY of these 8 tables -- verified by
+-- listing every table's full real membership, not just spot-checking.
+-- Either a 9th table exists that this pass's own chain-walk didn't
+-- reach (no further `JR NC` target was found past `$7B48`'s own final
+-- `RET NC`, so if one exists it's reached some other way not yet
+-- traced), or Ice's real effect lives entirely outside this dispatch
+-- chain, or (less likely for a shipped commercial game, but not ruled
+-- out) Ice genuinely has no coded effect beyond its own MP cost. Not
+-- resolved this pass -- a concrete, well-scoped next question.
+--
+-- `$7143` (the shared helper `$7B3D`/`$7B40` both call before their own
+-- distinct effect routine) is disassembled too: computes `($D858)*10 +
+-- <param>` -- a real 2D table index formula (10-byte stride rows,
+-- `$D858` as the row selector, very plausibly a target-character
+-- slot). Its own row-table's real content and `$7B43`'s distinct `A*4`
+-- indexing scheme were not further decoded this pass.
 
 local TextDecoder = require("src.import.TextDecoder")
 
