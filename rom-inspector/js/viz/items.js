@@ -15,11 +15,21 @@ function render_items(main) {
       extern gefundenen Preis-Guide exakt abgeglichen (Lebe=40G, S-Lebe=160G,
       Magi=320G, S-Magi=640G, Salbe=30G, Auge=60G, Bewege=90G, Spruch=120G --
       die letzten vier zusaetzlich eine saubere +30G-Reihe, unabhaengig vom
-      externen Fund). "(nicht verkauft)" bei den ersten 8 Wurf-/Kampfitems
-      ist ein echter Nullwert, keine Luecke. Die eigentlichen 8 wirkbaren
-      MP-Zauber (Feuer/Eis/Blitz/Nuke/Heilung/...) sind eine ANDERE, noch
-      nicht gefundene ROM-Struktur -- diese Tabelle ist der Shop-Katalog fuer
-      Erholungs-/Statusheilitems, trotz des Namens "Item/Zauber-Tabelle".
+      externen Fund). Das sind die Records 8-19, der echte Shop-Katalog fuer
+      Erholungs-/Statusheilitems.
+    </p>
+    <p class="page-lede" style="margin-top:8px;">
+      <strong>MP-Kosten</strong> (gefunden 2026-08-19): die Records 0-7 sind
+      die echten 8 wirkbaren Magie-Menue-Zauber (Lebe=Cure, Salb=Heal,
+      Blok=Sleep, Ruhe=Mute, Flam=Fire, Eis=Ice, Bliz=Lightning, Bomb=Nuke) --
+      NICHT "Wurf-/Kampfitems" wie fruehere Doku hier annahm. Live per
+      mGBA-Disassemblierung der echten ROM-Abzugsroutine gefunden (Bank 2,
+      <code>$B18F-$B1AB</code>): <code>categoryByte AND 0x1F</code> ist der
+      echte MP-Kosten-Wert, 8 von 8 exakt gegen denselben externen Guide
+      abgeglichen (Cure=2, Heal=1, Sleep=1, Mute=1, Fire=1, Ice=2,
+      Lightning=2, Nuke=3). Was der jeweilige Zauber im Kampf konkret
+      bewirkt, ist weiterhin offen -- nur welcher Record welcher Zauber ist
+      und was er kostet, ist jetzt geklaert.
     </p>
     <div class="toolbar">
       <div class="pill-tabs" id="itemTabs">
@@ -125,7 +135,7 @@ function render_items(main) {
     if (state.tab === "items") {
       host.innerHTML = `
         <table class="data-table">
-          <thead><tr><th>#</th><th>Name</th><th>Kategorie</th><th>ID</th><th>Typ</th><th>Preis</th></tr></thead>
+          <thead><tr><th>#</th><th>Name</th><th>Kategorie</th><th>ID</th><th>Typ</th><th>Preis</th><th>MP-Kosten</th></tr></thead>
           <tbody>
             ${filteredRecords().map(r => `
               <tr>
@@ -135,6 +145,7 @@ function render_items(main) {
                 <td class="num">${r.id}</td>
                 <td>${r.isSpell ? "Zauber" : "Item"}</td>
                 <td class="num">${r.price ? r.price + " G" : '<span class="desc">(nicht verkauft)</span>'}</td>
+                <td class="num">${r.isSpell ? r.mpCost + " MP" : '<span class="desc">-</span>'}</td>
               </tr>
             `).join("")}
           </tbody>

@@ -3882,15 +3882,27 @@ RomProfiles.PROFILES = {
     -- guessing). recordCount extended to 59; records beyond that
     -- returned only short, non-word fragments and were not included.
     itemTable = {
-      status = "PARTIALLY VERIFIED",
+      status = "PARTIALLY VERIFIED -- price field VERIFIED (2026-08-18, 8/8 external " ..
+        "matches); mpCost field VERIFIED (2026-08-19, 8/8 external matches + live-" ..
+        "disassembled ROM deduction code, see ItemTable.lua's own doc comment)",
       fileOffset = 0x9DE5,
       bank = 2,
       recordLength = 16,
       nameLength = 8, -- 0x00-padded
       recordCount = 59, -- extended 2026-08-15, see doc comment above
       -- Byte 15 (0-based) is a per-category item ID that resets to 0 at
-      -- the boundary between consumable items (records 0-7) and spells
-      -- (records 8-19) -- see rom-map.md for the exact evidence.
+      -- the boundary between records 0-7 and records 8-19 -- see
+      -- rom-map.md for the exact evidence.
+      --
+      -- CORRECTED (2026-08-19): the labels below used to read
+      -- "consumable items (0-7) / spells (8-19)" -- backwards from what
+      -- ItemTable.lua's own 2026-08-19 doc comment now decisively shows.
+      -- Records 0-7 are the real 8 MP-costed, CASTABLE spells (Cure/
+      -- Heal/Sleep/Mute/Fire/Ice/Lightning/Nuke -- see `mpCost`, 8/8
+      -- external matches); records 8-19 are the shop-PURCHASABLE
+      -- recovery/status-cure items (see `price`, also 8/8 external
+      -- matches, 2026-08-18). Both real, both fully priced/costed now --
+      -- just swapped from this field's own original naming guess.
       categoryBoundaryRecord = 8,
     },
 

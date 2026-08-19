@@ -1126,8 +1126,14 @@ do
       categoryByte = r.categoryByte,
       id = r.id,
       price = r.price,
+      mpCost = r.mpCost,
       namePrefixByte = r.namePrefixByte,
-      isSpell = r.index >= profile.itemTable.categoryBoundaryRecord,
+      -- CORRECTED 2026-08-19 (was `r.index >= categoryBoundaryRecord`,
+      -- backwards -- see rom_profiles.lua's own itemTable doc comment):
+      -- records 0-7 are the real castable spells (mpCost, 8/8 external
+      -- matches), records 8+ are the shop-purchasable items (price,
+      -- 8/8 external matches).
+      isSpell = r.index < profile.itemTable.categoryBoundaryRecord,
     }
   end
 
@@ -1200,10 +1206,14 @@ do
   }, "Item/spell table (ItemTable.lua) and weapon/armor table (WeaponTable.lua). Names decode " ..
      "cleanly for most records (spell records need a 2nd name offset, see ItemTable.lua's doc " ..
      "comment) -- records with name=\"\" genuinely don't decode at either known offset, shown " ..
-     "honestly rather than guessed. `items[].price` (found 2026-08-18, ItemTable.lua's own doc " ..
-     "comment) is bytes 13-14 (LE u16), VERIFIED 8/8 against a real external gold-cost list -- " ..
-     "0 for records never sold in a shop (the found/thrown combat items), not a missing value. " ..
-     "Stat bytes beyond name/price are real but NOT interpreted (raw " ..
+     "honestly rather than guessed. `items[].price` (found 2026-08-18) is bytes 13-14 (LE u16), " ..
+     "VERIFIED 8/8 against a real external gold-cost list -- 0 for records 0-7 (never sold in a " ..
+     "shop), not a missing value. `items[].mpCost` (found 2026-08-19, live-disassembled ROM " ..
+     "MP-deduction code, bank 2 $B18F-$B1AB) is `categoryByte AND 0x1F` -- VERIFIED 8/8 against " ..
+     "the same external guide. `isSpell` (records 0-7) marks the real castable spells " ..
+     "(Cure/Heal/Sleep/Mute/Fire/Ice/Lightning/Nuke); records 8+ are the shop-purchasable " ..
+     "recovery/status-cure items -- CORRECTED 2026-08-19, this used to be labeled backwards. " ..
+     "Stat bytes beyond name/price/mpCost are real but NOT interpreted (raw " ..
      "only). itemCategories/weaponCategories (catalog plan Phase 2) group the records by their " ..
      "categoryByte -- sizeClass is a plain size threshold (>=5 records), NOT a claimed slot name " ..
      "(e.g. weapon/armor/helm) -- see WeaponTable.lua's doc comment for why that's still " ..

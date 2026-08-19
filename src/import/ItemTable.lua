@@ -115,6 +115,66 @@
 -- already-correctly-used mapping. Real candidates from a fetched
 -- walkthrough's key-item list (Opal, 4 stat-boost Stones, Pendant,
 -- Silver, Fang) remain unmatched to any specific record.
+--
+-- DECISIVE FIND, 2026-08-19 ("was können wir jetzt bezüglich der großen
+-- blocker machen" -> Magic/spell system): records 0-7 -- previously
+-- assumed to be "found/thrown combat items, never sold" purely because
+-- their `price` reads 0 -- are the real 8 MP-costed, castable Magic-menu
+-- spells (Cure/Heal/Sleep/Mute/Fire/Ice/Lightning/Nuke), not junk items.
+--
+-- Found by live-disassembling the real ROM's own MP-deduction code
+-- (`tools/rom/watcher.py`/`disasm.py`, direct scan for every real
+-- literal reference to `$D7B6`-`$D7B9`, the already-known curMP/maxMP
+-- WRAM cells): bank 2, CPU `$B18F`-`$B1AB` (the menu-context "cast"
+-- routine) and its battle-context sibling `$A660`-`$A67E` (same shape,
+-- gated behind an extra `$D6EF`/index<9 check first) both do the exact
+-- same real thing --
+--   LD HL,0x5DEC / CALL 0x768C   -- resolve a per-spell-index pointer
+--   LD A,(HL) / AND 0x1F          -- the real MP-cost field, masked
+--   LD A,(0xD7B6) / SUB B          -- curMP -= cost
+--   JR C,<fail>                    -- insufficient MP: SCF, bail, no write
+--   LD (0xD7B6),A                  -- else: commit the new curMP
+-- `$768C` (fully disassembled too) computes `($5DEC+1) + ((A AND
+-- 0x7F)-1)*16` -- a real, 1-based, 16-byte-stride index into a table
+-- whose resolved base (`$5DED`, file `0x9DED` in bank 2) is exactly
+-- `itemTable.fileOffset (0x9DE5) + 8` -- i.e. this "spell cost" table
+-- is NOT a separate structure. **It's `categoryByte` (byte 8, 0-based)
+-- of this SAME already-decoded 16-byte-record table, masked to its low
+-- 5 bits.**
+--
+-- Cross-checked against the SAME external walkthrough this project's
+-- own 2026-08-18 price-field pass already used (gamesurge.com's Final
+-- Fantasy Adventure guide, "8 magic spells with MP cost": Cure 2/Heal
+-- 1/Sleep 1/Mute 1/Fire 1/Ice 2/Lightning 2/Nuke 3): records 0-7's own
+-- real `categoryByte AND 0x1F` reads **2,1,1,1,1,2,2,3 -- an exact,
+-- 8/8, IN-ORDER match**. Independently corroborated by the records'
+-- own already-decoded (if short/truncated) German names lining up
+-- semantically: "Lebe"(Cure)/"Salb"(Heal, Salbe=balm)/"Blok"(Sleep)/
+-- "Ruhe"(Mute, Ruhe=silence)/"Flam"(Fire, Flamme)/"Eis "(Ice)/
+-- "Bliz"(Lightning, Blitz)/"Bomb"(Nuke, Bombe). Every record 8+ reads
+-- `categoryByte AND 0x1F == 0` without exception -- consistent with
+-- "not a spell, this field doesn't apply," not contradicting the read.
+--
+-- This directly answers the milestone's own long-standing stated
+-- blocker ("search opcodes... that read or write $D7B6/$D7B8 directly
+-- -- no such reference exists yet in this codebase, meaning the
+-- MP-consuming opcode itself hasn't been identified at all," see
+-- events.md's 2026-08-18 entry): it has now been identified, real,
+-- disassembled, and cross-validated two independent ways.
+--
+-- HONEST SCOPE: this closes "which record is which spell, its real MP
+-- cost, and the real ROM code that deducts it" -- it does NOT close
+-- "what does casting a given spell actually DO in combat" (the
+-- elemental-damage/status-effect/heal-amount formulas each spell
+-- triggers remain genuinely unfound), and this is NOT wired into
+-- `Inventory.lua`/`Menu.lua`'s own gameplay yet -- `Menu.lua`'s
+-- "Magie" option still honestly closes immediately (see its own doc
+-- comment), matching the real ROM's own live-confirmed behavior for a
+-- fresh character with zero known spells (no real ROM trigger for
+-- LEARNING a spell has been found, same open gap this project already
+-- has for granting items). `mpCost` below exposes the real, decoded
+-- field; using it to drive actual spell-casting gameplay is separate,
+-- not-yet-attempted follow-up work.
 
 local TextDecoder = require("src.import.TextDecoder")
 
@@ -193,6 +253,18 @@ function ItemTable.decode(romData, itemTable)
     -- within the 16-byte record, independent of nameLength/prefix --
     -- unlike `name`, this field's real position never shifts.
     local price = raw:byte(14) + raw:byte(15) * 256
+    -- mpCost: `categoryByte AND 0x1F` -- found 2026-08-19 by live-
+    -- disassembling the real ROM's own MP-deduction routine (bank 2,
+    -- CPU $B18F-$B1AB and its battle-context sibling $A660-$A67E; see
+    -- this module's own top-of-file doc comment for the full trace).
+    -- Only genuinely meaningful for records 0-7 (the real castable
+    -- spells -- masked value is 0 for every other record, records 8+
+    -- use `categoryByte`'s other bits for a different, still-uncertain
+    -- purpose). Exposed unconditionally here (same "decoder doesn't
+    -- editorialize which records matter" convention as every other
+    -- field) -- callers that care about spells specifically should
+    -- combine this with `itemTable.categoryBoundaryRecord`.
+    local mpCost = categoryByte % 32
 
     records[i + 1] = {
       index = i,
@@ -200,6 +272,7 @@ function ItemTable.decode(romData, itemTable)
       categoryByte = categoryByte,
       id = id,
       price = price,
+      mpCost = mpCost,
       namePrefixByte = namePrefixByte,
       raw = raw,
     }

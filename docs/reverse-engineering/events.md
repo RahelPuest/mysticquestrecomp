@@ -11957,3 +11957,34 @@ is unconfirmed, so re-deriving their own hold-timing from ROM data isn't
 possible yet the way it was here; left untouched rather than guessed.
 willyRoom's own unrelated `holdFrames=71` (dialogue-box typing pause, a
 different domain entirely) was not touched.
+
+## 2026-08-19, direct follow-up ("was können wir jtzt bezüglich der großen blocker machen"): "second boss" DEF path re-confirmed closed for real (no new work needed); Magic/spell system DECISIVELY CLOSED for real -- which record is which spell + its real MP cost + the real ROM deduction code
+
+**First, a correction before any new work started**: reviewed the roadmap's own priority table for the biggest open blockers and recommended live-tracing the sixthRoom "second boss" fight to close Bestiary/Level-XP together (both explicitly share "reach a second enemy" as their root blocker). Before executing, re-read `combat.md`'s own already-complete "Second boss investigation" (task #127, 2026-08-16) end to end -- it already found and CLOSED this exact path: a live mGBA walk to the real ROM position of this room's own encounter found genuinely NO creature there (all 20 entity slots dumped -- only the player is alive), confirming the project's own `secondBoss` doc comment ("IMPLEMENTATION CHOICE... NOT an independently ROM-confirmed spawn trigger") is real, not just a caveat. Both remaining harder paths (find which of 3 candidate scripts triggers it; force one via live injection) were ALSO already closed the same session, decisively, because the creature behind them is confirmed to be the SAME species (`0x16`) as the already-tested first boss -- reaching it would add no new DEF evidence even if achieved. Reported this correction directly rather than silently pivoting or (worse) re-running an already-exhausted investigation.
+
+**Pivoted to the Magic/spell system** (P2, 🔴 not started, unaffected by the above). 2026-08-18's own pass had explicitly left "search opcodes/handlers that read or write `$D7B6`/`$D7B8` (curMP/maxMP) directly" as the concrete next angle. Live tooling confirmed working (`tools-external/mgba-venv`, Python 3.14, matches the built bindings' ABI tag).
+
+**Static scan first**: direct byte search of the whole 256KB ROM for every literal `LD A,(nn)`/`LD (nn),A`/`LD HL,nn` (opcodes `0xFA`/`0xEA`/`0x21`) referencing `$D7B6`-`$D7B9` found real hits in bank 0 and bank 2. Bank 0's cluster (`$3968`-`$3980`) turned out to be the ALREADY-KNOWN `HEAL_MP_HANDLER_ADDRESS` (restore-to-max, not consumption) -- a useful sanity check that the method works, not a new find. A second bank-2 cluster (`$AE60`-`$AEAE`) turned out to be the real NEW-CHARACTER INIT routine -- decisively confirms this project's already-live-observed starting stats (`LP 19`, `MP 6`) are hardcoded ROM constants, not rolled.
+
+**The real find**: bank 2, CPU `$B18F`-`$B1AB` (menu-context) and a battle-context sibling `$A660`-`$A67E` (same shape, gated behind an extra `$D6EF`/index-under-9 check first) -- both fully disassembled:
+```
+LD HL,0x5DEC          ; table base
+CALL 0x768C            ; resolve per-index pointer (disassembled too)
+LD A,(HL) / AND 0x1F    ; the real MP-cost byte, masked to 5 bits
+LD A,(0xD7B6) / SUB B    ; curMP -= cost
+JR C,<fail>               ; insufficient MP: SCF, bail, no write
+LD (0xD7B6),A              ; else: commit
+```
+`$768C` itself resolves to `(base+1) + ((A AND 0x7F)-1)*16` -- a real, 1-based, 16-byte-stride table lookup. Converting `$5DED` (the resolved base) to a file offset in bank 2 gives `0x9DED` -- **exactly `ItemTable`'s own `fileOffset` (`0x9DE5`) + 8**. This is not a separate table: it's `categoryByte` (byte 8, 0-based) of the SAME already-decoded 16-byte item record, masked to its low 5 bits.
+
+**Decisive cross-check**: computed `categoryByte AND 0x1F` for all 59 already-decoded item records. Records 0-7 read **2,1,1,1,1,2,2,3** -- an exact, in-order, 8/8 match to the SAME external walkthrough's spell-cost list (Cure2/Heal1/Sleep1/Mute1/Fire1/Ice2/Lightning2/Nuke3) the 2026-08-18 price-field pass already used. Corroborated by the records' own already-decoded (if short) German names lining up semantically: Lebe(Cure)/Salb(Heal, Salbe=balm)/Blok(Sleep)/Ruhe(Mute, "quiet")/Flam(Fire, Flamme)/Eis(Ice)/Bliz(Lightning, Blitz)/Bomb(Nuke, Bombe). Every record 8+ reads exactly 0 -- consistent with "field doesn't apply," not contradicting.
+
+**Retracts an earlier assumption**: records 0-7 were previously labeled "found/thrown combat items, never sold" based only on `price=0` -- a reading equally consistent with "these are the real spells, not gold-purchased" as this pass now shows decisively. `rom_profiles.lua`'s `itemTable.categoryBoundaryRecord` doc comment had the item/spell labels backwards (called records 0-7 "consumable items" and 8-19 "spells") -- corrected. The website's item table had the SAME bug (`isSpell = index >= categoryBoundaryRecord`, exactly inverted) -- corrected, plus a new MP-Kosten column.
+
+**Live-verified the honest remaining gap, not just assumed it**: reached `willy_room_free()`, opened the real in-game menu (`START`), navigated to "Magie", pressed `A` -- the real ROM menu closes immediately with zero effect (screenshot-confirmed) and `curMP` stays unchanged (6 before, 6 after). Matches `Menu.lua`'s own already-documented, already-correct behavior for a fresh character with no known spells exactly -- no real ROM trigger for LEARNING a spell exists yet, same open-gap category this project already has for granting items.
+
+**Shipped**: `ItemTable.decode` gains a real `mpCost` field (`categoryByte % 32`, mathematically `AND 0x1F`). `ItemTable.lua`'s and `rom_profiles.lua`'s own doc comments extended with the full disassembly trail and the corrected item/spell labeling. 3 new tests (`tests/import/item_table_test.lua`: synthetic mask check, real 8/8 external MP-cost match, non-spell records read 0) plus the pre-existing price test's stale "found/thrown combat items" comment corrected. Website: `export_data.lua`'s `isSpell` flip fixed, `mpCost` exported, `items.js` gets a new MP-Kosten column and a rewritten lede; a new `open-questions.js` entry consolidates the whole find. `roadmap.md`'s Magic/spell system row updated.
+
+**Honest remaining scope**: this closes WHICH record is which spell, its real MP cost, and the real ROM code that deducts it -- it does NOT close what casting a given spell actually DOES in combat (elemental damage/heal-amount/status-effect formulas per spell), and none of this is wired into live gameplay (no spell-learning trigger exists to make it reachable yet).
+
+`luajit tests/run_tests.lua`: 580/580 pass (up from 578). Python tooling for the live trace and disassembly (scratchpad scripts, not checked in, same convention as every other live-tracing pass this project has done).

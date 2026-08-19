@@ -38,7 +38,7 @@ const ROM_TABLES = [
     "fileOffset": 40421,
     "name": "itemTable",
     "recordCount": 59,
-    "status": "PARTIALLY VERIFIED"
+    "status": "PARTIALLY VERIFIED -- price field VERIFIED (2026-08-18, 8/8 external matches); mpCost field VERIFIED (2026-08-19, 8/8 external matches + live-disassembled ROM deduction code, see ItemTable.lua's own doc comment)"
   },
   {
     "bank": 2,

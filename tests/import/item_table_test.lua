@@ -54,6 +54,19 @@ Harness.test("ItemTable.decode: price is bytes 13-14 (0-based), little-endian u1
   Harness.assertEqual(records[2].price, 320)
 end)
 
+Harness.test("ItemTable.decode: mpCost is categoryByte AND 0x1F (found 2026-08-19, live-disassembled MP-deduction routine)", function()
+  -- categoryByte=0x42 (record0) -> masked 0x02; categoryByte=0xA3
+  -- (record1, exercises the upper bits being set/ignored) -> masked 0x03.
+  local rec0 = "\197\216\213\216\0\0\0\0" .. "\66\16\20\0\0\0\0\1"
+  local rec1 = "\204\212\223\213\0\0\0\0" .. "\163\16\0\0\0\0\0\2"
+  local rom = rec0 .. rec1
+  local itemTable = { fileOffset = 0, recordLength = 16, nameLength = 8, recordCount = 2 }
+
+  local records = ItemTable.decode(rom, itemTable)
+  Harness.assertEqual(records[1].mpCost, 2)
+  Harness.assertEqual(records[2].mpCost, 3)
+end)
+
 -- --- ROM-dependent tests -------------------------------------------------
 local romData = DevRomLocator.find()
 
@@ -170,11 +183,55 @@ Harness.testIfAvailable(
         "record " .. (recordIndex1Based - 1) .. " (" .. records[recordIndex1Based].name .. ") price")
     end
 
-    -- Records 0-7 (found/thrown combat items) are never sold -- price=0
-    -- is consistent with the field, not a contradiction.
+    -- Records 0-7 are the real castable Magic-menu spells (see this
+    -- module's own 2026-08-19 doc comment -- NOT "found/thrown combat
+    -- items" as this project's own earlier docs assumed), so they're
+    -- never gold-priced -- price=0 is consistent with that real
+    -- category, not a contradiction.
     for i = 1, 8 do
       Harness.assertEqual(records[i].price, 0,
         "record " .. (i - 1) .. " (" .. records[i].name .. ") should be unpriced")
+    end
+  end
+)
+
+Harness.testIfAvailable(
+  "ItemTable.decode: real mpCost field, 8/8 external MP-cost matches for the castable spell records (found 2026-08-19)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local report = RomIdentity.identify(romData)
+    local profile = RomProfiles.match(report)
+    local records = ItemTable.decode(romData, profile.itemTable)
+
+    -- Cross-checked against the SAME external walkthrough this
+    -- project's own price-field pass already used (gamesurge.com's
+    -- Final Fantasy Adventure guide, "8 magic spells with MP cost":
+    -- Cure 2/Heal 1/Sleep 1/Mute 1/Fire 1/Ice 2/Lightning 2/Nuke 3) --
+    -- 8 of 8 records match exactly, in order. See this module's own
+    -- top-of-file 2026-08-19 doc comment for the full live-
+    -- disassembled ROM trace (bank 2 $B18F-$B1AB / $A660-$A67E) this
+    -- field is derived from.
+    local expectedMpCost = {
+      [1] = 2, -- "Lebe" (Cure)
+      [2] = 1, -- "Salb" (Heal)
+      [3] = 1, -- "Blok" (Sleep)
+      [4] = 1, -- "Ruhe" (Mute)
+      [5] = 1, -- "Flam" (Fire)
+      [6] = 2, -- "Eis " (Ice)
+      [7] = 2, -- "Bliz" (Lightning)
+      [8] = 3, -- "Bomb" (Nuke)
+    }
+    for recordIndex1Based, mpCost in pairs(expectedMpCost) do
+      Harness.assertEqual(records[recordIndex1Based].mpCost, mpCost,
+        "record " .. (recordIndex1Based - 1) .. " (" .. records[recordIndex1Based].name .. ") mpCost")
+    end
+
+    -- Every non-spell record's masked byte reads 0 -- consistent with
+    -- "this field doesn't apply here," not contradicting the read.
+    for i = 9, #records do
+      Harness.assertEqual(records[i].mpCost, 0,
+        "record " .. (i - 1) .. " (" .. records[i].name .. ") should have no real mpCost")
     end
   end
 )
