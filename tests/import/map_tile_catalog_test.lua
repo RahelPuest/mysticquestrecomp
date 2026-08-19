@@ -120,17 +120,24 @@ Harness.testIfAvailable(
     -- already contributed (the new room shares the wall/border family
     -- almost exactly with fourthRoom, see that room's own doc comment)
     -- -- net count went DOWN slightly (303->300), all in bank 12.
-    Harness.assertEqual(catalog.roomCount, 17)
-    Harness.assertEqual(#catalog.entries, 300)
+    -- UPDATED AGAIN (2026-08-19, same day as the unknownRoomA add-then-
+    -- retract: `worldMapRoom_131`/`worldMapRoom_132` added, real bank5
+    -- catalog records 131/132, see rom_profiles.lua's own doc comment
+    -- on `WORLD_MAP_ROOM_131_GRID`) -- 17->19 rooms, 300->313 distinct
+    -- entries, all new tiles in bank 12 (file 0x30xxx, same pool
+    -- seventhRoom/eighthRoom/ninthRoom already use -- real, honest tile
+    -- reuse across several of the 39 tile IDs these 2 rooms share).
+    Harness.assertEqual(catalog.roomCount, 19)
+    Harness.assertEqual(#catalog.entries, 313)
 
     -- Real map/environment tiles live in exactly 3 banks (8, 11, 12) --
     -- NOT just bank 12, the honest finding this whole module exists to
     -- surface (see this module's own doc comment for the full story).
-    -- seventhRoom's own tiles are all bank 12 (file 0x30xxx) -- only
-    -- that bank's count moved with the 2026-08-17 seventhRoom swap.
+    -- worldMapRoom_131/132's own tiles are all bank 12 -- only that
+    -- bank's count moved with the 2026-08-19 addition.
     Harness.assertEqual(catalog.byBank[8], 28)
     Harness.assertEqual(catalog.byBank[11], 85)
-    Harness.assertEqual(catalog.byBank[12], 187)
+    Harness.assertEqual(catalog.byBank[12], 200)
 
     -- Every entry's own fileOffset must be inside the real ROM and
     -- tile-aligned (16-byte stride) -- same non-fabrication check every

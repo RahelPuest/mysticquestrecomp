@@ -211,5 +211,47 @@ const ROOMS = [
     "heightTiles": 16,
     "name": "willyRoom",
     "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 48,
+        "landingY": 128,
+        "reverse": false,
+        "status": "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
+        "targetRoom": "worldMapRoom_132",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 152,
+          "yMax": 128,
+          "yMin": 112
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "worldMapRoom_131",
+    "widthTiles": 20
+  },
+  {
+    "exits": [
+      {
+        "landingX": 120,
+        "landingY": 128,
+        "reverse": false,
+        "status": "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
+        "targetRoom": "worldMapRoom_131",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 16,
+          "xMin": 0,
+          "yMax": 128,
+          "yMin": 112
+        }
+      }
+    ],
+    "heightTiles": 16,
+    "name": "worldMapRoom_132",
+    "widthTiles": 20
   }
 ];

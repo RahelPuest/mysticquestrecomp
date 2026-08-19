@@ -71,6 +71,24 @@ function render_rooms(main) {
       Spielweg.
     </p>
     <p class="page-lede">
+      <strong>STRUCTURALLY-DERIVED, 2026-08-19</strong> (direkte Nutzerfrage, "können wir jetzt
+      nicht alle zusammenhängenden räume entschlüsseln?"): ein systematischer Kanten-Abgleich
+      über die kompletten Bank-5- (16&times;16) und Bank-6- (8&times;8) Weltkarten-Raster fand 6
+      Raumpaare mit 100%&nbsp;kachelgenauer gemeinsamer Kante &mdash; echte, objektive
+      ROM-Evidenz für räumliche Nachbarschaft (kein Rätselraten wie bei <code>unknownRoomA</code>).
+      Nur <code>worldMapRoom_131</code> &harr; <code>worldMapRoom_132</code> hat zusätzlich eine
+      durchgehend begehbare, footprint-geprüfte Kante auf beiden Seiten &mdash; als einziges Paar
+      testweise verdrahtet, mit echtem Lauftest in <em>beide</em> Richtungen live verifiziert
+      (nicht nur ein Landepunkt-Check &mdash; genau die Lücke, die <code>unknownRoomA</code> kaputt
+      hat ausliefern lassen). Jede Tür trägt ehrlich <code>status = "STRUCTURALLY-DERIVED..."</code>
+      &mdash; die Boden-/Kollisionsbedeutung dieser Kachel-Tabelle ist NICHT unabhängig verifiziert
+      (kein Live-Gameplay erreicht je einen der 384 Katalog-Räume). Die anderen 5 perfekten Paare
+      bleiben unverdrahtet (ihre Kante ist unter der aktuellen Regel einheitlich als Wand
+      eingestuft). Bisher nur über die Dev-Teleport-Mechanik erreichbar, nicht an einen normal
+      erreichbaren Raum angebunden &mdash; das ist eine separate, noch nicht getroffene
+      Entscheidung.
+    </p>
+    <p class="page-lede">
       <span style="color:#9d6fe0;">&equiv; <code>startRoom</code></span> (violetter Rahmen
       unten, UPDATE 2026-08-17): ein echter, VERIFIED Raum &mdash; hostet den echten ersten
       Bosskampf (<code>BattleIntro.lua</code>s reale „Kaempfe!“-Sequenz, das Startbild von

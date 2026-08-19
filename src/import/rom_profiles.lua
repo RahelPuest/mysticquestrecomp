@@ -88,6 +88,125 @@ local UNKNOWN_ROOM_A_FLOOR_TILE_IDS = {
   [114] = true, [115] = true, [166] = true, [198] = true, [199] = true,
   [204] = true, [205] = true, [254] = true,
 }
+-- `WORLD_MAP_ROOM_131_*`/`WORLD_MAP_ROOM_132_*`: real bank-5 world-map
+-- catalog records 131/132 (see `mapTable` below), added 2026-08-19
+-- following a direct user question ("können wir jetzt nicht alle
+-- zusammenhängenden räume entschlüsseln?"). UNLIKE `unknownRoomA`'s own
+-- floor set above, this pair's `floorTileIds` is derived DIRECTLY from
+-- the real, POSITION-AWARE per-cell collision grid
+-- (`RoomFloorLayout.buildCollisionGridFromMapTableRecord`, keyed by
+-- tile ID only after confirming ZERO same-tile-ID/different-collision
+-- conflicts within each room -- the exact audit that caught
+-- `unknownRoomA`'s own broken set was re-run here FIRST, before
+-- trusting this data, and came back clean). A systematic edge-match
+-- scan of the FULL bank-5 16x16 and bank-6 8x8 world-map grids (every
+-- N/N+1 and N/N+stride pair, not just the 2026-08-14 spot-check) found
+-- exactly 5 bank-5 pairs and 1 bank-6 pair with a 100% tile-ID-exact
+-- shared edge -- real, objective ROM evidence of genuine spatial
+-- continuity (confirmed both sides use the same tileset, so a matching
+-- ID at the boundary guarantees identical art AND identical collision
+-- meaning there, no interpretation needed). Of those 6, records 131/132
+-- (bank5, horizontal neighbors) is the ONLY pair where the ENTIRE
+-- shared edge (all 16 rows) is uniformly WALKABLE on both sides under
+-- `RoomFloorLayout.isWalkableCollision` AND the two rooms' own real
+-- collision grids show large (59/113-cell), non-fragmented, footprint-
+-- reachable regions on both sides of the door (2x2-tile/16x16px
+-- footprint, the same granularity `TileWalkability.build` actually
+-- uses) -- a completely different, sane rectangular-room shape from
+-- unknownRoomA's broken checkerboard, not just a smaller version of the
+-- same problem. Live-rendered and visually inspected (not just numbers)
+-- via `MYSTICQUEST_DEBUG_STATE=roomexplorer:132`/`:133` -- both sides
+-- show a plausible continuous cave-passage shape across the seam.
+--
+-- HONEST STATUS, still: `genericCatalogMetatileTableFileOffset`'s own
+-- collision-byte MEANING (which polarity is floor vs wall) is, by this
+-- pipeline's own doc comment, NOT independently ground-truth-verified
+-- (no live gameplay reaches any of these 384 catalog rooms, so there is
+-- no WRAM cross-check available the way fourthRoom's table has). This
+-- pair was chosen specifically because it's the one candidate whose
+-- OWN internal structure (zero tile-ID collision conflicts, large
+-- connected footprint regions, a sane non-checkerboard room shape, real
+-- visual continuity) inspires much more confidence than `unknownRoomA`'s
+-- data ever did -- but "much more confidence" is not "proven." The
+-- other 4 bank-5 pairs and the 1 bank-6 pair were NOT wired: their
+-- shared edges are uniformly classified WALL under the same rule,
+-- which -- if the polarity for this table is actually backwards, as it
+-- demonstrably is for willyRoom's own table -- would mean it's actually
+-- those 4 that are real doors and this one that's a real wall. Left
+-- unwired pending independent verification.
+local WORLD_MAP_ROOM_131_GRID = {
+  {78,79,78,79,66,67,66,67,66,67,70,71,82,83,46,47,46,47,38,38},
+  {80,81,80,81,68,69,68,69,68,69,72,73,84,37,46,47,46,47,38,38},
+  {46,47,46,47,74,75,66,67,66,67,70,71,46,47,46,47,46,47,38,38},
+  {46,47,46,47,37,77,68,69,68,69,72,73,46,47,46,47,46,47,38,38},
+  {46,47,46,47,46,47,66,67,66,67,70,71,46,47,46,47,46,47,38,38},
+  {46,47,46,47,46,47,68,69,68,69,72,73,46,47,46,47,46,47,38,38},
+  {46,47,46,47,46,47,74,75,66,67,82,83,46,47,46,47,46,47,38,38},
+  {46,47,46,47,46,47,37,77,68,69,84,37,46,47,46,47,46,47,38,38},
+  {160,161,86,37,46,47,46,47,46,47,46,47,46,47,46,47,37,89,38,38},
+  {68,69,87,88,46,47,46,47,46,47,46,47,46,47,46,47,90,91,38,38},
+  {66,67,66,67,46,47,46,47,46,47,46,47,46,47,37,89,70,71,38,38},
+  {68,69,68,69,46,47,46,47,46,47,46,47,46,47,90,91,72,73,38,38},
+  {78,79,66,67,86,37,46,47,46,47,46,47,37,89,70,71,92,93,38,38},
+  {80,81,68,69,87,88,46,47,46,47,46,47,90,91,72,73,94,38,38,38},
+  {38,38,95,96,66,67,160,161,160,161,160,161,70,71,92,93,38,38,38,38},
+  {38,38,38,97,68,69,68,69,68,69,68,69,72,73,94,38,38,38,38,38},
+}
+local WORLD_MAP_ROOM_131_TILE_OFFSETS = {
+  [37] = 0x30250, [38] = 0x30260, [46] = 0x302E0, [47] = 0x302F0,
+  [66] = 0x30420, [67] = 0x30430, [68] = 0x30440, [69] = 0x30450,
+  [70] = 0x30460, [71] = 0x30470, [72] = 0x30480, [73] = 0x30490,
+  [74] = 0x304A0, [75] = 0x304B0, [77] = 0x304D0, [78] = 0x304E0,
+  [79] = 0x304F0, [80] = 0x30500, [81] = 0x30510, [82] = 0x30520,
+  [83] = 0x30530, [84] = 0x30540, [86] = 0x30560, [87] = 0x30570,
+  [88] = 0x30580, [89] = 0x30590, [90] = 0x305A0, [91] = 0x305B0,
+  [92] = 0x305C0, [93] = 0x305D0, [94] = 0x305E0, [95] = 0x305F0,
+  [96] = 0x30600, [97] = 0x30610, [160] = 0x30A00, [161] = 0x30A10,
+}
+local WORLD_MAP_ROOM_131_FLOOR_TILE_IDS = {
+  [38] = true, [66] = true, [67] = true, [68] = true, [69] = true,
+  [70] = true, [71] = true, [72] = true, [73] = true, [78] = true,
+  [79] = true, [80] = true, [81] = true, [92] = true, [93] = true,
+  [94] = true, [95] = true, [96] = true, [97] = true, [160] = true,
+  [161] = true,
+}
+local WORLD_MAP_ROOM_132_GRID = {
+  {38,38,46,47,46,47,66,67,66,67,70,71,70,71,66,67,66,67,66,67},
+  {38,38,46,47,46,47,68,69,68,69,72,73,72,73,68,69,68,69,68,69},
+  {38,38,46,47,46,47,66,67,66,67,70,71,82,83,46,47,46,47,46,47},
+  {38,38,46,47,46,47,68,69,68,69,72,73,84,37,46,47,46,47,46,47},
+  {38,38,46,47,46,47,74,75,78,79,82,83,46,47,46,47,46,47,46,47},
+  {38,38,46,47,46,47,37,77,80,81,84,37,46,47,46,47,46,47,46,47},
+  {38,38,46,47,46,47,46,47,46,47,46,47,46,47,46,47,37,89,43,43},
+  {38,38,46,47,46,47,46,47,46,47,46,47,46,47,46,47,90,91,72,73},
+  {38,38,86,37,46,47,46,47,46,47,46,47,46,47,37,89,70,71,92,93},
+  {38,38,87,88,46,47,46,47,46,47,46,47,46,47,90,91,72,73,94,38},
+  {38,38,66,67,160,161,160,161,160,161,160,161,160,161,70,71,92,93,38,38},
+  {38,38,68,69,68,69,68,69,68,69,68,69,68,69,72,73,94,38,38,38},
+  {38,38,95,96,66,67,66,67,66,67,66,67,66,67,92,93,38,38,38,38},
+  {38,38,38,97,68,69,68,69,68,69,68,69,68,69,94,38,38,38,38,38},
+  {38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38},
+  {38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38,38},
+}
+local WORLD_MAP_ROOM_132_TILE_OFFSETS = {
+  [37] = 0x30250, [38] = 0x30260, [43] = 0x302B0, [46] = 0x302E0,
+  [47] = 0x302F0, [66] = 0x30420, [67] = 0x30430, [68] = 0x30440,
+  [69] = 0x30450, [70] = 0x30460, [71] = 0x30470, [72] = 0x30480,
+  [73] = 0x30490, [74] = 0x304A0, [75] = 0x304B0, [77] = 0x304D0,
+  [78] = 0x304E0, [79] = 0x304F0, [80] = 0x30500, [81] = 0x30510,
+  [82] = 0x30520, [83] = 0x30530, [84] = 0x30540, [86] = 0x30560,
+  [87] = 0x30570, [88] = 0x30580, [89] = 0x30590, [90] = 0x305A0,
+  [91] = 0x305B0, [92] = 0x305C0, [93] = 0x305D0, [94] = 0x305E0,
+  [95] = 0x305F0, [96] = 0x30600, [97] = 0x30610, [160] = 0x30A00,
+  [161] = 0x30A10,
+}
+local WORLD_MAP_ROOM_132_FLOOR_TILE_IDS = {
+  [38] = true, [43] = true, [66] = true, [67] = true, [68] = true,
+  [69] = true, [70] = true, [71] = true, [72] = true, [73] = true,
+  [78] = true, [79] = true, [80] = true, [81] = true, [92] = true,
+  [93] = true, [94] = true, [95] = true, [96] = true, [97] = true,
+  [160] = true, [161] = true,
+}
 -- Real, per-room 16x20 pixel-tile grids (row-major, matching every
 -- other room's own `graphics.<room>.grid` shape) -- each decoded from
 -- bank 5's own record N (N = roomSelector), through unknownRoomA's own
@@ -2992,6 +3111,69 @@ RomProfiles.PROFILES = {
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[13],
+      },
+      -- `worldMapRoom_131`/`worldMapRoom_132`: real bank-5 world-map
+      -- catalog records 131/132 -- see `WORLD_MAP_ROOM_131_GRID`'s own
+      -- doc comment above for the full evidence trail (100% tile-exact
+      -- edge match found via a systematic full-grid scan, zero internal
+      -- collision conflicts, large non-fragmented footprint-reachable
+      -- regions on both sides, visually confirmed continuous). This is
+      -- a TRIAL, deliberately the single most-defensible candidate of
+      -- the 6 perfect-match pairs found, not a claim the others are
+      -- wrong -- see that doc comment for why the other 5 were left
+      -- unwired. STRUCTURALLY-DERIVED, meaningfully stronger evidence
+      -- than `unknownRoomA`'s own ENGINEERING-CHOICE doors (those had
+      -- no edge-match evidence at all, pure invented placement) -- but
+      -- still NOT independently ground-truth-verified the way a live-
+      -- reachable room's collision table is, since no gameplay reaches
+      -- any bank5/6 catalog room. Door placed on the one row range (15-
+      -- 16, fully open on both sides in both rooms) that lets landing
+      -- spots sit well inside each room rather than right at the seam,
+      -- avoiding the "landing inside the exit zone" bounce-loop bug
+      -- this project already found and fixed once this session.
+      -- Reachable today only via the same dev-only teleport machinery
+      -- (`MYSTICQUEST_VICTORY_START_ROOM=worldMapRoom_131`) already used
+      -- to verify every other room this session -- deliberately NOT
+      -- wired to any currently-reachable room via a new engineering-
+      -- choice entry door; that would be a separate decision, not made
+      -- here.
+      worldMapRoom_131 = {
+        status = "STRUCTURALLY-DERIVED (100% tile-exact edge match with worldMapRoom_132, see doc comment above); floor/collision meaning for this metatile table is NOT independently verified",
+        bank5RecordIndex = 131,
+        cols = 20, rows = 16,
+        tileOffsets = WORLD_MAP_ROOM_131_TILE_OFFSETS,
+        floorTileIds = WORLD_MAP_ROOM_131_FLOOR_TILE_IDS,
+        grid = WORLD_MAP_ROOM_131_GRID,
+        exits = {
+          {
+            status = "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
+            zone = { xMin = 152, xMax = 160, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            -- row15,col6 (1-based) in worldMapRoom_132 -- real floor,
+            -- footprint-verified, well inside the room (not at the seam).
+            landingX = 48, landingY = 128,
+          },
+        },
+      },
+      worldMapRoom_132 = {
+        status = "STRUCTURALLY-DERIVED (100% tile-exact edge match with worldMapRoom_131, see doc comment above); floor/collision meaning for this metatile table is NOT independently verified",
+        bank5RecordIndex = 132,
+        cols = 20, rows = 16,
+        tileOffsets = WORLD_MAP_ROOM_132_TILE_OFFSETS,
+        floorTileIds = WORLD_MAP_ROOM_132_FLOOR_TILE_IDS,
+        grid = WORLD_MAP_ROOM_132_GRID,
+        exits = {
+          {
+            status = "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
+            zone = { xMin = 0, xMax = 16, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_131",
+            -- row15,col15 (1-based) in worldMapRoom_131 -- real floor,
+            -- footprint-verified, well inside the room (not at the seam).
+            landingX = 120, landingY = 128,
+          },
+        },
       },
     },
 
