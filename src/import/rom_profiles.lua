@@ -3258,6 +3258,64 @@ RomProfiles.PROFILES = {
       -- decoded ROM data; only connectivity is withdrawn again, back to
       -- none, until a trustworthy floor source exists for this specific
       -- metatile table.
+      --
+      -- INVESTIGATED FURTHER, 2026-08-19 (direct "p0" pivot, after the
+      -- bank-14 trigger-hunting thread ran out of static angles): tried
+      -- the SAME position-aware, per-metatile-INSTANCE collision
+      -- technique that made `worldMapRoom_131`/`132` trustworthy
+      -- (`RoomFloorLayout.buildCollisionGridFromMapTableRecord`,
+      -- keying on grid POSITION rather than the flat, tile-ID-keyed
+      -- `UNKNOWN_ROOM_A_FLOOR_TILE_IDS` set above) against all 6 real
+      -- records (8-13) directly.
+      --
+      -- A genuine, real improvement: the position-aware read shows only
+      -- 3-4 clean collision-byte values across all 6 rooms combined
+      -- (`0x00`, `0x08`, `0x30`, one lone `0x31` in record 9) -- NOT
+      -- the "many exotic values" (`0x02`/`0x05`/`0x10`/`0x17`/`0x59`/
+      -- `0x6D`) `UNKNOWN_ROOM_A_FLOOR_TILE_IDS`'s own doc comment
+      -- reported. That apparent diversity was an artifact of the
+      -- flat, tile-ID-keyed approach conflating multiple real,
+      -- different per-POSITION collision bytes under one shared
+      -- rendered tile ID -- exactly the class of problem
+      -- `worldMapRoom_131`/`132`'s own methodology exists to avoid.
+      --
+      -- Tested both already-known real polarities (this project's
+      -- default `isWalkableCollision`, upper-nibble-`0` = floor, vs.
+      -- `isWalkableCollisionWillyFamily`, collision-`==0x30` = floor)
+      -- against the real 2x2/16x16px footprint connectivity
+      -- `TileWalkability.build` actually needs, per room:
+      --
+      --   record  default-rule footprint   willyFamily-rule footprint
+      --   8       140                      39
+      --   9       67                       141
+      --   10      172                      75
+      --   11      186                      59
+      --   12      132                      105
+      --   13      13                       213
+      --
+      -- HONEST, NOT-YET-RESOLVED result: NEITHER rule wins uniformly --
+      -- 4 of 6 records (8/10/11/12) show a much larger connected
+      -- footprint under the default rule, but 2 (9/13) show a
+      -- dramatically larger one under willyFamily's rule instead. Both
+      -- candidate global rules produce large, healthy, non-checkerboard
+      -- footprints for MOST rooms (a real, positive finding -- this
+      -- table is NOT fundamentally broken/unwalkable data the way the
+      -- 2026-08-19 retraction's own tile-ID-keyed analysis suggested),
+      -- but no single already-known polarity rule is consistently
+      -- correct across all 6 records sharing what should be one real
+      -- metatile table -- a genuine, deeper puzzle (perhaps `0x30`
+      -- encodes something more nuanced than a flat floor/wall bit here,
+      -- e.g. a real per-edge/directional block mask, matching this
+      -- module's own earlier "N/E/S/W block mask" speculation, which a
+      -- single walkable/not boolean per cell cannot represent).
+      -- `UNKNOWN_ROOM_A_FLOOR_TILE_IDS` above is deliberately left
+      -- UNCHANGED (not swapped for either candidate) -- this finding
+      -- narrows and clarifies the open question without resolving it,
+      -- and connectivity stays withdrawn either way (no live trigger
+      -- exists to verify actual walkability regardless of which
+      -- collision interpretation is used). Scratch tooling
+      -- (`test_unknownRoomA_polarity.lua`, `histogram2.lua`) kept in
+      -- the scratchpad, not committed.
       unknownRoomA_8 = {
         status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 8,
