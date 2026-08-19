@@ -5479,6 +5479,20 @@ real, live-measured data, just a slightly different capture method
 than the original battle-intro trace used (a per-frame BG-tilemap
 sample, not a direct ROM-code watch), honestly noted as such.
 
+**UPGRADED to a direct ROM-code watch (2026-08-19, direct follow-up:
+"versuche das mal anhand des codes auch für die rechte wand")** --
+see `rom_profiles.lua`'s own `battleIntro.entranceSeal` doc comment for
+the full call-stack trace. Real watchpoints on all 4 destination BG
+cells plus a `CallTracer` capture found the open write goes through the
+already-known general VRAM-write JOB QUEUE (`$1DDA`, drained during a
+real VBlank interrupt) into the same `$1D87`/`$1D88` writer the gate
+uses, while the close write goes through a direct synchronous chain
+(`$0F24`->`$2400`->`$056C`->`$0495`->`$049A`->`$1D74`->`$1D87`/`$1D88`)
+-- structurally the same shape as the gate's own chain, but via a
+different, newly-found top-level caller. This closes the gap this
+entry's own honest caveat flagged: the entrance seal's underlying code
+path is now traced, not just its visible tilemap result.
+
 This project's own `startRoom.grid` had always modeled that exact spot
 as permanently solid wall -- since a GB sprite always draws on top of
 the background regardless of any collision state, nothing ever

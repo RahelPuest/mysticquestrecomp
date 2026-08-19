@@ -677,6 +677,46 @@ RomProfiles.PROFILES = {
         -- numbers calibrated relative to hiddenFrames (same live run):
         -- opens 2 frames before the player sprite appears, seals 117
         -- frames later.
+        --
+        -- CODE-TRACED (2026-08-19, direct follow-up: "versuche das mal
+        -- anhand des codes auch für die rechte wand" -- the same rigor
+        -- `battleIntro.gate` already had, this entry originally didn't).
+        -- Live memory watchpoints on all 4 real destination BG tilemap
+        -- cells ($9952/$9953/$9972/$9973, map 0 base $9800 + row*32 +
+        -- col) plus a full CallTracer call-stack capture at each hit
+        -- (not just the write's own PC) found TWO STRUCTURALLY
+        -- DIFFERENT real call chains for open vs. close -- a genuine,
+        -- new finding, not assumed from the gate's own shape:
+        --   OPEN (bank 1 live, all 4 cells, values 0x8D/0x8E matching
+        --     openGrid exactly): `$21AC` -> `$1DDA` (the already-known
+        --     general VRAM-write JOB QUEUE drain routine -- the same
+        --     one `victorySequence`'s own black-screen wipe uses,
+        --     WRAM `$C8E8`/`$CEE8`) -- a real hardware VBlank interrupt
+        --     ($0040 vector) fires WHILE `$1DDA` is executing, and the
+        --     ISR path reaches `$1E3F` -> `$1D74` -> `$1D87`/`$1D88`
+        --     (the same general safe-VRAM-byte writer `battleIntro.
+        --     gate` already uses). So the OPEN write is QUEUED and
+        --     drained asynchronously during a real VBlank, unlike the
+        --     gate's own fully synchronous chain.
+        --   CLOSE (bank 8 live, all 4 cells, values 0x80/0x81/0x82/
+        --     0x82 matching closedGrid exactly): `$0F24` -> `$2400` ->
+        --     `$056C` (the already-known "real tile-redraw/cursor-blit
+        --     workhorse," its SECOND real entry point -- the first,
+        --     `$051D`, was already known to be called from 3 bank-1 and
+        --     3 bank-2 sites; `$0F24`/`$2400` are a real caller not
+        --     previously catalogued) -> `$0495` -> `$049A` -> `$1D74`
+        --     -> `$1D87`/`$1D88`. Structurally the SAME shape as the
+        --     gate's own already-documented chain (also through `$0495`
+        --     /`$049A`/`$1D74`), just reached via `$056C` instead of
+        --     directly, and via a different, newly-found top-level
+        --     caller (`$0F24`).
+        -- Both writes land in the exact same general low-level
+        -- primitive the gate already uses -- confirms (rather than
+        -- merely assumes, as the original 2026-08-12 entry honestly
+        -- flagged it had to) that this is the same real underlying
+        -- mechanism, while also showing open/close are NOT symmetric
+        -- at the code level -- a real, previously-unknown structural
+        -- detail.
         entranceSeal = {
           status = "VERIFIED",
           bgRow = 10, bgCol = 18, rows = 2, cols = 2, -- BG tilemap row10-11, col18-19
