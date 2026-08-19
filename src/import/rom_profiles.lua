@@ -53,17 +53,40 @@ local UNKNOWN_ROOM_A_TILE_OFFSETS = {
 -- against fourthRoom's own tested floor, but does NOT hold for
 -- willyRoom's checkerboard floor (same bit pattern reads as 0x30
 -- there) -- the meaning is likely set per metatile table, not ROM-wide,
--- so this stays a hypothesis for unknownRoomA specifically (no live
--- trigger exists to verify it directly).
+-- so this stays a hypothesis for unknownRoomA specifically.
+--
+-- CORRECTED 2026-08-19: the set below was rebuilt from scratch. The
+-- previous hand-built set (shipped 2026-08-19 alongside the seventhRoom
+-- -> unknownRoomA_8..13 engineering-choice exit chain) was audited
+-- against every one of the 82 distinct tile IDs actually used across
+-- these 6 rooms' own grids (see /tmp/audit_floor_ids.lua) and found to
+-- MISMATCH this file's own stated rule above for 42 of those 82 tiles
+-- (about half) -- e.g. tiles 198/199, the visually floor-like
+-- "mesh/net" pattern rom-map.md's own human visual-confirmation
+-- explicitly called real floor, both have collision byte 0x00 (upper
+-- nibble zero, i.e. floor per the rule) yet were excluded. A live
+-- scripted walk test (right@10-70 from the unknownRoomA_8 landing
+-- spot) showed the player advancing only ~1 tile in 60 held frames,
+-- consistent with hitting misclassified terrain almost immediately.
+-- This confirms the direct user report that everything past seventhRoom
+-- played as broken/nonsensical. The set below applies the same rule
+-- mechanically and completely to all 82 used tile IDs instead of a
+-- hand-picked subset, closing the gap. It does NOT resolve the deeper
+-- open question of what collision bytes outside {0x00, 0x08, 0x30,
+-- 0x31} (e.g. 0x02, 0x05, 0x10, 0x17, 0x59, 0x6D, seen on some of
+-- these 82 tiles) actually mean -- those are still conservatively
+-- treated as NOT floor, same as before.
 local UNKNOWN_ROOM_A_FLOOR_TILE_IDS = {
-  [18] = true, [33] = true, [35] = true, [36] = true, [37] = true, [38] = true,
-  [39] = true, [40] = true, [41] = true, [42] = true, [43] = true, [48] = true,
-  [50] = true, [51] = true, [52] = true, [53] = true, [56] = true, [57] = true,
-  [58] = true, [59] = true, [64] = true, [66] = true, [72] = true, [73] = true,
-  [74] = true, [75] = true, [77] = true, [80] = true, [81] = true, [84] = true,
-  [85] = true, [92] = true, [93] = true, [94] = true, [95] = true, [96] = true,
-  [97] = true, [100] = true, [101] = true, [108] = true, [109] = true,
-  [110] = true, [111] = true, [163] = true, [166] = true,
+  [1] = true, [3] = true, [4] = true, [5] = true, [7] = true, [18] = true,
+  [19] = true, [20] = true, [21] = true, [22] = true, [23] = true,
+  [24] = true, [26] = true, [27] = true, [28] = true, [29] = true,
+  [33] = true, [36] = true, [37] = true, [38] = true, [39] = true,
+  [42] = true, [48] = true, [52] = true, [53] = true, [59] = true,
+  [64] = true, [66] = true, [72] = true, [74] = true, [80] = true,
+  [81] = true, [84] = true, [85] = true, [92] = true, [95] = true,
+  [108] = true, [109] = true, [110] = true, [111] = true, [113] = true,
+  [114] = true, [115] = true, [166] = true, [198] = true, [199] = true,
+  [204] = true, [205] = true, [254] = true,
 }
 -- Real, per-room 16x20 pixel-tile grids (row-major, matching every
 -- other room's own `graphics.<room>.grid` shape) -- each decoded from
@@ -2001,36 +2024,33 @@ RomProfiles.PROFILES = {
         -- exists here. No real destination known for this room's south
         -- row or east edge yet -- left honestly unexplored.
         --
-        -- ADDED 2026-08-19, direct user instruction ("Regel für
-        -- unknownRoomA bewusst lockern... voll spielbare Version"):
-        -- an EXPLICIT, deliberate ENGINEERING CHOICE, not a claimed ROM
-        -- fact -- same category and same honesty standard as
-        -- `sixthRoom`'s own static west exit. `unknownRoomA`'s own 6
-        -- rooms (see `graphics.unknownRoomA_8` etc. below) are real,
-        -- fully-decoded ROM content that this project's own established
-        -- policy previously refused to connect ("would misrepresent
-        -- invented data as decoded ROM behavior"). That policy is
-        -- deliberately relaxed HERE, on direct user instruction, in
-        -- service of overall playability -- the room CONTENT stays 100%
-        -- real ROM data; only this door and its exact position are
-        -- invented. This room's own east wall (rows 11-14, the only
-        -- real floor found along any of its 4 edges besides the
-        -- already-explored south) was picked simply because it's the
-        -- one edge with enough real walkable floor to place a door on --
-        -- not because of any ROM evidence it leads anywhere.
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-derived (see doc comment above)",
-            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 112 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_8",
-            -- Landing tile (row8,col1 1-based -> 0-based row7/col0) is
-            -- real, confirmed-walkable floor in unknownRoomA_8's own
-            -- already-decoded grid (tile 33, in `floorTileIds`) --
-            -- verified by direct inspection, not guessed.
-            landingX = 8, landingY = 72,
-          },
-        },
+        -- ADDED then RETRACTED 2026-08-19 (both same day, direct user
+        -- instruction each time): a door to `unknownRoomA_8` was briefly
+        -- added here as an explicit ENGINEERING CHOICE ("Regel für
+        -- unknownRoomA bewusst lockern... voll spielbare Version"),
+        -- policy-relaxed the same way `sixthRoom`'s own static west exit
+        -- was. It was pulled back after a direct, blunt user report
+        -- ("alles nach dem 7. raum ist müll") triggered a full re-audit:
+        -- `unknownRoomA`'s own `floorTileIds` -- the ONLY thing this
+        -- door's landing spot, and the whole 6-room chain behind it,
+        -- depended on -- turned out to mismatch this project's own
+        -- stated collision-byte classification rule for 42 of 82 tiles
+        -- actually used. Rebuilding the set by applying that rule fully
+        -- and mechanically (see `UNKNOWN_ROOM_A_FLOOR_TILE_IDS`'s own
+        -- doc comment above) did NOT fix it -- it revealed a checkerboard
+        -- artifact with almost no coherent 2x2-footprint-walkable area
+        -- in most of the 6 rooms (2 of 6 rooms had ZERO connected
+        -- walkable footprint at all under the corrected rule). This
+        -- confirms the room's own original caution ("stays a hypothesis
+        -- for unknownRoomA specifically... no live trigger exists to
+        -- verify it directly") was right to begin with: the collision-
+        -- byte heuristic simply does not hold for unknownRoomA's
+        -- metatile table, so no honest door can be placed here yet.
+        -- `unknownRoomA`'s room CONTENT (tile-art grids) is untouched
+        -- and stays real, decoded ROM data -- only connectivity is
+        -- withdrawn again, back to empty, until a trustworthy floor
+        -- source exists for this specific metatile table.
+        exits = {},
       },
       -- ADDED (same continuation, same self-correction): real bank-5
       -- catalog record 236 -- seventhRoom's own SOUTH neighbor (not the
@@ -2899,133 +2919,74 @@ RomProfiles.PROFILES = {
       -- the clearly-marked dev-only way to browse all 6 without any
       -- invented door.
       --
-      -- POLICY CHANGE, 2026-08-19, direct user instruction ("Regel für
-      -- unknownRoomA bewusst lockern... voll spielbare Version"): this
-      -- doc comment used to say this project "does not fabricate" a
-      -- door here. That blanket refusal is deliberately relaxed now,
-      -- specifically for these 6 rooms, in service of overall
-      -- playability -- see `seventhRoom.exits`' own doc comment for the
-      -- real entry point, and each room's own `exits` field below for
-      -- the linear 8->9->10->11->12->13 chain connecting them. Every
-      -- one of these doors is an explicit ENGINEERING CHOICE (own
-      -- `status` field says so on each), never presented as ROM-
-      -- confirmed -- the underlying room CONTENT stays exactly as real
-      -- as it always was; only the doors and their positions are new,
-      -- invented plumbing. Landing tiles were each individually checked
-      -- against the room's own real `floorTileIds` before being chosen
-      -- (see `/tmp/find_landing_spots.lua`-style scratch tooling, not
-      -- checked in) -- not eyeballed.
+      -- POLICY CHANGE 2026-08-19, then RETRACTED same day: a linear
+      -- 8->9->10->11->12->13 engineering-choice door chain was added
+      -- here on direct user instruction ("Regel für unknownRoomA
+      -- bewusst lockern... voll spielbare Version"), each door
+      -- individually landing-spot-checked against `floorTileIds`. It
+      -- was pulled back after a direct, blunt user report ("alles nach
+      -- dem 7. raum ist müll") triggered a full re-audit: `floorTileIds`
+      -- itself mismatched this project's own stated collision-byte
+      -- classification rule for 42 of 82 tiles actually used across
+      -- these 6 rooms, and rebuilding it by applying that rule fully
+      -- and mechanically (see `UNKNOWN_ROOM_A_FLOOR_TILE_IDS`'s own
+      -- doc comment above) revealed a checkerboard artifact with almost
+      -- no coherent, 2x2-footprint-walkable area in most of the 6
+      -- rooms -- 2 of 6 had ZERO connected walkable footprint at all.
+      -- The single-cell landing-spot check used at the time was too
+      -- narrow to catch this (it never checked the real 2x2/16x16
+      -- footprint `TileWalkability.build` actually uses, nor did any
+      -- in-game walk test happen before the chain was reported done).
+      -- CONCLUSION: the collision-byte heuristic does not hold for
+      -- unknownRoomA's own metatile table, so no honest door can be
+      -- placed here yet -- exactly the situation this doc comment's
+      -- very first version already anticipated before being relaxed.
+      -- The room CONTENT (tile-art grids) is untouched and stays real,
+      -- decoded ROM data; only connectivity is withdrawn again, back to
+      -- none, until a trustworthy floor source exists for this specific
+      -- metatile table.
       unknownRoomA_8 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 8,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[8],
-        -- ENGINEERING CHOICE (see the block doc comment above): east
-        -- wall rows 11-14 (1-based) is real, confirmed-walkable floor
-        -- on this room's own east edge -- the only edge here with
-        -- enough real floor for a door besides the entry point.
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-derived",
-            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 112 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_9",
-            -- row13,col1 (1-based) -- real floor (tile 94, in
-            -- floorTileIds) on unknownRoomA_9's own west edge.
-            landingX = 8, landingY = 112,
-          },
-        },
       },
       unknownRoomA_9 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 9,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[9],
-        -- ENGINEERING CHOICE: row9 (1-based) is real floor on both this
-        -- room's own east edge AND unknownRoomA_10's west edge -- picked
-        -- for the clean match, not a claimed ROM fact.
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-derived",
-            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 72 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_10",
-            landingX = 8, landingY = 80,
-          },
-        },
       },
       unknownRoomA_10 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 10,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[10],
-        -- ENGINEERING CHOICE: row9 (1-based) is real floor on both this
-        -- room's own east edge AND unknownRoomA_11's west edge.
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-derived",
-            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 72 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_11",
-            landingX = 8, landingY = 80,
-          },
-        },
       },
       unknownRoomA_11 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 11,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[11],
-        -- ENGINEERING CHOICE: row9 (1-based) is real floor on both this
-        -- room's own east edge AND unknownRoomA_12's west edge.
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-derived",
-            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 72 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_12",
-            landingX = 8, landingY = 80,
-          },
-        },
       },
       unknownRoomA_12 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 12,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[12],
-        -- ENGINEERING CHOICE: row14 (1-based) is the one real floor row
-        -- shared between this room's own east edge and
-        -- unknownRoomA_13's own west edge (its only west-edge floor
-        -- tile at all).
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-derived",
-            zone = { xMin = 144, xMax = 160, yMin = 104, yMax = 112 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_13",
-            landingX = 8, landingY = 120,
-          },
-        },
       },
-      -- unknownRoomA_13 is this engineering-choice chain's own dead
-      -- end -- no further exit (see the block doc comment above): its
-      -- own real floor is concentrated on its NORTH/EAST edges (a
-      -- genuinely different shape from the other 5 rooms' own west/
-      -- east corridor pattern), not a clean continuation of this same
-      -- chain. Left honestly unexplored rather than forcing a 7th door
-      -- through geometry that doesn't support one as cleanly.
       unknownRoomA_13 = {
-        status = "VERIFIED (room content); connectivity is this project's own invented engineering-choice wiring, not ROM data",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 13,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,

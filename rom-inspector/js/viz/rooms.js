@@ -54,15 +54,21 @@ function render_rooms(main) {
       Tabelle.
     </p>
     <p class="page-lede">
-      <strong>ENGINEERING CHOICE, 2026-08-19</strong> (direkte Nutzeranweisung, "voll spielbare
-      Version"): <code>seventhRoom</code> &rarr; <code>unknownRoomA_8..13</code> ist eine
-      bewusst erfundene Tür-Kette, keine ROM-bestätigte Verbindung &mdash; jede einzelne Kante
-      trägt <code>status = "ENGINEERING CHOICE, not ROM-derived"</code> in den Rohdaten. Die
-      lange mysteriöse <code>unknownRoomA</code>-Familie (6 real dekodierte Räume, vorher nur
-      über den Dev-Browser F8 erreichbar) ist damit zum ersten Mal auf einem normalen Spielweg
-      betretbar. Der Rauminhalt selbst ist zu 100% echte ROM-Daten; nur diese 6 Türen und ihre
-      genaue Position sind erfunden &mdash; jeder Landepunkt wurde einzeln gegen den echten,
-      bereits dekodierten Boden-Raster geprüft (nie in eine Wand), nicht geraten.
+      <strong>ENGINEERING CHOICE, 2026-08-19 &mdash; hinzugefügt, dann noch am selben Tag
+      ZURÜCKGEZOGEN</strong>: eine erfundene Tür-Kette <code>seventhRoom</code> &rarr;
+      <code>unknownRoomA_8..13</code> wurde kurz gebaut und live "verifiziert", nach einer
+      direkten, kritischen Nutzerrückmeldung aber wieder entfernt. Ein Audit ergab: der
+      zugrundeliegende Boden-Datensatz (<code>floorTileIds</code>) widersprach der eigenen
+      dokumentierten Klassifizierungsregel bei 42 von 82 verwendeten Kachel-IDs, und selbst eine
+      korrigierte, konsequent nach dieser Regel abgeleitete Version ergab in 2 der 6 Räume
+      überhaupt keine zusammenhängende begehbare Fläche. Die ursprüngliche Prüfung hatte nur die
+      einzelne Landekachel getestet, nicht den echten 2x2-Kachel-Footprint, den die Spielfigur
+      tatsächlich braucht &mdash; und keinen echten Lauftest vor dem "fertig"-Report. Der
+      Rauminhalt selbst (Kachel-Grafik) bleibt unverändert echte ROM-Daten; nur die 6 erfundenen
+      Türen wurden wieder entfernt, bis eine verlässliche Bodenquelle für diese Metatile-Tabelle
+      existiert. Die lange mysteriöse <code>unknownRoomA</code>-Familie (6 real dekodierte Räume)
+      bleibt wie zuvor nur über den Dev-Browser F8 erreichbar, nicht über einen normalen
+      Spielweg.
     </p>
     <p class="page-lede">
       <span style="color:#9d6fe0;">&equiv; <code>startRoom</code></span> (violetter Rahmen

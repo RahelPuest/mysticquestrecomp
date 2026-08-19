@@ -134,24 +134,14 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "seventhRoom: exactly 1 outgoing exit, an ENGINEERING-CHOICE door into unknownRoomA_8 (2026-08-19, was empty since the 2026-08-17 eighthRoom retraction)",
+  "seventhRoom: has NO outgoing exits (2026-08-19: a brief unknownRoomA_8 engineering-choice door was added then RETRACTED same day -- see rom_profiles.lua's own doc comment on seventhRoom.exits for the full add-then-retract story; floorTileIds it depended on turned out unreliable for unknownRoomA's own metatile table)",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local seventh = profile.graphics.seventhRoom
-    Harness.assertTrue(seventh.exits ~= nil and #seventh.exits == 1,
-      "expected seventhRoom to have exactly the new engineering-choice unknownRoomA_8 door")
-    Harness.assertEqual(seventh.exits[1].targetRoom, "unknownRoomA_8")
-
-    -- The landing tile in unknownRoomA_8 should be real, confirmed floor.
-    local target = profile.graphics.unknownRoomA_8
-    local tileX = (seventh.exits[1].landingX - 8) / 8
-    local tileY = (seventh.exits[1].landingY - 16) / 8
-    local tileId = target.grid[tileY + 1][tileX + 1]
-    Harness.assertTrue(target.floorTileIds[tileId],
-      string.format("expected seventhRoom's own exit to land on real floor in unknownRoomA_8 (row %d, col %d, tile %d)",
-        tileY + 1, tileX + 1, tileId))
+    Harness.assertTrue(seventh.exits == nil or #seventh.exits == 0,
+      "expected seventhRoom to have no outgoing exits -- no real destination known, and the engineering-choice attempt was withdrawn")
   end
 )
 
