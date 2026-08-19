@@ -3316,6 +3316,64 @@ RomProfiles.PROFILES = {
       -- collision interpretation is used). Scratch tooling
       -- (`test_unknownRoomA_polarity.lua`, `histogram2.lua`) kept in
       -- the scratchpad, not committed.
+      --
+      -- POLARITY PUZZLE RESOLVED, same day, direct follow-up
+      -- ("visuell prüfen" instead of continuing to guess from bytes
+      -- alone): rendered all 6 rooms with a collision-value color
+      -- overlay (`render_collision_overlay.py`, scratch, not
+      -- committed) and looked at them directly. Decisive across every
+      -- room checked: `collision==0x30` (any `interaction` sub-value)
+      -- renders as a real, recognizable brick/masonry WALL texture;
+      -- `collision` in `{0x00,0x08}` renders as a real mesh/net FLOOR
+      -- texture (the exact tiles `UNKNOWN_ROOM_A_FLOOR_TILE_IDS`'s own
+      -- earlier doc comment already flagged as "visually floor-like...
+      -- yet excluded"). This IS the fourthRoom-style default rule,
+      -- confirmed correct for this table too, NOT willyRoom's opposite
+      -- polarity -- the earlier footprint-size comparison favoring
+      -- willyRoom's rule for records 9/13 was a red herring: those 2
+      -- rooms are just genuinely smaller, more wall-dense/corridor-like
+      -- by real level design (room 13 in particular reads as a real
+      -- stairwell/passage), not evidence of a different byte
+      -- convention. `interaction`'s own varying sub-values under
+      -- `collision==0x30` (`0x01`/`0x05`/`0x37`/`0x55`/`0x85`) are
+      -- consistent with pure wall-art decoration (which brick
+      -- sub-pattern), not a walkability signal -- tested and visually
+      -- ruled out as a "some 0x30 tiles are secretly floor" hypothesis.
+      --
+      -- REAL, DEEPER BLOCKER FOUND THIS SAME PASS, still open: even
+      -- with the now-confirmed-correct rule, a proper, position-aware
+      -- audit (every rendered sub-tile ID's own walkability, checked
+      -- for internal consistency the same way `worldMapRoom_131`/`132`
+      -- were validated before trusting a flat set) found 4 of 82
+      -- distinct sub-tile IDs (27/28/29/30) genuinely CONFLICT --
+      -- appearing as real floor in most of their many occurrences
+      -- (47-160 each) but as wall-adjacent decoration in a few others.
+      -- Treating them conservatively as non-floor (this project's own
+      -- established default for a genuine conflict) was tried and
+      -- DECISIVELY FAILS: re-checking connectivity through the actual
+      -- production `grid`+`floorTileIds` pipeline (not just the
+      -- position-aware side-channel) collapses the largest connected
+      -- footprint to 2-5 cells in 5 of 6 rooms (vs. 110+ for the one
+      -- unaffected room) -- these 4 tiles are load-bearing floor in
+      -- most of their real occurrences, and a flat, tile-ID-keyed set
+      -- fundamentally cannot represent "floor here, wall there" for
+      -- the same rendered tile ID. This is a genuine DATA-MODEL
+      -- limitation, not a wrong-rule problem: `unknownRoomA`'s own
+      -- metatile table needs real position-aware collision storage
+      -- (parallel to `worldMapRoom_131`/`132`'s own already-proven
+      -- `RoomFloorLayout.buildCollisionGridFromMapTableRecord`
+      -- source, but consumed directly by whatever renders/walks this
+      -- room instead of collapsed into a flat `floorTileIds` set) --
+      -- a real, structural change to how this project's rendering/
+      -- walkability pipeline consumes room data, deliberately NOT
+      -- attempted this pass without checking in first (bigger blast
+      -- radius than a data fix, and still would not by itself unlock
+      -- connectivity -- no live trigger exists regardless).
+      -- `UNKNOWN_ROOM_A_FLOOR_TILE_IDS` stays UNCHANGED; connectivity
+      -- stays withdrawn. Scratch tooling (`render_collision_overlay
+      -- .py`, `audit_unknownRoomA_conflicts.lua`,
+      -- `verify_new_floorset.lua`) kept in the scratchpad, not
+      -- committed.
       unknownRoomA_8 = {
         status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
         romRoomSelector = 8,
