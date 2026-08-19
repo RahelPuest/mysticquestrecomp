@@ -11860,3 +11860,100 @@ project, not a new, separate problem.
 change, no data/behavior modified). `rom-inspector` data re-exported
 and diffed against git: zero changes, confirming `worldMapCatalogRecord`
 values themselves are untouched.
+
+## 2026-08-18, direct follow-up ("dann kopiere den kollisions/timer mechanismus"): fourthRoom->fifthRoom's real hold-trigger mechanism decoded and replicated -- not a 64-frame hold, a 9-frame arm + autonomous ROM state machine
+
+Direct continuation after being told the room-transition zone/timer
+mechanism discussion couldn't stay empirical ("das darf nicht empirisch
+sein. das muss aus den rom daten abgeleitet sein") -- while surveying
+what's already ROM-derived (landing position + target room, via the
+already-shipped `CutTransitionTable.lua`), the one remaining genuinely
+empirical piece was `holdFrames=64` on fourthRoom's own real cut into
+fifthRoom: a screenshot-measured approximation, explicitly flagged as
+such since 2026-08-13. Direct instruction to replicate the real
+mechanism instead of approximating it further.
+
+**Method**: live mGBA trace (`tools/rom/mgba_env.py`'s Python bindings,
+confirmed working in this sandbox; `Watcher`/`CallTracer` for write-
+watchpoints + bank-accurate disassembly), reusing
+`checkpoints.fourth_room_free()` + the same RIGHT-80/UP-120 approach to
+the wall `fifth_room_free()` already uses.
+
+**Real finding #1**: a wide WRAM snapshot-diff around `$D499` (the
+already-known cut-automaton step counter) during the DOWN-hold found a
+second, previously-uncharacterized real counter, `$D49A` -- ramps UP
+0->30 (one per real frame), then, after the room pointer and landing
+tile have already committed, ramps back DOWN 30->0. `$D499` itself
+advances at specific `$D49A` milestones throughout -- a real, 2-phase
+sub-state-machine nested inside the already-known 8-step outer one.
+
+**Real finding #2, decisive**: released the DOWN key after only 15
+frames (well before the ~64-frame figure) and held ZERO further input
+for the next 150 frames. The transition still completed perfectly --
+room pointer committed, player landed at the exact documented real spot
+(Y=32,X=136) -- proving the ROM does NOT require continuous holding for
+anything close to 64 frames. It's a genuine ARM-then-AUTONOMOUS
+mechanism.
+
+**Real finding #3, live-bisected precisely**: tested tap durations 0-12
+frames, each followed by 150 frames of zero further input. 8 frames
+never arms it; 9 frames always does. **The real, minimum continuous-hold
+requirement is exactly 9 frames**, not 64 -- the ~64-frame figure this
+project had been using was actually measuring the AUTONOMOUS ANIMATION'S
+OWN total duration (the `$D49A` up/down ramp plus the surrounding
+`$D499` steps), not the input-hold requirement at all -- two genuinely
+different real quantities that had been conflated into one field.
+
+**Full disassembly of both `$D49A` routines** (bank 1): the up-count at
+CPU `$41E2`-`$41EE` (`LD A,(HL)/SUB 0x02/CP C/JR C,.../JR Z,.../LD
+(HL),A/LD HL,0xD49A/INC (HL)`), the down-count at CPU `$4205`-`$420A`
+(`PUSH DE/LD HL,0xD49A/DEC (HL)/JR Z,$421C` -- the real end-of-sequence
+exit, taken exactly when `$D49A` reaches 0). Recorded verbatim in
+`rom_profiles.lua`'s own `fourthRoom.exits[1]` doc comment for anyone
+who wants to verify or extend this.
+
+**Shipped**: `rom_profiles.lua`'s `fourthRoom.exits[1].holdFrames`
+corrected `64` -> `9` (the real arm threshold), with the full trace
+recorded in its own doc comment. `HoldTrigger.lua`'s top-of-file and
+function-level doc comments corrected -- the earlier claim that the ROM
+needs the direction "held continuously" for the whole duration was
+wrong; corrected to state the real arm-then-autonomous behavior.
+`VictorySequence.lua`'s own `matchedExit` doc comment updated to match.
+No functional code change to `HoldTrigger.step`/`ZoneMatch`/
+`matchedExit` themselves -- their existing "arm after N consecutive
+matched frames, then fire once" behavior was already the CORRECT shape
+for the arm phase; only the THRESHOLD CONSTANT passed in was wrong.
+Firing immediately once armed (existing behavior, unchanged) is the
+honest analog of the real autonomous completion, since this engine has
+no wipe/scroll rendering for cuts to also replicate the remaining ~55
+frames of pure visual animation.
+
+`tests/import/fifth_room_test.lua` updated (`holdFrames` assertion 64
+-> 9, doc comment corrected). `luajit tests/run_tests.lua`: 578/578
+pass, unchanged count (a data/doc correction, not new coverage --
+`hold_trigger_test.lua`'s own generic stepping-logic tests already fully
+cover `HoldTrigger.step`'s unchanged behavior for any threshold value).
+No `love .` screenshot verification this pass -- `VictorySequence.lua`
+needs `love.graphics` to `require()` and its own consumption logic
+(`matchedExit`) is unchanged, so the existing pure-Lua test coverage
+(`hold_trigger_test.lua` + the updated `fifth_room_test.lua`) plus the
+live real-ROM trace above (a stronger verification standard than a
+screenshot, since it's against actual ROM hardware behavior, not this
+project's own recomp) were judged sufficient for a single constant
+correction.
+
+Python tooling for the live trace (`find_hold_counter.py`,
+`trace_d49a.py`, `test_release_early.py`, `test_min_press.py`,
+scratchpad, not checked in, same convention as every other live-tracing
+pass this project has done).
+
+**Honest scope, not overclaimed**: this closes the ONE live-verified
+real ROM cut using `holdFrames` (fourthRoom->fifthRoom). The other 2
+`holdFrames=64`-gated exits in `rom_profiles.lua` (sixthRoom-
+>seventhRoom, eighthRoom->ninthRoom) are each already flagged as
+"IMPLEMENTATION CHOICE... not an independently ROM-confirmed exit" in
+their own doc comments -- their very existence as a real ROM mechanism
+is unconfirmed, so re-deriving their own hold-timing from ROM data isn't
+possible yet the way it was here; left untouched rather than guessed.
+willyRoom's own unrelated `holdFrames=71` (dialogue-box typing pause, a
+different domain entirely) was not touched.

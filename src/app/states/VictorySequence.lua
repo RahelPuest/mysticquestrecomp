@@ -1252,8 +1252,10 @@ end
 -- EXTENDED (task to close the fourthRoom->fifthRoom gaps): an exit may
 -- declare a holdFrames/holdDirection pair (see fourthRoom.exits's own
 -- doc comment in rom_profiles.lua for the ROM evidence: a cut-
--- transition that needs the player held against a wall for ~64 frames,
--- not firing the instant the zone is entered) -- an exit without these
+-- transition that needs the player held against a wall for a real,
+-- live-bisected 9-frame arm threshold before an autonomous ROM state
+-- machine takes over, not firing the instant the zone is entered) -- an
+-- exit without these
 -- fields behaves exactly as before, firing the instant ZoneMatch
 -- matches (every other exit found so far). The actual hold-tracking
 -- decision (HoldTrigger.step) is, same as ZoneMatch, a pure,

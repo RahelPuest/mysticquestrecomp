@@ -1378,10 +1378,68 @@ RomProfiles.PROFILES = {
         -- the scrolled-past corridor -- the new tile IDs are kept in
         -- `tileOffsets` as real documentation, not wired into `grid`.
         --
-        -- CLOSED: the real ROM trigger needs the player held against a
-        -- wall for ~64 frames before it fires (confirmed live, frame-
-        -- by-frame) -- now reproduced via `holdFrames=64`/
-        -- `holdDirection="down"`, read by `HoldTrigger.lua`.
+        -- CLOSED, then CORRECTED (2026-08-18, direct user instruction
+        -- "dann kopiere den kollisions/timer mechanismus" after being
+        -- told holdFrames=64 was an empirical approximation, not a ROM-
+        -- derived value): the "~64 frames" figure above was itself an
+        -- external, screenshot-based measurement of when the LANDING
+        -- POSITION changes, not the real ROM's own arming condition --
+        -- live re-traced via a WRAM write-watchpoint + full disassembly
+        -- (`tools/rom/watcher.py`/`calltrace.py`) to find the actual
+        -- mechanism:
+        --
+        -- The real ROM does NOT require the player to hold DOWN
+        -- continuously for anything close to 64 frames. It's a genuine
+        -- ARM-THEN-AUTONOMOUS state machine:
+        --   1. ARMING: live-bisected precisely -- holding DOWN into the
+        --      blocked wall for 8 frames never arms it (released after
+        --      8 -> no transition, confirmed over 150 further frames of
+        --      zero input); 9 frames always does. This is the real,
+        --      minimum continuous-hold requirement, not 64.
+        --   2. AUTONOMOUS COMPLETION: once armed, the transition runs to
+        --      completion ENTIRELY ON ITS OWN, independent of any
+        --      further input -- live-verified by releasing DOWN after
+        --      only 15 frames (well past arming, nowhere near 64) and
+        --      holding zero further input at all: the real ROM room
+        --      pointer (`$D392`/`$D393`) still commits and the player
+        --      still lands at the exact documented real spot
+        --      (Y=32,X=136) around 64 frames after DOWN was first
+        --      pressed -- i.e. "~64 frames" was always real and
+        --      reproducible, but as an AUTONOMOUS animation duration
+        --      after a 9-frame arm, not a required 64-frame hold.
+        --   3. THE REAL MECHANISM DRIVING THOSE ~64 FRAMES: a genuine
+        --      WRAM counter, `$D49A`, live-watched byte-for-byte via a
+        --      write watchpoint: ramps UP 0->30 (one increment per real
+        --      frame, bank-1 routine at CPU `$41E2`-`$41EE`: `LD
+        --      A,(HL)/SUB 0x02/CP C/JR C,.../JR Z,.../LD (HL),A/LD
+        --      HL,0xD49A/INC (HL)`), then, once the room pointer has
+        --      already committed and the landing tile write has already
+        --      fired, ramps back DOWN 30->0 (bank-1 routine at CPU
+        --      `$4205`-`$420A`: `PUSH DE/LD HL,0xD49A/DEC (HL)/JR
+        --      Z,$421C` -- the `JR Z` is the real end-of-sequence exit).
+        --      `$D499` (the already-known cut-automaton step counter)
+        --      advances at specific `$D49A` milestones throughout. This
+        --      is the real, ROM-authored wipe-band close/reopen timer
+        --      (0->30 close, 30->0 reopen -- the same real visual
+        --      mechanism `RoomWipeTransition.lua` already models for a
+        --      DIFFERENT transition, cross-confirming the general
+        --      mechanism rather than being a coincidence).
+        --
+        -- REPRODUCED as `holdFrames=9` below (the real, live-bisected
+        -- arm threshold) instead of the old `64` (which conflated the
+        -- arm condition with the autonomous animation's own total
+        -- duration). This engine has no wipe/scroll rendering for cuts
+        -- (already established, see the "no camera-scroll
+        -- implementation" note above) -- firing instantly once armed is
+        -- the honest, correct analog of the real autonomous completion,
+        -- not a claim that the real ~55 further ROM frames of wipe
+        -- animation are being reproduced too.
+        --
+        -- Python tooling for the live trace (`find_hold_counter.py`,
+        -- `trace_d49a.py`, `test_release_early.py`,
+        -- `test_min_press.py`, scratchpad, not checked in, same
+        -- convention as every other live-tracing pass this project has
+        -- done).
         exits = {
           {
             -- CORRECTED (direct user report the transition doesn't
@@ -1400,10 +1458,14 @@ RomProfiles.PROFILES = {
             -- out within ~8 frames. `HoldTrigger`/`ZoneMatch` have no
             -- "blocked while held" concept, only "inside the zone this
             -- frame." Rather than inventing unverified wall tiles, the
-            -- zone is sized tall enough (64px, one pixel per held
-            -- frame) that a continuous 64-frame down-hold starting at
-            -- y=32 stays inside it for the whole hold, by construction
-            -- -- a documented engineering choice, not a claimed ROM fact.
+            -- zone is sized tall enough that a continuous down-hold
+            -- starting at y=32 stays inside it for the whole hold, by
+            -- construction -- a documented engineering choice, not a
+            -- claimed ROM fact. SUPERSEDED SIZING RATIONALE (see
+            -- `holdFrames`' own doc comment below): originally sized for
+            -- a 64-frame hold; the real ROM arm threshold is only 9
+            -- frames, so this zone is now a harmless superset, not
+            -- shrunk since an oversized zone causes no bug.
             zone = { xMin = 112, xMax = 128, yMin = 32, yMax = 96 },
             transition = { type = "cut" },
             targetRoom = "fifthRoom",
@@ -1420,7 +1482,10 @@ RomProfiles.PROFILES = {
               transitionKey = "fourthRoomToFifthRoom",
             },
             romRoomSelector = 4, -- live-captured cross-check target, matches fifthRoom's own romRoomSelectorConfirmed above
-            holdFrames = 64, holdDirection = "down",
+            -- CORRECTED 2026-08-18: 64 -> 9, the real, live-bisected arm
+            -- threshold (see this exit's own "CLOSED, then CORRECTED"
+            -- doc comment above for the full disassembly/trace).
+            holdFrames = 9, holdDirection = "down",
           },
           {
           -- RE-ADDED (direct user bug report that walking west should

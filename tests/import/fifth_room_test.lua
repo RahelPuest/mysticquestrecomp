@@ -97,10 +97,15 @@ Harness.testIfAvailable(
     Harness.assertEqual(exit.landingX, 136)
     Harness.assertEqual(exit.landingY, 32)
     -- Real ROM hold-to-trigger delay (2026-08-13, "fourthRoom-
-    -- >fifthRoom-Lücken schließen"), confirmed live frame-by-frame:
-    -- ~64 real frames holding DOWN against the wall before the cut
-    -- fires, not the instant the zone is entered.
-    Harness.assertEqual(exit.holdFrames, 64)
+    -- >fifthRoom-Lücken schließen"), confirmed live frame-by-frame: DOWN
+    -- against the wall arms an autonomous ROM state machine. CORRECTED
+    -- (2026-08-18, "kopiere den kollisions/timer mechanismus"): the real
+    -- arm threshold is 9 frames, live-bisected via a WRAM watchpoint --
+    -- not the ~64-frame figure this test used to assert, which measured
+    -- the autonomous animation's own total duration, not the real hold
+    -- requirement (see rom_profiles.lua's `fourthRoom.exits` doc
+    -- comment for the full disassembly/trace).
+    Harness.assertEqual(exit.holdFrames, 9)
     Harness.assertEqual(exit.holdDirection, "down")
   end
 )
