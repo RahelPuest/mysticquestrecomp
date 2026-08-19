@@ -49,11 +49,25 @@ function render_items(main) {
       Selbst korrigiert: Sleep/Mute waren anfangs nach externer
       Guide-Reihenfolge geraten (beide Kosten 1 MP) -- die echte
       Tabellen-Zugehörigkeit klärt es andersherum (Blok gruppiert mit
-      Shop-Item "Stille" → Mute; Ruhe mit "Schlaf" → Sleep). Ehrlich
-      offen, nicht geraten: Zauber-Index 6 (Eis) taucht in KEINER der
-      8 Tabellen auf -- entweder gibt es eine 9. Tabelle, die diese
-      Passage nicht erreicht hat, oder Eis' echter Effekt liegt
-      komplett außerhalb dieser Kette.
+      Shop-Item "Stille" → Mute; Ruhe mit "Schlaf" → Sleep). Die
+      Tabellen $7B38/$7B43/$7B46 (Edelsteine/Kristal) sind ein echter,
+      allgemeiner 16-Slot-Inventar-Sammelmechanismus (WRAM
+      <code>$D7E1</code>) -- strukturell unabhängig von Kampfmagie.
+    </p>
+    <p class="page-lede" style="margin-top:8px;">
+      <strong>Eis-Anomalie AUFGEKLÄRT</strong> (gefunden 2026-08-19,
+      selber Tag): der komplette Einstieg in diese Kette (Bank 2,
+      <code>$6FBE</code>) läuft über eine Menü-/Feld-Aktions-Tabelle
+      (<code>$404E</code>) -- nicht aus dem Kampf. Die
+      Kampf-Kontext-Variante der MP-Abzugsroutine (<code>$6660</code>)
+      führt NICHT in dieselbe Kette: ihre echte Fortsetzung
+      (<code>$71AC</code>) kehrt für JEDEN Zauber-Index sofort zurück,
+      bevor sie überhaupt in die Nähe von <code>$7B29</code> kommt.
+      Diese ganze Kette ist also FELD-/MENÜ-Kontext -- nicht etwas, das
+      ein im Kampf gewirkter Zauber durchläuft. Eis' Kampfeffekt (und
+      möglicherweise auch Feuers/Blitz'/Nukes echter Kampfschaden)
+      liegt daher in einem eigenen, noch nicht gefundenen Code-Pfad,
+      nicht in dieser Kette.
     </p>
     <div class="toolbar">
       <div class="pill-tabs" id="itemTabs">

@@ -292,17 +292,47 @@
 -- cited (this doc comment's own semantic-name-matching note above,
 -- `tests/import/item_table_test.lua`'s `mpCost` test comments).
 --
--- HONEST, EXPLICITLY FLAGGED ANOMALY, not forced to a guess: spell
--- index 6 ("Eis "/Ice, per the external walkthrough's own MP-cost
--- order) does NOT appear in ANY of these 8 tables -- verified by
--- listing every table's full real membership, not just spot-checking.
--- Either a 9th table exists that this pass's own chain-walk didn't
--- reach (no further `JR NC` target was found past `$7B48`'s own final
--- `RET NC`, so if one exists it's reached some other way not yet
--- traced), or Ice's real effect lives entirely outside this dispatch
--- chain, or (less likely for a shipped commercial game, but not ruled
--- out) Ice genuinely has no coded effect beyond its own MP cost. Not
--- resolved this pass -- a concrete, well-scoped next question.
+-- ICE ANOMALY -- REFRAMED WITH REAL EVIDENCE, 2026-08-19, same day
+-- follow-up ("Magic/Spell: Restdetails klären"): spell index 6 ("Eis "/
+-- Ice) genuinely does not appear in the `$7B29`-`$7B48` chain above --
+-- confirmed by listing every table's full real membership, not spot-
+-- checking. Traced WHY, rather than leaving it a bare anomaly: this
+-- whole chain is reached from bank 2, CPU `$6FBE`, whose own single
+-- real caller (found via the same literal-address-bytes search as the
+-- MP-deduction routine itself) is a real jump table at bank 2, CPU
+-- `$404E` (entries `$6F49`/`$6F5F`/`$6FBE`/`$6D30`/`$6FB5`) --
+-- structurally a MENU/FIELD action-state dispatch, not something
+-- battle code jumps into directly.
+--
+-- The battle-context MP-deduction sibling (`$6660`-`$667E`, this doc
+-- comment's own earlier section) does NOT fall into this same chain
+-- after a successful deduction -- disassembling its own real
+-- continuation (`CALL 0x71AC`, both on success AND on the insufficient-
+-- MP failure path) found a DIFFERENT routine: `$71AC` copies the
+-- battle-context selected-index cell (`$D6EF`) into the SAME `$D88B`
+-- cell the menu path reads (real, decisive evidence the two contexts
+-- share one "currently selected item/spell" cell) -- **but then `CP
+-- 0x09 / RET C` returns IMMEDIATELY for any real spell index (1-8),
+-- before ever reaching anything resembling the `$7B29` chain.** Only
+-- item indices (9+) continue further here (into real ammo/charge-count
+-- logic touching `$D6F0`/`$D6F1`/`$D6C5`, not traced in depth).
+--
+-- **Honest, evidence-grounded conclusion**: the `$7B29`-`$7B48` chain
+-- this doc comment maps is specifically the FIELD/MENU-context spell-
+-- and-item-use effect system (usable from the "Magie"/"Dinge" menu
+-- outside combat) -- NOT a universal dispatch every spell must pass
+-- through. Casting a spell DURING BATTLE evidently applies its effect
+-- via a real, separate, not-yet-located code path (`$71AC` hands off
+-- to something else for spell indices once it's done copying `$D6EF`
+-- ->`$D88B`, not traced further this pass). This reframes the Ice
+-- anomaly from "missing/broken" to "this specific spell's FIELD effect
+-- may genuinely not exist (matching a real game design where Ice has
+-- no non-combat use, unlike Cure/Heal), while its real BATTLE damage
+-- formula -- along with Fire's/Lightning's/Nuke's OWN real battle
+-- damage, since their presence in `$7B48` may only be a field-use
+-- effect too, not their combat one -- remains a genuine, separate,
+-- well-scoped open question, not resolved by this investigation
+-- thread." Not forced to a guess either way.
 --
 -- `$7143` (the shared helper `$7B3D`/`$7B40` both call before their own
 -- distinct effect routine) is disassembled too: computes `($D858)*10 +
@@ -310,6 +340,22 @@
 -- `$D858` as the row selector, very plausibly a target-character
 -- slot). Its own row-table's real content and `$7B43`'s distinct `A*4`
 -- indexing scheme were not further decoded this pass.
+--
+-- `$7B38`'s (gems) and `$7B43`'s own real completion routines
+-- (`$2F9E`/`$2FD4`) disassembled too, and turn out to be a genuine,
+-- general REAL 16-SLOT INVENTORY ALLOCATOR at WRAM `$D7E1` (4 bytes/
+-- slot -- `$2F9E` scans for a free slot via bit 0 of each slot's own
+-- first byte, `$2FD4` commits a record into it, setting flag bits
+-- `0x82`). `$7B46`'s own single-item handler (`$3EA2`, for "Kristal")
+-- sets `$D858=0x40` (a distinct marker value from the normal 0-3
+-- character-slot range `$7143` uses) before its own separate
+-- completion calls (`$314D`/`$3147`, not traced) -- consistent with a
+-- unique key-item pickup/use event rather than a stat-affecting spell.
+-- Together, real evidence `$7B38`/`$7B43`/`$7B46` are a genuine
+-- "collect a treasure/key item" category, structurally unrelated to
+-- combat magic despite sharing this same generic per-index dispatch
+-- mechanism -- consistent with, not contradicting, the FIELD/MENU-only
+-- framing above.
 
 local TextDecoder = require("src.import.TextDecoder")
 
