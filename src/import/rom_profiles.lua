@@ -741,36 +741,57 @@ RomProfiles.PROFILES = {
         -- the real PUSH of bank 13 happens at `$3260` -> `$3C6B` (a
         -- bank-calling trampoline, same shape as this project's own
         -- already-documented "save regs, `CALL $29FB`, jump through the
-        -- target bank's own local table" convention) -- and `$3260`
-        -- itself is straight-line fall-through code starting at `$31AD`
-        -- -- **this project's own already-fully-disassembled `$31AD`
-        -- "cross-actor dispatch redirect" mechanism** (task #149,
-        -- originally characterized only for the boss-defeat sequence's
-        -- own continuation: sets `$C0A1`/`$C0A2` bits 2+1, writes the
-        -- persistent cursor `$D8B6`/`$D8B7`, `CALL $3727`). Byte-exact
-        -- match confirmed via fresh disassembly of `$31AD`-`$3234`.
+        -- target bank's own local table" convention).
+        --
+        -- CORRECTED same day, direct follow-up ("wie weiter" ->
+        -- checking this precisely before building further on it): `$3260`
+        -- is straight-line fall-through from `$3213`, a REAL,
+        -- independently-called subroutine (3 real static callers, all
+        -- bank-0-fixed: `$24F0`/`$2516`/`$253D`) -- NOT literally
+        -- `$31AD`'s own body (`$31AD` has its own `RET` at `$3212`,
+        -- confirmed via fresh disassembly and a direct call-site scan:
+        -- `$31AD` itself has 15 real callers, `$3213` has its own,
+        -- separate 3). `$3213` instead calls DIRECTLY into `$31C7` --
+        -- **this project's own already-documented "decisive" shared
+        -- internal tail of the `$31AD` routine** (task #149: writes
+        -- `$D864=5`, resolves via `$3282`'s table lookup or the 3
+        -- special-case fixed buffers, stores the persistent cursor,
+        -- `CALL $3727`) -- the SAME real machinery `$31AD`'s own normal
+        -- top-level entry eventually reaches internally, just entered
+        -- through a different, real, sibling front door. So: genuinely
+        -- the same underlying redirect mechanism, confirmed by shared
+        -- internal code, not by assuming two similar-looking routines
+        -- are identical -- but reached via `$3213`, not `$31AD`'s own
+        -- entry point, a real, previously-imprecise detail worth
+        -- stating correctly rather than leaving the earlier looser
+        -- claim standing.
         --
         -- **Historic significance for the wider room-connectivity
         -- investigation** (see events.md's own 2026-08-19 "bank-14
         -- transition" entries): this is a SECOND, independent, live-
-        -- observed real trigger for `$31AD` (room-load, not actor-
-        -- despawn-edge-detection) -- direct proof `$31AD` is a genuinely
-        -- GENERAL "redirect the persistent script cursor" dispatcher,
-        -- not a boss-defeat-specific one-off, AND that it can reach
-        -- bank 13 in real play -- one bank further than the exhaustive
-        -- whole-corpus STATIC simulation ever found reachable (bank 12
-        -- max, with generous-but-fixed stub gate answers) -- because
-        -- that simulation could only cover the 1357 known scripts'
-        -- own reachable content, never `$31AD`'s own real trigger
-        -- conditions, which live outside that corpus entirely. Does
-        -- NOT by itself reach bank 14 (this session's real remaining
-        -- open connectivity target) -- what specifically calls `$31AD`
-        -- for THIS trigger (room-load, as opposed to the boss-defeat
-        -- trigger) was not traced further this pass -- a real, well-
-        -- scoped, promising follow-up: if `$31AD` has a THIRD real
-        -- trigger reaching bank 14, that would be the first genuine,
-        -- live-provable path into the 82 real `CutTransitionTable`
-        -- transitions this project has been chasing all session.
+        -- observed real trigger reaching the `$31AD`-family's shared
+        -- "redirect the persistent script cursor" machinery (room-load
+        -- via `$3213`, not actor-despawn-edge-detection via `$31AD`'s
+        -- own entry) -- direct proof this machinery is genuinely
+        -- GENERAL, reached by at least 2 real, structurally different
+        -- front doors, not a boss-defeat-specific one-off, AND that it
+        -- can reach bank 13 in real play -- one bank further than the
+        -- exhaustive whole-corpus STATIC simulation ever found reachable
+        -- (bank 12 max, with generous-but-fixed stub gate answers) --
+        -- because that simulation could only cover the 1357 known
+        -- scripts' own reachable content, never this machinery's own
+        -- real trigger conditions, which live outside that corpus
+        -- entirely. Does NOT by itself reach bank 14 (this session's
+        -- real remaining open connectivity target) -- what specifically
+        -- calls `$3213` for THIS trigger (room-load, as opposed to the
+        -- boss-defeat trigger) was not traced further this pass -- a
+        -- real, well-scoped, promising follow-up: if this machinery has
+        -- a THIRD real front door reaching bank 14, that would be the
+        -- first genuine, live-provable path into the 82 real
+        -- `CutTransitionTable` transitions this project has been
+        -- chasing all session. `$31AD`'s own 15 real static callers
+        -- (found this same pass, not yet traced individually) are the
+        -- next concrete candidates to check.
         entranceSeal = {
           status = "VERIFIED",
           bgRow = 10, bgCol = 18, rows = 2, cols = 2, -- BG tilemap row10-11, col18-19
