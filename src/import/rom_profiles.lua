@@ -792,6 +792,85 @@ RomProfiles.PROFILES = {
         -- chasing all session. `$31AD`'s own 15 real static callers
         -- (found this same pass, not yet traced individually) are the
         -- next concrete candidates to check.
+        --
+        -- SAME DAY, direct follow-up ("man du kennst doch die raum
+        -- wechsel skripts. such die doch einfach" -- stop guessing
+        -- statistically, search the known transition scripts directly):
+        -- the FULL `$31AD` -> `$3282` -> `$3C4F` bank-13/14-selection
+        -- mechanism is now completely reverse-engineered AND live-
+        -- confirmed, including a real correction to how it's called.
+        --
+        -- `$3282` (bank-0 fixed, the table-lookup routine `$31EA` calls):
+        -- `PUSH HL / LD A,8 / CALL $29FB / POP BC / LD HL,$4F11 / ADD
+        -- HL,BC / ADD HL,BC / LD A,(HL+) / LD H,(HL) / LD L,A / PUSH HL
+        -- / CALL $2A0A / POP HL / RET`. The real lookup table lives at
+        -- BANK 8, CPU `$4F11` (file `0x20F11`), 2 bytes/entry.
+        -- **CORRECTED via live injection** (a genuinely different result
+        -- than a first, uncorrected attempt got): the table index is
+        -- passed via **HL, not BC** -- `$29FB` (the real bank-push
+        -- primitive) clobbers HL (sets H=bank, L=0) as a side effect,
+        -- so `$3282`'s own `PUSH HL` before the `CALL $29FB` and `POP
+        -- BC` after it exist specifically to shuttle the CALLER's HL
+        -- safely across that clobber into BC for the table math -- BC
+        -- itself, whatever the caller passes, is never used for
+        -- indexing. Injecting `BC=5744` with a leftover `HL=0x0100`
+        -- resolved `table[256]`, not `table[5744]`, proving this by
+        -- direct live contradiction before it was corrected.
+        --
+        -- `$3C4F` (bank-0 fixed, the "bank-rollover correction"): reads
+        -- the persistent cursor high byte. If it's `>= 0x80` and
+        -- `< 0xC0` (i.e. the raw table value was in `[0x4000,0x7FFF]`),
+        -- selects **bank 14** and subtracts `0x40` from the high byte
+        -- (undoing an earlier `+0x4000` offset) -- so for that value
+        -- range the final CPU address equals the raw table value
+        -- itself. Otherwise defaults to bank 13, high byte unchanged.
+        --
+        -- Dumped the full `$4F11` table (indices 0-6263): 1363 indices
+        -- (starting at 666) resolve to bank 14. Cross-referenced all
+        -- 1363 against every real, known `CutTransitionTable` file
+        -- offset (both the 82 distinct examples and all 186 raw
+        -- occurrences) -- **exactly one exact match: table index 5744
+        -- -> file `0x385FE`**, a confirmed real landing record
+        -- (`roomSelector=2`, willyRoom/secondRoom/thirdRoom/fifthRoom
+        -- family, landing pixel (136,112)).
+        --
+        -- **Live-verified via a properly-simulated `CALL $31AD`**
+        -- (real pushed return address, `$C0A1` bit-1 precondition gate
+        -- cleared, `HL=5744` as the corrected index register): the
+        -- persistent cursor and `$D86A` (the bank-choice cell) update
+        -- to EXACTLY the predicted values -- `$D86A=0x0E` (bank 14) and
+        -- cursor `$45FF`, one byte past the predicted `$45FE` in a way
+        -- that exactly matches the interpreter having auto-incremented
+        -- past the landing record's own leading `0x00` byte
+        -- (`LD A,(HL+)`) while reading it. This is a full, live,
+        -- decisive confirmation of the redirect math -- the FIRST time
+        -- this project has computed a concrete input value that
+        -- provably drives the game's own real mechanism into a real,
+        -- known bank-14 `CutTransitionTable` record.
+        --
+        -- **Honest limit of this result**: continuing execution for
+        -- 1,000,000 further instructions past this point did NOT
+        -- produce a visible room transition -- `$D392`/`$D393`
+        -- (identity) and `$C244`/`$C245` (Y/X position) never changed,
+        -- and the persistent cursor drifted within ~20,000 instructions
+        -- to `$C0A2` (WRAM, immediately next to the `$C0A1` gate cell
+        -- checked at `$31AD`'s own entry) and stayed there, with brief,
+        -- unstable excursions to an all-`0xFF` WRAM state (`identity=
+        -- (255,255)`) that self-recovered. Reads as the persistent
+        -- cursor being reset to an idle/sentinel value shortly after
+        -- the forced entry, not as the record being fully processed
+        -- into a completed transition -- consistent with this session's
+        -- established pattern (the entrance-seal's own VBlank-gated
+        -- close write) that a bare instruction-stepped `CALL`
+        -- simulation, without the surrounding real frame/interrupt
+        -- timing and caller-side setup a genuine trigger would supply,
+        -- validates the DECODE mechanism without completing a full,
+        -- persisted, visible transition. What real game event naturally
+        -- sets `HL=5744` before calling `$31AD` (i.e. which of its 15
+        -- real callers, under what condition) was not identified this
+        -- pass -- forcing the value proves the mechanism works, not
+        -- that it's naturally reachable yet. See events.md's own
+        -- 2026-08-19 entry for the full investigation trace.
         entranceSeal = {
           status = "VERIFIED",
           bgRow = 10, bgCol = 18, rows = 2, cols = 2, -- BG tilemap row10-11, col18-19
