@@ -1,0 +1,13 @@
+# Scratch mGBA screenshots/dumps written directly into this directory by
+# one-off investigation scripts (see checkpoints/.gitignore's own doc
+# comment for the full reason: a .png captured from a live ROM session
+# embeds real copyrighted game graphics directly, the exact kind of
+# content this project's own "never check in a copyrighted ROM" rule
+# keeps out of version control). checkpoints/*.state and
+# checkpoints/*.png already have their own dedicated .gitignore --
+# this one covers the parent directory, where a script forgetting to
+# target /tmp or checkpoints/ would otherwise leak the same kind of
+# content (caught happening for real, 2026-08-19 -- see events.md).
+*.png
+*.state
+!.gitignore
