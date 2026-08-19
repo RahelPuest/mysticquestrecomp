@@ -27,9 +27,21 @@ function render_items(main) {
       <code>$718F-$71AB</code>): <code>categoryByte AND 0x1F</code> ist der
       echte MP-Kosten-Wert, 8 von 8 exakt gegen denselben externen Guide
       abgeglichen (Cure=2, Heal=1, Sleep=1, Mute=1, Fire=1, Ice=2,
-      Lightning=2, Nuke=3). Was der jeweilige Zauber im Kampf konkret
-      bewirkt, ist weiterhin offen -- nur welcher Record welcher Zauber ist
-      und was er kostet, ist jetzt geklaert.
+      Lightning=2, Nuke=3).
+    </p>
+    <p class="page-lede" style="margin-top:8px;">
+      <strong>Effekt-Dispatch</strong> (gefunden 2026-08-19, selber Tag):
+      der echte Einstiegspunkt (Bank 2, <code>$6FBE</code>) läuft nach dem
+      MP-Abzug eine echte Kette pro-Effekt-Kategorie-Tabellen ab
+      (<code>$7B29</code>/<code>$7B31</code>/<code>$7B38</code>, geprüft
+      über <code>CALL $7155</code>). Cure (Index 1) berechnet die
+      Heilmenge über den bereits bekannten Kampf-PRNG plus dieselben
+      Level-Wachstumstabellen-Routinen (<code>$2B7B</code>/<code>$2B8B</code>),
+      die auch der Level-Aufstieg benutzt. Heal (Index 2) stellt sich als
+      Status-Heilung heraus, nicht als zweiter LP-Zauber -- löst die
+      Cure/Heal-Namensverwirrung auf. Ehrlich offen: die Element-/
+      Angriffszauber (Feuer/Eis/Blitz/Nuke) haben ihre eigene
+      Effekt-Kategorie noch nicht gefunden.
     </p>
     <div class="toolbar">
       <div class="pill-tabs" id="itemTabs">

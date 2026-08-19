@@ -163,10 +163,13 @@
 -- disassembled, and cross-validated two independent ways.
 --
 -- HONEST SCOPE: this closes "which record is which spell, its real MP
--- cost, and the real ROM code that deducts it" -- it does NOT close
--- "what does casting a given spell actually DO in combat" (the
--- elemental-damage/status-effect/heal-amount formulas each spell
--- triggers remain genuinely unfound), and this is NOT wired into
+-- cost, and the real ROM code that deducts it" -- it does NOT (yet)
+-- close "what does casting a given spell actually DO in combat" --
+-- see this doc comment's own "SPELL-EFFECT DISPATCH ARCHITECTURE"
+-- section below for the real, disassembled dispatch chain and heal-
+-- amount formula found in a direct 2026-08-19 follow-up (2 of the
+-- real effect categories now understood; the elemental/attack spells'
+-- own category is not yet located). This is NOT wired into
 -- `Inventory.lua`/`Menu.lua`'s own gameplay yet -- `Menu.lua`'s
 -- "Magie" option still honestly closes immediately (see its own doc
 -- comment), matching the real ROM's own live-confirmed behavior for a
@@ -175,6 +178,64 @@
 -- has for granting items). `mpCost` below exposes the real, decoded
 -- field; using it to drive actual spell-casting gameplay is separate,
 -- not-yet-attempted follow-up work.
+--
+-- SPELL-EFFECT DISPATCH ARCHITECTURE FOUND, 2026-08-19, direct follow-
+-- up ("Magic/Spell: Effekt-Formeln suchen"): traced the real callers of
+-- the MP-deduction routine above and disassembled what happens after a
+-- successful (carry-clear) deduction. Real entry point: bank 2, CPU
+-- `$6FBE` -- `LD HL,0xD86F / SET 6,(HL)` (sets bit 6 of a real "spell
+-- cast in progress" WRAM flag; a sibling at `$6FB5` clears the same bit
+-- and calls `$3EDB`, a shared completion/redraw routine reused
+-- throughout this whole mechanism), then `LD A,(0xD88B) / AND 0x7F`
+-- reads the real "currently selected spell index" cell into `C`
+-- (RET Z if nothing selected).
+--
+-- After the MP-deduct call (`RET C` on failure -- insufficient MP,
+-- matching the already-documented gate), the real ROM walks a REAL
+-- PER-EFFECT-CATEGORY DISPATCH CHAIN: each category has its own small
+-- membership table, tested via a shared resolver (`CALL 0x7155`,
+-- `NC` = "this spell index isn't in this category, try the next
+-- table"):
+--   - Table `$7B29` (file `0xBB29`): LP-restore category. Spell index
+--     1 ("Lebe"/Cure) computes its heal amount via the ALREADY-KNOWN
+--     combat PRNG (`CALL 0x2B1E`) feeding a level-indexed growth-curve
+--     lookup (`CALL 0x2B7B` then `CALL 0x2B8B`) -- the SAME two real
+--     routines this project already found driving the character
+--     level-up HP/MP growth formula (bank 2, CPU `$5371`/`$5376`,
+--     file `0x9371`/`0x9376` -- the same static scan this pass's own
+--     bank-0 `$3968` HEAL_MP cross-check surfaced) -- real, concrete
+--     evidence Cure's heal amount and level-up stat growth share
+--     underlying table infrastructure. Other spell indices reaching
+--     this table take a simpler path (just the resolved table's own
+--     high byte, no PRNG). Result is added to `curLP`/`$D7B2-3`,
+--     clamped to `maxLP`/`$D7B4-5`, written back. Non-Cure spells that
+--     land here also get a matching `curMP` top-up.
+--   - Table `$7B31` (file `0xBB31`): STATUS-CURE category, not a
+--     second HP-heal. Spell index 2 ("Salb"/Heal) sets a 4-bit mask
+--     (`H=0x0F`), then conditionally calls 4 distinct per-bit cure
+--     routines (`$79A2`/`$79AE`/`$79BD`/`$79CC`) via `RRCA`+`CALL C` --
+--     resolves this project's own "Cure vs Heal" naming ambiguity:
+--     Cure restores LP, Heal cures status ailments (the opposite of
+--     the literal English words, but matches "Salbe"=balm/ointment
+--     fitting a status cure better than a pure HP restore).
+--   - Table `$7B38` (file `0xBB38`): a third category, gated on real
+--     WRAM `$D87E == 0xFF` (an unidentified precondition -- RET
+--     otherwise), copies a 4-byte block `$D7C1`->`$D7D8` (plausibly a
+--     per-character stat snapshot) before further, not-fully-traced
+--     logic involving `$D858` (a small index this project has seen
+--     elsewhere in this same dispatch as a "target slot" value).
+--
+-- HONEST SCOPE: the real dispatch ARCHITECTURE (entry point, MP-gate,
+-- the category-table-chain shape, and 2 of the categories' own real
+-- effect kind) is now understood and disassembled. NOT traced this
+-- pass: the elemental/attack spells' own effect category (indices
+-- 5-8: Fire/Ice/Lightning/Nuke -- very plausibly a further table
+-- beyond `$7B38` in the same chain, not yet located), the exact
+-- numeric content of the level-indexed growth-curve table Cure reads,
+-- and `$7B38`'s own full real purpose. A genuine, well-scoped further
+-- step for whoever continues -- not claimed closed here. Still NOT
+-- wired into any gameplay (same reason as above: no reachable spell-
+-- learning trigger exists yet).
 
 local TextDecoder = require("src.import.TextDecoder")
 
