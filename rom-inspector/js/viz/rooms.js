@@ -71,6 +71,29 @@ function render_rooms(main) {
       Spielweg.
     </p>
     <p class="page-lede">
+      <strong>Boden-Daten GELÖST, 2026-08-19/20</strong> (eine ganze Session zu „wie erreicht das
+      Spiel Bank 14"): die Kollisions-Polarität wurde per direkter visueller Prüfung geklärt, nicht
+      per weiterer Byte-Statistik &mdash; alle 6 Räume mit einem Kollisions-Overlay gerendert und
+      angeschaut: Kollisionsbyte&nbsp;0x30 zeigt immer echte Ziegel-/Mauerwerk-Wandtextur,
+      0x00/0x08 immer echtes Netz-/Mesh-Bodenmuster (dieselbe Polarität wie <code>fourthRoom</code>,
+      nicht die von <code>willyRoom</code>). Darunter fand sich eine echte Datenmodell-Grenze: 4 von
+      82 Kachel-IDs sind an unterschiedlichen Positionen mal Boden, mal Wand-Dekoration &mdash; ein
+      flaches, Kachel-ID-basiertes Set kann das strukturell nicht abbilden. Gelöst ohne neuen
+      Umbau: der Dev-Browser F8 hatte bereits einen allgemeinen, positionsbewussten
+      Kollisions-Mechanismus (für den kompletten 384-Raum-Katalog gebaut) &mdash; er zeigte für
+      Bank-5-Records 8-13 nur versehentlich die generische Katalog-Metatile-Tabelle statt
+      <code>unknownRoomA</code>s eigener, bereits verifizierter Tabelle. Nach dem Fix zeigt F8 die
+      echte Kunst UND echte, positionsbewusste Begehbarkeit &mdash; live per Screenshot bestätigt.
+      Die eigentliche Verbindung in den normalen Spielverlauf bleibt trotzdem ausgesetzt: der
+      allgemeine Bank-13/14-Umleitungsmechanismus (<code>$31AD</code>/<code>$3282</code>/<code>$3C4F</code>)
+      ist jetzt vollständig entschlüsselt und zweifach live bestätigt (siehe die
+      <a href="#transitions">Raum-Übergänge</a>-Seite), aber WAS ein Skript als Top-Level-Skript
+      überhaupt startet, bleibt trotz erschöpfender Suche (Skript-Ketten, WRAM-Queues, jede
+      bekannte Auslöser-Tabelle) offen &mdash; für <code>unknownRoomA</code> genau wie für 2
+      zusätzliche, unverdrahtete <code>willyRoom</code>-Übergänge, die diese Session live getestet
+      (Hinlaufen, A-Taste) und sauber ausgeschlossen hat.
+    </p>
+    <p class="page-lede">
       <strong>STRUCTURALLY-DERIVED, 2026-08-19</strong> (direkte Nutzerfrage, "können wir jetzt
       nicht alle zusammenhängenden räume entschlüsseln?"): ein systematischer Kanten-Abgleich
       über die kompletten Bank-5- (16&times;16) und Bank-6- (8&times;8) Weltkarten-Raster fand 6
