@@ -111,13 +111,24 @@
 --                            data" but doesn't give a field-by-field
 --                            breakdown, so nothing here is claimed.
 --
--- **Real, concrete next step this connection opens up**: `messageText
--- Pointer`'s own table is indexed by `messageID` across (per events.md)
--- 1357 real records -- this decoder currently only covers the first 21
--- rows (the ones this pass could byte-match against the external boss
--- list). Extending `rowCount` and re-deriving `externalReferenceNames`
--- for the FULL real table (regular field monsters, not just named
--- bosses) is a real, scoped, not-yet-attempted follow-up.
+-- **Real, concrete next step this connection opens up, partially acted
+-- on 2026-08-20**: `messageTextPointer`'s own table is indexed by
+-- `messageID` -- CORRECTED (2026-08-20, a full re-census done while
+-- chasing a second enemy-spawn trigger): its real extent is exactly
+-- **605 records** (bank 4's own file boundary), not "1357" as an
+-- earlier note claimed (that number belongs to the separate
+-- `scriptPointerTable`, a different table at a different bank that
+-- happens to share the same CPU-address style -- an old mix-up, now
+-- fixed). Every boss-shaped record across the full, correct range maps
+-- onto one of these 21 already-known species -- no hidden 22nd species
+-- exists. This decoder still only covers the first 21 rows (the ones
+-- byte-matched against the external boss list) -- extending it to
+-- cover the FULL 605 (regular field monsters, not just named bosses)
+-- remains a real, scoped, not-yet-attempted follow-up. See
+-- docs/reverse-engineering/events.md's own 2026-08-20 entry for the
+-- full re-census and its own follow-on (a second boss-species cluster
+-- found, a real trigger script found, live-tested to a decisive,
+-- informative negative).
 --
 -- Pure Lua, no love.* calls, same convention as EnemySpeciesTable/
 -- ItemTable/WeaponTable.
