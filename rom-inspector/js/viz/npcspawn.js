@@ -96,14 +96,39 @@ function render_npcspawn(main) {
       `${col.positions.length} feste Position${col.positions.length === 1 ? "" : "en"}`;
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:4px; min-width:76px;";
+    // Real, individually-selectable animation poses (2026-08-20, direct
+    // follow-up "versuche mal die monster animationen... raus zu
+    // extrahieren") -- every resolvable candidate ID here turns out to
+    // belong to ActorDefinitionTable's own already-known "humanoid4pose"
+    // family (4-tile pose groups, same real down/up/left-frame1/left-
+    // frame2 shape the Story/NPC page's own characterA/characterB cards
+    // show) -- click the sprite to cycle through them, same real frames
+    // this creature's own animation actually uses, not separate images.
+    const poses = (col.spritePoses && col.spritePoses.length > 1) ? col.spritePoses : null;
+    const poseLabel = poses ? `<div class="mono" style="font-size:9px; color:var(--accent2); cursor:pointer;" data-pose-label>Pose 1/${poses.length} &#8635;</div>` : "";
     wrap.innerHTML = `
-      <canvas width="10" height="10" style="image-rendering: pixelated; background:#1a1e14;" role="img" aria-label="${escapeHtml(name)}"></canvas>
+      <canvas width="10" height="10" style="image-rendering: pixelated; background:#1a1e14; ${poses ? "cursor:pointer;" : ""}" role="img" aria-label="${escapeHtml(name)}" tabindex="${poses ? "0" : "-1"}"></canvas>
+      ${poseLabel}
       <div style="font-size:11px; text-align:center; max-width:96px; line-height:1.3;">${escapeHtml(name)}</div>
       ${!compact ? `<div style="font-size:10px; color:var(--text-dim); text-align:center;">${escapeHtml(idsLabel)}<br>${col.minSpawn}-${col.maxSpawn}x &middot; ${escapeHtml(posLabel)}</div>` : ""}
       ${col.isEnvironmentalTrigger ? '<span class="badge default" style="font-size:9px; padding:1px 5px;" title="Echter, dekodierter Tür-/Kisten-Auslöser -- keine platzierte Figur.">Umgebungs-Trigger</span>' : ""}
     `;
     const canvas = wrap.querySelector("canvas");
-    if (col.spriteTileOffsets && col.spriteTileOffsets.length) {
+    if (poses) {
+      let poseIndex = 0;
+      const labelEl = wrap.querySelector("[data-pose-label]");
+      const draw = () => drawSpriteGrid(canvas, poses[poseIndex], 2, 2, 2, false);
+      const cycle = () => {
+        poseIndex = (poseIndex + 1) % poses.length;
+        labelEl.textContent = `Pose ${poseIndex + 1}/${poses.length} ↻`;
+        draw();
+      };
+      draw();
+      pendingDraws.push(draw);
+      canvas.addEventListener("click", cycle);
+      labelEl.addEventListener("click", cycle);
+      canvas.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); } });
+    } else if (col.spriteTileOffsets && col.spriteTileOffsets.length) {
       const cols = npcSpawnCols(col.spriteTileOffsets.length);
       const draw = () => drawSpriteGrid(canvas, col.spriteTileOffsets, cols, Math.ceil(col.spriteTileOffsets.length / cols), 2, false);
       draw();

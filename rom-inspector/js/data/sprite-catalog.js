@@ -1739,6 +1739,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 11,
       "kindByte": 111,
       "tileOffsets": [
@@ -1816,6 +1818,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 8,
       "cByte": 0,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 15,
       "kindByte": 31,
       "tileOffsets": [
@@ -2691,6 +2695,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 37,
       "kindByte": 111,
       "tileOffsets": [
@@ -2702,6 +2708,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 38,
       "kindByte": 111,
       "tileOffsets": [
@@ -2713,6 +2721,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 39,
       "kindByte": 111,
       "tileOffsets": [
@@ -2724,6 +2734,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 40,
       "kindByte": 111,
       "tileOffsets": [
@@ -5069,6 +5081,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 93,
       "kindByte": 111,
       "tileOffsets": [
@@ -5648,6 +5662,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 108,
       "kindByte": 111,
       "tileOffsets": [
@@ -6235,6 +6251,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 122,
       "kindByte": 111,
       "tileOffsets": [
@@ -8378,6 +8396,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 164,
       "kindByte": 111,
       "tileOffsets": [
@@ -8389,6 +8409,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 165,
       "kindByte": 111,
       "tileOffsets": [
@@ -8400,6 +8422,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 166,
       "kindByte": 111,
       "tileOffsets": [
@@ -8411,6 +8435,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 167,
       "kindByte": 111,
       "tileOffsets": [
@@ -8422,6 +8448,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 168,
       "kindByte": 111,
       "tileOffsets": [
@@ -8433,6 +8461,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 169,
       "kindByte": 111,
       "tileOffsets": [
@@ -8444,6 +8474,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 170,
       "kindByte": 111,
       "tileOffsets": [
@@ -8455,6 +8487,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 171,
       "kindByte": 111,
       "tileOffsets": [
@@ -8674,6 +8708,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 176,
       "kindByte": 111,
       "tileOffsets": [
@@ -8737,6 +8773,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 192,
+      "chunksReordered": 0,
+      "chunksTotal": 0,
       "index": 178,
       "kindByte": 111,
       "tileOffsets": [
@@ -9322,6 +9360,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 24,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 191,
       "kindByte": 117,
       "tileOffsets": [
@@ -9563,6 +9603,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 14,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 192,
       "kindByte": 117,
       "tileOffsets": [
@@ -9804,6 +9846,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 24,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 193,
       "kindByte": 117,
       "tileOffsets": [
@@ -10045,6 +10089,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 106,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 194,
       "kindByte": 117,
       "tileOffsets": [
@@ -10288,6 +10334,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 186,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 195,
       "kindByte": 117,
       "tileOffsets": [
@@ -10531,6 +10579,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 186,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 196,
       "kindByte": 117,
       "tileOffsets": [
@@ -10774,6 +10824,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 38,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 197,
       "kindByte": 118,
       "tileOffsets": [
@@ -11019,6 +11071,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 32,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 198,
       "kindByte": 117,
       "tileOffsets": [
@@ -11264,6 +11318,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 174,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 199,
       "kindByte": 118,
       "tileOffsets": [
@@ -11509,6 +11565,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 232,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 200,
       "kindByte": 118,
       "tileOffsets": [
@@ -11756,6 +11814,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 2,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 201,
       "kindByte": 123,
       "tileOffsets": [
@@ -12001,6 +12061,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 184,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 202,
       "kindByte": 119,
       "tileOffsets": [
@@ -12250,6 +12312,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 232,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 203,
       "kindByte": 118,
       "tileOffsets": [
@@ -12499,6 +12563,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 48,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 204,
       "kindByte": 117,
       "tileOffsets": [
@@ -12748,6 +12814,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 48,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 205,
       "kindByte": 117,
       "tileOffsets": [
@@ -12999,6 +13067,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 160,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 206,
       "kindByte": 121,
       "tileOffsets": [
@@ -13250,6 +13320,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 64,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 207,
       "kindByte": 121,
       "tileOffsets": [
@@ -13501,6 +13573,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 26,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 208,
       "kindByte": 122,
       "tileOffsets": [
@@ -13754,6 +13828,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 48,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 209,
       "kindByte": 117,
       "tileOffsets": [
@@ -14005,6 +14081,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 48,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 210,
       "kindByte": 117,
       "tileOffsets": [
@@ -14254,6 +14332,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 220,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 211,
       "kindByte": 122,
       "tileOffsets": [
@@ -14507,6 +14587,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 122,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 212,
       "kindByte": 122,
       "tileOffsets": [
@@ -14760,6 +14842,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 184,
+      "chunksReordered": 0,
+      "chunksTotal": 15,
       "index": 213,
       "kindByte": 119,
       "tileOffsets": [
@@ -15015,6 +15099,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 134,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 214,
       "kindByte": 119,
       "tileOffsets": [
@@ -15262,6 +15348,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 252,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 215,
       "kindByte": 118,
       "tileOffsets": [
@@ -15505,6 +15593,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 12,
+      "chunksReordered": 1,
+      "chunksTotal": 14,
       "index": 216,
       "kindByte": 116,
       "tileOffsets": [
@@ -15653,20 +15743,20 @@ const SPRITE_CATALOG = {
         160860,
         160828,
         160780,
-        160812,
         160796,
-        160828,
-        160844,
-        160876,
-        160860,
-        160892,
         160908,
-        160940,
         160924,
+        160812,
+        160828,
+        160940,
         160956,
+        160844,
+        160860,
         160972,
-        161004,
         160988,
+        160876,
+        160892,
+        161004,
         161020,
         161036,
         161068,
@@ -15746,6 +15836,8 @@ const SPRITE_CATALOG = {
       "arrangementConfirmed": false,
       "bank": 9,
       "cByte": 218,
+      "chunksReordered": 0,
+      "chunksTotal": 14,
       "index": 217,
       "kindByte": 115,
       "tileOffsets": [

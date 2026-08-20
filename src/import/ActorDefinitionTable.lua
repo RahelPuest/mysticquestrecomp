@@ -204,18 +204,45 @@ end
 -- entity's sprite actually uses -- no live OAM capture needed, see
 -- `SpriteTileFormula.lua`'s doc comment for the formula and its live
 -- validation. `tableBank` defaults to this module's `BANK` (3) since
--- the outer record's `innerPtr` is a same-bank pointer. When
--- `record.spriteSource.arrangementFamily == "humanoid4pose"`, the
--- result is already reordered into the on-screen pose order (see
--- `SpriteTileFormula.reconstructPoseOrder`'s doc comment) -- callers
--- don't need to reorder it themselves.
+-- the outer record's `innerPtr` is a same-bank pointer.
+--
+-- Pose reconstruction, TWO families (2026-08-20, direct follow-up to
+-- "versuche mal die monster animationen wie du es auch bei den bossen
+-- gemacht hast raus zu extrahieren" -- this project had only ever
+-- applied the CREATURE 4x4-pose reconstruction, see
+-- `SpriteTileFormula.CREATURE_4X4_POSE_PERMUTATION`'s doc comment, to
+-- `MonsterDefinitionTable`'s own 21 boss records -- never to THIS
+-- table's own creature-shaped entries, even though many of
+-- `NpcSpawnTable`'s own real candidate IDs resolve here to genuine
+-- field monsters, not humanoid NPCs):
+--   - `record.spriteSource.arrangementFamily == "humanoid4pose"` (the
+--     already-known 172-record family, 4-tile groups, "swap the
+--     middle two" -- see `SpriteTileFormula.reconstructPoseOrder`)
+--     still gets that reordering, unchanged.
+--   - Every OTHER record now also gets
+--     `SpriteTileFormula.reconstructCreaturePoseOrder` tried against
+--     it, chunk by chunk (16-tile groups, the SAME structural check
+--     `matchesCreature4x4Shape` MonsterDefinitionTable's own bosses
+--     use) -- a real, checkable per-chunk match, not a guess: a chunk
+--     that doesn't match species 4's own relative byte pattern is left
+--     in raw DMA order, honestly unreconstructed, same as
+--     `MonsterDefinitionTable.resolveSpriteTileOffsets` already does.
+-- Returns `(offsets, bank, chunksReordered, chunksTotal)` -- the same
+-- 4-value shape `MonsterDefinitionTable.resolveSpriteTileOffsets`
+-- already returns, so a caller can show the same honest per-record
+-- confidence for either table. `chunksReordered`/`chunksTotal` are
+-- both `nil` for `humanoid4pose` records (a different, ALREADY
+-- individually-verified reconstruction, not measured in 16-tile
+-- chunks -- forcing a chunk count onto it would imply a confidence
+-- tier this project hasn't measured for that family).
 function ActorDefinitionTable.resolveSpriteTileOffsets(romData, record)
   local SpriteTileFormula = require("src.import.SpriteTileFormula")
-  local offsets, bank = SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
+  local offsets, bank, rawBytes = SpriteTileFormula.resolveTileOffsets(romData, record.spriteSource, BANK)
   if record.spriteSource.arrangementFamily == "humanoid4pose" then
-    offsets = SpriteTileFormula.reconstructPoseOrder(offsets)
+    return SpriteTileFormula.reconstructPoseOrder(offsets), bank, nil, nil
   end
-  return offsets, bank
+  local reordered, chunksReordered, chunksTotal = SpriteTileFormula.reconstructCreaturePoseOrder(rawBytes, offsets)
+  return reordered, bank, chunksReordered, chunksTotal
 end
 
 --- Reads every record across the table's measured extent (`TABLE_COUNT`,

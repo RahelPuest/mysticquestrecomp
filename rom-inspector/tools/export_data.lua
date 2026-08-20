@@ -1411,7 +1411,22 @@ end
 ----------------------------------------------------------------------
 do
   local rows = NpcSpawnTable.decode(romData, profile.npcSpawnPointerTable)
-  local spriteCache = {} -- id -> {tileOffsets, bank} or false (resolution failed), avoid re-resolving repeats
+  local spriteCache = {} -- id -> resolved sprite table or false (resolution failed), avoid re-resolving repeats
+  -- Direct follow-up, 2026-08-20 ("versuche mal die monster animationen
+  -- wie du es auch bei den bossen gemacht hast raus zu extrahieren"):
+  -- turns out EVERY resolvable candidate ID this table references
+  -- belongs to ActorDefinitionTable's own already-known "humanoid4pose"
+  -- family (4-tile pose groups, "swap the middle two" reordering, see
+  -- SpriteTileFormula.lua's doc comment) -- none needed the SEPARATE
+  -- creature-4x4 reconstruction bosses use (that code path was
+  -- extended to try anyway, see ActorDefinitionTable.lua's own updated
+  -- doc comment, but found nothing new HERE specifically -- a real,
+  -- checked negative, not an unexplored gap). What WAS missing: this
+  -- export was only ever showing ONE flat image per creature (all
+  -- poses concatenated into one block) instead of splitting them into
+  -- individually-selectable animation poses -- exactly what
+  -- js/data/sprite-catalog.js's OWN export (section 17 above) already
+  -- does for this same table. Mirrors that exact logic here.
   local function resolveSprite(id)
     if spriteCache[id] ~= nil then
       return spriteCache[id] or nil
@@ -1421,12 +1436,27 @@ do
       spriteCache[id] = false
       return nil
     end
-    local ok2, offsets, bank = pcall(ActorDefinitionTable.resolveSpriteTileOffsets, romData, record)
+    local ok2, offsets, bank, chunksReordered, chunksTotal = pcall(ActorDefinitionTable.resolveSpriteTileOffsets, romData, record)
     if not ok2 or not offsets then
       spriteCache[id] = false
       return nil
     end
-    local result = { tileOffsets = offsets, bank = bank }
+    local isHumanoid = record.spriteSource.arrangementFamily == "humanoid4pose"
+    local spritePoses = nil
+    if isHumanoid and #offsets % 4 == 0 then
+      spritePoses = {}
+      for c = 0, (#offsets / 4) - 1 do
+        local pose = {}
+        for k = 1, 4 do pose[k] = offsets[c * 4 + k] end
+        spritePoses[c + 1] = pose
+      end
+    end
+    local result = {
+      tileOffsets = offsets, bank = bank,
+      arrangementFamily = record.spriteSource.arrangementFamily,
+      chunksReordered = chunksReordered, chunksTotal = chunksTotal,
+      spritePoses = spritePoses,
+    }
     spriteCache[id] = result
     return result
   end
@@ -1451,6 +1481,9 @@ do
         isRandomPosition = col.isRandomPosition,
         spriteTileOffsets = sprite and sprite.tileOffsets or nil,
         spriteBank = sprite and sprite.bank or nil,
+        spritePoses = sprite and sprite.spritePoses or nil,
+        spriteChunksReordered = sprite and sprite.chunksReordered or nil,
+        spriteChunksTotal = sprite and sprite.chunksTotal or nil,
       }
     end
     exportedRows[rowIndex] = { row = rowIndex - 1, cols = exportedCols }
@@ -1482,7 +1515,19 @@ do
     "`spriteTileOffsets` (when present) come from ActorDefinitionTable.lua (section 17) -- " ..
     "the SAME real ID space, cross-linked here: many of this table's own candidate IDs resolve to " ..
     "real ROM sprite pixel data via that already-independently-found table, even though the two " ..
-    "were found in completely separate investigation sessions. LIVE-CONFIRMED END TO END " ..
+    "were found in completely separate investigation sessions. `spritePoses` (2026-08-20, direct " ..
+    "follow-up \"versuche mal die monster animationen wie du es auch bei den bossen gemacht hast " ..
+    "raus zu extrahieren\"): every resolvable candidate ID this table references turns out to " ..
+    "belong to ActorDefinitionTable's own already-known \"humanoid4pose\" family (4-tile pose " ..
+    "groups) -- the SEPARATE creature-4x4 reconstruction bosses use (MonsterDefinitionTable.lua) " ..
+    "was tried against these records too (ActorDefinitionTable.resolveSpriteTileOffsets now " ..
+    "attempts it generally) but found nothing new here specifically, a real checked negative. " ..
+    "`spritePoses` splits the already-reordered tiles into individually-selectable 4-tile poses " ..
+    "(the same real animation frames -- down/up/left-frame1/left-frame2 -- the Story/NPC page's " ..
+    "own characterA/characterB cards already show) instead of one flat concatenated image. " ..
+    "`spriteChunksReordered`/`spriteChunksTotal` (non-nil only for the handful of candidate IDs " ..
+    "that are NEITHER humanoid4pose NOR too small to have any 16-tile chunk at all) carry the " ..
+    "same honest per-record confidence MonsterDefinitionTable's own bosses expose. LIVE-CONFIRMED END TO END " ..
     "(2026-08-20): a scratchpad-only, 2-byte-patched ROM copy redirected willyRoom's own real, " ..
     "already-firing row 36/col 2 trigger from NPC_WILLY to NPC_GOBLIN (row 1/col 0) -- the full " ..
     "real chain fired live and produced a second, visible, distinct, contact-damaging creature on " ..
