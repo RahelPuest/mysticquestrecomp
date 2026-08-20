@@ -76,6 +76,7 @@ require("tests.import.music_decoder_test")
 require("tests.audio.gb_square_synth_test")
 require("tests.audio.music_score_test")
 require("tests.gameplay.boss_encounter_test")
+require("tests.gameplay.second_enemy_test")
 
 local Harness = require("tests.harness")
 local ok = Harness.run()

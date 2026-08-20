@@ -4,6 +4,18 @@
 -- src/entities/Enemy.lua), and the dialogue sequence this project found
 -- live past it (docs/reverse-engineering/rom-map.md "Breakthrough").
 --
+-- SECOND ENEMY (2026-08-20, direct user instruction "ja mach das. geh
+-- es an" -- wiring the real NPC/monster spawn mechanism this project
+-- found into live gameplay, see docs/reverse-engineering/events.md's
+-- 2026-08-20 "SOLVED" entry): `self.secondEnemy`, built only when
+-- `profile.graphics.goblinTestScene` is present. A real, live-captured
+-- sprite (same OAM-capture method as `willyScene`), additive (not
+-- overwriting the courtyard boss), independently alive/fightable, NOT
+-- wired into `enemyDefeated`/the victory-sequence trigger -- see that
+-- profile entry's own doc comment for the full honest-scope story
+-- (stationary, no death-explosion animation, generic stand-in combat
+-- stats, same status the courtyard enemy's own numbers already carry).
+--
 -- The room background, player sprite, and enemy sprite/position all
 -- draw live-ground-truth-verified content (src/rendering
 -- /TileGridBackground.lua, rom_profiles.lua's `startRoom`/`playerSprite`
@@ -297,6 +309,34 @@ function Field.new(romData, profile, input, overlay, stack, heroName, savedStats
       self.enemyDeathSpriteA = CreatureSprite.fromOffsets(romData, deathData.frameA, 2, 1)
       self.enemyDeathSpriteB = CreatureSprite.fromOffsets(romData, deathData.frameB, 2, 1)
     end
+    -- The second, real, FIGHTABLE creature (see rom_profiles.lua's
+    -- `goblinTestScene` doc comment for the full honest-scope story: a
+    -- real, live-captured sprite reached through a scratchpad-only
+    -- patched-ROM test, generic stand-in combat stats -- same status the
+    -- courtyard `self.enemy` above already carries). Genuinely OPTIONAL
+    -- (only built when the profile actually has this scene, same
+    -- "entries whose source data isn't present are simply omitted"
+    -- convention `NpcCatalog.lua` already uses) -- a profile that hasn't
+    -- reached this same live-tracing depth still works, just without a
+    -- second enemy, rather than erroring.
+    --
+    -- Deliberately stationary: no real decoded movement data exists for
+    -- this creature (unlike `self.enemy`'s own ROM-driven
+    -- `EnemyMovementInterpreter`) -- see `Field:update`'s own comment on
+    -- this. Deliberately NO death-explosion animation: `Enemy:startDeath`
+    -- requires real `profile.graphics.enemyDeath`-shaped data (the
+    -- courtyard creature's own live-captured 6-piece scatter), which was
+    -- never captured for this creature -- inventing one would fabricate
+    -- ROM behavior this project doesn't have evidence for, so it simply
+    -- stops being drawn the instant it's defeated instead.
+    local gs = profile.graphics.goblinTestScene
+    if gs then
+      self.secondEnemy = Enemy.new(gs.screenX, gs.screenY,
+        gs.cols * GBTile.TILE_W, gs.rows * GBTile.TILE_H)
+      local secondPalette = (gs.palette == "OBP1" and profile.graphics.spritePalette)
+        and TileImage.paletteFromShadeIndices(profile.graphics.spritePalette.shadeIndices) or nil
+      self.secondEnemySprite = CreatureSprite.fromOffsets(romData, gs.tileOffsets, gs.cols, gs.rows, secondPalette)
+    end
     -- Per-tile wall collision -- see Player.lua's `canMoveTo` doc
     -- comment and rom_profiles.lua's `startRoom.floorTileIds` for
     -- exactly what "real" means here (a captured tile grid, classified
@@ -424,6 +464,12 @@ function Field:keypressed(key)
       -- this dev shortcut shows real ROM behavior too instead of
       -- skipping past it.
       self.enemy:startDeath(self.profile)
+    end
+    if self.secondEnemy and self.secondEnemy:isAlive() then
+      -- No death-explosion data exists for this creature (see the
+      -- constructor's own comment) -- a plain instant clear, same as
+      -- every other draw path for it.
+      self.secondEnemy.stats:damage(self.secondEnemy.stats.curLP)
     end
   elseif key == "f7" then
     local SaveFile = require("src.save.SaveFile")
@@ -563,6 +609,10 @@ function Field:update(dt)
         self.enemy:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
       self.player.x, self.player.y = prevX, prevY
     end
+    if self.secondEnemy and self.secondEnemy:isAlive() and
+        self.secondEnemy:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
+      self.player.x, self.player.y = prevX, prevY
+    end
   end
 
   -- Contact damage while blocked against a living enemy. F4
@@ -597,6 +647,29 @@ function Field:update(dt)
     end
   end
 
+  -- Same contact-damage mirroring for the second enemy (see
+  -- rom_profiles.lua's `goblinTestScene` doc comment) -- its own
+  -- independent `contactCooldown` (Enemy.new gives every instance one),
+  -- same ATK/formula fallback as the courtyard creature (no separately
+  -- decoded ATK for this species -- see that doc comment's own honest
+  -- scope note).
+  if self.secondEnemy and self.secondEnemy:isAlive() and
+      self.secondEnemy:overlaps(self.player.x, self.player.y, self.player.width, self.player.height) then
+    if self.secondEnemy:tickContactCooldown(dt) and not self.debugInvulnerable
+        and not self.knockback:isInvincible() then
+      local damage
+      if self.combatNoise then
+        damage = CombatFormulas.rollDamage(Enemy.ATK, self.stats.defense, self.combatNoise:draw())
+      else
+        damage = Enemy.CONTACT_DAMAGE
+      end
+      self.stats:damage(damage)
+      self.knockback:trigger(
+        self.secondEnemy.x + self.secondEnemy.width / 2, self.secondEnemy.y + self.secondEnemy.height / 2,
+        self.player.x + self.player.width / 2, self.player.y + self.player.height / 2)
+    end
+  end
+
   -- Attack: A (VERIFIED, see docs/progress.md) while within reach of a
   -- living enemy. This project's rom-map.md "Breakthrough" entry
   -- already documented "A, not B" clears the creature; this pass
@@ -620,6 +693,7 @@ function Field:update(dt)
     if attack then
       attack:trigger(self.player.facing)
       self.attackHasHit = false
+      self.secondAttackHasHit = false
     end
   end
   if self.attackSwing then self.attackSwing:update(dt) end
@@ -666,6 +740,24 @@ function Field:update(dt)
     end
   end
 
+  -- Same attack-hit mirroring for the second enemy -- its own
+  -- independent `secondAttackHasHit` latch (mirrors `attackHasHit`), so
+  -- one swing can land on BOTH enemies in the same active window rather
+  -- than the first hit silently consuming the swing's whole "already hit
+  -- something" state. Deliberately no death-explosion/`enemyDefeated`
+  -- wiring here (see the constructor's own comment) -- this creature is
+  -- additive, not part of the courtyard boss's story-progression trigger.
+  if activeAttack and not self.secondAttackHasHit and self.secondEnemy and self.secondEnemy:isAlive() then
+    for _, box in ipairs(activeAttack:getHitboxes(self.player.x, self.player.y)) do
+      if self.secondEnemy:overlaps(box.x, box.y, box.w, box.h) then
+        self.secondAttackHasHit = true
+        local noiseByte = self.combatNoise and self.combatNoise:draw() or nil
+        self.secondEnemy:hit(noiseByte)
+        break
+      end
+    end
+  end
+
   if self.enemy.death and not self.enemyDefeated then
     self.enemy:updateDeath(dt)
     if self.enemy:deathComplete() then
@@ -691,6 +783,9 @@ function Field:update(dt)
   if self.enemySprite then
     self.enemySprite:update(dt, false) -- stationary enemy; no walk cycle to drive it
   end
+  if self.secondEnemySprite then
+    self.secondEnemySprite:update(dt, false) -- stationary; no real decoded movement data (see constructor comment)
+  end
 end
 
 --- Format the VERIFIED "LP <n> MP <n> G <n>" HUD string (see
@@ -709,6 +804,7 @@ function Field:debugState()
     y = self.player.y,
     enemyAlive = self.enemy:isAlive(),
     enemyDefeated = self.enemyDefeated,
+    secondEnemyAlive = self.secondEnemy and self.secondEnemy:isAlive() or nil,
     curLP = self.stats.curLP,
     -- Live-verify actual love.audio playback the same way MusicJukebox
     -- .lua's debugState already does (segIndex only climbs once audio
@@ -763,6 +859,11 @@ function Field:drawDebugOverlay()
   if self.enemy:isAlive() then
     love.graphics.setColor(DEBUG_ENEMY_COLOR)
     love.graphics.rectangle("line", self.enemy.x, self.enemy.y, self.enemy.width, self.enemy.height)
+  end
+  if self.secondEnemy and self.secondEnemy:isAlive() then
+    love.graphics.setColor(DEBUG_ENEMY_COLOR)
+    love.graphics.rectangle("line", self.secondEnemy.x, self.secondEnemy.y,
+      self.secondEnemy.width, self.secondEnemy.height)
   end
 
   -- Attack hitboxes (see AttackSwing/AttackThrust:getHitboxes) --
@@ -835,6 +936,22 @@ function Field:draw()
     else
       love.graphics.setColor(0.5, 0.15, 0.55, 1)
       love.graphics.rectangle("fill", self.enemy.x, self.enemy.y, self.enemy.width, self.enemy.height)
+      love.graphics.setColor(1, 1, 1, 1)
+    end
+  end
+
+  -- Second enemy (see rom_profiles.lua's `goblinTestScene` doc comment):
+  -- no death-explosion animation exists for this creature (no real
+  -- captured data) -- it simply stops being drawn the instant it's
+  -- defeated, same "real shape, honestly simplified" bar as everything
+  -- else this project hasn't fully re-traced.
+  if self.secondEnemy and self.secondEnemy:isAlive() then
+    if self.secondEnemySprite then
+      self.secondEnemySprite:draw(self.secondEnemy.x, self.secondEnemy.y)
+    else
+      love.graphics.setColor(0.2, 0.6, 0.2, 1)
+      love.graphics.rectangle("fill", self.secondEnemy.x, self.secondEnemy.y,
+        self.secondEnemy.width, self.secondEnemy.height)
       love.graphics.setColor(1, 1, 1, 1)
     end
   end
@@ -923,6 +1040,13 @@ function Field:draw()
       string.format("alive, %d/%d hp, pos %d,%d (%dx%d)", self.enemy.stats.curLP,
         self.enemy.stats.maxLP, self.enemy.x, self.enemy.y, self.enemy.width, self.enemy.height)
       or "cleared")
+    if self.secondEnemy then
+      self.overlay:addLine("second enemy (goblinTestScene)", self.secondEnemy:isAlive() and
+        string.format("alive, %d/%d hp, pos %d,%d (%dx%d)", self.secondEnemy.stats.curLP,
+          self.secondEnemy.stats.maxLP, self.secondEnemy.x, self.secondEnemy.y,
+          self.secondEnemy.width, self.secondEnemy.height)
+        or "cleared")
+    end
     self.overlay:addLine("room", "VERIFIED real starting room (live ground-truth capture)")
     self.overlay:addLine("hud", hudText .. (self.font and " (real font)" or " (fallback font)"))
     self.overlay:addLine("last event fired", self.lastFiredEvent or "(none yet)")

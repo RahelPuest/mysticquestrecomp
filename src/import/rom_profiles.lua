@@ -2447,6 +2447,49 @@ RomProfiles.PROFILES = {
         -- "the general resting palette" (that was the actual bug).
         paletteShadeIndices = { 3, 2, 3, 3 },
       },
+      -- The real, second, FIGHTABLE creature this project's own live
+      -- investigation produced -- see docs/reverse-engineering/events.md's
+      -- 2026-08-20 "SOLVED" entry for the full chain and `NpcSpawnTable
+      -- .lua`'s own doc comment for the mechanism this reached through.
+      --
+      -- HONEST SCOPE: reached only via a scratchpad-only, 2-byte-patched
+      -- ROM copy (never the checked-in ROM) that redirected willyRoom's
+      -- own real, already-firing `0xFC`/`0xFD` trigger (row 36/col 2,
+      -- normally `NPC_WILLY`) to row 1/col 0 (`NPC_GOBLIN`) -- NOT a
+      -- natural, unmodified-ROM trigger. The sprite data below is real,
+      -- live-captured OAM/tile-ROM-source evidence from that patched
+      -- session (same method as `willyScene`'s own capture: `oam_dump`
+      -- + `find_tile_source`, each tile a single exact 16-byte match,
+      -- high confidence) -- not fabricated art. `screenX`/`screenY`:
+      -- real OAM position (104,80)/(104,88) minus the standard
+      -- 16/8 hardware offset (same `oam_to_screen` convention as every
+      -- other sprite entry here). `palette`: real OAM attribute byte
+      -- `0x10` (bit 4 set) = OBP1 -- the exact same convention
+      -- `willyScene.willy` already uses; this project's own live
+      -- capture confirmed OBP0/OBP1 are functionally the same shade set
+      -- in willyRoom (see `willyScene`'s own doc comment above), so
+      -- `spritePalette.shadeIndices` applies here too, not a separate
+      -- unverified palette.
+      --
+      -- Combat stats for this creature are NOT independently ROM-
+      -- verified (`NpcSpawnTable`'s own species/NPC ID space has no
+      -- confirmed link to `EnemyStatTable`'s separate speciesByte
+      -- numbering) -- `Field.lua` reuses `Enemy.new`'s own generic
+      -- defaults (same "reasonable stand-in, not decoded ROM values"
+      -- status this project's own courtyard enemy already carries, see
+      -- that module's doc comment), an explicit engineering choice, not
+      -- a claimed decoded stat.
+      goblinTestScene = {
+        status = "VERIFIED sprite/position (live OAM capture from a scratchpad-only patched ROM); combat stats are this project's own generic stand-in, not decoded",
+        cols = 2,
+        rows = 2,
+        -- Row-major top-left/top-right/bottom-left/bottom-right (real
+        -- ROM tile-source file offsets, each a single exact match).
+        tileOffsets = { 0x29c80, 0x29c90, 0x29ca0, 0x29cb0 },
+        screenX = 72,
+        screenY = 88,
+        palette = "OBP1",
+      },
       startRoom = {
         status = "VERIFIED",
         -- Real tile-source pointer $40B0, roomSelectors 0-1 -- see

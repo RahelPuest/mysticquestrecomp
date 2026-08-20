@@ -7,18 +7,28 @@
 --
 -- HONEST SCOPE, 2026-08-15 (monster/npc/item census, direct user
 -- request "versuche mal alle monster, npcs und items zu extrahieren"):
--- unlike `EnemySpeciesTable`/`ItemTable`/`WeaponTable`, there is NO
--- static ROM table backing this catalog -- an earlier, separate
--- investigation (see docs/reverse-engineering/rom-map.md, "general
--- room/map system" section) already established, live and
--- exhaustively, that "NPCs are NOT placed via a fixed table" in this
--- ROM. Every entry this module can return was found the same way:
--- live OAM tracing + per-room proximity/dialogue testing, one room at
--- a time. "Complete" here means "every NPC this project has actually
--- found and wired," NOT "every NPC that exists in the ROM" -- finding
--- more would mean live-exploring more rooms (the same kind of work
--- `docs/roadmap.md`'s "World scope / content pipeline" item already
--- tracks), not decoding a table this module could mechanically walk.
+-- unlike `EnemySpeciesTable`/`ItemTable`/`WeaponTable`, this catalog
+-- itself is still built by hand-normalizing live-captured scene data
+-- (OAM tracing + per-room proximity/dialogue testing), not by
+-- mechanically walking a table.
+--
+-- CORRECTED, 2026-08-20 (direct follow-up to that same day's "second
+-- enemy" investigation, see docs/reverse-engineering/events.md's
+-- 2026-08-20 "SOLVED" entry): the claim this doc comment used to make
+-- here -- "an earlier, separate investigation already established,
+-- live and exhaustively, that NPCs are NOT placed via a fixed table in
+-- this ROM" -- is now known to be WRONG, not just incomplete. A real,
+-- ROM-verified, 109-row x 3-column spawn table (`src/import/
+-- NpcSpawnTable.lua`, CPU `$7142`, byte-identical to the external
+-- FFA-Disassembly's own documented `NPCSpawnPointers`) DOES place every
+-- NPC and monster in this game, driven by real script opcodes
+-- (`0xFC`/`0xFD`). The earlier investigation's own negative was real
+-- for whatever it specifically checked, but the broader claim it drew
+-- from that check did not hold. This catalog's own "hand-normalize
+-- live-captured scenes" approach remains valid (finding which real
+-- ROM script fires which `(row, col)` in the wild is a separate,
+-- still-open problem -- see `NpcSpawnTable.lua`'s own "HONEST SCOPE"
+-- note), it just isn't because no table exists.
 --
 -- Pure Lua, no love.* calls, so it's headlessly testable like
 -- ItemTable/WeaponTable/EnemySpeciesTable.
@@ -75,6 +85,24 @@ function NpcCatalog.build(profile)
       -- ever captured for Willy (only this one static resting pose) --
       -- left nil rather than fabricating a 4-direction set from the
       -- single known frame.
+      animation = nil,
+    }
+  end
+
+  -- The second, real, FIGHTABLE creature (see rom_profiles.lua's
+  -- `goblinTestScene` doc comment for the full honest-scope story --
+  -- reached only via a scratchpad-only patched-ROM test, not a natural
+  -- trigger). Cataloged the same way Willy is, above.
+  local goblinTestScene = graphics and graphics.goblinTestScene
+  if goblinTestScene then
+    entries[#entries + 1] = {
+      name = "Goblin (Test)",
+      room = "willyRoom",
+      screenX = goblinTestScene.screenX,
+      screenY = goblinTestScene.screenY,
+      tileOffsets = goblinTestScene.tileOffsets,
+      palette = goblinTestScene.palette,
+      dialogue = nil,
       animation = nil,
     }
   end
