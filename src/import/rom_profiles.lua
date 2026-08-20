@@ -2363,7 +2363,54 @@ RomProfiles.PROFILES = {
         -- and stays real, decoded ROM data -- only connectivity is
         -- withdrawn again, back to empty, until a trustworthy floor
         -- source exists for this specific metatile table.
-        exits = {},
+        --
+        -- ADDED 2026-08-20, direct user priority ("Räume anschließen"
+        -- -- connect already-decoded rooms instead of chasing further
+        -- unresolved script-trigger RE): a NEW east-edge door into
+        -- `worldMapRoom_131`/`132`. Unlike the retracted `unknownRoomA`
+        -- attempt, the destination pair is itself already
+        -- STRUCTURALLY-DERIVED and footprint-verified (100% tile-exact
+        -- edge match between 131/132, zero internal collision
+        -- conflicts, see `WORLD_MAP_ROOM_131_GRID`'s own doc comment) --
+        -- this door only adds ONE new, honestly-labeled claim ("seventhRoom
+        -- connects here"), not a whole new unverified room chain.
+        --
+        -- Zone/landing values were derived by SIMULATING the real
+        -- production movement code directly (`Player:update` +
+        -- `TileWalkability.build`, the exact functions `VictorySequence`
+        -- itself uses -- not a hand-guessed row/col conversion), after a
+        -- first hand-picked south-edge attempt turned out to target a
+        -- pixel row this room's own 16-row grid can never actually put a
+        -- 16px-tall player's top-left corner on (caught by the same
+        -- simulation before it ever reached a live `love .` run). East
+        -- edge (cols 19-20, x=144-160) is real floor from row 11 to row
+        -- 14 -- narrower (rows 11-12 only, y=80-96 top-left) right at the
+        -- edge itself, due to a real wall intrusion at rows 9-10/15-16 --
+        -- confirmed reachable by BFS over the SAME canMoveTo the game
+        -- itself uses, starting from the room's own already-real
+        -- sixthRoom-landing spot (80,112). Live-walked in BOTH directions
+        -- via real `love .` runs before being considered done (see
+        -- docs/reverse-engineering/events.md's matching 2026-08-20
+        -- entry) -- not just a landing-spot check, the exact gap that let
+        -- unknownRoomA ship broken. Side note for future doors: adding a
+        -- SECOND real exit targeting the same room
+        -- (`MYSTICQUEST_VICTORY_START_ROOM=<roomKey>` picks the FIRST
+        -- exit found via `pairs()` over the whole graphics table, whose
+        -- order is not stable across separate `love .` process launches)
+        -- means that dev shortcut can now land a test at EITHER of this
+        -- room's 2 real entrances at random -- expect it and design
+        -- movement scripts that work from both, rather than assuming a
+        -- single fixed start (this cost one wasted live run here before
+        -- being recognized).
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see doc comment above",
+            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 104 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_131",
+            landingX = 16, landingY = 88,
+          },
+        },
       },
       -- ADDED (same continuation, same self-correction): real bank-5
       -- catalog record 236 -- seventhRoom's own SOUTH neighbor (not the
@@ -3466,12 +3513,13 @@ RomProfiles.PROFILES = {
       -- spots sit well inside each room rather than right at the seam,
       -- avoiding the "landing inside the exit zone" bounce-loop bug
       -- this project already found and fixed once this session.
-      -- Reachable today only via the same dev-only teleport machinery
-      -- (`MYSTICQUEST_VICTORY_START_ROOM=worldMapRoom_131`) already used
-      -- to verify every other room this session -- deliberately NOT
-      -- wired to any currently-reachable room via a new engineering-
-      -- choice entry door; that would be a separate decision, not made
-      -- here.
+      -- UPDATE 2026-08-20 (direct user priority "Räume anschließen"):
+      -- now ALSO reachable through ordinary play, via a new south-edge
+      -- ENGINEERING-CHOICE door on `seventhRoom` (see that room's own
+      -- doc comment for the full rationale and the footprint-verified,
+      -- both-directions-live-walked evidence). `MYSTICQUEST_VICTORY_START_ROOM
+      -- =worldMapRoom_131` remains available as a direct dev shortcut
+      -- too, unchanged.
       worldMapRoom_131 = {
         status = "STRUCTURALLY-DERIVED (100% tile-exact edge match with worldMapRoom_132, see doc comment above); floor/collision meaning for this metatile table is NOT independently verified",
         bank5RecordIndex = 131,
@@ -3488,6 +3536,31 @@ RomProfiles.PROFILES = {
             -- row15,col6 (1-based) in worldMapRoom_132 -- real floor,
             -- footprint-verified, well inside the room (not at the seam).
             landingX = 48, landingY = 128,
+          },
+          -- ADDED 2026-08-20 (see seventhRoom's own matching doc comment
+          -- for the full rationale, including WHY this uses simulated-
+          -- movement-verified values rather than a hand-derived row/col
+          -- conversion): reciprocal of seventhRoom's new east-edge door.
+          -- Zone placed on this room's own real WEST edge (col 1, x=0-16)
+          -- -- real floor from row 9 to row 15 there (a taller, more
+          -- open band than seventhRoom's own east-edge chokepoint),
+          -- confirmed reachable by the same `Player:update`/
+          -- `TileWalkability.build` simulation from this room's own
+          -- already-real (48,112) position (one step in from its
+          -- existing exit-to-132 landing spot). Clear of both the
+          -- exit-to-132 zone above (152-160,112-128) and seventhRoom's
+          -- own new (128,88) landing point (no bounce-loop overlap,
+          -- checked both ways).
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see seventhRoom's own doc comment",
+            zone = { xMin = 0, xMax = 16, yMin = 64, yMax = 120 },
+            transition = { type = "cut" },
+            targetRoom = "seventhRoom",
+            -- Real floor, footprint-verified, inside seventhRoom's own
+            -- large open plaza (rows 11-14), reachable from its existing
+            -- (80,112) landing spot -- clear of that room's own new exit
+            -- zone (144-160,80-104).
+            landingX = 128, landingY = 88,
           },
         },
       },

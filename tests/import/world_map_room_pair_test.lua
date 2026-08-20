@@ -124,15 +124,22 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "worldMapRoom_131/132: every exit is honestly labeled STRUCTURALLY-DERIVED, not claimed as a live ROM trigger",
+  -- UPDATED 2026-08-20: worldMapRoom_131 now also carries a 2nd exit
+  -- (the new seventhRoom door, see seventh_room_test.lua) honestly
+  -- labeled ENGINEERING CHOICE rather than STRUCTURALLY-DERIVED --
+  -- both are "not a live ROM trigger", just via different evidence, so
+  -- this test now accepts either label instead of requiring one exact
+  -- phrase.
+  "worldMapRoom_131/132: every exit is honestly labeled STRUCTURALLY-DERIVED or ENGINEERING CHOICE, never claimed as a live ROM trigger",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     for _, key in ipairs({ "worldMapRoom_131", "worldMapRoom_132" }) do
       for _, exit in ipairs(profile.graphics[key].exits) do
-        Harness.assertTrue(exit.status ~= nil and exit.status:find("STRUCTURALLY%-DERIVED") ~= nil,
-          key .. "'s own exit should be explicitly labeled STRUCTURALLY-DERIVED, not a ROM-confirmed live trigger")
+        Harness.assertTrue(exit.status ~= nil and
+          (exit.status:find("STRUCTURALLY%-DERIVED") ~= nil or exit.status:find("ENGINEERING CHOICE") ~= nil),
+          key .. "'s own exit should be explicitly labeled STRUCTURALLY-DERIVED or ENGINEERING CHOICE, not a ROM-confirmed live trigger")
       end
     end
   end

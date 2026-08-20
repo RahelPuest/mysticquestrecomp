@@ -115,7 +115,22 @@ const ROOMS = [
     "widthTiles": 20
   },
   {
-    "exits": [],
+    "exits": [
+      {
+        "landingX": 16,
+        "landingY": 88,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see doc comment above",
+        "targetRoom": "worldMapRoom_131",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 160,
+          "xMin": 144,
+          "yMax": 104,
+          "yMin": 80
+        }
+      }
+    ],
     "heightTiles": 16,
     "name": "seventhRoom",
     "widthTiles": 20,
@@ -226,6 +241,20 @@ const ROOMS = [
           "xMin": 152,
           "yMax": 128,
           "yMin": 112
+        }
+      },
+      {
+        "landingX": 128,
+        "landingY": 88,
+        "reverse": false,
+        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see seventhRoom's own doc comment",
+        "targetRoom": "seventhRoom",
+        "transitionType": "cut",
+        "zone": {
+          "xMax": 16,
+          "xMin": 0,
+          "yMax": 120,
+          "yMin": 64
         }
       }
     ],

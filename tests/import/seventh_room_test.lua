@@ -2,6 +2,7 @@ local Harness = require("tests.harness")
 local RomIdentity = require("src.import.RomIdentity")
 local RomProfiles = require("src.import.rom_profiles")
 local DevRomLocator = require("tests.dev_rom_locator")
+local TileWalkability = require("src.entities.TileWalkability")
 
 -- Real room wired 2026-08-16, direct user report: "im zweiten
 -- Bossraum nachdem der Boss besiegt wurde öffnet sich das im Norden --
@@ -134,14 +135,106 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "seventhRoom: has NO outgoing exits (2026-08-19: a brief unknownRoomA_8 engineering-choice door was added then RETRACTED same day -- see rom_profiles.lua's own doc comment on seventhRoom.exits for the full add-then-retract story; floorTileIds it depended on turned out unreliable for unknownRoomA's own metatile table)",
+  "seventhRoom: exactly ONE outgoing exit, an honestly-labeled ENGINEERING CHOICE into worldMapRoom_131 (2026-08-19's unknownRoomA_8 attempt stays withdrawn -- this is a different door, to the already footprint-verified 131/132 pair, see rom_profiles.lua's own doc comment on seventhRoom.exits)",
   romData ~= nil,
   "no development ROM found",
   function()
     local profile = RomProfiles.match(RomIdentity.identify(romData))
     local seventh = profile.graphics.seventhRoom
-    Harness.assertTrue(seventh.exits == nil or #seventh.exits == 0,
-      "expected seventhRoom to have no outgoing exits -- no real destination known, and the engineering-choice attempt was withdrawn")
+    Harness.assertEqual(#seventh.exits, 1, "expected exactly 1 outgoing exit on seventhRoom")
+    local exit = seventh.exits[1]
+    Harness.assertEqual(exit.targetRoom, "worldMapRoom_131")
+    Harness.assertTrue(exit.status ~= nil and exit.status:find("ENGINEERING CHOICE") ~= nil,
+      "seventhRoom's new door should be explicitly labeled ENGINEERING CHOICE, not a ROM-confirmed live trigger")
+  end
+)
+
+--- Real reachability using the EXACT SAME production movement code the
+-- game itself runs (`TileWalkability.build` + a pixel-space BFS over
+-- `canMoveTo`, matching `Player:update`'s own per-axis check) -- not a
+-- hand-derived row/col conversion. A first attempt at this door used a
+-- (landingY-16)/8+1-style conversion copied from the OLDER 131<->132
+-- pair's own test file; simulating the real `Player:update`/
+-- `TileWalkability.build` code directly (see rom_profiles.lua's own
+-- 2026-08-20 doc comment on seventhRoom.exits) caught that this
+-- conversion does NOT generalize -- it happened to work for that one
+-- pair's specific south-edge geometry, but silently produced an
+-- off-grid, permanently-unreachable target for THIS door's first
+-- (retracted) south-edge attempt. Testing against the real movement
+-- function instead of a hand-derived formula is the general fix.
+local function canMoveToFor(room)
+  return TileWalkability.build(room, 16, 16)
+end
+
+--- BFS over real 8px steps using the room's own real `canMoveTo`, exactly
+-- the granularity `Player:update` moves at.
+local function pixelReachable(room, startX, startY, targetX, targetY)
+  local canMoveTo = canMoveToFor(room)
+  if not (canMoveTo(startX, startY) and canMoveTo(targetX, targetY)) then return false end
+  local seen, key = {}, function(x, y) return x * 100000 + y end
+  seen[key(startX, startY)] = true
+  local queue, head = { { startX, startY } }, 1
+  while head <= #queue do
+    local x, y = queue[head][1], queue[head][2]
+    head = head + 1
+    if x == targetX and y == targetY then return true end
+    for _, d in ipairs({ { 8, 0 }, { -8, 0 }, { 0, 8 }, { 0, -8 } }) do
+      local nx, ny = x + d[1], y + d[2]
+      if not seen[key(nx, ny)] and canMoveTo(nx, ny) then
+        seen[key(nx, ny)] = true
+        queue[#queue + 1] = { nx, ny }
+      end
+    end
+  end
+  return false
+end
+
+Harness.testIfAvailable(
+  "seventhRoom<->worldMapRoom_131: both new landing spots are reachable, via the REAL production movement code, from each room's own already-established entrance -- and neither new exit's zone overlaps the other side's landing spot (the bounce-loop bug class this project already fixed once)",
+  romData ~= nil,
+  "no development ROM found",
+  function()
+    local profile = RomProfiles.match(RomIdentity.identify(romData))
+    local seventh = profile.graphics.seventhRoom
+    local room131 = profile.graphics.worldMapRoom_131
+
+    local exitOut = seventh.exits[1]
+    Harness.assertEqual(exitOut.targetRoom, "worldMapRoom_131")
+    -- (48,112): one real step in from worldMapRoom_131's own existing
+    -- exit-to-132 landing spot (48,128) -- that exact spot is, by
+    -- design (see rom_profiles.lua's doc comment), one row past what a
+    -- 16px player's top-left corner can ever legally occupy, so it
+    -- can't itself be a BFS seed; (48,112) is the real, reachable step
+    -- away from it.
+    Harness.assertTrue(pixelReachable(room131, 48, 112, exitOut.landingX, exitOut.landingY),
+      "seventhRoom's new exit should land somewhere really reachable (via the game's own movement code) in worldMapRoom_131")
+
+    -- worldMapRoom_131's own reciprocal exit is the 2nd entry (index 2) --
+    -- index 1 is the pre-existing exit into worldMapRoom_132.
+    local exitBack = room131.exits[2]
+    Harness.assertEqual(exitBack.targetRoom, "seventhRoom")
+    -- (80,112): seventhRoom's own existing, already-real sixthRoom-exit
+    -- landing spot.
+    Harness.assertTrue(pixelReachable(seventh, 80, 112, exitBack.landingX, exitBack.landingY),
+      "worldMapRoom_131's new exit should land somewhere really reachable (via the game's own movement code) in seventhRoom")
+
+    -- Bounce-loop check, same class of bug this project already found
+    -- and fixed once: neither new landing spot may sit inside the
+    -- OTHER new exit's own trigger zone.
+    local zOut, zBack = exitOut.zone, exitBack.zone
+    Harness.assertTrue(not (exitBack.landingX >= zOut.xMin and exitBack.landingX < zOut.xMax
+      and exitBack.landingY >= zOut.yMin and exitBack.landingY < zOut.yMax),
+      "worldMapRoom_131's new landing spot should not sit inside seventhRoom's own new exit zone")
+    Harness.assertTrue(not (exitOut.landingX >= zBack.xMin and exitOut.landingX < zBack.xMax
+      and exitOut.landingY >= zBack.yMin and exitOut.landingY < zBack.yMax),
+      "seventhRoom's new landing spot should not sit inside worldMapRoom_131's own new exit zone")
+
+    -- Also must not collide with worldMapRoom_131's PRE-EXISTING exit-to-132
+    -- zone/landing (the other established door in this same room).
+    local zTo132 = room131.exits[1].zone
+    Harness.assertTrue(not (exitBack.landingX >= zTo132.xMin and exitBack.landingX < zTo132.xMax
+      and exitBack.landingY >= zTo132.yMin and exitBack.landingY < zTo132.yMax),
+      "worldMapRoom_131's new landing spot should not sit inside its own pre-existing exit-to-132 zone")
   end
 )
 
