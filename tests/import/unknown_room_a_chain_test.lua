@@ -25,13 +25,16 @@
 -- discipline of recording wrong turns openly (see e.g. the RETRACTED
 -- seventhRoom->eighthRoom exit in rom_profiles.lua from 2026-08-17).
 --
--- SUPERSEDED, 2026-08-20: `unknownRoomA_8`..`_13` DO have real
--- connectivity again -- built on the FIXED, position-aware collision
--- (`VictorySequence.lua`'s own `unknownRoomA_*` special case) instead of
--- the flawed flat set that broke this attempt, and wired as independent
--- spokes off `worldMapRoom_132` rather than a chain (a systematic
--- edge-match check found 0/16 rows matching for every consecutive pair,
--- so no real evidence supports connecting them to EACH OTHER the way
--- this file's own retracted attempt did). See
--- `tests/import/unknown_room_a_hub_test.lua` for the current, passing
--- tests.
+-- SUPERSEDED, then RE-RETRACTED, both 2026-08-20: a hub-and-spoke
+-- connectivity scheme (`unknownRoomA_8`..`_13` wired independently off
+-- `worldMapRoom_132`, built on the FIXED, position-aware collision
+-- instead of the flawed flat set that broke this original attempt) was
+-- added, tested, and live-verified for 3 of 6 rooms -- then pulled back
+-- within the same day after a direct, blunt user correction rejecting
+-- the whole `worldMapRoom_131`/`132` foundation it was hung on (see that
+-- block's own doc comment in rom_profiles.lua). `tests/import/
+-- unknown_room_a_hub_test.lua` (which held those tests) has been
+-- deleted along with the connectivity it tested. `unknownRoomA_8`..`_13`
+-- are back to zero exits, room CONTENT untouched. See
+-- docs/reverse-engineering/events.md's 2026-08-20 entries for the full
+-- add-then-retract-then-retract-again trace.

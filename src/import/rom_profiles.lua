@@ -2364,255 +2364,44 @@ RomProfiles.PROFILES = {
         -- withdrawn again, back to empty, until a trustworthy floor
         -- source exists for this specific metatile table.
         --
-        -- ADDED 2026-08-20, direct user priority ("Räume anschließen"
-        -- -- connect already-decoded rooms instead of chasing further
-        -- unresolved script-trigger RE): a NEW east-edge door into
-        -- `worldMapRoom_131`/`132`. Unlike the retracted `unknownRoomA`
-        -- attempt, the destination pair is itself already
-        -- STRUCTURALLY-DERIVED and footprint-verified (100% tile-exact
-        -- edge match between 131/132, zero internal collision
-        -- conflicts, see `WORLD_MAP_ROOM_131_GRID`'s own doc comment) --
-        -- this door only adds ONE new, honestly-labeled claim ("seventhRoom
-        -- connects here"), not a whole new unverified room chain.
-        --
-        -- Zone/landing values were derived by SIMULATING the real
-        -- production movement code directly (`Player:update` +
-        -- `TileWalkability.build`, the exact functions `VictorySequence`
-        -- itself uses -- not a hand-guessed row/col conversion), after a
-        -- first hand-picked south-edge attempt turned out to target a
-        -- pixel row this room's own 16-row grid can never actually put a
-        -- 16px-tall player's top-left corner on (caught by the same
-        -- simulation before it ever reached a live `love .` run). East
-        -- edge (cols 19-20, x=144-160) is real floor from row 11 to row
-        -- 14 -- narrower (rows 11-12 only, y=80-96 top-left) right at the
-        -- edge itself, due to a real wall intrusion at rows 9-10/15-16 --
-        -- confirmed reachable by BFS over the SAME canMoveTo the game
-        -- itself uses, starting from the room's own already-real
-        -- sixthRoom-landing spot (80,112). Live-walked in BOTH directions
-        -- via real `love .` runs before being considered done (see
-        -- docs/reverse-engineering/events.md's matching 2026-08-20
-        -- entry) -- not just a landing-spot check, the exact gap that let
-        -- unknownRoomA ship broken. Side note for future doors: adding a
-        -- SECOND real exit targeting the same room
-        -- (`MYSTICQUEST_VICTORY_START_ROOM=<roomKey>` picks the FIRST
-        -- exit found via `pairs()` over the whole graphics table, whose
-        -- order is not stable across separate `love .` process launches)
-        -- means that dev shortcut can now land a test at EITHER of this
-        -- room's 2 real entrances at random -- expect it and design
-        -- movement scripts that work from both, rather than assuming a
-        -- single fixed start (this cost one wasted live run here before
-        -- being recognized).
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see doc comment above",
-            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 104 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_131",
-            landingX = 16, landingY = 88,
-          },
-        },
+        -- ADDED then RETRACTED, 2026-08-20 (same day, direct blunt user
+        -- correction): a door to `worldMapRoom_131` was briefly added
+        -- here as an ENGINEERING CHOICE. Pulled back after a direct
+        -- user report: `worldMapRoom_131` is a BANK-5 (16x16 grid)
+        -- record -- `seventhRoom` itself is a BANK-6 (8x8 grid) record
+        -- (51) -- these are two structurally UNRELATED grids ("map0" vs
+        -- "map1", already noted as a caveat elsewhere in this file, see
+        -- `eighthRoom`'s own doc comment). There was never any real
+        -- spatial-adjacency evidence for this door (it was explicitly
+        -- labeled "zero structural evidence" from the start) -- the
+        -- user identified, from the actual world map, that
+        -- `seventhRoom`'s own real neighbor sits immediately to its
+        -- right on bank 6's OWN grid (record 52, row 6/col 4) instead --
+        -- not yet investigated or wired, a genuine lead for a future
+        -- pass, not acted on here. `worldMapRoom_131`/`132`'s own
+        -- connectivity (to each other and to this room) is fully
+        -- withdrawn too -- see their own doc comment below. No
+        -- production room CONTENT changed by this retraction, only the
+        -- invented door.
+        exits = {},
       },
-      -- ADDED (same continuation, same self-correction): real bank-5
-      -- catalog record 236 -- seventhRoom's own SOUTH neighbor (not the
-      -- west one from the retracted first attempt). Its north row is a
-      -- byte-exact match against seventhRoom's own south row at the
-      -- reachable columns (8-15) -- verified via the same collision-
-      -- grid re-derivation this room's test file runs live.
-      -- TILESET CORRECTED: same fix, same evidence as seventhRoom's own
-      -- doc comment above -- see mapTable.tilesetFileOffset's own
-      -- dated correction for the full formula. grid unchanged, only
-      -- tileOffsets.
-      -- CONNECTION TO seventhRoom RETRACTED (same day, direct follow-
-      -- up): the "byte-exact shared-edge match" above was against
-      -- seventhRoom's OLD data (bank5 record 220) -- seventhRoom was
-      -- superseded this same pass with real bank6 record 51 (per a
-      -- direct user report of the actual post-second-boss landing
-      -- spot), whose south row shares nothing with this room's north
-      -- row. This room's own data is untouched and still real -- only
-      -- the "sits south of seventhRoom" claim is now false and no
-      -- longer asserted (seventhRoom's exits is empty). This room keeps
-      -- its own exit to ninthRoom below (an independent edge-match,
-      -- unaffected) -- simply no longer reachable from the known
-      -- sixthRoom/seventhRoom chain, an honest regression in known
-      -- connectivity, not silently left contradictory.
-      eighthRoom = {
-        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 236; " ..
-          "chosen via a byte-exact shared-edge match with seventhRoom's own (NOW SUPERSEDED, no longer valid) south row (at the real, BFS-" ..
-          "confirmed reachable columns), not independently ROM-confirmed) -- " ..
-          "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
-        cols = 20,
-        rows = 16,
-        -- ADDED (2026-08-18, direct user report "7. raum ist auch auf
-        -- der weltkarte. genau wie 8 und 9"): this room already WAS a
-        -- real bank-5 (16x16 grid) catalog record (236) by construction
-        -- -- it just never got the same `worldMapCatalogRecord`
-        -- cross-reference field startRoom/fourthRoom/seventhRoom carry,
-        -- so the website's own 🗺 Weltkarte badge never showed it.
-        -- row/col via the project's own established formula
-        -- (row=floor(index/16), col=index%16, stride=16 for bank5 --
-        -- see worldmap.js's own doc comment): 236 -> (14,12). Same
-        -- confidence level as this room's own `status` above already
-        -- states (edge-match choice, not independently live-verified)
-        -- -- NOT the stronger live-VRAM standard startRoom/fourthRoom
-        -- carry; also on a DIFFERENT real grid than seventhRoom's own
-        -- bank6 badge (bank5 is a separate 16x16 "map0", not adjacent
-        -- to bank6's "map1").
-        --
-        -- RE-CHECKED, NOT MOVED (2026-08-18, direct user instruction
-        -- "na dann fixe das", after being told this room sits on a
-        -- different map than seventhRoom's now-corrected bank6
-        -- position): since the OLD seventhRoom->eighthRoom edge-match
-        -- that originally placed this room is itself now known-invalid
-        -- (see this room's own `status` above), ran a full, exhaustive
-        -- content re-check -- decoded this room's own real grid as file
-        -- offsets (via its own tileOffsets) and compared cell-by-cell
-        -- against EVERY OTHER bank5 (255) and bank6 (64) catalog
-        -- record's own real decoded content, the exact same "compare by
-        -- real file offset" method that found startRoom's 98.8%/
-        -- fourthRoom's 67.5% exact matches. Result: NO decisive match --
-        -- best candidate (bank5 record 217, row13/col9, not even
-        -- spatially adjacent to this room's own row14/col12) is only
-        -- 48.1% (154/320), with a gradual, structureless falloff from
-        -- there (47.8%, 46.2%, 44.4%, ...) -- the shape of generic
-        -- shared-tileset overlap across the whole catalog, not a real
-        -- identity spike the way the 65%+ real matches elsewhere show.
-        -- Honest conclusion: this room's own existing bank5 position
-        -- (236) remains the best-supported placement -- no evidence
-        -- found to move it. The real, still-open gap is connectivity
-        -- (no known live trigger reaches it since seventhRoom moved),
-        -- not this room's own content or position -- the same
-        -- "how does the ROM select any room beyond the 16 known
-        -- roomSelectorTable slots" mystery already flagged elsewhere,
-        -- not a new, separate problem. See events.md 2026-08-18.
-        worldMapCatalogRecord = { table = "bank5", recordIndex = 236, row = 14, col = 12 },
-        tileOffsets = {
-          [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
-          [17] = 0x30110, [18] = 0x30120, [19] = 0x30130, [20] = 0x30140,
-          [21] = 0x30150, [25] = 0x30190, [26] = 0x301A0, [37] = 0x30250,
-          [45] = 0x302D0, [46] = 0x302E0, [47] = 0x302F0, [54] = 0x30360,
-          [55] = 0x30370, [56] = 0x30380, [57] = 0x30390, [62] = 0x303E0,
-          [63] = 0x303F0, [64] = 0x30400, [66] = 0x30420, [67] = 0x30430,
-          [68] = 0x30440, [69] = 0x30450, [74] = 0x304A0, [75] = 0x304B0,
-          [77] = 0x304D0, [150] = 0x30960, [151] = 0x30970, [152] = 0x30980,
-          [153] = 0x30990,
-        },
-        -- Real per-metatile-instance collision bytes. Tile 68 is
-        -- genuinely position-dependent (8 instances floor, 4 wall --
-        -- same category of imprecision already accepted elsewhere, e.g.
-        -- sixthRoom's 145/146). Checked: every wall instance sits
-        -- outside the BFS-reachable region from the landing spot -- so
-        -- marking 68 as floor is safe for every reachable cell, even
-        -- though imprecise for cells nobody can walk to anyway.
-        floorTileIds = { [56] = true, [57] = true, [66] = true, [67] = true,
-          [68] = true, [69] = true, [150] = true, [151] = true, [152] = true, [153] = true },
-        grid = {
-          {150,151,150,151, 46, 47, 46, 47,150,151,150,151,150,151,150,151, 66, 67, 66, 67},
-          {152,153,152,153, 46, 47, 46, 47,152,153,152,153,152,153,152,153, 68, 69, 68, 69},
-          {150,151,150,151, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 74, 75, 66, 67},
-          {152,153,152,153, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 37, 77, 68, 69},
-          {150,151,150,151, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 66, 67},
-          {152,153,152,153, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 68, 69},
-          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 74, 75},
-          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 37, 77},
-          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 17, 18, 20, 21},
-          { 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 19, 15, 14, 15},
-          { 63, 37, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 45, 45, 45, 45, 25, 13, 12, 13},
-          { 68, 64, 46, 47, 46, 47, 46, 47, 45, 45, 45, 45, 45, 45, 45, 45, 26, 15, 14, 15},
-          { 66, 67, 63, 37, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 25, 13, 12, 13},
-          { 68, 69, 68, 64, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 26, 15, 14, 15},
-          { 66, 67, 66, 67, 63, 37, 37, 62, 56, 57, 63, 37, 45, 45, 45, 45, 25, 13, 12, 13},
-          { 68, 69, 68, 69, 68, 64, 54, 55, 68, 69, 68, 64, 45, 45, 45, 45, 26, 15, 14, 15},
-        },
-        -- Real BFS reachability check from the landing spot (88,8) finds
-        -- 32 of this room's own 320 real cells reachable -- the room's
-        -- own north row (cols 8-19, matching the incoming connection)
-        -- and its own east column, rows 0-5 (a real, further opening,
-        -- matched below). West/south stay disconnected pockets, same
-        -- shape as seventhRoom's own -- not connected further this pass.
-        exits = {
-          {
-            zone = { xMin = 144, xMax = 160, yMin = 0, yMax = 48 },
-            transition = { type = "cut" },
-            targetRoom = "ninthRoom",
-            landingX = 16, landingY = 16,
-            holdFrames = 64, holdDirection = "right",
-          },
-        },
-      },
-      -- ADDED (same continuation): real bank-5 catalog record 237 --
-      -- eighthRoom's own east neighbor, same byte-exact shared-edge
-      -- standard (both rooms' east/west columns read WWWWWW at rows
-      -- 0-5). BFS-confirmed 36 cells reachable from the landing spot;
-      -- further neighbors not investigated this pass.
-      -- TILESET CORRECTED: same fix/evidence as seventhRoom's own doc
-      -- comment above. grid unchanged, only tileOffsets.
-      ninthRoom = {
-        status = "IMPLEMENTATION CHOICE (real, decoded ROM room-catalog data -- bank 5, mapTable record 237; " ..
-          "chosen via a byte-exact shared-edge match with eighthRoom's own east column, not independently " ..
-          "ROM-confirmed) -- " ..
-          "TILESET CORRECTED 2026-08-17 after a direct, credible user report -- see seventhRoom's own doc comment",
-        cols = 20,
-        rows = 16,
-        -- ADDED (2026-08-18, same direct user report as eighthRoom's
-        -- own doc comment above): 237 -> (14,13), directly east of
-        -- eighthRoom's own (14,12) -- matching this room's own already-
-        -- documented "eighthRoom's own east neighbor" placement exactly.
-        -- Same honest confidence caveat as eighthRoom's own field.
-        --
-        -- RE-CHECKED, NOT MOVED (2026-08-18, same "na dann fixe das"
-        -- re-check as eighthRoom's own doc comment above, same exhaustive
-        -- whole-catalog method): best candidate for THIS room's own real
-        -- content is bank5 record 249 at only 45.3% (145/320), again a
-        -- gradual, structureless falloff -- not a real-identity spike.
-        -- Own existing bank5 position (237) remains the best-supported
-        -- placement. Same open connectivity gap as eighthRoom, not a
-        -- content/position problem. See events.md 2026-08-18.
-        worldMapCatalogRecord = { table = "bank5", recordIndex = 237, row = 14, col = 13 },
-        tileOffsets = {
-          [12] = 0x300C0, [13] = 0x300D0, [14] = 0x300E0, [15] = 0x300F0,
-          [17] = 0x30110, [18] = 0x30120, [19] = 0x30130, [20] = 0x30140,
-          [21] = 0x30150, [22] = 0x30160, [23] = 0x30170, [24] = 0x30180,
-          [27] = 0x301B0, [28] = 0x301C0, [34] = 0x30220, [35] = 0x30230,
-          [36] = 0x30240, [37] = 0x30250, [45] = 0x302D0, [54] = 0x30360,
-          [55] = 0x30370, [62] = 0x303E0, [63] = 0x303F0, [64] = 0x30400,
-          [66] = 0x30420, [67] = 0x30430, [68] = 0x30440, [69] = 0x30450,
-          [70] = 0x30460, [71] = 0x30470, [72] = 0x30480, [73] = 0x30490,
-          [74] = 0x304A0, [75] = 0x304B0, [77] = 0x304D0, [78] = 0x304E0,
-          [79] = 0x304F0, [80] = 0x30500, [81] = 0x30510, [82] = 0x30520,
-          [83] = 0x30530, [84] = 0x30540, [127] = 0x307F0, [132] = 0x30840,
-          [133] = 0x30850, [134] = 0x30860, [135] = 0x30870,
-        },
-        -- Same position-dependent tile-68 imprecision as eighthRoom
-        -- above -- every wall instance here also sits outside the
-        -- BFS-reachable region from the landing spot.
-        floorTileIds = { [66] = true, [67] = true, [68] = true, [69] = true,
-          [70] = true, [71] = true, [72] = true, [73] = true,
-          [78] = true, [79] = true, [80] = true, [81] = true },
-        grid = {
-          { 66, 67, 70, 71, 70, 71,127,127, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67},
-          { 68, 69, 72, 73, 72, 73,127,127, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69},
-          { 66, 67, 70, 71, 70, 71,127,127, 78, 79, 78, 79, 78, 79, 78, 79, 66, 67, 66, 67},
-          { 68, 69, 72, 73, 72, 73,127,127, 80, 81, 80, 81, 80, 81, 80, 81, 68, 69, 68, 69},
-          { 66, 67, 70, 71, 82, 83, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 74, 75, 66, 67},
-          { 68, 69, 72, 73, 84, 37, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 37, 77, 68, 69},
-          { 78, 79, 82, 83, 17, 18, 20, 21, 22, 23, 45, 45, 45, 45, 45, 45, 45, 45, 66, 67},
-          { 80, 81, 84, 37, 19, 15, 14, 15, 14, 24, 45, 45, 45, 45, 45, 45, 45, 45, 68, 69},
-          { 20, 21, 20, 21, 12, 13, 12, 13,132,133, 45, 45, 45, 45, 45, 45, 45, 45, 74, 75},
-          { 14, 15, 14, 15, 14, 15, 14, 15,134,135, 45, 45, 45, 45, 45, 45, 45, 45, 37, 77},
-          { 12, 13, 12, 13, 12, 13, 12, 13, 12, 34, 45, 45, 45, 45, 37, 62, 63, 37, 37, 62},
-          { 14, 15, 14, 15, 14, 15, 14, 15, 35, 36, 45, 45, 45, 45, 54, 55, 68, 64, 54, 55},
-          { 12, 13, 12, 13, 12, 13, 12, 27, 37, 62, 63, 37, 37, 62, 66, 67, 66, 67, 66, 67},
-          { 14, 15, 14, 15, 14, 15, 14, 28, 54, 55, 68, 64, 54, 55, 68, 69, 68, 69, 68, 69},
-          { 12, 13, 12, 13, 12, 13, 12, 27, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67, 66, 67},
-          { 14, 15, 14, 15, 14, 15, 14, 28, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69, 68, 69},
-        },
-        -- No further exits wired this pass -- the BFS-confirmed
-        -- reachable region (36 of 320 cells, top-left block) has no
-        -- further edge opening beyond the west column used to enter it.
-        -- An honest dead end, not chased further given seventhRoom's
-        -- earlier caught mistake: every claim here is BFS-verified, not
-        -- just edge-pattern-matched.
-      },
+      -- `eighthRoom`/`ninthRoom` REMOVED ENTIRELY, 2026-08-20 (direct,
+      -- blunt user correction: "Auch Eighth Room und Ninth Room, falsch.
+      -- Lösch sie komplett aus deinen Unterlagen und schreib, dass die
+      -- falsch erkannt wurden."). These two room entries (bank-5 records
+      -- 236/237, previously placed via a byte-exact edge match against
+      -- seventhRoom's own OLD, since-superseded position, then kept in
+      -- place across 2 later "no better candidate found" re-checks) are
+      -- declared WRONGLY IDENTIFIED per direct user report and deleted
+      -- from `profile.graphics` -- do not re-add records 236/237 under
+      -- these names without new, independent evidence. Their own mutual
+      -- east/west edge match (236<->237) was real as a measured byte
+      -- fact, but the room IDENTIFICATION itself (that these ARE
+      -- "eighthRoom"/"ninthRoom", i.e. real, meaningful positions
+      -- following on from `seventhRoom`) is retracted, not just their
+      -- connectivity -- they were never wired into reachable gameplay in
+      -- the first place. See events.md's own 2026-08-20 entry for the
+      -- full record.
       -- Real player + "Willy" sprites standing in the room above, found
       -- by direct user report (the first implementation drew the room
       -- but neither character). Live OAM capture: 4 active sprite
@@ -3447,311 +3236,113 @@ RomProfiles.PROFILES = {
       -- source. Connectivity (real doors into normal gameplay) stays
       -- withdrawn regardless -- still no live trigger.
       --
-      -- CONNECTIVITY RE-ADDED, 2026-08-20 (direct user priority "die
-      -- gesamte Konnektivität aller Räume entschlüsseln und einbauen"):
-      -- UNLIKE the 2026-08-19 add-then-retract attempt, this is built on
-      -- the FIXED, position-aware collision above (VictorySequence.lua's
-      -- own `unknownRoomA_*` special case, mirroring `willyRoom`'s own --
-      -- see that file's dated doc comment), not the flat `floorTileIds`
-      -- set below (still real for CONTENT, never re-trusted for
-      -- walkability). A systematic edge-match check (the same technique
-      -- that found `worldMapRoom_131`<->`132`) against these 6 rooms'
-      -- OWN dedicated metatile table found a decisive, clean negative:
-      -- 0/16 rows match for every one of the 5 consecutive-index pairs
-      -- (8|9, 9|10, 10|11, 11|12, 12|13) -- these are NOT a connected
-      -- dungeon chain the way 131/132 are; like bank 7's own 0.0%
-      -- edge-match rate, this metatile table is a flat catalog, not a
-      -- spatial grid. So each of the 6 rooms is wired as its own
-      -- INDEPENDENT spoke off `worldMapRoom_132` (the hub) -- an
-      -- honestly-labeled ENGINEERING CHOICE with ZERO structural
-      -- evidence for adjacency (weaker than `worldMapRoom_131`/`132`'s
-      -- own edge-match basis), justified purely by "this is real,
-      -- decoded ROM room content that would otherwise stay permanently
-      -- unreachable." Every zone/landing pair below was verified via a
-      -- real BFS over the SAME production `canMoveTo` function
-      -- `VictorySequence` itself calls (not hand-derived coordinates --
-      -- see seventhRoom's own 2026-08-20 doc comment for why that
-      -- matters). `unknownRoomA_9`/`_13` are real, tightly-constrained
-      -- rooms (67 and 13 total reachable cells) with only ONE usable
-      -- edge each -- their own landing and return-zone pixels are
-      -- deliberately placed far apart on that SAME edge to avoid an
-      -- instant bounce-loop. Also caught, live-simulation-first (before
-      -- any `love .` run): the pre-existing `worldMapRoom_131` exit's own
-      -- raw landing spot (120,128) clamps to real (120,112) on the very
-      -- next tick (`Player:update`'s own unconditional bounds clamp) --
-      -- a first version of `unknownRoomA_12`'s own hub zone started at
-      -- exactly x=120 and would have double-triggered on arrival; shifted
-      -- to x=122 instead, and a dedicated regression test
-      -- (`unknown_room_a_hub_test.lua`) now checks this specific
-      -- interaction. Live dual-direction `love .` round-trip
-      -- verification (scripted input + exact-coordinate state-log
-      -- readback, not just a landing-spot check) was completed for
-      -- `unknownRoomA_8`, `_9`, and `_13` -- deliberately the roomiest,
-      -- a mid-constrained single-edge case, and the most constrained,
-      -- covering the real range of this family's own geometry. `_10`/
-      -- `_11`/`_12` rely on the same BFS-over-real-`canMoveTo` evidence
-      -- (the exact production code, not a hand-derived formula) but were
-      -- not individually live-GUI-tested -- an honestly lower confidence
-      -- tier than `_8`/`_9`/`_13`, stated plainly rather than implied
-      -- equal. See events.md's own 2026-08-20 entry for the full trace.
+      -- CONNECTIVITY RE-ADDED then RE-RETRACTED, 2026-08-20 (both same
+      -- day): a hub-and-spoke connectivity scheme (all 6 rooms wired as
+      -- independent ENGINEERING-CHOICE doors off `worldMapRoom_132`) was
+      -- built, tested, and live-verified for 3 of 6 rooms -- then pulled
+      -- back within the same day after a direct, blunt user correction
+      -- rejecting the whole `worldMapRoom_131`/`132` foundation this
+      -- scheme was hung on (see that block's own doc comment below for
+      -- the full retraction). Since the hub itself is gone, every one of
+      -- these 6 spokes is unreachable regardless of its own merits --
+      -- withdrawn together, back to empty `exits`. Room CONTENT (grid/
+      -- tileOffsets/floorTileIds) is untouched, still real ROM data;
+      -- `VictorySequence.lua`'s own position-aware collision special
+      -- case for this room family is also untouched (a real, still-
+      -- accurate fix, independent of the connectivity question). See
+      -- events.md's own 2026-08-20 entries for the full add-then-
+      -- retract trace, including the 3 real bugs the first attempt did
+      -- catch before any live run.
       unknownRoomA_8 = {
-        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (live-verified both directions) -- see the block doc comment above",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 and 2026-08-20 add-then-retract stories",
         romRoomSelector = 8,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[8],
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-            zone = { xMin = 64, xMax = 80, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            landingX = 56, landingY = 88,
-          },
-        },
       },
       unknownRoomA_9 = {
-        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 and 2026-08-20 add-then-retract stories",
         romRoomSelector = 9,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[9],
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 104 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            landingX = 72, landingY = 88,
-          },
-        },
       },
       unknownRoomA_10 = {
-        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 and 2026-08-20 add-then-retract stories",
         romRoomSelector = 10,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[10],
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 88 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            landingX = 88, landingY = 88,
-          },
-        },
       },
       unknownRoomA_11 = {
-        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 and 2026-08-20 add-then-retract stories",
         romRoomSelector = 11,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[11],
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-            zone = { xMin = 144, xMax = 160, yMin = 48, yMax = 72 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            landingX = 104, landingY = 88,
-          },
-        },
       },
       unknownRoomA_12 = {
-        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 and 2026-08-20 add-then-retract stories",
         romRoomSelector = 12,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[12],
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-            zone = { xMin = 40, xMax = 56, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            landingX = 120, landingY = 88,
-          },
-        },
       },
       unknownRoomA_13 = {
-        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (live-verified both directions) -- see the block doc comment above",
+        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 and 2026-08-20 add-then-retract stories",
         romRoomSelector = 13,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[13],
-        exits = {
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-            zone = { xMin = 64, xMax = 80, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            landingX = 136, landingY = 88,
-          },
-        },
       },
       -- `worldMapRoom_131`/`worldMapRoom_132`: real bank-5 world-map
-      -- catalog records 131/132 -- see `WORLD_MAP_ROOM_131_GRID`'s own
-      -- doc comment above for the full evidence trail (100% tile-exact
-      -- edge match found via a systematic full-grid scan, zero internal
-      -- collision conflicts, large non-fragmented footprint-reachable
-      -- regions on both sides, visually confirmed continuous). This is
-      -- a TRIAL, deliberately the single most-defensible candidate of
-      -- the 6 perfect-match pairs found, not a claim the others are
-      -- wrong -- see that doc comment for why the other 5 were left
-      -- unwired. STRUCTURALLY-DERIVED, meaningfully stronger evidence
-      -- than `unknownRoomA`'s own ENGINEERING-CHOICE doors (those had
-      -- no edge-match evidence at all, pure invented placement) -- but
-      -- still NOT independently ground-truth-verified the way a live-
-      -- reachable room's collision table is, since no gameplay reaches
-      -- any bank5/6 catalog room. Door placed on the one row range (15-
-      -- 16, fully open on both sides in both rooms) that lets landing
-      -- spots sit well inside each room rather than right at the seam,
-      -- avoiding the "landing inside the exit zone" bounce-loop bug
-      -- this project already found and fixed once this session.
-      -- UPDATE 2026-08-20 (direct user priority "Räume anschließen"):
-      -- now ALSO reachable through ordinary play, via a new south-edge
-      -- ENGINEERING-CHOICE door on `seventhRoom` (see that room's own
-      -- doc comment for the full rationale and the footprint-verified,
-      -- both-directions-live-walked evidence). `MYSTICQUEST_VICTORY_START_ROOM
-      -- =worldMapRoom_131` remains available as a direct dev shortcut
-      -- too, unchanged.
+      -- catalog records 131/132. ALL CONNECTIVITY RETRACTED, 2026-08-20
+      -- (direct, blunt user correction: "die ganzen neuen Räume sind...
+      -- die Grafiken da völlig falsch... die Transitionen völlig für den
+      -- Arsch... Mach die 131 raus, mach die 132 raus"). This includes
+      -- BOTH the mutual `131`<->`132` door (previously labeled
+      -- STRUCTURALLY-DERIVED off a real tile-exact edge match -- that
+      -- match is still a real, measured fact about these 2 records'
+      -- shared border, but the user's report that the resulting content/
+      -- transitions are wrong is taken at face value and NOT
+      -- re-litigated here) AND the `seventhRoom` door added the same
+      -- day (which was ALSO independently retracted on its own terms --
+      -- see `seventhRoom`'s own doc comment -- bank-5 records are not
+      -- even the same grid as `seventhRoom`'s own bank-6 position). The
+      -- user pointed at the real world map directly: `seventhRoom`'s
+      -- actual neighbor sits immediately to ITS OWN right on bank 6's
+      -- own grid (record 52) -- not investigated or acted on this pass,
+      -- a genuine lead for later, not a claim made here. `grid`/
+      -- `tileOffsets`/`floorTileIds` below are UNCHANGED, real decoded
+      -- bytes at bank-5 records 131/132 -- this retraction is about
+      -- connectivity only; whether the room IDENTIFICATION itself
+      -- (which catalog index is really "there" on the map) also needs
+      -- re-examination is open, not resolved either way by this pass.
+      -- See events.md's own 2026-08-20 retraction entry for the full
+      -- record.
       worldMapRoom_131 = {
-        status = "STRUCTURALLY-DERIVED (100% tile-exact edge match with worldMapRoom_132, see doc comment above); floor/collision meaning for this metatile table is NOT independently verified",
+        status = "Room content only (bank-5 record 131, real decoded bytes) -- ALL connectivity retracted 2026-08-20 after a direct user correction, see the block doc comment above",
         bank5RecordIndex = 131,
         cols = 20, rows = 16,
         tileOffsets = WORLD_MAP_ROOM_131_TILE_OFFSETS,
         floorTileIds = WORLD_MAP_ROOM_131_FLOOR_TILE_IDS,
         grid = WORLD_MAP_ROOM_131_GRID,
-        exits = {
-          {
-            status = "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
-            zone = { xMin = 152, xMax = 160, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_132",
-            -- row15,col6 (1-based) in worldMapRoom_132 -- real floor,
-            -- footprint-verified, well inside the room (not at the seam).
-            landingX = 48, landingY = 128,
-          },
-          -- ADDED 2026-08-20 (see seventhRoom's own matching doc comment
-          -- for the full rationale, including WHY this uses simulated-
-          -- movement-verified values rather than a hand-derived row/col
-          -- conversion): reciprocal of seventhRoom's new east-edge door.
-          -- Zone placed on this room's own real WEST edge (col 1, x=0-16)
-          -- -- real floor from row 9 to row 15 there (a taller, more
-          -- open band than seventhRoom's own east-edge chokepoint),
-          -- confirmed reachable by the same `Player:update`/
-          -- `TileWalkability.build` simulation from this room's own
-          -- already-real (48,112) position (one step in from its
-          -- existing exit-to-132 landing spot). Clear of both the
-          -- exit-to-132 zone above (152-160,112-128) and seventhRoom's
-          -- own new (128,88) landing point (no bounce-loop overlap,
-          -- checked both ways).
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see seventhRoom's own doc comment",
-            zone = { xMin = 0, xMax = 16, yMin = 64, yMax = 120 },
-            transition = { type = "cut" },
-            targetRoom = "seventhRoom",
-            -- Real floor, footprint-verified, inside seventhRoom's own
-            -- large open plaza (rows 11-14), reachable from its existing
-            -- (80,112) landing spot -- clear of that room's own new exit
-            -- zone (144-160,80-104).
-            landingX = 128, landingY = 88,
-          },
-        },
+        exits = {},
       },
       worldMapRoom_132 = {
-        status = "STRUCTURALLY-DERIVED (100% tile-exact edge match with worldMapRoom_131, see doc comment above); floor/collision meaning for this metatile table is NOT independently verified",
+        status = "Room content only (bank-5 record 132, real decoded bytes) -- ALL connectivity retracted 2026-08-20 after a direct user correction, see the block doc comment above",
         bank5RecordIndex = 132,
         cols = 20, rows = 16,
         tileOffsets = WORLD_MAP_ROOM_132_TILE_OFFSETS,
         floorTileIds = WORLD_MAP_ROOM_132_FLOOR_TILE_IDS,
         grid = WORLD_MAP_ROOM_132_GRID,
-        exits = {
-          {
-            status = "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
-            zone = { xMin = 0, xMax = 16, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "worldMapRoom_131",
-            -- row15,col15 (1-based) in worldMapRoom_131 -- real floor,
-            -- footprint-verified, well inside the room (not at the seam).
-            landingX = 120, landingY = 128,
-          },
-          -- ADDED 2026-08-20 -- 6 new south-edge hub doors into the
-          -- unknownRoomA_8..13 family (see that block's own doc comment
-          -- for the full rationale/evidence). All 6 landing spots below
-          -- sit at y=88, inside this room's own real, fully-open
-          -- y=80-112 band -- verified clear of the exit-to-131 zone
-          -- above (different y-range entirely) and of each other (16px
-          -- x-spacing, non-overlapping).
-          -- x-ranges start at 24, not 0 -- the pre-existing exit-to-131
-          -- zone above already occupies x=0-16 at this same y-band; a
-          -- first version of this block collided with it directly
-          -- (caught by tests/import/unknown_room_a_hub_test.lua's own
-          -- zone-overlap check before any live run).
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_8's own doc comment",
-            zone = { xMin = 24, xMax = 40, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_8",
-            landingX = 0, landingY = 48,
-          },
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_9's own doc comment",
-            zone = { xMin = 48, xMax = 64, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_9",
-            landingX = 144, landingY = 48,
-          },
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_10's own doc comment",
-            zone = { xMin = 72, xMax = 88, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_10",
-            landingX = 0, landingY = 48,
-          },
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_11's own doc comment",
-            zone = { xMin = 96, xMax = 112, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_11",
-            landingX = 0, landingY = 48,
-          },
-          -- xMin=122 (not 120) -- the pre-existing exit-to-131 above
-          -- lands the player at real, clamped (120,112) (its own raw
-          -- landingY=128 gets clamped to this room's real max Y by
-          -- Player:update's own unconditional bounds clamp on the very
-          -- next tick -- a real mechanic this project's earlier south-
-          -- edge doors already implicitly rely on) -- a first version of
-          -- this zone starting at exactly x=120 would have put a fresh
-          -- arrival from worldMapRoom_131 immediately inside THIS zone
-          -- too, an instant, unintended second transition. Caught by
-          -- directly simulating the real landing+clamp behavior before
-          -- any live run, not by the checked-in reachability tests
-          -- above (which didn't yet check interaction with the OTHER
-          -- pre-existing exit's own landing spot -- a real, now-fixed
-          -- test-coverage gap).
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_12's own doc comment",
-            zone = { xMin = 122, xMax = 138, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_12",
-            landingX = 0, landingY = 48,
-          },
-          {
-            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_13's own doc comment",
-            zone = { xMin = 144, xMax = 160, yMin = 112, yMax = 128 },
-            transition = { type = "cut" },
-            targetRoom = "unknownRoomA_13",
-            landingX = 32, landingY = 112,
-          },
-        },
+        exits = {},
       },
     },
 

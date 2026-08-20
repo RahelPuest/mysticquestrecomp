@@ -2,32 +2,6 @@
 // Every room with decoded exits -- read from rom_profiles.lua's graphics.<room>.exits (empirically-found trigger zones + transition shape + target room). A few VERIFIED rooms with no live-traced exits (currently: startRoom, the first-boss-fight room) are still included as their own honestly-disconnected node via ISOLATED_BUT_REAL_ROOMS below, rather than silently omitted. Rooms with a live-confirmed sameRomIdentityAs cross-reference (currently: fifthRoom, sixthRoom) carry that field regardless of their own exits. Rooms with a live-confirmed worldMapCatalogRecord (currently: startRoom at (7,4), fourthRoom at (7,5) -- see rom_profiles.lua's doc comment) carry the bank6 8x8 world-map grid position they were found at, independent of whether they're isolated in this play-flow graph. `bridgeNote` (currently: fourthRoom, 2026-08-18) flags a room whose own exits both terminate in already-known territory (via other rooms' sameRomIdentityAs) -- a junction, not a lead toward new content. `mergeInto` (currently: fifthRoom->thirdRoom, sixthRoom->startRoom, 2026-08-18, direct repeated user report the badge-only approach still showed them as separate boxes) tells the room-system graph renderer to redirect the room's own incoming edges to the named target and NOT render it as its own node at all -- a real merge, not just a visual flag.
 const ROOMS = [
   {
-    "exits": [
-      {
-        "landingX": 16,
-        "landingY": 16,
-        "reverse": false,
-        "targetRoom": "ninthRoom",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 144,
-          "yMax": 48,
-          "yMin": 0
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "eighthRoom",
-    "widthTiles": 20,
-    "worldMapCatalogRecord": {
-      "col": 12,
-      "recordIndex": 236,
-      "row": 14,
-      "table": "bank5"
-    }
-  },
-  {
     "exits": [],
     "heightTiles": 16,
     "mergeInto": "thirdRoom",
@@ -81,18 +55,6 @@ const ROOMS = [
     }
   },
   {
-    "exits": [],
-    "heightTiles": 16,
-    "name": "ninthRoom",
-    "widthTiles": 20,
-    "worldMapCatalogRecord": {
-      "col": 13,
-      "recordIndex": 237,
-      "row": 14,
-      "table": "bank5"
-    }
-  },
-  {
     "exits": [
       {
         "axis": "x",
@@ -115,22 +77,7 @@ const ROOMS = [
     "widthTiles": 20
   },
   {
-    "exits": [
-      {
-        "landingX": 16,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see doc comment above",
-        "targetRoom": "worldMapRoom_131",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 144,
-          "yMax": 104,
-          "yMin": 80
-        }
-      }
-    ],
+    "exits": [],
     "heightTiles": 16,
     "name": "seventhRoom",
     "widthTiles": 20,
@@ -208,132 +155,6 @@ const ROOMS = [
   {
     "exits": [
       {
-        "landingX": 88,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 144,
-          "yMax": 88,
-          "yMin": 64
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "unknownRoomA_10",
-    "widthTiles": 20
-  },
-  {
-    "exits": [
-      {
-        "landingX": 104,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 144,
-          "yMax": 72,
-          "yMin": 48
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "unknownRoomA_11",
-    "widthTiles": 20
-  },
-  {
-    "exits": [
-      {
-        "landingX": 120,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 56,
-          "xMin": 40,
-          "yMax": 128,
-          "yMin": 112
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "unknownRoomA_12",
-    "widthTiles": 20
-  },
-  {
-    "exits": [
-      {
-        "landingX": 136,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 80,
-          "xMin": 64,
-          "yMax": 128,
-          "yMin": 112
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "unknownRoomA_13",
-    "widthTiles": 20
-  },
-  {
-    "exits": [
-      {
-        "landingX": 56,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 80,
-          "xMin": 64,
-          "yMax": 128,
-          "yMin": 112
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "unknownRoomA_8",
-    "widthTiles": 20
-  },
-  {
-    "exits": [
-      {
-        "landingX": 72,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 144,
-          "yMax": 104,
-          "yMin": 80
-        }
-      }
-    ],
-    "heightTiles": 16,
-    "name": "unknownRoomA_9",
-    "widthTiles": 20
-  },
-  {
-    "exits": [
-      {
         "axis": "y",
         "landingX": 72,
         "landingY": 96,
@@ -354,141 +175,13 @@ const ROOMS = [
     "widthTiles": 20
   },
   {
-    "exits": [
-      {
-        "landingX": 48,
-        "landingY": 128,
-        "reverse": false,
-        "status": "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
-        "targetRoom": "worldMapRoom_132",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 152,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 128,
-        "landingY": 88,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see seventhRoom's own doc comment",
-        "targetRoom": "seventhRoom",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 16,
-          "xMin": 0,
-          "yMax": 120,
-          "yMin": 64
-        }
-      }
-    ],
+    "exits": [],
     "heightTiles": 16,
     "name": "worldMapRoom_131",
     "widthTiles": 20
   },
   {
-    "exits": [
-      {
-        "landingX": 120,
-        "landingY": 128,
-        "reverse": false,
-        "status": "STRUCTURALLY-DERIVED, not ROM-live-trigger-confirmed (see doc comment above)",
-        "targetRoom": "worldMapRoom_131",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 16,
-          "xMin": 0,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 0,
-        "landingY": 48,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_8's own doc comment",
-        "targetRoom": "unknownRoomA_8",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 40,
-          "xMin": 24,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 144,
-        "landingY": 48,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_9's own doc comment",
-        "targetRoom": "unknownRoomA_9",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 64,
-          "xMin": 48,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 0,
-        "landingY": 48,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_10's own doc comment",
-        "targetRoom": "unknownRoomA_10",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 88,
-          "xMin": 72,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 0,
-        "landingY": 48,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_11's own doc comment",
-        "targetRoom": "unknownRoomA_11",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 112,
-          "xMin": 96,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 0,
-        "landingY": 48,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_12's own doc comment",
-        "targetRoom": "unknownRoomA_12",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 138,
-          "xMin": 122,
-          "yMax": 128,
-          "yMin": 112
-        }
-      },
-      {
-        "landingX": 32,
-        "landingY": 112,
-        "reverse": false,
-        "status": "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_13's own doc comment",
-        "targetRoom": "unknownRoomA_13",
-        "transitionType": "cut",
-        "zone": {
-          "xMax": 160,
-          "xMin": 144,
-          "yMax": 128,
-          "yMin": 112
-        }
-      }
-    ],
+    "exits": [],
     "heightTiles": 16,
     "name": "worldMapRoom_132",
     "widthTiles": 20

@@ -175,37 +175,28 @@ function render_rooms(main) {
       Pixel-Abgleich.
     </p>
     <p class="page-lede">
-      <strong>17 Räume jetzt normal begehbar (2026-08-20), <code>unknownRoomA_8</code>&ndash;<code>13</code>
-      als Hub-and-Spoke an <code>worldMapRoom_132</code>.</strong> Direkte Nutzer-Anweisung
-      ("die gesamte Konnektivität aller Räume entschlüsseln und in die App und der Website
-      einbauen"). Erst ehrlich eingegrenzt: die reine Kanten-Abgleich-Konnektivität ist über den
-      GESAMTEN Bank5/6/7-Katalog bereits erschöpfend gescannt (6 echte Paare, nur 1 begehbar; Bank
-      7 bestätigt ein flacher Katalog, 0,0&nbsp;% Übereinstimmung) &mdash; und der tiefe
-      Skript-Auslöse-Mechanismus (<code>$31AD</code>/CutTransitionTable) bleibt genau dort stehen,
-      wo die vorherige, sehr lange Untersuchung endete. Stattdessen dasselbe Rezept wie bei
-      <code>worldMapRoom_131</code> auf <code>unknownRoomA_8</code>&ndash;<code>13</code>
-      angewendet: der 2026-08-19-Rückzug (kaputte Boden-Daten) gilt nicht mehr &mdash; F8 hat
-      längst echte, positionsbewusste Kollision für diese Raumfamilie. Ein sauberer Kantenabgleich
-      GEGEN DIE EIGENE Metatile-Tabelle dieser Räume (nicht die generische, die der ursprüngliche
-      Scan benutzte) zeigt diesmal eindeutig: 0 von 16 Zeilen stimmen für jedes der 5
-      aufeinanderfolgenden Paare überein &mdash; keine zusammenhängende Kette, genau wie Bank 7.
-      Also alle 6 als unabhängige Sackgassen an <code>worldMapRoom_132</code> verdrahtet, ehrlich
-      als ENGINEERING CHOICE ohne jeden strukturellen Beleg gekennzeichnet. <strong>3 echte Bugs
-      noch vor jedem Live-Test gefunden</strong>, durch Simulation des echten Produktions-
-      Bewegungscodes: ein Koordinaten-Verwechsler im neuen Test selbst, eine echte Zonen-Kollision
-      mit dem bestehenden Exit, und ein subtilerer Fall &mdash; <code>Player:update</code>s eigener,
-      bedingungsloser Bounds-Clamp verschiebt den alten <code>worldMapRoom_131</code>-Landepunkt
-      still auf eine erste Fassung einer neuen Zone. Live per <code>love .</code> bestätigt (Hin-
-      und Rückweg, exakte Koordinaten-Übereinstimmung) für 3 von 6 Räumen (der geräumigste, ein
-      mittel-enger Einzelkanten-Fall, und der engste); die anderen 3 stützen sich auf denselben,
-      bereits bewährten BFS-Beleg, ohne einzeln live getestet zu sein &mdash; ehrlich als
-      niedrigere Vertrauensstufe benannt, nicht verschwiegen. <code>eighthRoom</code>/
-      <code>ninthRoom</code> (schon über eine echte Kante miteinander verbunden) als nächster
-      Kandidat geprüft, aber als echt fragil erkannt (ein sehr karger, ungewöhnlich geformter
-      Raum) und bewusst zurückgestellt statt überstürzt angebunden. Bank 7s 64 Räume und die
-      übrigen ~300 generischen Katalog-Räume haben keinerlei strukturellen Beleg &mdash; jeder
-      würde dieselbe Einzelraum-Sorgfalt brauchen, es gibt keine Abkürzung ohne erfundene
-      Verbindungen.
+      <strong>ZURÜCKGEZOGEN, 2026-08-20 (direkte, deutliche Nutzer-Korrektur): die komplette
+      Hub-and-Spoke-Konnektivität von <code>worldMapRoom_131</code>/<code>132</code> und
+      <code>unknownRoomA_8</code>&ndash;<code>13</code> war Bullshit.</strong> Nutzer-Zitat: "die
+      ganzen neuen Räume sind... die Grafiken da völlig falsch... die Transitionen völlig für den
+      Arsch... vom Seventh Room in den World Map Room 131 ist völliger Quatsch... schau dir die
+      World Map an, vom Seventh Room rechts daneben auf der World Map ist der richtige Room."
+      Konkreter Fehler: <code>worldMapRoom_131</code>/<code>132</code> sind Bank-5-Katalog-Records
+      (16x16-Gitter), <code>seventhRoom</code> selbst ist ein Bank-6-Record (8x8-Gitter, Position
+      51) &mdash; zwei strukturell UNVERWANDTE Gitter. Für die Tür gab es nie echten
+      Adjazenz-Beleg (von Anfang an als "zero structural evidence" gekennzeichnet). Der Nutzer hat
+      den echten Nachbarn direkt auf der Weltkarte gezeigt: <code>seventhRoom</code>s reale
+      Nachbarschaft liegt auf Bank 6s EIGENEM Gitter direkt rechts daneben (Record 52) &mdash;
+      nicht untersucht oder verdrahtet in diesem Durchgang, ein echter Hinweis für später, keine
+      hier gemachte Behauptung. <strong>Alle Türen entfernt</strong>: <code>seventhRoom</code>,
+      <code>worldMapRoom_131</code>, <code>worldMapRoom_132</code> und alle 6
+      <code>unknownRoomA</code>-Räume haben wieder null Exits. <strong><code>eighthRoom</code>/
+      <code>ninthRoom</code> komplett gelöscht</strong> (ebenfalls direkte Nutzer-Anweisung) &mdash;
+      als falsch erkannt dokumentiert, nicht nur ihre Konnektivität. Rauminhalt (Kachel-Grids) von
+      <code>worldMapRoom_131</code>/<code>132</code>/<code>unknownRoomA</code> bleibt unverändert,
+      echte ROM-Daten &mdash; nur die erfundene Konnektivität und <code>eighthRoom</code>/
+      <code>ninthRoom</code>s Identifikation sind zurückgezogen. Siehe events.md's eigenen
+      2026-08-20-Eintrag für den vollständigen Rückzugsbericht.
     </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">

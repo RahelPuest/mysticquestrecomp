@@ -127,17 +127,25 @@ Harness.testIfAvailable(
     -- entries, all new tiles in bank 12 (file 0x30xxx, same pool
     -- seventhRoom/eighthRoom/ninthRoom already use -- real, honest tile
     -- reuse across several of the 39 tile IDs these 2 rooms share).
-    Harness.assertEqual(catalog.roomCount, 19)
-    Harness.assertEqual(#catalog.entries, 313)
+    -- CORRECTED 2026-08-20 (direct, blunt user correction: "Auch Eighth
+    -- Room und Ninth Room, falsch. Lösch sie komplett aus deinen
+    -- Unterlagen und schreib, dass die falsch erkannt wurden."):
+    -- `eighthRoom`/`ninthRoom` (bank-5 records 236/237) were deleted
+    -- from `profile.graphics` entirely -- 19->17 rooms, 313->282 distinct
+    -- entries, bank 12's own count 200->169 (both rooms' tiles lived
+    -- there exclusively; banks 8/11 unaffected). `worldMapRoom_131`/`132`
+    -- lost their own connectivity the same day but stay as room CONTENT
+    -- entries, so they're still counted here -- this number tracks real
+    -- decoded room content, not reachability.
+    Harness.assertEqual(catalog.roomCount, 17)
+    Harness.assertEqual(#catalog.entries, 282)
 
     -- Real map/environment tiles live in exactly 3 banks (8, 11, 12) --
     -- NOT just bank 12, the honest finding this whole module exists to
     -- surface (see this module's own doc comment for the full story).
-    -- worldMapRoom_131/132's own tiles are all bank 12 -- only that
-    -- bank's count moved with the 2026-08-19 addition.
     Harness.assertEqual(catalog.byBank[8], 28)
     Harness.assertEqual(catalog.byBank[11], 85)
-    Harness.assertEqual(catalog.byBank[12], 200)
+    Harness.assertEqual(catalog.byBank[12], 169)
 
     -- Every entry's own fileOffset must be inside the real ROM and
     -- tile-aligned (16-byte stride) -- same non-fabrication check every
