@@ -174,6 +174,39 @@ function render_rooms(main) {
       stützt sich auf den direkten Nutzer-Hinweis plus einen kohärenten Decode, nicht auf einen
       Pixel-Abgleich.
     </p>
+    <p class="page-lede">
+      <strong>17 Räume jetzt normal begehbar (2026-08-20), <code>unknownRoomA_8</code>&ndash;<code>13</code>
+      als Hub-and-Spoke an <code>worldMapRoom_132</code>.</strong> Direkte Nutzer-Anweisung
+      ("die gesamte Konnektivität aller Räume entschlüsseln und in die App und der Website
+      einbauen"). Erst ehrlich eingegrenzt: die reine Kanten-Abgleich-Konnektivität ist über den
+      GESAMTEN Bank5/6/7-Katalog bereits erschöpfend gescannt (6 echte Paare, nur 1 begehbar; Bank
+      7 bestätigt ein flacher Katalog, 0,0&nbsp;% Übereinstimmung) &mdash; und der tiefe
+      Skript-Auslöse-Mechanismus (<code>$31AD</code>/CutTransitionTable) bleibt genau dort stehen,
+      wo die vorherige, sehr lange Untersuchung endete. Stattdessen dasselbe Rezept wie bei
+      <code>worldMapRoom_131</code> auf <code>unknownRoomA_8</code>&ndash;<code>13</code>
+      angewendet: der 2026-08-19-Rückzug (kaputte Boden-Daten) gilt nicht mehr &mdash; F8 hat
+      längst echte, positionsbewusste Kollision für diese Raumfamilie. Ein sauberer Kantenabgleich
+      GEGEN DIE EIGENE Metatile-Tabelle dieser Räume (nicht die generische, die der ursprüngliche
+      Scan benutzte) zeigt diesmal eindeutig: 0 von 16 Zeilen stimmen für jedes der 5
+      aufeinanderfolgenden Paare überein &mdash; keine zusammenhängende Kette, genau wie Bank 7.
+      Also alle 6 als unabhängige Sackgassen an <code>worldMapRoom_132</code> verdrahtet, ehrlich
+      als ENGINEERING CHOICE ohne jeden strukturellen Beleg gekennzeichnet. <strong>3 echte Bugs
+      noch vor jedem Live-Test gefunden</strong>, durch Simulation des echten Produktions-
+      Bewegungscodes: ein Koordinaten-Verwechsler im neuen Test selbst, eine echte Zonen-Kollision
+      mit dem bestehenden Exit, und ein subtilerer Fall &mdash; <code>Player:update</code>s eigener,
+      bedingungsloser Bounds-Clamp verschiebt den alten <code>worldMapRoom_131</code>-Landepunkt
+      still auf eine erste Fassung einer neuen Zone. Live per <code>love .</code> bestätigt (Hin-
+      und Rückweg, exakte Koordinaten-Übereinstimmung) für 3 von 6 Räumen (der geräumigste, ein
+      mittel-enger Einzelkanten-Fall, und der engste); die anderen 3 stützen sich auf denselben,
+      bereits bewährten BFS-Beleg, ohne einzeln live getestet zu sein &mdash; ehrlich als
+      niedrigere Vertrauensstufe benannt, nicht verschwiegen. <code>eighthRoom</code>/
+      <code>ninthRoom</code> (schon über eine echte Kante miteinander verbunden) als nächster
+      Kandidat geprüft, aber als echt fragil erkannt (ein sehr karger, ungewöhnlich geformter
+      Raum) und bewusst zurückgestellt statt überstürzt angebunden. Bank 7s 64 Räume und die
+      übrigen ~300 generischen Katalog-Räume haben keinerlei strukturellen Beleg &mdash; jeder
+      würde dieselbe Einzelraum-Sorgfalt brauchen, es gibt keine Abkürzung ohne erfundene
+      Verbindungen.
+    </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
       <button class="btn small" id="roomZoomOut" type="button" title="Verkleinern">&minus;</button>

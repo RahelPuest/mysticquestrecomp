@@ -24,3 +24,14 @@
 -- tried and did not hold up, matching this project's own established
 -- discipline of recording wrong turns openly (see e.g. the RETRACTED
 -- seventhRoom->eighthRoom exit in rom_profiles.lua from 2026-08-17).
+--
+-- SUPERSEDED, 2026-08-20: `unknownRoomA_8`..`_13` DO have real
+-- connectivity again -- built on the FIXED, position-aware collision
+-- (`VictorySequence.lua`'s own `unknownRoomA_*` special case) instead of
+-- the flawed flat set that broke this attempt, and wired as independent
+-- spokes off `worldMapRoom_132` rather than a chain (a systematic
+-- edge-match check found 0/16 rows matching for every consecutive pair,
+-- so no real evidence supports connecting them to EACH OTHER the way
+-- this file's own retracted attempt did). See
+-- `tests/import/unknown_room_a_hub_test.lua` for the current, passing
+-- tests.

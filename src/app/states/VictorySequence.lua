@@ -1152,10 +1152,38 @@ function VictorySequence:ensureRoomLoaded(roomKey)
   -- "guess -> decoded ROM fact" upgrade, not a gameplay change -- every
   -- other room keeps the flat approach until it gets its own metatile-
   -- table ground truth the same way.
+  -- ADDED 2026-08-20 (direct user priority "die gesamte Konnektivität
+  -- aller Räume entschlüsseln und einbauen"): unknownRoomA_8..13 use the
+  -- SAME position-aware, per-metatile-instance collision RoomExplorer.lua
+  -- (F8) already proved trustworthy for this room family -- NOT the flat
+  -- `floorTileIds` set on these rooms' own `profile.graphics` entries
+  -- (already documented there as accurate for CONTENT, not walkability;
+  -- see that 2026-08-19 retraction/2026-08-19-20 fix history). Uses the
+  -- default `isWalkableCollision` rule (fourthRoom's polarity), visually
+  -- DECISIVELY confirmed correct for this specific metatile table (real
+  -- brick-wall vs. mesh-floor texture, see rom_profiles.lua's own
+  -- `unknownRoomA_8` doc comment) -- same confidence tier as
+  -- `worldMapRoom_131`/`132`'s own connectivity (not independently
+  -- ground-truth-verified via live gameplay, since no such gameplay
+  -- reaches this room family, but the best-available, visually-checked
+  -- rule for this table).
+  local isUnknownRoomA = roomKey:match("^unknownRoomA_(%d+)$") ~= nil
   if roomKey == "willyRoom" then
     local layout = self.profile.roomFloorLayoutPipeline.exampleRoom
     local collisionGrid = RoomFloorLayout.buildCollisionGrid(
       self.romData, layout, RoomFloorLayout.isWalkableCollisionWillyFamily)
+    self.roomWalk[roomKey] = TileWalkability.buildFromCollisionGrid(collisionGrid, 16, 16)
+  elseif isUnknownRoomA then
+    local recordIndex = tonumber(roomKey:match("^unknownRoomA_(%d+)$"))
+    local candidates = self.profile.roomFloorLayoutPipeline.unknownRoomACandidates
+    local opts = {
+      metatileTableFileOffset = candidates.metatileTableFileOffset,
+      tilesetFileOffset = candidates.tilesetFileOffset,
+      metatileGridRows = candidates.metatileGridRows,
+      metatileGridCols = candidates.metatileGridCols,
+    }
+    local collisionGrid = RoomFloorLayout.buildCollisionGridFromMapTableRecord(
+      self.romData, self.profile.mapTable, recordIndex, opts)
     self.roomWalk[roomKey] = TileWalkability.buildFromCollisionGrid(collisionGrid, 16, 16)
   else
     self.roomWalk[roomKey] = TileWalkability.build(room, 16, 16)

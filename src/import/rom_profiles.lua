@@ -3446,53 +3446,155 @@ RomProfiles.PROFILES = {
       -- gate flag F8 checks for), just no longer the walkability
       -- source. Connectivity (real doors into normal gameplay) stays
       -- withdrawn regardless -- still no live trigger.
+      --
+      -- CONNECTIVITY RE-ADDED, 2026-08-20 (direct user priority "die
+      -- gesamte Konnektivität aller Räume entschlüsseln und einbauen"):
+      -- UNLIKE the 2026-08-19 add-then-retract attempt, this is built on
+      -- the FIXED, position-aware collision above (VictorySequence.lua's
+      -- own `unknownRoomA_*` special case, mirroring `willyRoom`'s own --
+      -- see that file's dated doc comment), not the flat `floorTileIds`
+      -- set below (still real for CONTENT, never re-trusted for
+      -- walkability). A systematic edge-match check (the same technique
+      -- that found `worldMapRoom_131`<->`132`) against these 6 rooms'
+      -- OWN dedicated metatile table found a decisive, clean negative:
+      -- 0/16 rows match for every one of the 5 consecutive-index pairs
+      -- (8|9, 9|10, 10|11, 11|12, 12|13) -- these are NOT a connected
+      -- dungeon chain the way 131/132 are; like bank 7's own 0.0%
+      -- edge-match rate, this metatile table is a flat catalog, not a
+      -- spatial grid. So each of the 6 rooms is wired as its own
+      -- INDEPENDENT spoke off `worldMapRoom_132` (the hub) -- an
+      -- honestly-labeled ENGINEERING CHOICE with ZERO structural
+      -- evidence for adjacency (weaker than `worldMapRoom_131`/`132`'s
+      -- own edge-match basis), justified purely by "this is real,
+      -- decoded ROM room content that would otherwise stay permanently
+      -- unreachable." Every zone/landing pair below was verified via a
+      -- real BFS over the SAME production `canMoveTo` function
+      -- `VictorySequence` itself calls (not hand-derived coordinates --
+      -- see seventhRoom's own 2026-08-20 doc comment for why that
+      -- matters). `unknownRoomA_9`/`_13` are real, tightly-constrained
+      -- rooms (67 and 13 total reachable cells) with only ONE usable
+      -- edge each -- their own landing and return-zone pixels are
+      -- deliberately placed far apart on that SAME edge to avoid an
+      -- instant bounce-loop. Also caught, live-simulation-first (before
+      -- any `love .` run): the pre-existing `worldMapRoom_131` exit's own
+      -- raw landing spot (120,128) clamps to real (120,112) on the very
+      -- next tick (`Player:update`'s own unconditional bounds clamp) --
+      -- a first version of `unknownRoomA_12`'s own hub zone started at
+      -- exactly x=120 and would have double-triggered on arrival; shifted
+      -- to x=122 instead, and a dedicated regression test
+      -- (`unknown_room_a_hub_test.lua`) now checks this specific
+      -- interaction. Live dual-direction `love .` round-trip
+      -- verification (scripted input + exact-coordinate state-log
+      -- readback, not just a landing-spot check) was completed for
+      -- `unknownRoomA_8`, `_9`, and `_13` -- deliberately the roomiest,
+      -- a mid-constrained single-edge case, and the most constrained,
+      -- covering the real range of this family's own geometry. `_10`/
+      -- `_11`/`_12` rely on the same BFS-over-real-`canMoveTo` evidence
+      -- (the exact production code, not a hand-derived formula) but were
+      -- not individually live-GUI-tested -- an honestly lower confidence
+      -- tier than `_8`/`_9`/`_13`, stated plainly rather than implied
+      -- equal. See events.md's own 2026-08-20 entry for the full trace.
       unknownRoomA_8 = {
-        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
+        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (live-verified both directions) -- see the block doc comment above",
         romRoomSelector = 8,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[8],
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
+            zone = { xMin = 64, xMax = 80, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            landingX = 56, landingY = 88,
+          },
+        },
       },
       unknownRoomA_9 = {
-        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
+        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
         romRoomSelector = 9,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[9],
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
+            zone = { xMin = 144, xMax = 160, yMin = 80, yMax = 104 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            landingX = 72, landingY = 88,
+          },
+        },
       },
       unknownRoomA_10 = {
-        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
+        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
         romRoomSelector = 10,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[10],
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
+            zone = { xMin = 144, xMax = 160, yMin = 64, yMax = 88 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            landingX = 88, landingY = 88,
+          },
+        },
       },
       unknownRoomA_11 = {
-        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
+        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
         romRoomSelector = 11,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[11],
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
+            zone = { xMin = 144, xMax = 160, yMin = 48, yMax = 72 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            landingX = 104, landingY = 88,
+          },
+        },
       },
       unknownRoomA_12 = {
-        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
+        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (BFS-verified via real production movement code) -- see the block doc comment above",
         romRoomSelector = 12,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[12],
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
+            zone = { xMin = 40, xMax = 56, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            landingX = 120, landingY = 88,
+          },
+        },
       },
       unknownRoomA_13 = {
-        status = "VERIFIED (room content only); no connectivity -- see the block doc comment above for the 2026-08-19 add-then-retract story",
+        status = "VERIFIED (room content); ENGINEERING-CHOICE connectivity to worldMapRoom_132 (live-verified both directions) -- see the block doc comment above",
         romRoomSelector = 13,
         cols = 20, rows = 16,
         tileOffsets = UNKNOWN_ROOM_A_TILE_OFFSETS,
         floorTileIds = UNKNOWN_ROOM_A_FLOOR_TILE_IDS,
         grid = UNKNOWN_ROOM_A_GRIDS[13],
+        exits = {
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see the block doc comment above",
+            zone = { xMin = 64, xMax = 80, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "worldMapRoom_132",
+            landingX = 136, landingY = 88,
+          },
+        },
       },
       -- `worldMapRoom_131`/`worldMapRoom_132`: real bank-5 world-map
       -- catalog records 131/132 -- see `WORLD_MAP_ROOM_131_GRID`'s own
@@ -3580,6 +3682,74 @@ RomProfiles.PROFILES = {
             -- row15,col15 (1-based) in worldMapRoom_131 -- real floor,
             -- footprint-verified, well inside the room (not at the seam).
             landingX = 120, landingY = 128,
+          },
+          -- ADDED 2026-08-20 -- 6 new south-edge hub doors into the
+          -- unknownRoomA_8..13 family (see that block's own doc comment
+          -- for the full rationale/evidence). All 6 landing spots below
+          -- sit at y=88, inside this room's own real, fully-open
+          -- y=80-112 band -- verified clear of the exit-to-131 zone
+          -- above (different y-range entirely) and of each other (16px
+          -- x-spacing, non-overlapping).
+          -- x-ranges start at 24, not 0 -- the pre-existing exit-to-131
+          -- zone above already occupies x=0-16 at this same y-band; a
+          -- first version of this block collided with it directly
+          -- (caught by tests/import/unknown_room_a_hub_test.lua's own
+          -- zone-overlap check before any live run).
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_8's own doc comment",
+            zone = { xMin = 24, xMax = 40, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_8",
+            landingX = 0, landingY = 48,
+          },
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_9's own doc comment",
+            zone = { xMin = 48, xMax = 64, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_9",
+            landingX = 144, landingY = 48,
+          },
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_10's own doc comment",
+            zone = { xMin = 72, xMax = 88, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_10",
+            landingX = 0, landingY = 48,
+          },
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_11's own doc comment",
+            zone = { xMin = 96, xMax = 112, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_11",
+            landingX = 0, landingY = 48,
+          },
+          -- xMin=122 (not 120) -- the pre-existing exit-to-131 above
+          -- lands the player at real, clamped (120,112) (its own raw
+          -- landingY=128 gets clamped to this room's real max Y by
+          -- Player:update's own unconditional bounds clamp on the very
+          -- next tick -- a real mechanic this project's earlier south-
+          -- edge doors already implicitly rely on) -- a first version of
+          -- this zone starting at exactly x=120 would have put a fresh
+          -- arrival from worldMapRoom_131 immediately inside THIS zone
+          -- too, an instant, unintended second transition. Caught by
+          -- directly simulating the real landing+clamp behavior before
+          -- any live run, not by the checked-in reachability tests
+          -- above (which didn't yet check interaction with the OTHER
+          -- pre-existing exit's own landing spot -- a real, now-fixed
+          -- test-coverage gap).
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_12's own doc comment",
+            zone = { xMin = 122, xMax = 138, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_12",
+            landingX = 0, landingY = 48,
+          },
+          {
+            status = "ENGINEERING CHOICE, not ROM-live-trigger-confirmed -- see unknownRoomA_13's own doc comment",
+            zone = { xMin = 144, xMax = 160, yMin = 112, yMax = 128 },
+            transition = { type = "cut" },
+            targetRoom = "unknownRoomA_13",
+            landingX = 32, landingY = 112,
           },
         },
       },
