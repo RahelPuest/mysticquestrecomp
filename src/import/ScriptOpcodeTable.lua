@@ -830,8 +830,29 @@ ScriptOpcodeTable.ACTOR_ACTION_HANDLER_ADDRESS_81 = 0x15B7 -- group: dynamic, op
 --   $2819: LD A,(HL+) / PUSH AF / LD A,0x05 / JP $1F35   -- selector 5
 --   $2820: (0xFD's own twin, identical shape, its own `CALL Z,$2840`
 --     target uses `LD A,0x04 / JP $1F35` -- selector 4 instead of 5)
-ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FC = 0x27F9 -- selector group 5
-ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FD = 0x2820 -- selector group 4
+--
+-- REAL IDENTITY FOUND, 2026-08-20 (direct user instruction "wir
+-- brauchen bessere strategien... sei kreativ" -- mining the external
+-- FFA-Disassembly's own `src/data/npc/spawn.asm`, not just its boss
+-- stats, for the first time): `$1F35` selectors 5/4 (`$444A`/`$44ED`,
+-- bank 3) are this ROM's real `sSET_NPC_TYPES <row>` / `sSPAWN_NPC
+-- <col>` -- disassembly matches the external reference byte-for-byte,
+-- including the literal table address (`HL = row*6 + $7142`, CPU
+-- `$7142` in BOTH the US cartridge and this EU ROM). `0xFC`'s operand
+-- (the byte `$2819` fetches) is the row to stage; `0xFD`'s operand is
+-- which of that row's 3 columns to spawn. See `src/import/
+-- NpcSpawnTable.lua` for the full decoded table (109 rows, real
+-- species IDs) and `docs/reverse-engineering/events.md`'s 2026-08-20
+-- "SOLVED" entry for the live, end-to-end confirmation: a 2-byte ROM
+-- patch redirecting an already-firing real `0xFC`/`0xFD` pair produced
+-- a second, visible, distinct creature on screen. Renamed from the
+-- vague "selector group" framing now that the real meaning is known;
+-- `ScriptRuntime.lua` wires these to `ctx.onSetNpcTypes`/
+-- `ctx.onSpawnNpc` specifically, NOT the generic `ctx.onTriggerEvent`
+-- (see that module's own doc comment for a real, live wiring bug this
+-- distinction fixes).
+ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FC = 0x27F9 -- sSET_NPC_TYPES <row> (selector 5)
+ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FD = 0x2820 -- sSPAWN_NPC <col> (selector 4)
 
 -- 0x41/0x45/0x4B/0x55/0x59 -- FOUND, direct follow-up to task #80
 -- (shadow-run other scripts, not just the boss-defeat one, to find

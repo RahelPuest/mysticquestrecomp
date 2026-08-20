@@ -191,12 +191,28 @@ ScriptRuntime.__index = ScriptRuntime
 --                             genuinely different ROM target ($392C vs
 --                             $3CA2) -- kept as its own, separate
 --                             callback rather than conflated.
---   ctx.onTriggerEvent(operand, selectorGroup) -- opcodes `0xFC`/`0xFD`
---                             -- fires once per activation with the
---                             operand byte and the `$1F35` selector
---                             group (5 for `0xFC`, 4 for `0xFD`) -- see
---                             `StandardScriptHandlers
---                             .oneShotTriggerGate`'s doc comment.
+--   ctx.onSetNpcTypes(row)   -- opcode `0xFC` (real `sSET_NPC_TYPES`,
+--                             see `ScriptOpcodeTable
+--                             .TRIGGER_EVENT_HANDLER_ADDRESS_FC`'s doc
+--                             comment) -- fires once per activation with
+--                             the real `NpcSpawnTable` row index to
+--                             stage. NOT the generic `ctx.onTriggerEvent`
+--                             above -- see `StandardScriptHandlers
+--                             .oneShotTriggerGate`'s doc comment and this
+--                             function's own `_FC$`/`_FD$` exclusion
+--                             below for why sharing that name was a real,
+--                             live bug.
+--   ctx.onSpawnNpc(col)      -- opcode `0xFD` (real `sSPAWN_NPC`) --
+--                             fires once per activation with the column
+--                             to spawn from the row `onSetNpcTypes` most
+--                             recently staged. Resolve `(row, col)`
+--                             against `NpcSpawnTable.decode()`'s own
+--                             output to get the real species IDs/count/
+--                             positions -- this runtime intentionally
+--                             does not do that resolution itself (same
+--                             "raw values out, resolution is the
+--                             caller's job" convention as every other
+--                             `ctx.on*` callback here).
 --   ctx.isTriggerEventGateClear() -- optional gate for the same two
 --                             opcodes' dual-WRAM-cell check; defaults
 --                             to "always clear" (matches the one case
@@ -693,9 +709,27 @@ function ScriptRuntime:registerStandardHandlers()
     StandardScriptHandlers.typewriterCommand(ctx.onTypewriterCommand, self.queue))
   interp:registerHandler(ScriptOpcodeTable.ACTOR_SLOT_POSITION_HANDLER_ADDRESS_49,
     StandardScriptHandlers.actorSlotPosition(isActorReady, ctx.onSetActorSlotPosition))
-  -- `0xFC`/`0xFD`: both handlers share the same WRAM latch (`$D499`)
-  -- -- they're mutually-exclusive alternatives of one state machine,
-  -- not independent state, so this project's Lua port shares one
+  -- `0xFC`/`0xFD` -- REAL identity found 2026-08-20 (mining the external
+  -- FFA-Disassembly's own `src/data/npc/spawn.asm` for its encounter/
+  -- spawn code specifically, not just boss stats): these are this ROM's
+  -- real `sSET_NPC_TYPES <row>` / `sSPAWN_NPC <col>` opcodes, staging a
+  -- row into (then spawning a column from) the real `NpcSpawnTable`
+  -- (CPU `$7142`, bank 3, byte-identical to the US cartridge -- see that
+  -- module's own doc comment). Live-confirmed end to end: a 2-byte ROM
+  -- patch redirecting an already-firing real `0xFC`/`0xFD` pair from
+  -- `NPC_WILLY` to `NPC_GOBLIN` produced a second, visible, distinct
+  -- creature on screen with real contact damage (see docs/reverse-
+  -- engineering/events.md's 2026-08-20 "SOLVED" entry). Named
+  -- `ctx.onSetNpcTypes`/`ctx.onSpawnNpc` instead of reusing the generic
+  -- `ctx.onTriggerEvent` name both opcodes were previously (and, for a
+  -- real live period, INCORRECTLY -- see the generic sweep's own
+  -- `_FC$`/`_FD$` exclusion below) registered under -- sharing one
+  -- ambiguous name across a 0-arg family and this 2-arg family is
+  -- exactly what let that bug hide from every existing test.
+  --
+  -- Both handlers share the same WRAM latch (`$D499`) -- they're
+  -- mutually-exclusive alternatives of one state machine, not
+  -- independent state, so this project's Lua port shares one
   -- closure-local latch between their two registrations (matching the
   -- ROM's single shared byte) rather than exposing it via `ctx` -- no
   -- caller outside this runtime instance has a legitimate reason to
@@ -708,12 +742,14 @@ function ScriptRuntime:registerStandardHandlers()
     local triggerLatch = { resumeCursor = false }
     local function getLatch() return triggerLatch.resumeCursor end
     local function setLatch(v) triggerLatch.resumeCursor = v end
+    local function callWithRow(row) if ctx.onSetNpcTypes then ctx.onSetNpcTypes(row) end end
+    local function callWithCol(col) if ctx.onSpawnNpc then ctx.onSpawnNpc(col) end end
     interp:registerHandler(ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FC,
       StandardScriptHandlers.oneShotTriggerGate(5, getLatch, setLatch,
-        ctx.isTriggerEventGateClear, ctx.onTriggerEvent))
+        ctx.isTriggerEventGateClear, callWithRow))
     interp:registerHandler(ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FD,
       StandardScriptHandlers.oneShotTriggerGate(4, getLatch, setLatch,
-        ctx.isTriggerEventGateClear, ctx.onTriggerEvent))
+        ctx.isTriggerEventGateClear, callWithCol))
   end
   -- `0xE8`/`0xE9` (see `StandardScriptHandlers.dualGateLeafCommand`'s
   -- doc comment): same `$C8E0`/`$CEE8` dual gate as `0xFC`/`0xFD` just
@@ -1129,6 +1165,24 @@ function ScriptRuntime:registerStandardHandlers()
         interp:registerHandler(addr, StandardScriptHandlers.actorAction(nil, isActorReady, ctx.onActorAction))
       elseif key:match("^QUEUED_ACTION_HANDLER_ADDRESS_") then
         interp:registerHandler(addr, StandardScriptHandlers.queuedAction(isActorReady, ctx.onQueuedAction))
+      elseif key:match("^TRIGGER_EVENT_HANDLER_ADDRESS_FC$") or key:match("^TRIGGER_EVENT_HANDLER_ADDRESS_FD$") then
+        -- Same precedent bug as the `_80$`/`_81$`/`_7B$`/
+        -- `WORD_COMMAND_HANDLER_ADDRESS_EF$` exclusions above, found live
+        -- 2026-08-20 (a whole-corpus shadow-run kept returning suspicious,
+        -- uniformly-`nil` operands for every real `0xFC`/`0xFD` hit): these
+        -- two constants also match the generic `^TRIGGER_EVENT_HANDLER_
+        -- ADDRESS` pattern below, and this sweep runs AFTER the explicit,
+        -- more precise `oneShotTriggerGate` registration further up --
+        -- silently overwriting it with the generic, WRONG, zero-arg
+        -- `StandardScriptHandlers.triggerEvent` handler the whole time.
+        -- Real, live-confirmed impact: opcodes `0xFC`/`0xFD` are this
+        -- ROM's actual `sSET_NPC_TYPES`/`sSPAWN_NPC` mechanism (see
+        -- `ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FC`/`_FD`'s own
+        -- doc comment) -- with the bug, this runtime silently ran the
+        -- wrong, argument-dropping handler for both, never actually
+        -- staging a row or resolving a spawn. Excluded here so the
+        -- explicit registration (now split into `ctx.onSetNpcTypes`/
+        -- `ctx.onSpawnNpc`, see below) wins.
       elseif key:match("^TRIGGER_EVENT_HANDLER_ADDRESS") then
         interp:registerHandler(addr, StandardScriptHandlers.triggerEvent(ctx.onTriggerEvent))
       elseif key:match("^SOUND_PARAM") then

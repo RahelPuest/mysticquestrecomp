@@ -4229,6 +4229,76 @@ RomProfiles.PROFILES = {
       verifiedExample = { messageId = 13, fieldValue = 0x5165, textFileOffset = 0x39965, decodedText = "gefunden" },
     },
 
+    -- THE real regular-monster/NPC spawn table -- see src/import/
+    -- NpcSpawnTable.lua's own doc comment for the full decode and
+    -- docs/reverse-engineering/events.md's 2026-08-20 "SOLVED" entry
+    -- for the full discovery chain and live confirmation. FOUND by
+    -- mining the external FFA-Disassembly (US cartridge)'s own
+    -- `src/data/npc/spawn.asm` for its encounter/spawn code
+    -- specifically (previous sessions only ever cross-checked boss
+    -- STAT values against that reference) -- it documents a real
+    -- `NPCSpawnPointers` table, CPU `$7142`, driven by two script
+    -- opcodes: `sSET_NPC_TYPES <row>` (this project's already-traced
+    -- `0xFC`) stages a row, `sSPAWN_NPC <col>` (`0xFD`) spawns from one
+    -- of that row's 3 columns.
+    --
+    -- VERIFIED byte-for-byte identical in this EU ROM: disassembling
+    -- this ROM's own `$1F35` selectors 4/5 (bank 3, `$44ED`/`$444A`,
+    -- the real targets `0xFC`/`0xFD` dispatch to) shows the exact same
+    -- `HL = row*6 + $7142` computation as the external reference's own
+    -- source -- the literal CPU address matches, not just the
+    -- structural shape. Each column is a 2-byte pointer to a real
+    -- variable-length record: `{minSpawn, maxSpawn, 4x candidate
+    -- species/NPC ID (one picked at random via the already-known PRNG
+    -- $2B1E + 8x8->16 multiply $2B7B -- the same multiply
+    -- EnemyStatTable's own HP formula uses), then Y/X position pairs
+    -- terminated by $80/$80 (meaning "spawn at a random position
+    -- instead")}`. The per-position spawn leaf (`$1F35` selector 2,
+    -- `$42BD`) is confirmed (a raw whole-ROM `CALL $0A74` byte-pattern
+    -- census found it as one of exactly 7 real direct callers of the
+    -- entity-allocate primitive) to reach the same `$0A74` primitive
+    -- the already-known boss-spawn path uses.
+    --
+    -- LIVE-CONFIRMED END TO END: a scratchpad-only, 2-byte-patched ROM
+    -- copy redirected an already-organically-firing real `0xFC`/`0xFD`
+    -- pair (willyRoom's own real Willy-spawn trigger, row 36/col 2)
+    -- from `NPC_WILLY` to `NPC_GOBLIN` (row 1/col 0) -- the full real
+    -- chain fired (`$27F9`->`$2820`->`$42BD`->`$0A74`, entity-alloc
+    -- actually called) and produced a second, visually distinct,
+    -- stable creature on screen with real player LP loss from contact.
+    -- Not a fabricated placement -- the SAME real mechanism the ROM
+    -- already uses for every NPC/monster in the game, pointed at a
+    -- different real row/column that was always there.
+    --
+    -- Species/NPC ID VALUES here are real, decoded ROM bytes; the
+    -- ENGLISH NAMES exposed via `NpcSpawnTable.NAMES_BY_ID` are the
+    -- external US disassembly's own `NPC_*` constant names (same
+    -- "sourced external cross-reference, not decoded from this ROM's
+    -- own text" status as `EnemyStatTable.lua`'s `externalReferenceNames`)
+    -- -- confirmed correct for the 3 IDs this project has actually
+    -- live-observed (`NPC_WILLY`=0x61 appearing in Willy's own room,
+    -- `NPC_GLADIATOR_FRIEND`=0x79/`NPC_AMANDA_1`=0x63 in secondRoom),
+    -- not independently re-derived for the other 188.
+    npcSpawnPointerTable = {
+      status = "VERIFIED (table location + record format + live, end-to-end spawn confirmation); species ID -> English name mapping is a sourced external cross-reference, confirmed for 3 of 191 IDs",
+      bank = 3,
+      fileOffset = 0xF142, -- CPU $7142
+      rowCount = 109,
+      colsPerRow = 3,
+      -- Real, live-traced examples (see events.md's 2026-08-20 entries):
+      -- row 36/col 2 = NPC_WILLY (0x61), fires in willyRoom; row 37/
+      -- col 0-1 = NPC_GLADIATOR_FRIEND (0x79), row 37/col 2 =
+      -- NPC_AMANDA_1 (0x63), both fire in secondRoom; row 1/col 0 =
+      -- NPC_GOBLIN (0x12), NOT observed to fire naturally in the
+      -- charted early game -- reached only via the live ROM patch above.
+      verifiedExamples = {
+        { row = 36, col = 2, id = 0x61, name = "NPC_WILLY", observedLive = true },
+        { row = 37, col = 0, id = 0x79, name = "NPC_GLADIATOR_FRIEND", observedLive = true },
+        { row = 37, col = 2, id = 0x63, name = "NPC_AMANDA_1", observedLive = true },
+        { row = 1, col = 0, id = 0x12, name = "NPC_GOBLIN", observedLive = false, note = "reached only via the 2-byte live ROM patch, not this project's own natural checkpoint chain" },
+      },
+    },
+
     -- THE real second-level sub-dispatch table, reached only via the
     -- primary table's opcode 0xFF (handler $38E6) -- see docs/reverse-
     -- engineering/rom-map.md "The 0xFF sub-dispatch table -- bounded

@@ -204,6 +204,34 @@ Harness.test("ScriptRuntime: opcode 0x02 (CHAIN) pushes a real entry onto the ru
   Harness.assertEqual(resumeCursor, 4) -- real cursor right after CHAIN's own 2 operand bytes
 end)
 
+Harness.test(
+  "ScriptRuntime: opcodes 0xFC/0xFD dispatch to ctx.onSetNpcTypes/ctx.onSpawnNpc specifically, NOT the generic ctx.onTriggerEvent (2026-08-20, a real live wiring bug this test would have caught: the generic sweep used to silently overwrite this explicit registration)",
+  function()
+    local entries = makeOpcodeTable({
+      [0xFC] = ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FC,
+      [0xFD] = ScriptOpcodeTable.TRIGGER_EVENT_HANDLER_ADDRESS_FD,
+    })
+    local seenRow, seenCol = nil, nil
+    local genericFired = false
+    local runtime = ScriptRuntime.new(entries, {
+      onSetNpcTypes = function(row) seenRow = row end,
+      onSpawnNpc = function(col) seenCol = col end,
+      onTriggerEvent = function() genericFired = true end,
+    })
+    -- Real, live-observed shape (willyRoom's own natural 0xFC/0xFD
+    -- firing, see docs/reverse-engineering/events.md's 2026-08-20
+    -- entries): row 36 (NPC_WILLY's row), then spawn column 2.
+    local stream = { 0xFC, 36, 0xFD, 2 }
+    runtime:run(stream, 1, 2)
+
+    Harness.assertTrue(not runtime.stopped, "expected 0xFC/0xFD to be fully registered and run happy-path")
+    Harness.assertEqual(seenRow, 36)
+    Harness.assertEqual(seenCol, 2)
+    Harness.assertTrue(not genericFired,
+      "the generic zero-arg ctx.onTriggerEvent must NOT fire for 0xFC/0xFD -- " ..
+      "sharing that name with this 2-arg family is exactly the real bug this test guards against")
+  end)
+
 -- --- ROM-dependent: a real live run against the REAL boss-defeat script -
 local romData = DevRomLocator.find()
 
