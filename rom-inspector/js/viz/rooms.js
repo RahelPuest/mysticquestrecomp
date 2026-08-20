@@ -28,175 +28,32 @@ function render_rooms(main) {
   main.innerHTML = `
     <h1 class="page-title">Raum-System</h1>
     <p class="page-lede">
-      Jeder Knoten zeigt die echte, live aus der geladenen ROM gerenderte Raum-Kachelkarte
-      (dieselben Kachel-Grafik-Primitiven wie der <a href="#map">Map-Viewer</a>), jeder Pfeil
-      ein echter, empirisch gefundener Übergang (Trigger-Zone + Übergangsmechanismus +
-      Zielraum), direkt aus <code>rom_profiles.lua</code>s <code>graphics.&lt;room&gt;.exits</code>
-      gelesen. Zwei reale Mechanismen kommen vor: ein echter Hardware-Scroll
-      (<span style="color:var(--accent2)">durchgezogen</span>) und ein echter „Cut“ &mdash;
-      ein sofortiger Szenenwechsel über die relozierbare Zeiger-Pipeline
-      (<span style="color:var(--accent3)">gestrichelt</span>). Jeder Pfeil beginnt exakt an der
-      echten, empirisch eingegrenzten <span style="color:#e0a030;">Trigger-Zone</span> (gelbes
-      Rechteck) im Quellraum und endet am echten <span style="color:#40c0ff;">Landepunkt</span>
-      (blauer Punkt) im Zielraum &mdash; beides reale <code>zone</code>/<code>landingX</code>/
-      <code>landingY</code>-Werte, keine geschätzten Kantenmitten.
+      Jeder Knoten ist die echte, live aus der ROM gerenderte Raum-Kachelkarte; jeder Pfeil ein
+      echter, live bestätigter Übergang (<span style="color:var(--accent2)">durchgezogen</span>
+      = Hardware-Scroll, <span style="color:var(--accent3)">gestrichelt</span> = „Cut“-Szenenwechsel),
+      von der echten <span style="color:#e0a030;">Trigger-Zone</span> zum echten
+      <span style="color:#40c0ff;">Landepunkt</span>. Nur tatsächlich im Spiel verdrahtete
+      Übergänge &mdash; die vollständige rohe ROM-Tabelle (82 Einträge) steht unter
+      <a href="#transitions">Raum-Übergänge</a>.
     </p>
     <p class="page-lede">
-      <strong>Nur die tatsächlich im Spiel verdrahteten Übergänge</strong> &mdash; nicht
-      die volle rohe ROM-Tabelle. Diese ${ROOMS.reduce((n, r) => n + r.exits.length, 0)}
-      Kanten sind eine kleine, live bestätigte Teilmenge der
-      <a href="#transitions">${TRANSITIONS.distinct.length} echten, distinkten Übergänge</a>,
-      die 2026-08-16 direkt aus dem ROM dekodiert wurden (Bank 14, Ziel-<code>roomSelector</code>
-      + reale Landeposition in einem Record). Der Grund für den Unterschied ist ehrlich: nur
-      2 dieser 82 Einträge haben einen bekannten echten In-Game-Auslöser und sind deshalb hier
-      als spielbare Kante verdrahtet &mdash; die anderen 80 sind reale ROM-Daten ohne bekannten
-      Trigger. Siehe den <a href="#transitions">Raum-Übergänge</a>-Tab für die vollständige
-      Tabelle.
-    </p>
-    <p class="page-lede">
-      <strong>ENGINEERING CHOICE, 2026-08-19 &mdash; hinzugefügt, dann noch am selben Tag
-      ZURÜCKGEZOGEN</strong>: eine erfundene Tür-Kette <code>seventhRoom</code> &rarr;
-      <code>unknownRoomA_8..13</code> wurde kurz gebaut und live "verifiziert", nach einer
-      direkten, kritischen Nutzerrückmeldung aber wieder entfernt. Ein Audit ergab: der
-      zugrundeliegende Boden-Datensatz (<code>floorTileIds</code>) widersprach der eigenen
-      dokumentierten Klassifizierungsregel bei 42 von 82 verwendeten Kachel-IDs, und selbst eine
-      korrigierte, konsequent nach dieser Regel abgeleitete Version ergab in 2 der 6 Räume
-      überhaupt keine zusammenhängende begehbare Fläche. Die ursprüngliche Prüfung hatte nur die
-      einzelne Landekachel getestet, nicht den echten 2x2-Kachel-Footprint, den die Spielfigur
-      tatsächlich braucht &mdash; und keinen echten Lauftest vor dem "fertig"-Report. Der
-      Rauminhalt selbst (Kachel-Grafik) bleibt unverändert echte ROM-Daten; nur die 6 erfundenen
-      Türen wurden wieder entfernt, bis eine verlässliche Bodenquelle für diese Metatile-Tabelle
-      existiert. Die lange mysteriöse <code>unknownRoomA</code>-Familie (6 real dekodierte Räume)
-      bleibt wie zuvor nur über den Dev-Browser F8 erreichbar, nicht über einen normalen
-      Spielweg.
-    </p>
-    <p class="page-lede">
-      <strong>Boden-Daten GELÖST, 2026-08-19/20</strong> (eine ganze Session zu „wie erreicht das
-      Spiel Bank 14"): die Kollisions-Polarität wurde per direkter visueller Prüfung geklärt, nicht
-      per weiterer Byte-Statistik &mdash; alle 6 Räume mit einem Kollisions-Overlay gerendert und
-      angeschaut: Kollisionsbyte&nbsp;0x30 zeigt immer echte Ziegel-/Mauerwerk-Wandtextur,
-      0x00/0x08 immer echtes Netz-/Mesh-Bodenmuster (dieselbe Polarität wie <code>fourthRoom</code>,
-      nicht die von <code>willyRoom</code>). Darunter fand sich eine echte Datenmodell-Grenze: 4 von
-      82 Kachel-IDs sind an unterschiedlichen Positionen mal Boden, mal Wand-Dekoration &mdash; ein
-      flaches, Kachel-ID-basiertes Set kann das strukturell nicht abbilden. Gelöst ohne neuen
-      Umbau: der Dev-Browser F8 hatte bereits einen allgemeinen, positionsbewussten
-      Kollisions-Mechanismus (für den kompletten 384-Raum-Katalog gebaut) &mdash; er zeigte für
-      Bank-5-Records 8-13 nur versehentlich die generische Katalog-Metatile-Tabelle statt
-      <code>unknownRoomA</code>s eigener, bereits verifizierter Tabelle. Nach dem Fix zeigt F8 die
-      echte Kunst UND echte, positionsbewusste Begehbarkeit &mdash; live per Screenshot bestätigt.
-      Die eigentliche Verbindung in den normalen Spielverlauf bleibt trotzdem ausgesetzt: der
-      allgemeine Bank-13/14-Umleitungsmechanismus (<code>$31AD</code>/<code>$3282</code>/<code>$3C4F</code>)
-      ist jetzt vollständig entschlüsselt und zweifach live bestätigt (siehe die
-      <a href="#transitions">Raum-Übergänge</a>-Seite), aber WAS ein Skript als Top-Level-Skript
-      überhaupt startet, bleibt trotz erschöpfender Suche (Skript-Ketten, WRAM-Queues, jede
-      bekannte Auslöser-Tabelle) offen &mdash; für <code>unknownRoomA</code> genau wie für 2
-      zusätzliche, unverdrahtete <code>willyRoom</code>-Übergänge, die diese Session live getestet
-      (Hinlaufen, A-Taste) und sauber ausgeschlossen hat.
-    </p>
-    <p class="page-lede">
-      <strong>STRUCTURALLY-DERIVED, 2026-08-19</strong> (direkte Nutzerfrage, "können wir jetzt
-      nicht alle zusammenhängenden räume entschlüsseln?"): ein systematischer Kanten-Abgleich
-      über die kompletten Bank-5- (16&times;16) und Bank-6- (8&times;8) Weltkarten-Raster fand 6
-      Raumpaare mit 100%&nbsp;kachelgenauer gemeinsamer Kante &mdash; echte, objektive
-      ROM-Evidenz für räumliche Nachbarschaft (kein Rätselraten wie bei <code>unknownRoomA</code>).
-      Nur <code>worldMapRoom_131</code> &harr; <code>worldMapRoom_132</code> hat zusätzlich eine
-      durchgehend begehbare, footprint-geprüfte Kante auf beiden Seiten &mdash; als einziges Paar
-      testweise verdrahtet, mit echtem Lauftest in <em>beide</em> Richtungen live verifiziert
-      (nicht nur ein Landepunkt-Check &mdash; genau die Lücke, die <code>unknownRoomA</code> kaputt
-      hat ausliefern lassen). Jede Tür trägt ehrlich <code>status = "STRUCTURALLY-DERIVED..."</code>
-      &mdash; die Boden-/Kollisionsbedeutung dieser Kachel-Tabelle ist NICHT unabhängig verifiziert
-      (kein Live-Gameplay erreicht je einen der 384 Katalog-Räume). Die anderen 5 perfekten Paare
-      bleiben unverdrahtet (ihre Kante ist unter der aktuellen Regel einheitlich als Wand
-      eingestuft). Bisher nur über die Dev-Teleport-Mechanik erreichbar, nicht an einen normal
-      erreichbaren Raum angebunden &mdash; das ist eine separate, noch nicht getroffene
-      Entscheidung.
-    </p>
-    <p class="page-lede">
-      <span style="color:#9d6fe0;">&equiv; <code>startRoom</code></span> (violetter Rahmen
-      unten, UPDATE 2026-08-17): ein echter, VERIFIED Raum &mdash; hostet den echten ersten
-      Bosskampf (<code>BattleIntro.lua</code>s reale „Kaempfe!“-Sequenz, das Startbild von
-      <code>Field.lua</code>). Dieser Graph-Knoten selbst hat keinen eigenen live erfassten
-      Exit (er wird nur über die separate Bosskampf-Einleitung erreicht, nicht über den
-      normalen <code>willyRoom</code>-Spielfluss) &mdash; aber die echten ROM-Identitätsregister
-      sind byte-identisch mit <code>sixthRoom</code>, das SEHR WOHL verbunden ist
-      (<code>fourthRoom</code> &rarr; <code>sixthRoom</code> &rarr; <code>seventhRoom</code>).
-      Zusätzlich direkt bestätigt (Nutzer-Hinweis "der Bossraum... sind jeweils auf der
-      Weltmap"): dieser Raum ist ein echter Eintrag im 8&times;8-Weltkarten-Katalog, Position
-      (7,4) &mdash; siehe das <span style="color:#5ac0a0;">&#128506;</span>-Badge unten. Die
-      violette „gleiche Identität"-Rahmenfarbe hat jetzt Vorrang vor der schwächeren amber
-      „isoliert"-Markierung (die als sekundärer Hinweis-Text weiterhin mit angezeigt wird) &mdash;
-      genauer als vorher, wo dieser Knoten schlicht als unverbunden erschien.
-    </p>
-    <p class="page-lede">
-      <span style="color:#9d6fe0;">&equiv; <code>fifthRoom</code></span> (violetter Rahmen unten):
-      <strong>kein eigenständiger ROM-Raum</strong> &mdash; direkte Bestätigung eines Nutzer-Hinweises
-      (2026-08-17: "ich bin mir sehr sicher das der übergang von fourth in den fith room einfach
-      nur ein übergang zurück in den third room ist"). Live geprüft: die echten
-      Raum-Identitätsregister (<code>$D392</code>/<code>$D393</code> Tile-Source-Pointer,
-      <code>$C3F0</code> dynamicBank, <code>$C3F5</code> roomSelector) sind byte-identisch mit
-      <code>willyRoom</code>/<code>secondRoom</code>/<code>thirdRoom</code>. Nuance: visuell/im
-      Kachel-Grid nicht dasselbe bereits erfasste Bild wie <code>thirdRoom</code> (nur 17,5&nbsp;%
-      Zellen-Übereinstimmung, gegen 82&ndash;89&nbsp;% zwischen je zwei der anderen drei) &mdash;
-      vermutlich ein anderer, per Cut erreichter Scroll-Ausschnitt derselben großen Leinwand, aber
-      real ROM-seitig derselbe Raum, kein unabhängiger. Details im Tooltip am Knoten.
-    </p>
-    <p class="page-lede">
-      <strong><code>seventhRoom</code>/<code>eighthRoom</code>/<code>ninthRoom</code>s Tileset war
-      wirklich falsch -- jetzt korrigiert.</strong> Direkter, glaubwürdiger Nutzer-Hinweis
-      (2026-08-17, echtes ROM-Wissen: "raum 7 8 und 9 haben die falschen tilesets", dann "bleib
-      dran" nach einer ersten erfolglosen Nachprüfung): der echte ROM-Code, der Kachel-Pixel ins
-      VRAM kopiert, wurde live per mGBA gefunden und komplett disassembliert (exakter Treffer gegen
-      willyRooms eigenen, bereits bestätigten Pixel: <code>0x321b0</code>, nicht angenähert). Ergebnis:
-      dieser Katalog nutzte willyRooms eigenen, aber FALSCHEN Pixel-Pool (<code>0x32000</code>) statt
-      des eigenen, richtigen (<code>0x30000</code>) -- korrigiert. Die drei Räume zeigen jetzt echte,
-      erkennbar unterschiedliche Außenbereich-Szenen (Bäume, Gras, Felsen, Wasser, ein Weg) statt der
-      generischen, wiederverwendeten Dungeon-Optik von vorher. Siehe events.md 2026-08-17 für die
-      vollständige Formel/Herleitung.
-    </p>
-    <p class="page-lede">
-      <strong><code>seventhRoom</code> ist jetzt der echte Weltkarten-Landepunkt nach dem
-      2. Boss.</strong> Direkter Nutzer-Hinweis (2026-08-17: "nach dem zweiten boss nachdem
-      sich das tor geöffnet hat und der player durchgegangen ist kommt er auf der kleinen
-      weltmap an 6.3 raus") ersetzt die alte, rein heuristisch gewählte Platzhalter-Raumwahl
-      (Bank 5, Katalog-Record 220 &mdash; nur nach „plausibler Begehbarkeits-Prozentzahl"
-      ausgesucht, ohne echten räumlichen Bezug). <code>seventhRoom</code> ist jetzt Bank-6-
-      Weltkarten-Record 51, Position (6,3) &mdash; siehe das
-      <span style="color:#5ac0a0;">&#128506;</span>-Badge unten. <strong>Zurückgezogen:</strong>
-      der alte Süd-Exit von <code>seventhRoom</code> nach <code>eighthRoom</code> beruhte auf
-      einem Byte-für-Byte-Kantenabgleich gegen die jetzt ersetzten alten Daten &mdash; dieser
-      Abgleich gilt nicht mehr, der Exit wurde entfernt statt auf veralteter Geometrie stehen
-      gelassen. <code>eighthRoom</code>/<code>ninthRoom</code> bleiben als eigene, echte
-      Katalog-Räume bestehen (ihre gegenseitige Ost/West-Kante ist unabhängig und weiterhin
-      byte-exakt bestätigt) &mdash; sie sind nur nicht mehr von <code>sixthRoom</code>/
-      <code>seventhRoom</code> aus erreichbar, ein ehrlicher Rückschritt in der bekannten
-      Konnektivität, nicht stillschweigend widersprüchlich belassen. Kein unabhängiger Live-
-      VRAM-Beleg wie bei <code>startRoom</code>/<code>fourthRoom</code> &mdash; diese Platzierung
-      stützt sich auf den direkten Nutzer-Hinweis plus einen kohärenten Decode, nicht auf einen
-      Pixel-Abgleich.
-    </p>
-    <p class="page-lede">
-      <strong>ZURÜCKGEZOGEN, 2026-08-20 (direkte, deutliche Nutzer-Korrektur): die komplette
-      Hub-and-Spoke-Konnektivität von <code>worldMapRoom_131</code>/<code>132</code> und
-      <code>unknownRoomA_8</code>&ndash;<code>13</code> war Bullshit.</strong> Nutzer-Zitat: "die
-      ganzen neuen Räume sind... die Grafiken da völlig falsch... die Transitionen völlig für den
-      Arsch... vom Seventh Room in den World Map Room 131 ist völliger Quatsch... schau dir die
-      World Map an, vom Seventh Room rechts daneben auf der World Map ist der richtige Room."
-      Konkreter Fehler: <code>worldMapRoom_131</code>/<code>132</code> sind Bank-5-Katalog-Records
-      (16x16-Gitter), <code>seventhRoom</code> selbst ist ein Bank-6-Record (8x8-Gitter, Position
-      51) &mdash; zwei strukturell UNVERWANDTE Gitter. Für die Tür gab es nie echten
-      Adjazenz-Beleg (von Anfang an als "zero structural evidence" gekennzeichnet). Der Nutzer hat
-      den echten Nachbarn direkt auf der Weltkarte gezeigt: <code>seventhRoom</code>s reale
-      Nachbarschaft liegt auf Bank 6s EIGENEM Gitter direkt rechts daneben (Record 52) &mdash;
-      nicht untersucht oder verdrahtet in diesem Durchgang, ein echter Hinweis für später, keine
-      hier gemachte Behauptung. <strong>Alle Türen entfernt</strong>: <code>seventhRoom</code>,
-      <code>worldMapRoom_131</code>, <code>worldMapRoom_132</code> und alle 6
-      <code>unknownRoomA</code>-Räume haben wieder null Exits. <strong><code>eighthRoom</code>/
-      <code>ninthRoom</code> komplett gelöscht</strong> (ebenfalls direkte Nutzer-Anweisung) &mdash;
-      als falsch erkannt dokumentiert, nicht nur ihre Konnektivität. Rauminhalt (Kachel-Grids) von
-      <code>worldMapRoom_131</code>/<code>132</code>/<code>unknownRoomA</code> bleibt unverändert,
-      echte ROM-Daten &mdash; nur die erfundene Konnektivität und <code>eighthRoom</code>/
-      <code>ninthRoom</code>s Identifikation sind zurückgezogen. Siehe events.md's eigenen
-      2026-08-20-Eintrag für den vollständigen Rückzugsbericht.
+      Mehrere Verbindungsversuche für weitere Räume (<code>worldMapRoom_131</code>/<code>132</code>,
+      <code>unknownRoomA_8</code>&ndash;<code>13</code>, <code>eighthRoom</code>/<code>ninthRoom</code>)
+      wurden 2026-08-19/20 gebaut und wieder zurückgezogen, nachdem sie sich als nicht belastbar
+      erwiesen (fehlerhafte Kollisionsdaten bzw. fehlender räumlicher Bezug). Diese Räume sind
+      entweder gar nicht mehr vorhanden oder haben aktuell keine Verbindung. Voller Verlauf:
+      <details style="display:inline;">
+        <summary style="display:inline; cursor:pointer; color:var(--accent2);">Details</summary>
+        <div style="margin-top:8px; font-size:13px; color:var(--text-dim); line-height:1.6;">
+          <code>seventhRoom</code>&rarr;<code>worldMapRoom_131</code> beruhte auf keinem echten
+          räumlichen Bezug (zwei unterschiedliche Katalog-Raster) und wurde nach direkter
+          Nutzer-Korrektur entfernt. <code>unknownRoomA_8</code>&ndash;<code>13</code> hatten
+          zunächst kaputte Bodendaten (2026-08-19), später einen technisch korrekten, aber vom
+          Nutzer als falsch verworfenen Verbindungsversuch (2026-08-20). <code>eighthRoom</code>/
+          <code>ninthRoom</code> wurden komplett gelöscht, da ihre Identifikation als falsch
+          erkannt wurde. Vollständiger, datierter Bericht: <code>docs/reverse-engineering/events.md</code>.
+        </div>
+      </details>
     </p>
     <div id="roomGraphRomBanner"></div>
     <div class="toolbar" id="roomGraphToolbar" style="margin-bottom:8px; align-items:center; gap:8px;">
