@@ -213,9 +213,16 @@ function hex(n, digits) {
 }
 
 // --- tiny cross-section search ---
+// AUDIT FIX (2026-08-20): this used to end with an unconditional
+// `location.hash = "#opcodes"` -- ANY query with no real match (e.g.
+// "sword", a typo, a term that just isn't covered anywhere) silently
+// landed on the opcode list with no explanation, indistinguishable from
+// a real match. Now returns whether it actually found something, and
+// the caller (below) shows a real "no results" message instead of
+// guessing. The 4 real match strategies themselves are unchanged.
 function runGlobalSearch(query) {
   query = query.trim().toLowerCase();
-  if (!query) return;
+  if (!query) return true; // empty query -- nothing to report as "not found"
   const numMatch = query.match(/^(0x)?([0-9a-f]{1,4})$/i);
   const asNum = numMatch ? parseInt(numMatch[2], 16) : null;
 
@@ -225,27 +232,41 @@ function runGlobalSearch(query) {
     const byHandler = OPCODES.find(o => o.handler === asNum);
     if (byHandler || (byOpcode && query.length <= 2)) {
       location.hash = "#opcodes?focus=" + (byHandler ? byHandler.opcode : byOpcode.opcode);
-      return;
+      return true;
     }
   }
   // WRAM cell
   const wramHit = WRAM_MAP.find(w => w.address.toLowerCase().includes(query) || w.name.toLowerCase().includes(query));
-  if (wramHit) { location.hash = "#memory?focus=" + encodeURIComponent(wramHit.address); return; }
+  if (wramHit) { location.hash = "#memory?focus=" + encodeURIComponent(wramHit.address); return true; }
+
+  // Room -- checked BEFORE open questions (AUDIT FIX, 2026-08-20: found
+  // live while testing the "no results" fix above -- searching an exact
+  // room name like "fourthRoom" used to land on Open Questions instead,
+  // because several open-question entries mention room names in their
+  // own long-form prose and that branch ran first. A query that exactly
+  // names a real, structured entity (a room) should win over an
+  // incidental substring hit inside unrelated free text.
+  const roomHit = ROOMS.find(r => r.name.toLowerCase().includes(query));
+  if (roomHit) { location.hash = "#rooms"; return true; }
 
   // Open question
   const qHit = OPEN_QUESTIONS.find(q => q.title.toLowerCase().includes(query) || q.description.toLowerCase().includes(query));
-  if (qHit) { location.hash = "#questions"; return; }
+  if (qHit) { location.hash = "#questions"; return true; }
 
-  // Room
-  const roomHit = ROOMS.find(r => r.name.toLowerCase().includes(query));
-  if (roomHit) { location.hash = "#rooms"; return; }
+  return false;
+}
 
-  location.hash = "#opcodes";
+function showSearchFeedback(text) {
+  const el = document.getElementById("searchFeedback");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle("visible", !!text);
 }
 
 function updateRomLoadStatus() {
   const el = document.getElementById("romLoadStatus");
   if (!el) return;
+  el.classList.remove("error");
   if (RomBytes.isLoaded()) {
     el.textContent = `✓ ${RomBytes.fileName} (${(RomBytes.bytes.length / 1024).toFixed(0)} KiB)`;
     el.classList.add("loaded");
@@ -253,6 +274,22 @@ function updateRomLoadStatus() {
     el.textContent = "nicht geladen";
     el.classList.remove("loaded");
   }
+}
+
+// AUDIT FIX (2026-08-20): a rejected/invalid file used to just vanish --
+// `loadFile`'s own promise rejection had no `.catch` anywhere, so the
+// browser silently logged an "uncaught in promise" and the user saw
+// nothing at all change (still "nicht geladen", no explanation why
+// their file didn't take). Reuses the SAME `#romLoadStatus` element the
+// success case already has (same `role="status"` announcement to
+// assistive tech, same visual spot) instead of a new toast/banner
+// component -- the obvious, consistent place for this feedback to live.
+function showRomLoadError(reason) {
+  const el = document.getElementById("romLoadStatus");
+  if (!el) return;
+  el.textContent = "✗ " + reason;
+  el.classList.remove("loaded");
+  el.classList.add("error");
 }
 
 // DE/EN toggle for the UI chrome -- see js/i18n.js for exactly what's
@@ -306,14 +343,24 @@ window.addEventListener("DOMContentLoaded", () => {
   route();
   const search = document.getElementById("globalSearch");
   search.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") runGlobalSearch(search.value);
+    if (e.key === "Enter") {
+      const found = runGlobalSearch(search.value);
+      showSearchFeedback(found ? "" : `Kein Treffer für „${search.value.trim()}“ (Opcodes, WRAM-Adressen, Räume, offene Fragen durchsucht).`);
+    } else if (e.key === "Escape") {
+      showSearchFeedback("");
+    }
   });
+  // Typing further after a "no results" message should dismiss it
+  // immediately rather than leaving stale feedback about a DIFFERENT,
+  // already-edited query sitting there until the next Enter.
+  search.addEventListener("input", () => showSearchFeedback(""));
 
   const romInput = document.getElementById("romFileInput");
   const romLabel = document.getElementById("romLoadLabel");
   romInput.addEventListener("change", () => {
-    if (romInput.files[0]) RomBytes.loadFile(romInput.files[0]);
+    if (romInput.files[0]) RomBytes.loadFile(romInput.files[0]).catch(() => { /* already surfaced via RomBytes.onError below */ });
   });
+  RomBytes.onError(showRomLoadError);
   // The real input is visually-hidden (its own <label> is the visible
   // "button"); mirror ITS focus state onto the label so a keyboard
   // user tabbing to the real, now-reachable input still sees a focus

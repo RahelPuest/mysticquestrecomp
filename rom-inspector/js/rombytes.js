@@ -11,10 +11,36 @@
 // comment linking it to tools/graphics/gbtile.py) -- same 2bpp planar
 // algorithm, not a reimplementation with different bit order.
 
+// Real Game Boy header validation -- the SAME algorithm as
+// src/import/RomIdentity.lua's own `identify()` (header checksum over
+// 0x134-0x14C, stored at 0x14D; deliberately kept in sync, matching
+// this file's own established convention for gbDecodeTile mirroring
+// GBTile.lua). AUDIT FINDING (2026-08-20): `loadFile` used to accept
+// ANY file with zero validation -- the `<input accept=".gb">` in
+// index.html is only a file-picker hint (a user can still pick "all
+// files" or drag in something else), and nothing downstream ever
+// checked what actually got loaded. A wrong file used to silently
+// become "the loaded ROM" -- every canvas/table reading `RomBytes.
+// bytes` would then read garbage or throw deep inside a render
+// function, with no indication of what actually went wrong. Now
+// rejected right here, before `this.bytes` is ever set.
+function validateGbRom(bytes) {
+  if (bytes.length < 0x150) {
+    return { ok: false, reason: `Datei zu klein (${bytes.length} Byte) -- ein echter Game-Boy-ROM-Header braucht mindestens 336 Byte.` };
+  }
+  let x = 0;
+  for (let i = 0x134; i <= 0x14C; i++) x = (x - bytes[i] - 1) & 0xFF;
+  if (x !== bytes[0x14D]) {
+    return { ok: false, reason: "Header-Prüfsumme stimmt nicht -- das ist wahrscheinlich keine gültige Game-Boy-ROM-Datei (oder sie ist beschädigt)." };
+  }
+  return { ok: true };
+}
+
 const RomBytes = {
   bytes: null, // Uint8Array | null
   fileName: null,
   listeners: [],
+  errorListeners: [],
 
   // Registers `fn` to run on every future load; returns an unsubscribe
   // function. Callers that only care while their own section is
@@ -31,18 +57,47 @@ const RomBytes = {
   },
   _notify() { for (const fn of this.listeners) fn(); },
 
+  // Fires ONLY when a load attempt fails validation/reading -- kept
+  // separate from `onChange` (a real successful load) so a listener
+  // that only cares about "the ROM changed" never has to branch on
+  // success/failure itself.
+  onError(fn) {
+    this.errorListeners.push(fn);
+    return () => {
+      const i = this.errorListeners.indexOf(fn);
+      if (i !== -1) this.errorListeners.splice(i, 1);
+    };
+  },
+  _notifyError(reason) { for (const fn of this.errorListeners) fn(reason); },
+
   isLoaded() { return this.bytes !== null; },
 
+  // Resolves on a real, successfully-validated ROM load; rejects (with
+  // a human-readable German reason, also broadcast via onError) on a
+  // read failure or a file that fails the real header check above.
+  // Never leaves `this.bytes` pointing at unvalidated data -- a failed
+  // load keeps whatever ROM (or lack of one) was already loaded.
   loadFile(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        this.bytes = new Uint8Array(reader.result);
+        const bytes = new Uint8Array(reader.result);
+        const check = validateGbRom(bytes);
+        if (!check.ok) {
+          this._notifyError(check.reason);
+          reject(new Error(check.reason));
+          return;
+        }
+        this.bytes = bytes;
         this.fileName = file.name;
         this._notify();
         resolve();
       };
-      reader.onerror = () => reject(reader.error);
+      reader.onerror = () => {
+        const reason = "Datei konnte nicht gelesen werden.";
+        this._notifyError(reason);
+        reject(reader.error || new Error(reason));
+      };
       reader.readAsArrayBuffer(file);
     });
   },

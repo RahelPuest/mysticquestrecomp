@@ -28,8 +28,11 @@
     <input id="romFileInput" type="file" accept=".gb" class="visually-hidden">
     <span id="romLoadStatus" class="romload-status" role="status"></span>
   </div>
-  <label for="globalSearch" class="visually-hidden">Suche über Opcodes, Adressen und Begriffe</label>
-  <input id="globalSearch" type="search" placeholder="Suche (Opcode, Adresse, Begriff)&hellip;">
+  <div id="searchWrap">
+    <label for="globalSearch" class="visually-hidden">Suche über Opcodes, Adressen und Begriffe</label>
+    <input id="globalSearch" type="search" placeholder="Suche (Opcode, Adresse, Begriff)&hellip;">
+    <div id="searchFeedback" role="status"></div>
+  </div>
 </div>
 
 <div id="sidebarBackdrop"></div>

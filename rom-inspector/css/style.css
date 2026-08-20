@@ -178,6 +178,11 @@ code, .mono { font-family: var(--mono); }
 #romLoadControl { display: flex; align-items: center; gap: 8px; }
 .romload-status { font-size: 11.5px; color: var(--text-faint); font-family: var(--mono); }
 .romload-status.loaded { color: var(--ok); }
+/* AUDIT FIX (2026-08-20): a rejected ROM file (wrong header checksum,
+   too small, unreadable) now gets its own visible state here instead
+   of silently leaving the status text at "nicht geladen" with no
+   explanation -- see js/rombytes.js's validateGbRom(). */
+.romload-status.error { color: var(--error); max-width: 260px; }
 .rom-needed-banner {
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
@@ -188,6 +193,11 @@ code, .mono { font-family: var(--mono); }
   background: var(--bg-panel);
 }
 .rom-needed-banner strong { color: var(--accent-bright); }
+/* Wrapper exists purely so #searchFeedback below can anchor itself to
+   the search input without affecting #topbar's own flex layout (the
+   input used to be a direct flex child with nothing to position a
+   dropdown against). */
+#searchWrap { position: relative; }
 #globalSearch {
   width: 260px;
   background: var(--bg-elevated);
@@ -199,6 +209,29 @@ code, .mono { font-family: var(--mono); }
   font-family: var(--sans);
 }
 #globalSearch:focus-visible { border-color: var(--accent); }
+/* AUDIT FIX (2026-08-20): the global search used to ALWAYS navigate
+   somewhere on Enter, even with zero real match -- silently landing on
+   the opcode list with no indication anything went wrong, which reads
+   as a random, unexplained jump rather than "no results". Empty/hidden
+   by default (app.js only fills it in and adds .visible on a real
+   miss); role="status" on the wrapper element itself (not toggled) so
+   assistive tech announces the text the moment it appears. */
+#searchFeedback {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  max-width: 280px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+}
+#searchFeedback.visible { display: block; }
 
 #shell {
   display: flex;
