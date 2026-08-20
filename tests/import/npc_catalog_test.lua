@@ -60,29 +60,26 @@ end)
 local romData = DevRomLocator.find()
 
 Harness.testIfAvailable(
-  -- UPDATED 2026-08-20: a 4th real entry ("Goblin (Test)") joined the
-  -- original 3 -- see rom_profiles.lua's own `goblinTestScene` doc
-  -- comment for the full honest-scope story (real, live-captured
-  -- sprite data, reached only via a scratchpad-only patched-ROM test).
-  "NpcCatalog.build: real ROM profile yields the 4 real, already-verified NPCs this project has found",
+  -- NOT extended to include the Goblin (2026-08-20 direct correction,
+  -- "der goblin ist kein npc das ist ein gegner"): this catalog is
+  -- specifically for friendly/story NPCs (Willy, Amanda, the courtyard
+  -- companions) -- the Goblin belongs to Field.lua's own real enemy
+  -- wiring (`self.secondEnemy`), not here, even though it's reached
+  -- through the same real NpcSpawnTable ROM mechanism.
+  "NpcCatalog.build: real ROM profile yields the 3 real, already-verified NPCs this project has found",
   romData ~= nil,
   "no development ROM found",
   function()
     local report = RomIdentity.identify(romData)
     local profile = RomProfiles.match(report)
     local entries = NpcCatalog.build(profile)
-    Harness.assertEqual(#entries, 4)
+    Harness.assertEqual(#entries, 3)
 
     local byName = {}
     for _, e in ipairs(entries) do byName[e.name] = e end
 
     Harness.assertTrue(byName["Willy"] ~= nil)
     Harness.assertEqual(byName["Willy"].room, "willyRoom")
-
-    Harness.assertTrue(byName["Goblin (Test)"] ~= nil)
-    Harness.assertEqual(byName["Goblin (Test)"].room, "willyRoom")
-    Harness.assertEqual(#byName["Goblin (Test)"].tileOffsets, 4)
-    Harness.assertEqual(byName["Goblin (Test)"].palette, "OBP1")
 
     Harness.assertTrue(byName["characterA"] ~= nil)
     Harness.assertEqual(byName["characterA"].room, "secondRoom")

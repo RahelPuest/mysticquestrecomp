@@ -39,6 +39,7 @@ local MusicDecoder = require("src.import.MusicDecoder")
 local CutTransitionTable = require("src.import.CutTransitionTable")
 local ActorDefinitionTable = require("src.import.ActorDefinitionTable")
 local MonsterDefinitionTable = require("src.import.MonsterDefinitionTable")
+local NpcSpawnTable = require("src.import.NpcSpawnTable")
 
 -- Same ROM resolution convention as scripts/scan_all_scripts.lua.
 local CANDIDATES = {}
@@ -1223,15 +1224,18 @@ do
 end
 
 ----------------------------------------------------------------------
--- 13. NPC catalog (NpcCatalog.lua) -- NOT a static ROM table (see that
--- module's doc comment for why "complete" here means "every NPC this
--- project has actually found," not "every NPC in the ROM").
+-- 13. NPC catalog (NpcCatalog.lua) -- hand-normalized live-captured
+-- scene data, not itself decoded from a table (see NPC_SPAWN_TABLE
+-- below, section 18, for the real table that DOES place these NPCs --
+-- NpcCatalog.lua's own doc comment was corrected 2026-08-20 after an
+-- earlier claim that no such table exists turned out wrong).
 ----------------------------------------------------------------------
 writeJs("npcs.js", "NPCS", NpcCatalog.build(profile),
   "NPCs this project has found and placed, read from rom_profiles.lua's verified scene data " ..
-  "(NpcCatalog.lua). No static ROM table backs NPC placement in this game -- each entry was " ..
-  "found individually via live OAM tracing + per-room dialogue testing, not decoded from a " ..
-  "table this exporter could walk mechanically.")
+  "(NpcCatalog.lua). CORRECTED 2026-08-20: this catalog itself is still hand-normalized from " ..
+  "live-captured scenes, not mechanically walked from a table -- but a real table DOES place " ..
+  "every NPC/monster in this game (see the NPC_SPAWN_TABLE page, section 18 below) -- an earlier " ..
+  "claim here that no such table exists was wrong, not just incomplete.")
 
 ----------------------------------------------------------------------
 -- 14. Story text census (rom_profiles.lua's `storyText`) -- monster
@@ -1385,6 +1389,106 @@ do
     "index 0 plus a tight cluster at 12-15, plausibly a reserved/fixed-graphics family. Only " ..
     "indices 99 and 121 (see liveConfirmed) have a confirmed live spawn behind them -- every " ..
     "other record is structured ROM data whose in-game trigger is honestly unknown.")
+end
+
+----------------------------------------------------------------------
+-- 18. NPC/monster spawn table (NpcSpawnTable.lua) -- FOUND 2026-08-20
+-- mining the external FFA-Disassembly for its encounter/spawn code
+-- specifically (previous sessions only ever cross-checked boss STAT
+-- values against it). The real mechanism behind every placed NPC and
+-- monster in this game -- opcode 0xFC (sSET_NPC_TYPES <row>) stages a
+-- row, opcode 0xFD (sSPAWN_NPC <col>) spawns from one of its 3
+-- columns. See NpcSpawnTable.lua's own doc comment for the full
+-- disassembly/live-confirmation chain.
+--
+-- Cross-linked to ActorDefinitionTable (section 17 above): the SAME
+-- candidate IDs this table's own columns carry (e.g. 99/121, Amanda/
+-- Gladiator Friend) are ActorDefinitionTable's own real indices -- two
+-- completely independent investigation sessions landing on the exact
+-- same real ID space from two different angles. Resolved here so the
+-- website can show real sprite art for every candidate ID this table
+-- references, not just its name.
+----------------------------------------------------------------------
+do
+  local rows = NpcSpawnTable.decode(romData, profile.npcSpawnPointerTable)
+  local spriteCache = {} -- id -> {tileOffsets, bank} or false (resolution failed), avoid re-resolving repeats
+  local function resolveSprite(id)
+    if spriteCache[id] ~= nil then
+      return spriteCache[id] or nil
+    end
+    local ok, record = pcall(ActorDefinitionTable.readRecord, romData, id)
+    if not ok or not record or record.anomalous then
+      spriteCache[id] = false
+      return nil
+    end
+    local ok2, offsets, bank = pcall(ActorDefinitionTable.resolveSpriteTileOffsets, romData, record)
+    if not ok2 or not offsets then
+      spriteCache[id] = false
+      return nil
+    end
+    local result = { tileOffsets = offsets, bank = bank }
+    spriteCache[id] = result
+    return result
+  end
+
+  local exportedRows = {}
+  for rowIndex, cols in ipairs(rows) do
+    local exportedCols = {}
+    for colIndex, col in ipairs(cols) do
+      local candidateNames = {}
+      for i, id in ipairs(col.candidateIds) do
+        candidateNames[i] = NpcSpawnTable.NAMES_BY_ID[id]
+      end
+      local sprite = resolveSprite(col.candidateIds[1])
+      exportedCols[colIndex] = {
+        targetCpuAddress = col.targetCpuAddress,
+        minSpawn = col.minSpawn,
+        maxSpawn = col.maxSpawn,
+        candidateIds = col.candidateIds,
+        candidateNames = candidateNames,
+        isEnvironmentalTrigger = NpcSpawnTable.isEnvironmentalTrigger(candidateNames[1]),
+        positions = col.positions,
+        isRandomPosition = col.isRandomPosition,
+        spriteTileOffsets = sprite and sprite.tileOffsets or nil,
+        spriteBank = sprite and sprite.bank or nil,
+      }
+    end
+    exportedRows[rowIndex] = { row = rowIndex - 1, cols = exportedCols }
+  end
+
+  writeJs("npc-spawn-table.js", "NPC_SPAWN_TABLE", {
+    rowCount = profile.npcSpawnPointerTable.rowCount,
+    colsPerRow = profile.npcSpawnPointerTable.colsPerRow,
+    rows = exportedRows,
+    verifiedExamples = profile.npcSpawnPointerTable.verifiedExamples,
+    namesById = NpcSpawnTable.NAMES_BY_ID,
+  }, "The real NPC/monster spawn table (bank 3, CPU $7142, " .. profile.npcSpawnPointerTable.rowCount ..
+    " rows x " .. profile.npcSpawnPointerTable.colsPerRow .. " columns) -- byte-identical to the " ..
+    "external FFA-Disassembly's own documented NPCSpawnPointers. Driven by two real script " ..
+    "opcodes: 0xFC (sSET_NPC_TYPES <row>) stages a row, 0xFD (sSPAWN_NPC <col>) spawns from one " ..
+    "of that row's 3 columns -- see the Opcode Explorer page's own entries for TRIGGER_EVENT_" ..
+    "HANDLER_ADDRESS_FC/_FD for the opcode-level story. Each column's `candidateIds` are 4 real " ..
+    "species/NPC IDs (one picked at random per spawn by the real ROM, via the already-known " ..
+    "combat PRNG + 8x8->16 multiply); in the large majority of real rows all 4 are identical. " ..
+    "`candidateNames` come from the external FFA-Disassembly's own NPC_* constant table (namesById " ..
+    "below) -- a sourced external cross-reference, independently confirmed correct for the 4 IDs " ..
+    "this project has actually live-observed firing (0x61 Willy in willyRoom, 0x79/0x63 " ..
+    "Gladiator Friend/Amanda in secondRoom, 0x12 Goblin only via a scratchpad ROM patch), not " ..
+    "re-verified for the other 187. `isEnvironmentalTrigger` is TRUE only for names this project " ..
+    "can honestly say aren't a placed character at all (door-open triggers, chests) -- it does " ..
+    "NOT claim anything about which of the REMAINING entries are hostile, friendly, or a story " ..
+    "boss; this project has no decoded ROM fact for that distinction (a real, direct correction: " ..
+    "an earlier version of this field, `isMonster`, wrongly called NPC_WILLY \"monster-shaped\"). " ..
+    "`spriteTileOffsets` (when present) come from ActorDefinitionTable.lua (section 17) -- " ..
+    "the SAME real ID space, cross-linked here: many of this table's own candidate IDs resolve to " ..
+    "real ROM sprite pixel data via that already-independently-found table, even though the two " ..
+    "were found in completely separate investigation sessions. LIVE-CONFIRMED END TO END " ..
+    "(2026-08-20): a scratchpad-only, 2-byte-patched ROM copy redirected willyRoom's own real, " ..
+    "already-firing row 36/col 2 trigger from NPC_WILLY to NPC_GOBLIN (row 1/col 0) -- the full " ..
+    "real chain fired live and produced a second, visible, distinct, contact-damaging creature on " ..
+    "screen. See docs/reverse-engineering/events.md's 2026-08-20 \"SOLVED\" entry for the complete " ..
+    "trace. Which real script(s) reach 0xFC/0xFD outside this project's own trusted 1357-script " ..
+    "corpus is honestly still unidentified -- a real, scoped, not-yet-attempted follow-up.")
 end
 
 io.stderr:write("done.\n")

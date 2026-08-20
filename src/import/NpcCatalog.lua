@@ -89,24 +89,6 @@ function NpcCatalog.build(profile)
     }
   end
 
-  -- The second, real, FIGHTABLE creature (see rom_profiles.lua's
-  -- `goblinTestScene` doc comment for the full honest-scope story --
-  -- reached only via a scratchpad-only patched-ROM test, not a natural
-  -- trigger). Cataloged the same way Willy is, above.
-  local goblinTestScene = graphics and graphics.goblinTestScene
-  if goblinTestScene then
-    entries[#entries + 1] = {
-      name = "Goblin (Test)",
-      room = "willyRoom",
-      screenX = goblinTestScene.screenX,
-      screenY = goblinTestScene.screenY,
-      tileOffsets = goblinTestScene.tileOffsets,
-      palette = goblinTestScene.palette,
-      dialogue = nil,
-      animation = nil,
-    }
-  end
-
   local secondRoomScene = graphics and graphics.secondRoom and graphics.secondRoom.scene
   if secondRoomScene then
     -- Real, live-confirmed order (see rom_profiles.lua's own doc

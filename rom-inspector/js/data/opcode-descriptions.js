@@ -105,7 +105,17 @@ const OPCODE_DESCRIPTIONS = {
   TRIGGER_EVENT_HANDLER_ADDRESS: {
     title: "Trigger-Event-Familie",
     summary: "Löst ein internes Spielereignis aus (z. B. eine Szene, einen Kampf oder einen Effekt).",
-    text: "Eine große, generisch registrierte Familie realer „löse System-Event N aus“-Opcodes. 0xFC/0xFD sind die EINMALIGEN, Gate-gesteuerten Varianten (reales Dual-WRAM-Gate $C8E0/$CEE8); die übrigen Varianten feuern sofort.",
+    text: "Eine große, generisch registrierte Familie realer „löse System-Event N aus“-Opcodes, ohne Operand-Byte -- feuert sofort. 0xFC/0xFD gehören strukturell zu dieser Dispatch-Familie, haben aber eine eigene, konkret entschlüsselte Bedeutung -- siehe deren eigene Einträge.",
+  },
+  TRIGGER_EVENT_HANDLER_ADDRESS_FC: {
+    title: "sSET_NPC_TYPES -- NPC/Monster-Zeile auswählen",
+    summary: "Wählt eine Zeile in der echten NPC-/Monster-Spawn-Tabelle aus (109 Zeilen, je 3 Spalten) -- der erste von zwei Schritten, um eine Kreatur ins Spiel zu setzen.",
+    text: "GEFUNDEN 2026-08-20 (externe FFA-Disassembly gezielt nach Encounter-/Spawn-Code durchsucht, nicht nur nach Boss-Werten): dieser Opcode ist das reale <code>sSET_NPC_TYPES &lt;row&gt;</code> -- er staged eine Zeilen-Nummer (0-108) in echtem WRAM ($C5AE), gelesen aus der echten <code>NPCSpawnPointers</code>-Tabelle (Bank 3, CPU $7142, byte-identisch zur US-Cartridge -- siehe src/import/NpcSpawnTable.lua). Reales Dual-WRAM-Gate ($C8E0/$CEE8, ROM->VRAM-DMA-Warteschlangentiefe) wie die restliche Trigger-Event-Familie. LIVE BESTÄTIGT: ein 2-Byte-ROM-Patch, der einen bereits real feuernden 0xFC/0xFD-Trigger umlenkte, brachte eine zweite, sichtbare, kämpfbare Kreatur ins laufende Spiel (Willy-Zimmer -&gt; Goblin) -- siehe docs/reverse-engineering/events.md, 2026-08-20 „SOLVED&quot;-Eintrag.",
+  },
+  TRIGGER_EVENT_HANDLER_ADDRESS_FD: {
+    title: "sSPAWN_NPC -- Spalte spawnen",
+    summary: "Erzeugt tatsächlich eine Kreatur aus der zuvor per sSET_NPC_TYPES gewählten Zeile -- welche der 3 Spalten, sagt das Operand-Byte.",
+    text: "Das reale <code>sSPAWN_NPC &lt;col&gt;</code>, Gegenstück zu 0xFC. Löst die reale Spawn-Kette aus: NPCSpawnPointers[row][col] -&gt; echte Zufallsauswahl (Kampf-PRNG $2B1E + 8x8-&gt;16-Multiplikation $2B7B, dieselbe Routine wie EnemyStatTable's HP-Formel) einer von 4 Kandidaten-IDs -&gt; echte Positions-/Zufallspositions-Liste -&gt; echte Entity-Alloc-Primitive $0A74 (dieselbe, die auch der bekannte Story-Boss benutzt). Eine rohe Ganz-ROM-Suche nach <code>CALL $0A74</code> fand genau 7 reale direkte Aufrufer -- diese Kette ist vollständig geschlossen nachgewiesen, nicht nur strukturell vermutet.",
   },
   SOUND_PARAM_HANDLER_ADDRESS: {
     title: "Sound-/Timing-Parameter",

@@ -68,16 +68,24 @@ Harness.test("NpcSpawnTable.NAMES_BY_ID: the 4 real, live-confirmed IDs from thi
   Harness.assertEqual(NpcSpawnTable.NAMES_BY_ID[0x12], "NPC_GOBLIN")
 end)
 
-Harness.test("NpcSpawnTable.looksLikeMonsterName: excludes doors/chests/followers/story characters, keeps field monsters", function()
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_GOBLIN"), true)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_MUSHROOM"), true)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_INV_OPEN_NORTH"), false)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_CHEST_1"), false)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_MIMIC_CHEST"), false)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_FUJI_FOLLOWING"), false)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_GUY_TOPPLE_HOUSE"), false)
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName("NPC_WILLY"), true, "named story characters aren't excluded by this heuristic -- it only screens obvious non-monster SHAPES")
-  Harness.assertEqual(NpcSpawnTable.looksLikeMonsterName(nil), false)
+Harness.test("NpcSpawnTable.isEnvironmentalTrigger: true only for decoded door/chest triggers -- makes NO hostile/friendly/boss claim about anything else", function()
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_INV_OPEN_NORTH"), true)
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_CHEST_1"), true)
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_MIMIC_CHEST"), true)
+  -- Real field monsters -- not environmental triggers.
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_GOBLIN"), false)
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_MUSHROOM"), false)
+  -- Named story characters -- also not environmental triggers, and this
+  -- function deliberately does NOT try to tell them apart from a
+  -- hostile creature (see this module's own 2026-08-20 doc comment,
+  -- direct correction: the earlier version of this function claimed to
+  -- exclude names like this one and didn't -- calling NPC_WILLY
+  -- "monster-shaped" was the actual bug, not something to keep testing
+  -- as expected behavior).
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_WILLY"), false)
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_FUJI_FOLLOWING"), false)
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger("NPC_GUY_TOPPLE_HOUSE"), false)
+  Harness.assertEqual(NpcSpawnTable.isEnvironmentalTrigger(nil), false)
 end)
 
 -- --- ROM-dependent tests -------------------------------------------------
@@ -104,24 +112,23 @@ Harness.testIfAvailable(
 )
 
 Harness.testIfAvailable(
-  "NpcSpawnTable.decode: the real ROM has at least one row whose candidate ID looks like a field monster, not just NPCs",
+  "NpcSpawnTable.decode: the real ROM has at least one row whose candidate ID resolves to a known field-monster name",
   romData ~= nil,
   "no development ROM found",
   function()
     local report = RomIdentity.identify(romData)
     local profile = RomProfiles.match(report)
     local rows = NpcSpawnTable.decode(romData, profile.npcSpawnPointerTable)
-    local foundMonster = false
+    local foundGoblin = false
     for _, row in ipairs(rows) do
       for _, col in ipairs(row) do
-        local name = NpcSpawnTable.NAMES_BY_ID[col.candidateIds[1]]
-        if NpcSpawnTable.looksLikeMonsterName(name) then
-          foundMonster = true
+        if NpcSpawnTable.NAMES_BY_ID[col.candidateIds[1]] == "NPC_GOBLIN" then
+          foundGoblin = true
           break
         end
       end
-      if foundMonster then break end
+      if foundGoblin then break end
     end
-    Harness.assertEqual(foundMonster, true, "expected at least one real row to resolve to a monster-shaped NPC_* name")
+    Harness.assertEqual(foundGoblin, true, "expected at least one real row to resolve to NPC_GOBLIN (row 1/col 0, see rom_profiles.lua's verifiedExamples)")
   end
 )

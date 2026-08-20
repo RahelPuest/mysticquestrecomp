@@ -384,21 +384,34 @@ NpcSpawnTable.NAMES_BY_ID = {
   [190] = "NPC_LAST_GUY",
 }
 
---- True for NAMES_BY_ID entries this project has real reason to
--- classify as a hostile field monster rather than a friendly NPC,
--- door/chest/inventory trigger, or story character -- a HEURISTIC over
--- the external reference's own naming, NOT a ROM fact (no in-ROM
--- "is this hostile" flag has been found/decoded). Excludes anything
--- with an `NPC_INV_`/`NPC_CHEST`/`_FOLLOWING`/`_HOUSE` etc. shape and
--- named story characters. Useful for narrowing down candidate rows to
--- live-test next, nothing more.
-function NpcSpawnTable.looksLikeMonsterName(name)
+--- REMOVED, 2026-08-20 (direct user correction, "der goblin ist kein
+-- npc das ist ein gegner und das was du als monster auf der website
+-- klassifizierst sind eigentlich bosse"): the earlier
+-- `looksLikeMonsterName` here CLAIMED to exclude "named story
+-- characters" but its own implementation didn't -- `NPC_WILLY` passed
+-- it as a real, tested "monster-shaped" result (see this project's own
+-- git history), which is exactly backwards: Willy is this game's
+-- primary friendly NPC, not a hostile creature. This project has NO
+-- real, decoded ROM fact that distinguishes "hostile field monster"
+-- from "friendly NPC" from "story boss" within this table's own
+-- NPC_*-ID space -- inventing that distinction from name-shape alone
+-- was a guess this project's own discipline doesn't allow. Kept
+-- narrowly to what IS real: `isEnvironmentalTrigger` below excludes
+-- names that are decoded, non-creature ROM triggers (a door doesn't
+-- "spawn" in any hostile-vs-friendly sense at all), nothing more.
+
+--- True for NAMES_BY_ID entries that are decoded, non-creature
+-- environmental triggers (door-open triggers, chests, other inventory
+-- fixtures) rather than any kind of placed character -- a real,
+-- narrow, name-shape fact (`NPC_INV_`/`CHEST` prefixes are the
+-- external reference's own naming for these), NOT a claim about
+-- which REMAINING entries are hostile, friendly, or a story boss --
+-- this project has no decoded ROM fact for that distinction.
+function NpcSpawnTable.isEnvironmentalTrigger(name)
   if not name then return false end
-  if name:match("^NPC_INV_") then return false end
-  if name:match("CHEST") then return false end
-  if name:match("_FOLLOWING$") then return false end
-  if name:match("_HOUSE$") then return false end
-  return true
+  if name:match("^NPC_INV_") then return true end
+  if name:match("CHEST") then return true end
+  return false
 end
 
 return NpcSpawnTable

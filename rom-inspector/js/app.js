@@ -20,6 +20,7 @@ const SECTIONS = [
   { id: "items", icon: "🗡", label: "Items & Waffen", group: "Katalog" },
   { id: "npcs", icon: "🧑", label: "NPCs", group: "Katalog" },
   { id: "actors", icon: "🎲", label: "Akteur-Tabelle", group: "Katalog" },
+  { id: "npcspawn", icon: "👹", label: "NPC-Spawn-Tabelle", group: "Katalog" },
   { id: "story", icon: "📖", label: "Story & Charaktere", group: "Katalog" },
   { id: "graphics", icon: "🖼", label: "Grafiken", group: "Katalog" },
   { id: "questions", icon: "?", label: "Offene Fragen", group: "Status" },
@@ -40,6 +41,7 @@ function countFor(id) {
     if (id === "items") return String(ITEMS.items.length + ITEMS.weapons.length);
     if (id === "npcs") return String(NPCS.length);
     if (id === "actors") return String(ACTORS.tableCount);
+    if (id === "npcspawn") return String(NPC_SPAWN_TABLE.rowCount);
     if (id === "story") return String(STORY.bossDefeats.length + STORY.namedCharacters.length);
     if (id === "music") return String(MUSIC.songCount);
     if (id === "graphics") return String(GRAPHICS_CANDIDATES.length);
@@ -248,6 +250,13 @@ function runGlobalSearch(query) {
   // incidental substring hit inside unrelated free text.
   const roomHit = ROOMS.find(r => r.name.toLowerCase().includes(query));
   if (roomHit) { location.hash = "#rooms"; return true; }
+
+  // NPC/monster spawn-table name (checked before Open Questions, same
+  // "an exact, structured entity beats an incidental prose mention"
+  // reasoning as the room-name check above)
+  const npcSpawnHit = Object.entries(NPC_SPAWN_TABLE.namesById || {})
+    .find(([, name]) => name.toLowerCase().includes(query));
+  if (npcSpawnHit) { location.hash = "#npcspawn"; return true; }
 
   // Open question
   const qHit = OPEN_QUESTIONS.find(q => q.title.toLowerCase().includes(query) || q.description.toLowerCase().includes(query));
